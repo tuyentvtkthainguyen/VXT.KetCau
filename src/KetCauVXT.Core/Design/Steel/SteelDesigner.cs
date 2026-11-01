@@ -23,8 +23,8 @@ namespace KetCauVXT.Design.Steel;
 ///   φb = 1 khi l0y ≤ 13·bf; ngược lại φ1 = ψ·(Iy/Ix)·(h/l0y)²·E/f với α = 1.54·(It/Iy)·(l0y/h)², ψ = 1.6 + 0.08·α
 ///   (ψ lấy thấp hơn bảng tiêu chuẩn → thiên về an toàn), φb = φ1 nếu φ1 ≤ 0.85, ngược lại φb = min(1; 0.68 + 0.21·φ1).</item>
 /// <item>Độ mảnh: λ ≤ 120 (thanh chịu nén), λ ≤ 300 (thanh chỉ chịu kéo, thanh giằng).</item>
-/// <item>Ổn định cục bộ (giới hạn đơn giản hoá): cánh b0/tf ≤ 0.5·√(E/f); bụng hw/tw ≤ 2.3·√(E/f) khi nén + uốn
-///   (σN ≥ 0.2·σM), hw/tw ≤ 3.5·√(E/f) khi chủ yếu chịu uốn.</item>
+/// <item>Ổn định cục bộ (giới hạn đơn giản hoá): cánh b0/tf ≤ 0.5·√(E/f); bụng theo TCVN 5575:2012 7.6.2.2 (α = (σ−σ1)/σ;
+///   α ≤ 0,5 như cột nén đúng tâm, α ≥ 1 theo 4,35√((2α−1)E/(σ(2−α+√(α²+4β²)))) ≤ 3,8√(E/f)); chủ yếu uốn ≤ 5,5√(E/f).</item>
 /// <item>TTGH II: độ võng đỉnh kèo (UZ nút đỉnh so với nút đỉnh cột) ≤ L/[RafterDeflection], L = nhịp ngang của dãy kèo;
 ///   chuyển vị ngang đỉnh cột ≤ H/[ColumnDrift].</item>
 /// </list>
@@ -307,12 +307,34 @@ public static class SteelDesigner
                 if (isI && sec.Tw > 0)
                 {
                     double hw = sp.Depth - sec.TfTop - sec.TfBot;
-                    double sigmaM = sM3 + sM2;
-                    double sigmaN = Nc / sp.A;
-                    bool compBend = Nc > 1e-6 && sigmaN >= 0.2 * sigmaM;
-                    double lim = (compBend ? 2.3 : 3.5) * sqrtEf;
-                    tr.Update(ChkWeb, hw / sec.Tw, lim, "",
-                        $"{at}; hw/tw ≤ {(compBend ? "2.3" : "3.5")}√(E/f) ({(compBend ? "nén + uốn" : "chủ yếu uốn")})");
+                    double lam = Math.Max(lx, 0) * Math.Sqrt(mat.F / E);
+                    double lim; string how;
+                    if (Nc > 1e-6)
+                    {
+                        // TCVN 5575:2012 mục 7.6.2.2: α = (σ − σ1)/σ tại hai mép bụng
+                        double yw = hw / 2;
+                        double sm = sp.I33 > 0 ? Math.Abs(M3) * yw / sp.I33 : 0;
+                        double sig = Nc / sp.A + sm, sig1 = Nc / sp.A - sm;
+                        double alpha = sig > 1e-9 ? (sig - sig1) / sig : 0;
+                        double tauW = hw * sec.Tw > 0 ? Math.Abs(V2) / (hw * sec.Tw) : 0;
+                        double lAxial = (lam <= 2 ? 1.30 + 0.15 * lam * lam : Math.Min(1.20 + 0.35 * lam, 2.3)) * sqrtEf;
+                        double LimAt(double a)
+                        {
+                            double beta = 1.4 * (2 * a - 1) * tauW / sig;
+                            double v = 4.35 * Math.Sqrt((2 * a - 1) * E / (sig * (2 - a + Math.Sqrt(a * a + 4 * beta * beta))));
+                            return Math.Min(v, 3.8 * sqrtEf);
+                        }
+                        if (alpha <= 0.5) lim = lAxial;
+                        else if (alpha >= 1) lim = LimAt(Math.Min(alpha, 2));
+                        else lim = lAxial + (LimAt(1) - lAxial) * (alpha - 0.5) / 0.5;
+                        how = $"nén + uốn, α = {F(alpha, "0.00")}, λ̄ = {F(lam, "0.00")}: [hw/tw] = {F(lim / sqrtEf, "0.00")}√(E/f) (TCVN 5575:2012 7.6.2.2)";
+                    }
+                    else
+                    {
+                        lim = 5.5 * sqrtEf;
+                        how = "chủ yếu uốn: [hw/tw] = 5,5√(E/f); khi hw/tw > 3,2√(E/f) cần sườn ngang";
+                    }
+                    tr.Update(ChkWeb, hw / sec.Tw, lim, "", $"{at}; {how}");
                 }
 
                 double gov = Math.Max(rStrength, Math.Max(rIn, rOut));
