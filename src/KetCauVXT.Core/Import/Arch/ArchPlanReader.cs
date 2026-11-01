@@ -152,7 +152,8 @@ public static class ArchPlanReader
         {
             // phạm vi lấy thực thể: bao tường + 3 m (trục, ký hiệu trục nằm ngoài tường)
             double m = 3.0;
-            var inEnts = ents.Where(e => e.Points.Count > 0 && e.Points.Any(p => p.X >= x0 - m && p.X <= x1 + m && p.Y >= y0 - m && p.Y <= y1 + m)).ToList();
+            var inEnts = ents.Where(e => e.Points.Count > 0 && e.Points.Min(p => p.X) <= x1 + m && e.Points.Max(p => p.X) >= x0 - m
+                                         && e.Points.Min(p => p.Y) <= y1 + m && e.Points.Max(p => p.Y) >= y0 - m).ToList();
             Recognize(plan, inEnts, x0, y0, x1, y1, o);
             res.Add(plan);
         }
@@ -305,11 +306,13 @@ public static class ArchPlanReader
         foreach (var t in texts)
         {
             var (px, py) = t.Points[0];
-            if (!InBox(px, py, -0.05)) continue;
+            if (!InBox(px, py, Math.Max(o.MaxCantilever, 1.0) + 0.5)) continue;
             string s = Norm(t.Text);
             if (s.Length == 0 || s.Length > 40 || s.Contains("MAT BANG")) continue;
             var rt = Classify(s, o.Rooms);
             if (rt == null) continue;
+            // ngoài tường bao: chỉ nhận ban công / sân thượng
+            if (!InBox(px, py, -0.05) && rt.Kind != RoomKind.Balcony && rt.Kind != RoomKind.RoofTerrace) continue;
             plan.Rooms.Add(new ArchRoom { Text = t.Text, Kind = rt.Kind, X = px, Y = py });
             if (rt.Kind == RoomKind.Void) plan.Zones.Add(new ArchZone { Kind = RoomKind.Void, X0 = px, Y0 = py, X1 = px, Y1 = py, Note = "từ chữ \"" + t.Text + "\"" });
         }
@@ -469,7 +472,7 @@ public static class ArchPlanReader
             if (edge || (len >= 2.5 && g.Max(x => x.t) >= 0.18) || len >= 4.0)
                 res.Add(new ArchGrid { Dir = dir, Coord = Math.Round(c, 3) });
         }
-        for (int i = 0; i < res.Count; i++) res[i].Name = ImportGeometry.AutoName(dir, i);
+        for (int i = 0; i < res.Count; i++) { res[i].Name = ImportGeometry.AutoName(dir, i); res[i].Auto = true; }
         return res;
     }
 
@@ -495,18 +498,28 @@ public static class ArchPlanReader
                 int hits = (HitX(cx, cy, 1) ? 1 : 0) + (HitX(cx, cy, -1) ? 1 : 0) + (HitY(cx, cy, 1) ? 1 : 0) + (HitY(cx, cy, -1) ? 1 : 0);
                 inside[i, j] = hits == 4;
             }
-        // lần 2: ô có 3 hướng gặp tường và kề ô trong nhà (khe cửa cuốn mặt tiền)
-        var add = new List<(int, int)>();
+        // lần 2 (lan dần): ô có 3 hướng gặp tường và kề ô trong nhà (khe cửa cuốn mặt tiền, lỗ mở lớn)
+        var three = new bool[nx, ny];
         for (int i = 0; i < nx; i++)
             for (int j = 0; j < ny; j++)
             {
                 if (inside[i, j]) continue;
                 double cx = (xs[i] + xs[i + 1]) / 2, cy = (ys[j] + ys[j + 1]) / 2;
                 int hits = (HitX(cx, cy, 1) ? 1 : 0) + (HitX(cx, cy, -1) ? 1 : 0) + (HitY(cx, cy, 1) ? 1 : 0) + (HitY(cx, cy, -1) ? 1 : 0);
-                bool nb = (i > 0 && inside[i - 1, j]) || (i + 1 < nx && inside[i + 1, j]) || (j > 0 && inside[i, j - 1]) || (j + 1 < ny && inside[i, j + 1]);
-                if (hits == 3 && nb) add.Add((i, j));
+                three[i, j] = hits == 3;
             }
-        foreach (var (i, j) in add) inside[i, j] = true;
+        bool grew = true;
+        while (grew)
+        {
+            grew = false;
+            for (int i = 0; i < nx; i++)
+                for (int j = 0; j < ny; j++)
+                {
+                    if (inside[i, j] || !three[i, j]) continue;
+                    bool nb = (i > 0 && inside[i - 1, j]) || (i + 1 < nx && inside[i + 1, j]) || (j > 0 && inside[i, j - 1]) || (j + 1 < ny && inside[i, j + 1]);
+                    if (nb) { inside[i, j] = true; grew = true; }
+                }
+        }
         return TraceOutline(xs, ys, inside);
     }
 
@@ -649,10 +662,10 @@ public static class ArchPlanReader
             else
             {
                 var (mx, my) = (MatchOffset(baseP, p, GridDir.X), MatchOffset(baseP, p, GridDir.Y));
-                dx = (mx ?? (baseP.X0 - p.X0)) - ox0;
-                dy = (my ?? (baseP.Y0 - p.Y0)) - oy0;
-                if (mx == null || my == null)
-                    p.Notes.Add("Không khớp được tên trục với tầng 1 – căn theo góc trái dưới của tường, kiểm tra lại vị trí.");
+                if (mx == null) mx = WallOffset(baseP, p, true);
+                if (my == null) my = WallOffset(baseP, p, false);
+                dx = mx.Value - ox0;
+                dy = my.Value - oy0;
             }
             Shift(p, dx, dy);
         }
@@ -681,9 +694,30 @@ public static class ArchPlanReader
             d.Info.Add($"  {p.Title}: {p.Walls.Count} đoạn tường ({p.Walls.Sum(w => w.Length):0.0} m), {p.Grids.Count} trục, {p.Columns.Count} cột KT, {p.Rooms.Count} phòng, {p.Openings.Count} cửa, {p.Zones.Count} vùng đặc biệt");
     }
 
+    /// <summary>Khớp tầng bằng vị trí tường khi không khớp được tên trục: chọn độ dời làm trùng nhiều chiều dài tường nhất
+    /// (tường song song phương còn lại), ưu tiên độ dời gần với độ dời góc trái dưới.</summary>
+    private static double WallOffset(ArchFloorPlan a, ArchFloorPlan b, bool alongXShift)
+    {
+        // dời theo X → so tim các tường dọc phương Y (x = const)
+        var wa = a.Walls.Where(w => alongXShift ? w.AlongY : w.AlongX).Select(w => (c: alongXShift ? w.Ax : w.Ay, len: w.Length)).ToList();
+        var wb = b.Walls.Where(w => alongXShift ? w.AlongY : w.AlongX).Select(w => (c: alongXShift ? w.Ax : w.Ay, len: w.Length)).ToList();
+        double corner = alongXShift ? a.X0 - b.X0 : a.Y0 - b.Y0;
+        b.Notes.Add("Không khớp được tên trục với tầng 1 – căn vị trí theo tường trùng nhau, kiểm tra lại trên hình xem trước.");
+        if (wa.Count == 0 || wb.Count == 0) return corner;
+        var cands = ImportGeometry.Cluster(wa.SelectMany(x => wb.Select(y => Math.Round(x.c - y.c, 3))), 0.01);
+        double best = corner, bestScore = -1;
+        foreach (double d in cands)
+        {
+            double score = wb.Where(y => wa.Any(x => Math.Abs(x.c - (y.c + d)) < 0.03)).Sum(y => y.len);
+            if (score > bestScore + 1e-6 || (Math.Abs(score - bestScore) <= 1e-6 && Math.Abs(d - corner) < Math.Abs(best - corner)))
+            { bestScore = score; best = d; }
+        }
+        return best;
+    }
+
     private static double? MatchOffset(ArchFloorPlan a, ArchFloorPlan b, GridDir dir)
     {
-        var ga = a.Grids.Where(g => g.Dir == dir).ToList(); var gb = b.Grids.Where(g => g.Dir == dir).ToList();
+        var ga = a.Grids.Where(g => g.Dir == dir && !g.Auto).ToList(); var gb = b.Grids.Where(g => g.Dir == dir && !g.Auto).ToList();
         var diffs = new List<double>();
         foreach (var g in ga)
         {

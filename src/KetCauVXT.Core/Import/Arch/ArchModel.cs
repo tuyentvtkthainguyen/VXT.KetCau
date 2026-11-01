@@ -70,6 +70,8 @@ public class ArchWall
 public class ArchGrid
 {
     public string Name = "";
+    /// <summary>Trục tự lập theo tường (bản vẽ không có lớp trục) – tên không dùng để khớp tầng</summary>
+    public bool Auto;
     public GridDir Dir;
     /// <summary>Toạ độ trục (X với trục dọc theo phương Y …), m</summary>
     public double Coord;
