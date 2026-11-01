@@ -10,6 +10,7 @@ using KetCauVXT.Import.Arch;
 using KetCauVXT.Loads;
 using KetCauVXT.Model;
 using KetCauVXT.Report;
+using KetCauVXT.Tests;
 
 // =====================================================================
 // KIỂM CHỨNG LÕI TÍNH + CHẠY THỬ TOÀN BỘ CHUỖI CÔNG VIỆC
