@@ -55,6 +55,7 @@
             <MenuItem Header="T_hiết kế">
                 <MenuItem Header="Thiết kế BTCT" Click="MnuDesignConcrete_Click"/>
                 <MenuItem Header="Kiểm tra thép" Click="MnuCheckSteel_Click"/>
+                <MenuItem Header="Tự tăng tiết diện đến khi đạt" Click="MnuAutoResize_Click"/>
             </MenuItem>
             <MenuItem Header="_Xuất">
                 <MenuItem Header="Bản vẽ DXF..." Click="MnuExpDxf_Click"/>

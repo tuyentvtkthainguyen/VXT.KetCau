@@ -363,6 +363,10 @@ string archDxf = Path.Combine(Path.GetTempPath(), "KienTrucMau.dxf");
     Console.WriteLine($"   Phân tích: {archProj.Nodes.Count} nút, {archProj.Frames.Count} thanh, {ar.Equations} phương trình, {sw.ElapsedMilliseconds} ms");
     Check("HTHT (tường + hoàn thiện + cầu thang): ΣFZ phản lực = Σ tải", ar.Get("HTHT").Reactions.Values.Sum(r => r[2]), applied, 1e-6);
     Check("Mọi chuyển vị hữu hạn", archProj.Combinations.Where(c => c.Type != ComboType.Envelope).All(c => ar.Get(c.Name).Disp.Values.All(v => v.All(double.IsFinite))) ? 1 : 0, 1, 0);
+    var rz = AutoResize.Run(archProj, 12);
+    foreach (var l in rz.Log) Console.WriteLine("   · " + l);
+    Check("Tự tăng tiết diện: mọi dầm, cột, sàn đạt", rz.AllOk ? 1 : 0, 1, 0);
+    ar = rz.Analysis;
 }
 
 Console.WriteLine();

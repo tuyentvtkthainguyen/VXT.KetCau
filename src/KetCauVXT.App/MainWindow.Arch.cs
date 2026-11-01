@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using KetCauVXT.Design;
 using KetCauVXT.Import.Arch;
 
 namespace KetCauVXT.App;
@@ -7,7 +8,7 @@ namespace KetCauVXT.App;
 /// <summary>Nhập bản vẽ kiến trúc sơ bộ → triển khai kết cấu (lưới cột, dầm, sàn, tải) → thay thế mô hình hiện tại.</summary>
 public partial class MainWindow
 {
-    private void MnuImportArch_Click(object sender, RoutedEventArgs e)
+    private async void MnuImportArch_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
         ApplyUiToProject(false);
@@ -25,6 +26,9 @@ public partial class MainWindow
             SetStatus($"Đã triển khai kết cấu từ bản vẽ kiến trúc: {rep.Columns} cột, {rep.Beams} dầm, {rep.Slabs} ô sàn – cần chạy lại phân tích.");
             MessageBox.Show(this, rep.ToString(), "Kết quả triển khai kết cấu từ bản vẽ kiến trúc", MessageBoxButton.OK,
                 rep.Warnings.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            if (MessageBox.Show(this, "Tiết diện hiện là kích thước sơ bộ.\n\nChạy phân tích + thiết kế và TỰ TĂNG tiết diện các dầm, cột, sàn không đạt (lặp tới khi đạt)?",
+                    AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                await RunAutoResize();
         }
         catch (NotImplementedException)
         {
@@ -38,5 +42,36 @@ public partial class MainWindow
             ShowError("Lỗi tạo mô hình từ bản vẽ kiến trúc", ex);
         }
         finally { Mouse.OverrideCursor = null; }
+    }
+
+    private async void MnuAutoResize_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        if (!_p.Frames.Any(f => f.IsConcrete))
+        {
+            MessageBox.Show(this, "Mô hình không có cấu kiện BTCT.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        await RunAutoResize();
+    }
+
+    /// <summary>Phân tích → thiết kế → tăng tiết diện cấu kiện không đạt → lặp (tối đa 10 lần).</summary>
+    private async Task RunAutoResize()
+    {
+        ApplyUiToProject(false);
+        AutoResize.Result r = null;
+        bool ok = await RunBusy("Lỗi tự tăng tiết diện", prog => { r = AutoResize.Run(_p, 10, prog); });
+        if (!ok || r == null) return;
+        _sel = null;
+        MarkDirty(false);
+        LoadUiFromProject();
+        RefreshAll(true);
+        _res = r.Analysis; _design = r.Design;
+        RefreshLoads();
+        RefreshCaseCombos();
+        RefreshResults();
+        RefreshDesign();
+        SetStatus($"Tự tăng tiết diện: {r.Iterations} lần lặp – " + (r.AllOk ? "tất cả dầm, cột, sàn đạt." : "vẫn còn cấu kiện không đạt."));
+        MessageBox.Show(this, r.ToString(), "Tự tăng tiết diện", MessageBoxButton.OK, r.AllOk ? MessageBoxImage.Information : MessageBoxImage.Warning);
     }
 }

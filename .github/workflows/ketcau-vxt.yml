@@ -59,6 +59,7 @@ jobs:
           from ezdxf import recover
           bad = 0
           for f in sorted(glob.glob("KetQuaMau/**/*.dxf", recursive=True)):
+              if f.endswith("_DauVao.dxf"): continue   # bản vẽ kiến trúc mẫu đầu vào (R12 tối giản), không phải file chương trình xuất
               try:
                   doc, auditor = recover.readfile(f)
                   msp = doc.modelspace()
