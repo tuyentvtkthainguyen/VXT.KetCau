@@ -332,14 +332,54 @@
 
                 <TabControl Grid.Row="1" x:Name="tabView">
                     <TabItem Header="Mặt bằng">
-                        <Border x:Name="planHost" ClipToBounds="True" Background="White"
-                                MouseWheel="PlanHost_MouseWheel"
-                                MouseLeftButtonDown="PlanHost_MouseLeftButtonDown"
-                                MouseMove="PlanHost_MouseMove"
-                                MouseLeftButtonUp="PlanHost_MouseLeftButtonUp"
-                                SizeChanged="PlanHost_SizeChanged">
-                            <Canvas x:Name="planCanvas"/>
-                        </Border>
+                        <DockPanel>
+                            <!-- thanh công cụ sửa mặt bằng -->
+                            <Border DockPanel.Dock="Top" Background="#FFF3F3F3" BorderBrush="#FFCCCCCC" BorderThickness="0,0,0,1" Padding="3">
+                                <WrapPanel x:Name="planEditBar" Orientation="Horizontal">
+                                    <WrapPanel.Resources>
+                                        <Style TargetType="RadioButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
+                                            <Setter Property="Margin" Value="0,0,3,2"/>
+                                            <Setter Property="Padding" Value="7,2,7,2"/>
+                                            <Setter Property="GroupName" Value="PlanMode"/>
+                                        </Style>
+                                    </WrapPanel.Resources>
+                                    <RadioButton x:Name="rbModeSelect" Content="Chọn" Tag="Select" IsChecked="True" Checked="PlanMode_Checked" ToolTip="Chọn cột, dầm, lỗ sàn, ô sàn (Esc)"/>
+                                    <RadioButton Content="＋ Ô sàn" Tag="AddSlab" Checked="PlanMode_Checked" ToolTip="Bấm vào ô kín bởi dầm để thêm ô sàn"/>
+                                    <RadioButton Content="＋ Ban công" Tag="Balcony" Checked="PlanMode_Checked" ToolTip="Bấm vào dầm biên để thêm ban công công xôn"/>
+                                    <RadioButton Content="＋ Cầu thang" Tag="Stair" Checked="PlanMode_Checked" ToolTip="Bấm vào ô để biến thành ô cầu thang"/>
+                                    <RadioButton Content="＋ Giếng trời" Tag="Void" Checked="PlanMode_Checked" ToolTip="Bấm vào ô để biến thành giếng trời / thông tầng"/>
+                                    <RadioButton Content="Sàn vệ sinh" Tag="WC" Checked="PlanMode_Checked" ToolTip="Bấm vào ô sàn để đổi thành sàn vệ sinh (bấm lại để trả về phòng ở)"/>
+                                    <RadioButton Content="Xoá" Tag="Delete" Checked="PlanMode_Checked" ToolTip="Bấm vào ô sàn / lỗ sàn để xoá (Delete)"/>
+                                    <TextBlock Text="Công năng:" VerticalAlignment="Center" Margin="8,0,4,2"/>
+                                    <ComboBox x:Name="cbNewSlabUse" Width="96" Margin="0,0,6,2" SelectedIndex="0" ToolTip="Công năng của ô sàn thêm mới">
+                                        <ComboBoxItem Content="Phòng ở" Tag="Normal"/>
+                                        <ComboBoxItem Content="Vệ sinh" Tag="WC"/>
+                                        <ComboBoxItem Content="Ban công" Tag="Balcony"/>
+                                        <ComboBoxItem Content="Hành lang" Tag="Corridor"/>
+                                        <ComboBoxItem Content="Kho" Tag="Storage"/>
+                                        <ComboBoxItem Content="Mái" Tag="Roof"/>
+                                    </ComboBox>
+                                    <TextBlock Text="Vươn (m):" VerticalAlignment="Center" Margin="0,0,4,2"/>
+                                    <TextBox x:Name="txtBalconyDepth" Text="1.20" Width="42" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Độ vươn ban công (0,5 – 3,0 m)"/>
+                                    <TextBlock Text="Lan can (kN/m):" VerticalAlignment="Center" Margin="0,0,4,2"/>
+                                    <TextBox x:Name="txtRailing" Text="1.0" Width="38" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Tải lan can trên dầm biên ban công"/>
+                                    <Button x:Name="btnUndo" Content="↶ Hoàn tác" Click="BtnUndo_Click" Padding="7,2,7,2" Margin="0,0,0,2" IsEnabled="False" ToolTip="Hoàn tác thao tác sửa mặt bằng (Ctrl+Z)"/>
+                                </WrapPanel>
+                            </Border>
+                            <Border x:Name="planHost" ClipToBounds="True" Background="White"
+                                    Focusable="True" FocusVisualStyle="{x:Null}"
+                                    MouseWheel="PlanHost_MouseWheel"
+                                    MouseLeftButtonDown="PlanHost_MouseLeftButtonDown"
+                                    MouseMove="PlanHost_MouseMove"
+                                    MouseLeftButtonUp="PlanHost_MouseLeftButtonUp"
+                                    MouseLeave="PlanHost_MouseLeave"
+                                    SizeChanged="PlanHost_SizeChanged">
+                                <Grid>
+                                    <Canvas x:Name="planCanvas"/>
+                                    <Canvas x:Name="planOverlay" IsHitTestVisible="False"/>
+                                </Grid>
+                            </Border>
+                        </DockPanel>
                     </TabItem>
                     <TabItem Header="3D">
                         <Border x:Name="view3DHost" Background="#FF20262E" ClipToBounds="True"
@@ -354,6 +394,87 @@
                                 <ModelVisual3D x:Name="model3DVisual"/>
                             </Viewport3D>
                         </Border>
+                    </TabItem>
+                    <!-- ===== BIỂU ĐỒ NỘI LỰC (MainWindow.Diagrams.cs) ===== -->
+                    <TabItem Header="Biểu đồ nội lực">
+                        <DockPanel>
+                            <WrapPanel DockPanel.Dock="Top" Margin="4,3,4,3">
+                                <TextBlock Text="Đại lượng:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <ComboBox x:Name="cbDiaQty" Width="130" Margin="0,0,10,0" SelectionChanged="DiaOption_Changed"/>
+                                <TextBlock Text="Khung nhìn:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <ComboBox x:Name="cbDiaView" Width="140" Margin="0,0,10,0" SelectionChanged="DiaOption_Changed"/>
+                                <TextBlock Text="Trục:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <ComboBox x:Name="cbDiaGrid" Width="160" Margin="0,0,10,0" SelectionChanged="DiaOption_Changed"
+                                          ToolTip="Trục dùng cho khung nhìn mặt đứng"/>
+                                <TextBlock Text="Tỉ lệ:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Slider x:Name="sldDiaScale" Width="110" Minimum="0.2" Maximum="4" Value="1" VerticalAlignment="Center"
+                                        ValueChanged="DiaScale_Changed" ToolTip="Tỉ lệ tung độ biểu đồ"/>
+                                <TextBlock x:Name="txtDiaScale" Text="×1.0" Width="34" VerticalAlignment="Center" Margin="4,0,8,0"/>
+                                <CheckBox x:Name="chkDiaValues" Content="Ghi giá trị" IsChecked="True" VerticalAlignment="Center" Margin="0,0,10,0"
+                                          Checked="DiaValues_Changed" Unchecked="DiaValues_Changed"/>
+                                <Button Content="Vừa màn hình" Click="BtnDiaFit_Click" Style="{StaticResource SmallButton}"/>
+                            </WrapPanel>
+                            <Grid>
+                                <Border x:Name="diaHost" ClipToBounds="True" Background="White"
+                                        MouseWheel="DiaHost_MouseWheel"
+                                        MouseLeftButtonDown="DiaHost_MouseLeftButtonDown"
+                                        MouseMove="DiaHost_MouseMove"
+                                        MouseLeftButtonUp="DiaHost_MouseLeftButtonUp"
+                                        SizeChanged="DiaHost_SizeChanged"
+                                        IsVisibleChanged="SecondaryHost_IsVisibleChanged">
+                                    <Canvas x:Name="diaCanvas"/>
+                                </Border>
+                                <Border x:Name="diaView3DHost" Background="#FF20262E" ClipToBounds="True" Visibility="Collapsed"
+                                        MouseLeftButtonDown="View3D_MouseLeftButtonDown"
+                                        MouseMove="View3D_MouseMove"
+                                        MouseLeftButtonUp="View3D_MouseLeftButtonUp"
+                                        MouseWheel="View3D_MouseWheel"
+                                        IsVisibleChanged="SecondaryHost_IsVisibleChanged">
+                                    <Grid>
+                                        <Viewport3D x:Name="diaViewport">
+                                            <Viewport3D.Camera>
+                                                <PerspectiveCamera x:Name="diaCamera" FieldOfView="45" Position="30,-30,20" LookDirection="-30,30,-20" UpDirection="0,0,1"/>
+                                            </Viewport3D.Camera>
+                                            <ModelVisual3D x:Name="diaModelVisual"/>
+                                        </Viewport3D>
+                                        <TextBlock x:Name="txtDia3DInfo" Foreground="WhiteSmoke" Margin="8,6,8,6" TextWrapping="Wrap"
+                                                   HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False"/>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </DockPanel>
+                    </TabItem>
+                    <!-- ===== MÔ HÌNH MÓNG (MainWindow.Foundation.cs) ===== -->
+                    <TabItem Header="Mô hình móng">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4,3,4,3">
+                                <Button Content="Vừa màn hình" Click="BtnFndFit_Click" Style="{StaticResource SmallButton}"/>
+                                <CheckBox x:Name="chkFndLabels" Content="Ghi kích thước móng" IsChecked="True" VerticalAlignment="Center" Margin="0,0,10,0"
+                                          Checked="FndOption_Changed" Unchecked="FndOption_Changed"/>
+                                <TextBlock x:Name="txtFndInfo" VerticalAlignment="Center" Foreground="Gray"/>
+                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" MinWidth="200"/>
+                                    <ColumnDefinition Width="5"/>
+                                    <ColumnDefinition Width="400" MinWidth="220"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" x:Name="fndHost" ClipToBounds="True" Background="White"
+                                        MouseWheel="FndHost_MouseWheel"
+                                        MouseLeftButtonDown="FndHost_MouseLeftButtonDown"
+                                        MouseMove="FndHost_MouseMove"
+                                        MouseLeftButtonUp="FndHost_MouseLeftButtonUp"
+                                        SizeChanged="FndHost_SizeChanged"
+                                        IsVisibleChanged="SecondaryHost_IsVisibleChanged">
+                                    <Canvas x:Name="fndCanvas"/>
+                                </Border>
+                                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#FFE0E0E0"/>
+                                <Border Grid.Column="2" x:Name="fndSecHost" ClipToBounds="True" Background="#FFFBFBF7"
+                                        SizeChanged="FndSecHost_SizeChanged">
+                                    <Canvas x:Name="fndSecCanvas"/>
+                                </Border>
+                            </Grid>
+                        </DockPanel>
                     </TabItem>
                 </TabControl>
 

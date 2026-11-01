@@ -1,72 +1,247 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using KetCauVXT.Analysis;
+using KetCauVXT.Design;
 using KetCauVXT.Model;
 // System.Windows.Media.Media3D cũng có kiểu Material → bí danh tránh CS0104
 using Material = KetCauVXT.Model.Material;
+using Mat3D = System.Windows.Media.Media3D.Material;
 
 namespace KetCauVXT.App;
 
-/// <summary>Hình 3D đơn giản: mỗi thanh là một hộp theo kích thước tiết diện, sàn là tấm mỏng.
-/// Kéo chuột trái để xoay quanh tâm mô hình, con lăn để thu phóng.</summary>
+/// <summary>Hình 3D: mỗi thanh là một hộp theo kích thước tiết diện, sàn là tấm mỏng, móng đơn dưới chân cột.
+/// Kéo chuột trái để xoay quanh tâm mô hình, con lăn để thu phóng, bấm (không kéo) để chọn cấu kiện.</summary>
 public partial class MainWindow
 {
     private double _yaw = -45, _pitch = 30, _dist = 50;
     private Point3D _target = new(0, 0, 0);
-    private bool _rotating;
+    private bool _rotating, _rotMoved;
+    private FrameworkElement _rotHost;
     private Point _rotStart;
     private double _rotYaw0, _rotPitch0;
 
-    private void Build3D()
+    /// <summary>Bảng tra vật thể 3D → cấu kiện (để chọn bằng chuột) cho khung 3D chính.</summary>
+    private readonly Dictionary<GeometryModel3D, PickMesh> _pick3D = new();
+    /// <summary>Trạng thái mô hình lúc dựng 3D lần cuối (để biết khi nào cần dựng lại).</summary>
+    private AnalysisResults _b3dRes;
+    private DesignSummary _b3dDesign;
+    private Project _b3dProj;
+    private bool _view3DInit;
+    private CheckBox _chkDim3D;
+
+    private static readonly Color SelColor3D = Color.FromRgb(255, 230, 0);
+
+    /// <summary>Lưới tam giác kèm bảng (chỉ số đỉnh đầu tiên → đối tượng) để tra ngược khi bấm chuột.</summary>
+    private sealed class PickMesh
+    {
+        public readonly MeshGeometry3D Mesh = new();
+        private readonly List<int> _starts = new();
+        private readonly List<object> _objs = new();
+
+        public void Begin(object o)
+        {
+            _starts.Add(Mesh.Positions.Count);
+            _objs.Add(o);
+        }
+
+        public object Find(int vertex)
+        {
+            int lo = 0, hi = _starts.Count - 1, r = -1;
+            while (lo <= hi)
+            {
+                int m = (lo + hi) / 2;
+                if (_starts[m] <= vertex) { r = m; lo = m + 1; } else hi = m - 1;
+            }
+            return r >= 0 ? _objs[r] : null;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Dựng cảnh 3D chính
+    // ------------------------------------------------------------------
+    private void Build3D() => BuildMain3D(true);
+
+    /// <param name="modelChanged">false = chỉ đổi tô sáng (không cần tính lại dữ liệu biểu đồ).</param>
+    private void BuildMain3D(bool modelChanged)
+    {
+        EnsureView3DInit();
+        EnsureSecondaryInit();
+        _b3dRes = _res; _b3dDesign = _design; _b3dProj = _p;
+        if (modelChanged) InvalidateDiagramCache();
+        bool dim = _chkDim3D?.IsChecked == true && HasSelection;
+        model3DVisual.Content = BuildScene(_pick3D, null, dim);
+        FitCameraTarget(false);
+        UpdateCamera();
+        if (!_inSecondaryRedraw) RedrawSecondaryViews();
+    }
+
+    /// <summary>Chuẩn bị lần đầu: cho phép bấm chọn trên Viewport3D, thêm ô "Làm mờ phần còn lại".</summary>
+    private void EnsureView3DInit()
+    {
+        if (_view3DInit) return;
+        _view3DInit = true;
+        viewport3D.IsHitTestVisible = true;
+        if (view3DHost.Child is Viewport3D vp)
+        {
+            view3DHost.Child = null;
+            var g = new Grid();
+            g.Children.Add(vp);
+            _chkDim3D = new CheckBox
+            {
+                Content = "Làm mờ phần còn lại", Foreground = Brushes.WhiteSmoke, Margin = new Thickness(8, 6, 8, 6),
+                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
+                ToolTip = "Khi đang chọn một cấu kiện, các cấu kiện khác hiển thị trong suốt"
+            };
+            _chkDim3D.Checked += (s, e) => BuildMain3D(false);
+            _chkDim3D.Unchecked += (s, e) => BuildMain3D(false);
+            g.Children.Add(_chkDim3D);
+            var hint = new TextBlock
+            {
+                Text = "Kéo chuột: xoay  •  Con lăn: thu phóng  •  Bấm: chọn cấu kiện",
+                Foreground = new SolidColorBrush(Color.FromRgb(170, 180, 190)), FontSize = 11, IsHitTestVisible = false,
+                Margin = new Thickness(8, 6, 8, 6), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom
+            };
+            g.Children.Add(hint);
+            view3DHost.Child = g;
+        }
+    }
+
+    /// <summary>Đặt tâm xoay theo bao mô hình; đặt lại khoảng cách nếu bất hợp lý (hoặc force).</summary>
+    private void FitCameraTarget(bool force)
+    {
+        if (_p == null || _p.Nodes.Count == 0) return;
+        double x0 = _p.Nodes.Min(n => n.X), x1 = _p.Nodes.Max(n => n.X);
+        double y0 = _p.Nodes.Min(n => n.Y), y1 = _p.Nodes.Max(n => n.Y);
+        double z0 = _p.Nodes.Min(n => n.Z), z1 = _p.Nodes.Max(n => n.Z);
+        if (_design != null && _design.Footings.Count > 0) z0 = Math.Min(z0, _design.Footings.Min(f => -Math.Max(f.Depth, 0)));
+        _target = new Point3D((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+        double size = Math.Max(Math.Max(x1 - x0, y1 - y0), z1 - z0);
+        if (force || _dist <= 0 || _dist > 20 * Math.Max(size, 1) || _dist < 0.2 * Math.Max(size, 1)) _dist = Math.Max(size, 5) * 2.2;
+    }
+
+    private double ModelSize()
+    {
+        if (_p == null || _p.Nodes.Count == 0) return 10;
+        double dx = _p.Nodes.Max(n => n.X) - _p.Nodes.Min(n => n.X);
+        double dy = _p.Nodes.Max(n => n.Y) - _p.Nodes.Min(n => n.Y);
+        double dz = _p.Nodes.Max(n => n.Z) - _p.Nodes.Min(n => n.Z);
+        return Math.Max(Math.Max(dx, dy), Math.Max(dz, 1));
+    }
+
+    private static Model3DGroup NewLitGroup()
     {
         var group = new Model3DGroup();
         group.Children.Add(new AmbientLight(Color.FromRgb(90, 90, 90)));
         group.Children.Add(new DirectionalLight(Colors.White, new Vector3D(-0.4, 0.6, -1)));
         group.Children.Add(new DirectionalLight(Color.FromRgb(120, 120, 120), new Vector3D(0.5, -0.3, 0.6)));
+        return group;
+    }
 
-        if (_p != null && _p.Nodes.Count > 0)
+    /// <summary>Dựng toàn bộ cảnh: thanh, sàn, móng (nếu đã thiết kế), cộng lớp phủ (biểu đồ) nếu có.
+    /// Cấu kiện đang chọn tô vàng phát sáng; dim = làm trong suốt phần còn lại.</summary>
+    private Model3DGroup BuildScene(Dictionary<GeometryModel3D, PickMesh> pick, Model3DGroup overlay, bool dim)
+    {
+        pick.Clear();
+        var group = NewLitGroup();
+        if (_p == null || _p.Nodes.Count == 0)
         {
-            var colMesh = new MeshGeometry3D();
-            var beamMesh = new MeshGeometry3D();
-            var steelMesh = new MeshGeometry3D();
-            var selMesh = new MeshGeometry3D();
-            var slabMesh = new MeshGeometry3D();
-            var nodes = _p.Nodes.ToDictionary(n => n.Id);
-
-            foreach (var f in _p.Frames)
-            {
-                if (!nodes.TryGetValue(f.NodeI, out var ni) || !nodes.TryGetValue(f.NodeJ, out var nj)) continue;
-                var sec = _p.FrameSections.FirstOrDefault(s => s.Name == f.Section);
-                double b = 0.2, h = 0.3;
-                if (sec != null) { var sp = sec.Props(0.5); b = Math.Max(sp.Width, 0.05); h = Math.Max(sp.Depth, 0.05); }
-                var mesh = _sel != null && _sel.Id == f.Id ? selMesh : f.IsVerticalKind ? (f.IsConcrete ? colMesh : steelMesh) : (f.IsConcrete ? beamMesh : steelMesh);
-                // dầm BTCT: đỉnh dầm ngang mặt sàn → dời trục xuống h/2
-                double drop = f.Kind == FrameKind.Beam ? h / 2 : 0;
-                AddMemberBox(mesh, ni.P, nj.P, f.Angle, b, h, drop);
-            }
-            foreach (var s in _p.Slabs)
-            {
-                var pts = s.Nodes.Where(id => nodes.ContainsKey(id)).Select(id => nodes[id].P).ToList();
-                if (pts.Count < 3) continue;
-                double t = _p.SlabSections.FirstOrDefault(q => q.Name == s.Section)?.Thickness ?? 0.1;
-                AddSlab(slabMesh, pts, t);
-            }
-            AddModel(group, colMesh, Color.FromRgb(170, 170, 180));
-            AddModel(group, beamMesh, Color.FromRgb(90, 140, 220));
-            AddModel(group, steelMesh, Color.FromRgb(230, 140, 40));
-            AddModel(group, selMesh, Color.FromRgb(255, 0, 200));
-            AddModel(group, slabMesh, Color.FromArgb(110, 150, 210, 150), true);
-
-            double x0 = _p.Nodes.Min(n => n.X), x1 = _p.Nodes.Max(n => n.X);
-            double y0 = _p.Nodes.Min(n => n.Y), y1 = _p.Nodes.Max(n => n.Y);
-            double z0 = _p.Nodes.Min(n => n.Z), z1 = _p.Nodes.Max(n => n.Z);
-            _target = new Point3D((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-            double size = Math.Max(Math.Max(x1 - x0, y1 - y0), z1 - z0);
-            if (_dist <= 0 || _dist > 20 * Math.Max(size, 1) || _dist < 0.2 * Math.Max(size, 1)) _dist = Math.Max(size, 5) * 2.2;
+            if (overlay != null) group.Children.Add(overlay);
+            return group;
         }
-        model3DVisual.Content = group;
-        UpdateCamera();
+        var colMesh = new PickMesh();
+        var beamMesh = new PickMesh();
+        var steelMesh = new PickMesh();
+        var selMesh = new PickMesh();
+        var slabMesh = new PickMesh();
+        var footMesh = new PickMesh();
+        var nodes = NodeMap();
+        var secs = SectionMap();
+
+        foreach (var f in _p.Frames)
+        {
+            if (!nodes.TryGetValue(f.NodeI, out var ni) || !nodes.TryGetValue(f.NodeJ, out var nj)) continue;
+            double b = 0.2, h = 0.3;
+            if (secs.TryGetValue(f.Section ?? "", out var sec)) { var sp = sec.Props(0.5); b = Math.Max(sp.Width, 0.05); h = Math.Max(sp.Depth, 0.05); }
+            var pm = _sel != null && _sel.Id == f.Id ? selMesh : f.IsVerticalKind ? (f.IsConcrete ? colMesh : steelMesh) : (f.IsConcrete ? beamMesh : steelMesh);
+            // dầm BTCT: đỉnh dầm ngang mặt sàn → dời trục xuống h/2
+            double drop = f.Kind == FrameKind.Beam ? h / 2 : 0;
+            pm.Begin(f);
+            AddMemberBox(pm.Mesh, ni.P, nj.P, f.Angle, b, h, drop);
+        }
+        foreach (var s in _p.Slabs)
+        {
+            var pts = s.Nodes.Where(id => nodes.ContainsKey(id)).Select(id => nodes[id].P).ToList();
+            if (pts.Count < 3) continue;
+            double t = _p.SlabSections.FirstOrDefault(q => q.Name == s.Section)?.Thickness ?? 0.1;
+            var pm = _selSlab != null && ReferenceEquals(_selSlab, s) ? selMesh : slabMesh;
+            pm.Begin(s);
+            AddSlab(pm.Mesh, pts, t);
+        }
+        if (_design != null)
+            foreach (var fd in _design.Footings)
+            {
+                var pm = _selFooting != 0 && _selFooting == fd.NodeId ? selMesh : footMesh;
+                pm.Begin(fd);
+                AddFooting3D(pm.Mesh, fd, nodes);
+            }
+
+        byte a = (byte)(dim ? 45 : 255);
+        // vật liệu đặc trước, trong suốt sau (WPF không tự sắp xếp độ trong suốt)
+        if (!dim)
+        {
+            AddPickModel(group, pick, colMesh, Diffuse(Color.FromRgb(170, 170, 180)), false);
+            AddPickModel(group, pick, beamMesh, Diffuse(Color.FromRgb(90, 140, 220)), false);
+            AddPickModel(group, pick, steelMesh, Diffuse(Color.FromRgb(230, 140, 40)), false);
+            AddPickModel(group, pick, footMesh, Diffuse(Color.FromRgb(150, 150, 150)), false);
+        }
+        AddPickModel(group, pick, selMesh, SelectedMaterial3D(), true);
+        if (dim)
+        {
+            AddPickModel(group, pick, colMesh, Diffuse(Color.FromArgb(a, 170, 170, 180)), true);
+            AddPickModel(group, pick, beamMesh, Diffuse(Color.FromArgb(a, 90, 140, 220)), true);
+            AddPickModel(group, pick, steelMesh, Diffuse(Color.FromArgb(a, 230, 140, 40)), true);
+            AddPickModel(group, pick, footMesh, Diffuse(Color.FromArgb(a, 150, 150, 150)), true);
+        }
+        AddPickModel(group, pick, slabMesh, Diffuse(Color.FromArgb((byte)(dim ? 30 : 110), 150, 210, 150)), true);
+        if (overlay != null) group.Children.Add(overlay);
+        return group;
+    }
+
+    private Dictionary<int, Node> NodeMap()
+    {
+        var d = new Dictionary<int, Node>();
+        if (_p != null) foreach (var n in _p.Nodes) d[n.Id] = n;
+        return d;
+    }
+
+    private Dictionary<string, FrameSection> SectionMap()
+    {
+        var d = new Dictionary<string, FrameSection>();
+        if (_p != null) foreach (var s in _p.FrameSections) if (s.Name != null) d[s.Name] = s;
+        return d;
+    }
+
+    private static Mat3D Diffuse(Color c) => new DiffuseMaterial(new SolidColorBrush(c));
+
+    private static Mat3D SelectedMaterial3D()
+    {
+        var g = new MaterialGroup();
+        g.Children.Add(new DiffuseMaterial(new SolidColorBrush(SelColor3D)));
+        g.Children.Add(new EmissiveMaterial(new SolidColorBrush(Color.FromRgb(200, 170, 0))));
+        return g;
+    }
+
+    private static void AddPickModel(Model3DGroup g, Dictionary<GeometryModel3D, PickMesh> pick, PickMesh pm, Mat3D mat, bool twoSided)
+    {
+        if (pm.Mesh.Positions.Count == 0) return;
+        pm.Mesh.Freeze();
+        var gm = new GeometryModel3D(pm.Mesh, mat);
+        if (twoSided) gm.BackMaterial = mat;
+        g.Children.Add(gm);
+        pick[gm] = pm;
     }
 
     private static void AddModel(Model3DGroup g, MeshGeometry3D m, Color c, bool twoSided = false)
@@ -79,27 +254,29 @@ public partial class MainWindow
         g.Children.Add(gm);
     }
 
+    /// <summary>Hệ trục địa phương e1, e2, e3 (trong hệ tổng thể) đúng như bộ phân tích.</summary>
+    private static (Vec3 e1, Vec3 e2, Vec3 e3) Axes(Vec3 pi, Vec3 pj, double angleDeg)
+    {
+        var r = ElementMatrices.LocalAxes(pi, pj, angleDeg);
+        return (new Vec3(r[0, 0], r[0, 1], r[0, 2]), new Vec3(r[1, 0], r[1, 1], r[1, 2]), new Vec3(r[2, 0], r[2, 1], r[2, 2]));
+    }
+
     /// <summary>Hộp chữ nhật theo trục thanh: trục 2 (cao h), trục 3 (rộng b) như hệ trục địa phương của chương trình.</summary>
     private static void AddMemberBox(MeshGeometry3D m, Vec3 pi, Vec3 pj, double angleDeg, double b, double h, double drop)
     {
-        var e1 = (pj - pi).Normalize();
-        Vec3 e2, e3;
-        double horiz = Math.Sqrt(e1.X * e1.X + e1.Y * e1.Y);
-        if (horiz < 1e-3) { e2 = Vec3.UnitX; e3 = e1.Cross(e2).Normalize(); e2 = e3.Cross(e1).Normalize(); }
-        else { e3 = e1.Cross(Vec3.UnitZ).Normalize(); e2 = e3.Cross(e1).Normalize(); }
-        if (Math.Abs(angleDeg) > 1e-9)
-        {
-            double a = angleDeg * Math.PI / 180, c = Math.Cos(a), s = Math.Sin(a);
-            var n2 = e2 * c + e3 * s; var n3 = e2 * (-s) + e3 * c;
-            e2 = n2; e3 = n3;
-        }
+        var (_, e2, e3) = Axes(pi, pj, angleDeg);
         var off = e2 * (-drop);
         var p0 = pi + off; var p1 = pj + off;
         var c4 = new[] { e2 * (h / 2) + e3 * (b / 2), e2 * (h / 2) - e3 * (b / 2), e2 * (-h / 2) - e3 * (b / 2), e2 * (-h / 2) + e3 * (b / 2) };
+        AddHexa(m, c4.Select(c => P(p0 + c)).ToArray(), c4.Select(c => P(p1 + c)).ToArray());
+    }
+
+    /// <summary>Khối 6 mặt từ 4 đỉnh đáy và 4 đỉnh nắp (cùng thứ tự vòng).</summary>
+    private static void AddHexa(MeshGeometry3D m, Point3D[] bot, Point3D[] top)
+    {
         int baseIdx = m.Positions.Count;
-        foreach (var c in c4) m.Positions.Add(P(p0 + c));
-        foreach (var c in c4) m.Positions.Add(P(p1 + c));
-        // 4 mặt bên + 2 đầu
+        foreach (var c in bot) m.Positions.Add(c);
+        foreach (var c in top) m.Positions.Add(c);
         for (int k = 0; k < 4; k++)
         {
             int a0 = baseIdx + k, a1 = baseIdx + (k + 1) % 4, b0 = a0 + 4, b1 = a1 + 4;
@@ -107,6 +284,55 @@ public partial class MainWindow
         }
         Quad(m, baseIdx + 3, baseIdx + 2, baseIdx + 1, baseIdx + 0);
         Quad(m, baseIdx + 4, baseIdx + 5, baseIdx + 6, baseIdx + 7);
+    }
+
+    private static Point3D[] RectAt(double cx, double cy, double dx, double dy, double z) => new[]
+    {
+        new Point3D(cx - dx / 2, cy - dy / 2, z), new Point3D(cx + dx / 2, cy - dy / 2, z),
+        new Point3D(cx + dx / 2, cy + dy / 2, z), new Point3D(cx - dx / 2, cy + dy / 2, z)
+    };
+
+    /// <summary>Móng đơn: bản đế cao Hb, phần vát lên tới H (mép cột + 50 mm), cổ móng tới nút chân cột.</summary>
+    private void AddFooting3D(MeshGeometry3D m, FootingDesign fd, Dictionary<int, Node> nodes)
+    {
+        var g = FootingGeom(fd, nodes);
+        if (g.L <= 0 || g.B <= 0) return;
+        AddHexa(m, RectAt(fd.X, fd.Y, g.L, g.B, g.ZBot), RectAt(fd.X, fd.Y, g.L, g.B, g.ZBot + g.Hb));
+        if (g.H - g.Hb > 1e-3)
+            AddHexa(m, RectAt(fd.X, fd.Y, g.L, g.B, g.ZBot + g.Hb), RectAt(fd.X, fd.Y, g.TopX, g.TopY, g.ZBot + g.H));
+        if (g.ZNode - (g.ZBot + g.H) > 1e-3)
+            AddHexa(m, RectAt(fd.X, fd.Y, g.Cx, g.Cy, g.ZBot + g.H), RectAt(fd.X, fd.Y, g.Cx, g.Cy, g.ZNode));
+    }
+
+    /// <summary>Kích thước hình học móng để vẽ (m): đáy ở −Depth (hoặc thấp hơn nút chân cột một đoạn H).</summary>
+    private readonly struct FootGeom
+    {
+        public double L { get; init; }
+        public double B { get; init; }
+        public double H { get; init; }
+        public double Hb { get; init; }
+        public double Cx { get; init; }
+        public double Cy { get; init; }
+        public double TopX { get; init; }
+        public double TopY { get; init; }
+        public double ZBot { get; init; }
+        public double ZNode { get; init; }
+    }
+
+    private FootGeom FootingGeom(FootingDesign fd, Dictionary<int, Node> nodes)
+    {
+        double zNode = nodes != null && nodes.TryGetValue(fd.NodeId, out var n) ? n.Z : (_p?.BaseElevation ?? 0);
+        double H = fd.H > 0 ? fd.H : 0.4;
+        double hb = fd.Hb > 0 && fd.Hb < H ? fd.Hb : H;
+        double zBot = fd.Depth > 0 ? -fd.Depth : zNode - H;
+        if (zBot + H > zNode) zBot = zNode - H;
+        double cx = fd.ColumnH > 0 ? fd.ColumnH : 0.22, cy = fd.ColumnB > 0 ? fd.ColumnB : 0.22;
+        return new FootGeom
+        {
+            L = fd.L, B = fd.B, H = H, Hb = hb, Cx = cx, Cy = cy,
+            TopX = Math.Min(fd.L, cx + 0.1), TopY = Math.Min(fd.B, cy + 0.1),
+            ZBot = zBot, ZNode = zNode
+        };
     }
 
     private static void AddSlab(MeshGeometry3D m, List<Vec3> pts, double t)
@@ -136,25 +362,73 @@ public partial class MainWindow
         double yaw = _yaw * Math.PI / 180, pitch = _pitch * Math.PI / 180;
         var dir = new Vector3D(Math.Cos(pitch) * Math.Cos(yaw), Math.Cos(pitch) * Math.Sin(yaw), Math.Sin(pitch));
         var pos = _target + dir * _dist;
-        camera3D.Position = pos;
-        camera3D.LookDirection = _target - pos;
-        camera3D.UpDirection = new Vector3D(0, 0, 1);
-        camera3D.NearPlaneDistance = Math.Max(0.05, _dist / 1000);
-        camera3D.FarPlaneDistance = _dist * 20;
+        foreach (var cam in new[] { camera3D, diaCamera })
+        {
+            if (cam == null) continue;
+            cam.Position = pos;
+            cam.LookDirection = _target - pos;
+            cam.UpDirection = new Vector3D(0, 0, 1);
+            cam.NearPlaneDistance = Math.Max(0.05, _dist / 1000);
+            cam.FarPlaneDistance = _dist * 20;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Tô sáng + chọn bằng chuột
+    // ------------------------------------------------------------------
+    partial void UpdateHighlight3D()
+    {
+        _need3DRebuild = true;
+        RedrawSecondaryViews();
+    }
+
+    /// <summary>Tìm cấu kiện dưới con trỏ trong một Viewport3D.</summary>
+    private static object Pick3D(Viewport3D vp, Point pt, Dictionary<GeometryModel3D, PickMesh> map)
+    {
+        object hit = null;
+        try
+        {
+            VisualTreeHelper.HitTest(vp, null, r =>
+            {
+                if (r is RayMeshGeometry3DHitTestResult rm && rm.ModelHit is GeometryModel3D gm && map.TryGetValue(gm, out var pm))
+                {
+                    hit = pm.Find(rm.VertexIndex1);
+                    if (hit != null) return HitTestResultBehavior.Stop;
+                }
+                return HitTestResultBehavior.Continue;
+            }, new PointHitTestParameters(pt));
+        }
+        catch (Exception) { hit = null; }
+        return hit;
+    }
+
+    /// <summary>Chọn đối tượng trả về từ bảng tra (thanh / ô sàn / móng); null = bỏ chọn.</summary>
+    private void SelectObject(object o)
+    {
+        switch (o)
+        {
+            case FrameElement f: Select(frame: f); break;
+            case Slab s: Select(slab: s); break;
+            case FootingDesign fd: Select(footingNode: fd.NodeId); break;
+            default: if (HasSelection) ClearSelection(); break;
+        }
     }
 
     private void View3D_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        _rotating = true;
-        _rotStart = e.GetPosition(view3DHost);
+        _rotHost = sender as FrameworkElement ?? view3DHost;
+        _rotating = true; _rotMoved = false;
+        _rotStart = e.GetPosition(_rotHost);
         _rotYaw0 = _yaw; _rotPitch0 = _pitch;
-        view3DHost.CaptureMouse();
+        _rotHost.CaptureMouse();
     }
 
     private void View3D_MouseMove(object sender, MouseEventArgs e)
     {
-        if (!_rotating) return;
-        var p = e.GetPosition(view3DHost);
+        if (!_rotating || _rotHost == null) return;
+        var p = e.GetPosition(_rotHost);
+        if (!_rotMoved && Math.Abs(p.X - _rotStart.X) + Math.Abs(p.Y - _rotStart.Y) < 4) return;
+        _rotMoved = true;
         _yaw = _rotYaw0 - (p.X - _rotStart.X) * 0.4;
         _pitch = Math.Clamp(_rotPitch0 + (p.Y - _rotStart.Y) * 0.4, -89, 89);
         UpdateCamera();
@@ -162,8 +436,14 @@ public partial class MainWindow
 
     private void View3D_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (!_rotating) return;
         _rotating = false;
-        view3DHost.ReleaseMouseCapture();
+        var host = _rotHost ?? view3DHost;
+        host.ReleaseMouseCapture();
+        if (_rotMoved) return;
+        bool dia = ReferenceEquals(host, diaView3DHost);
+        var vp = dia ? diaViewport : viewport3D;
+        SelectObject(Pick3D(vp, e.GetPosition(vp), dia ? _pickDia : _pick3D));
     }
 
     private void View3D_MouseWheel(object sender, MouseWheelEventArgs e)

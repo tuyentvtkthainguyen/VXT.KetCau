@@ -79,6 +79,7 @@ public partial class MainWindow : Window
         else if (ctrl && e.Key == Key.O) { MnuOpen_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (ctrl && e.Key == Key.S) { MnuSave_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.F5) { MnuRun_Click(this, new RoutedEventArgs()); e.Handled = true; }
+        else if (HandlePlanEditKey(e.Key, ctrl)) e.Handled = true; // Delete / Esc / Ctrl+Z – MainWindow.Edit.cs
     }
 
     // ==================================================================
@@ -810,6 +811,7 @@ public partial class MainWindow : Window
 
     private void RefreshResults()
     {
+        RedrawSecondaryViews(); // biểu đồ nội lực, móng, 3D (vẽ trễ, gộp lần gọi)
         lstWarnings.ItemsSource = null;
         dgForces.ItemsSource = null;
         dgReactions.ItemsSource = null;
@@ -874,6 +876,7 @@ public partial class MainWindow : Window
 
     private void RefreshDesign()
     {
+        RedrawSecondaryViews(); // móng 3D + mô hình móng (vẽ trễ, gộp lần gọi)
         if (_design == null)
         {
             dgBeams.ItemsSource = null; dgColumns.ItemsSource = null; dgSlabs.ItemsSource = null;
