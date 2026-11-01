@@ -95,3 +95,26 @@ jobs:
         with:
           name: KetCauVXT-win-x64
           path: publish
+
+  revit:
+    name: Add-in Revit ${{ matrix.rv }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rv: 2024
+            tfm: net48
+          - rv: 2025
+            tfm: net8.0-windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build add-in
+        run: dotnet build src/KetCauVXT.RevitExport -c Release -p:RevitVersion=${{ matrix.rv }} -p:TargetFramework=${{ matrix.tfm }} -o out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KetCauVXT.RevitExport-${{ matrix.rv }}
+          path: out

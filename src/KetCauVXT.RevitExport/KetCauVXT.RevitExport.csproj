@@ -28,7 +28,16 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- Máy có cài Revit: tham chiếu DLL trong thư mục cài đặt. Máy không có Revit (CI): dùng gói tham chiếu Nice3point.Revit.Api. -->
+  <PropertyGroup>
+    <UseRevitNuGet Condition="'$(UseRevitNuGet)' == '' And !Exists('$(RevitDir)RevitAPI.dll')">true</UseRevitNuGet>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(UseRevitNuGet)' == 'true'">
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseRevitNuGet)' != 'true'">
     <Reference Include="RevitAPI">
       <HintPath>$(RevitDir)RevitAPI.dll</HintPath>
       <Private>false</Private>

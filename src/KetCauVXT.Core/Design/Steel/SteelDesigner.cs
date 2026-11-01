@@ -22,7 +22,7 @@ namespace KetCauVXT.Design.Steel;
 /// <item>Ổn định ngoài mặt phẳng: N/(φy·A·f·γc) + |M3|/(φb·W33·f·γc) + |M2|/(W22·f·γc) ≤ 1.
 ///   φb = 1 khi l0y ≤ 13·bf; ngược lại φ1 = ψ·(Iy/Ix)·(h/l0y)²·E/f với α = 1.54·(It/Iy)·(l0y/h)², ψ = 1.6 + 0.08·α
 ///   (ψ lấy thấp hơn bảng tiêu chuẩn → thiên về an toàn), φb = φ1 nếu φ1 ≤ 0.85, ngược lại φb = min(1; 0.68 + 0.21·φ1).</item>
-/// <item>Độ mảnh: λ ≤ 120 (thanh chịu nén), λ ≤ 300 (thanh chỉ chịu kéo, thanh giằng).</item>
+/// <item>Độ mảnh: [λ] = 180 − 60α (cột, kèo), 210 − 60α (thanh phụ chịu nén), α = N/(φAfγc) ≥ 0,5; 300 (thanh chỉ chịu kéo, giằng).</item>
 /// <item>Ổn định cục bộ (giới hạn đơn giản hoá): cánh b0/tf ≤ 0.5·√(E/f); bụng theo TCVN 5575:2012 7.6.2.2 (α = (σ−σ1)/σ;
 ///   α ≤ 0,5 như cột nén đúng tâm, α ≥ 1 theo 4,35√((2α−1)E/(σ(2−α+√(α²+4β²)))) ≤ 3,8√(E/f)); chủ yếu uốn ≤ 5,5√(E/f).</item>
 /// <item>TTGH II: độ võng đỉnh kèo (UZ nút đỉnh so với nút đỉnh cột) ≤ L/[RafterDeflection], L = nhịp ngang của dãy kèo;
@@ -246,7 +246,7 @@ public static class SteelDesigner
         if (sec.IsTapered) res.Messages.Add("Tiết diện vát: đặc trưng hình học lấy tại từng mặt cắt kiểm tra.");
 
         var tr = new Tracker();
-        double govRatio = -1, maxLambda = 0, maxNc = 0;
+        double govRatio = -1, maxLambda = 0, maxNc = 0, alphaUse = 0;
 
         foreach (var (cname, cr) in uls)
         {
@@ -287,6 +287,11 @@ public static class SteelDesigner
                 double lx = i33 > 0 ? l0x / i33 : 999, ly = i22 > 0 ? l0y / i22 : 999;
                 maxLambda = Math.Max(maxLambda, Math.Max(lx, ly));
                 double phib = PhiB(sp, bfMin, l0y, mat.F, E);
+                if (Nc > 1e-6)
+                {
+                    double phiMin = Phi(Math.Max(lx, ly) * Math.Sqrt(mat.F / E), mat.F, E);
+                    alphaUse = Math.Max(alphaUse, Nc / (Math.Max(phiMin, 1e-6) * sp.A * fd));
+                }
                 double rIn = 0;
                 if (Nc > 1e-6)
                 {
@@ -362,10 +367,14 @@ public static class SteelDesigner
 
         // 5. Độ mảnh
         bool tensionOnly = f.Kind == FrameKind.Brace || maxNc < 1e-3;
-        double lamLim = tensionOnly ? 300 : 120;
+        // TCVN 5575:2012 Bảng 25: cột chính, kèo [λ] = 180 − 60α; thanh phụ (xà gồ, giằng chịu nén) 210 − 60α; α = N/(φAfγc) ≥ 0,5
+        bool main = f.Kind == FrameKind.SteelColumn || f.Kind == FrameKind.Rafter;
+        double aU = Math.Max(0.5, Math.Min(alphaUse, 1.0));
+        double lamLim = tensionOnly ? 300 : (main ? 180 : 210) - 60 * aU;
         res.Lambda = maxLambda;
         tr.Update(ChkSlender, maxLambda, lamLim, "",
-            tensionOnly ? "Thanh chịu kéo / thanh giằng: [λ] = 300" : "Thanh chịu nén: [λ] = 120");
+            tensionOnly ? "Thanh chịu kéo / thanh giằng: [λ] = 300"
+                        : $"Thanh chịu nén: [λ] = {(main ? "180" : "210")} − 60α, α = N/(φAfγc) = {F(alphaUse, "0.00")} (≥ 0,5) → [λ] = {F(lamLim, "0")}");
 
         // 6. Ổn định cục bộ bản cánh
         if (isI)
