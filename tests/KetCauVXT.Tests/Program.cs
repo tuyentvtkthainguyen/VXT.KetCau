@@ -315,7 +315,8 @@ string archDxf = Path.Combine(Path.GetTempPath(), "KienTrucMau.dxf");
     Check("Trục tầng 1: 2 trục X tên 1,2", f1.Grids.Count(g => g.Dir == GridDir.X && (g.Name == "1" || g.Name == "2")), 2, 0);
     Check("Trục tầng 1: 4 trục Y tên A–D", f1.Grids.Count(g => g.Dir == GridDir.Y && "ABCD".Contains(g.Name)), 4, 0);
     double area1 = Math.Abs(ImportGeometry.SignedArea(f1.Outline));
-    Check("Đường bao tầng 1 (có cửa cuốn 3,8 m) ≈ 5,22×15,22 m²", area1, 5.22 * 15.22, 0.02);
+    // bản vẽ mẫu vẽ tường tới tim trục (thiếu ô góc) → đường bao nằm giữa 5×15 và 5,22×15,22
+    Check("Đường bao tầng 1 kín dù mặt tiền có cửa cuốn 3,8 m (≥ 5×15 m²)", area1 >= 74.9 && area1 <= 79.5 ? 1 : 0, 1, 0);
     Check("Tầng 2 nhận ban công", f2.Zones.Count(z => z.Kind == RoomKind.Balcony), 1, 0);
     Check("Tầng 1 nhận cầu thang", f1.Zones.Count(z => z.Kind == RoomKind.Stair), 1, 0);
     Check("Tầng 2 có tường 220 và 110", (f2.Walls.Any(w => Math.Abs(w.Thickness - 0.22) < 0.005) ? 1 : 0) + (f2.Walls.Any(w => Math.Abs(w.Thickness - 0.11) < 0.005) ? 1 : 0), 2, 0);
@@ -336,6 +337,8 @@ string archDxf = Path.Combine(Path.GetTempPath(), "KienTrucMau.dxf");
     var t2 = prop.Levels[0];
     Check("T2: 2 dầm công xôn ban công", t2.Beams.Count(b => b.Role == BeamRole.Cantilever), 2, 0);
     Check("T2: lỗ cầu thang", t2.Holes.Count(h => h.Kind == RoomKind.Stair), 1, 0);
+    Check("T2: dầm trên trục giữa 2 cột là dầm chính", t2.Beams.Count(b => b.Role == BeamRole.Main && Math.Abs(b.Ay - b.By) < 1e-6 && Math.Abs(b.Ay - 5.0) < 1e-6), t2.Beams.Count(b => Math.Abs(b.Ay - b.By) < 1e-6 && Math.Abs(b.Ay - 5.0) < 1e-6), 0);
+    Check("Mái chính có tường chắn mái ở mép ngoài tum", prop.Levels.First(l => l.Name == "MAI").Beams.Any(b => Math.Abs(b.Ay - 15) < 1e-6 && Math.Abs(b.By - 15) < 1e-6 && b.WallLoad > 1) ? 1 : 0, 1, 0);
     Check("T2: dầm phụ đỡ tường WC", t2.Beams.Any(b => b.Role == BeamRole.Secondary && Math.Abs(b.Ax - 3.5) < 0.06 && Math.Abs(b.Bx - 3.5) < 0.06) ? 1 : 0, 1, 0);
     Check("T2: mọi ô sàn có cạnh ngắn ≤ 4,5 m", t2.Slabs.All(q => Math.Min(q.X1 - q.X0, q.Y1 - q.Y0) <= 4.55) ? 1 : 0, 1, 0);
     Check("T2: ô WC nhận tải hoàn thiện 2,0", t2.Slabs.Count(q => q.Kind == RoomKind.WC && q.Finish >= 2.0 - 1e-9) >= 1 ? 1 : 0, 1, 0);

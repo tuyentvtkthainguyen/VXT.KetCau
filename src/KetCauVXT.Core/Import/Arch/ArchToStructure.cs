@@ -276,9 +276,17 @@ public static class ArchToStructure
             BeamRole role;
             if (out1 ^ out2) role = (out1 ? c2 || Degree(p2.X, p2.Y) > 1 : c1 || Degree(p1.X, p1.Y) > 1) ? BeamRole.Cantilever : BeamRole.Edge;
             else if (out1 && out2) role = BeamRole.Edge;
-            else if (ln.Tag == "grid" && c1 && c2) role = BeamRole.Main;
             else role = BeamRole.Secondary;
-            var pb = new PropBeam { Ax = p1.X, Ay = p1.Y, Bx = p2.X, By = p2.Y, Role = role, Grid = ln.Grid };
+            double span = b - a;
+            if (role == BeamRole.Secondary && ln.Tag == "grid")
+            {
+                // đoạn trên trục nằm giữa 2 cột (có thể có dầm phụ gác vào giữa nhịp) → dầm chính, nhịp = khoảng cách 2 cột
+                var along = colAt.Where(c => Math.Abs((ln.AlongX ? c.Y : c.X) - ln.C) < 0.05).Select(c => ln.AlongX ? c.X : c.Y).ToList();
+                var lo = along.Where(t => t <= a + Tol).DefaultIfEmpty(double.NaN).Max();
+                var hi = along.Where(t => t >= b - Tol).DefaultIfEmpty(double.NaN).Min();
+                if (!double.IsNaN(lo) && !double.IsNaN(hi)) { role = BeamRole.Main; span = hi - lo; }
+            }
+            var pb = new PropBeam { Ax = p1.X, Ay = p1.Y, Bx = p2.X, By = p2.Y, Role = role, Grid = ln.Grid, Span = span };
             bool free1 = !c1 && Degree(p1.X, p1.Y) <= 1, free2 = !c2 && Degree(p2.X, p2.Y) <= 1;
             if (role != BeamRole.Cantilever && (free1 || free2)) pb.Note = "Đầu dầm tự do (không có cột/dầm đỡ) – kiểm tra lại.";
             if (role == BeamRole.Cantilever && pb.Length > o.MaxCantilever + 0.05)
@@ -344,11 +352,17 @@ public static class ArchToStructure
                 }
             }
         }
-        if (lv.Roof && above == null)
+        if (lv.Roof)
         {
+            // tường chắn mái trên dầm biên mái (trừ đoạn có tường tum đứng trên)
             double unit = 0.11 * o.WallUnitWeight + 2 * o.PlasterThickness * 18.0;
-            foreach (var pb in beams.Where(pb => OnOutline(lv.Outline, pb))) pb.WallLoad += unit * o.ParapetHeight;
-            s.Notes.Add($"{lv.Name}: tường chắn mái 110 cao {o.ParapetHeight:0.0} m trên dầm biên.");
+            int np = 0;
+            foreach (var pb in beams.Where(pb => OnOutline(lv.Outline, pb)))
+            {
+                if (above != null && ArchPlanReader.PointInPoly(above.Outline, (pb.Ax + pb.Bx) / 2, (pb.Ay + pb.By) / 2, 0.05)) continue;
+                pb.WallLoad += unit * o.ParapetHeight; np++;
+            }
+            if (np > 0) s.Notes.Add($"{lv.Name}: tường chắn mái 110 cao {o.ParapetHeight:0.0} m trên {np} đoạn dầm biên.");
         }
         foreach (var h in lv.Holes.Where(h => h.Kind == RoomKind.Stair))
         {
@@ -535,7 +549,7 @@ public static class ArchToStructure
     {
         foreach (var b in beams)
         {
-            double L = b.Length;
+            double L = b.Span > 0 ? b.Span : b.Length;
             b.H = b.Role switch
             {
                 BeamRole.Main => Math.Max(0.30, Ceil50(L / 12)),

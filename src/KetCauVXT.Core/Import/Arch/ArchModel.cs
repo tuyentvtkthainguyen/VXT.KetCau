@@ -248,6 +248,8 @@ public class PropBeam
     public double LiveLoad;
     /// <summary>Tên trục nếu dầm nằm trên trục (dùng đặt nhóm thiết kế)</summary>
     public string Grid = "";
+    /// <summary>Nhịp tính toán dùng chọn tiết diện (dầm chính: khoảng cách 2 cột; khác: chiều dài đoạn), m</summary>
+    public double Span;
     public string Note = "";
     public bool Include = true;
     public double Length => Math.Sqrt((Bx - Ax) * (Bx - Ax) + (By - Ay) * (By - Ay));
