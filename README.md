@@ -64,6 +64,34 @@ tests/KetCauVXT.Tests/         Kiểm chứng lời giải giải tích + chạy
 4. **Thiết kế → Thiết kế BTCT / Kiểm tra thép**. Cấu kiện không đạt tô đỏ.
 5. **Xuất → Xuất tất cả vào thư mục**: bản vẽ DXF, thuyết minh, bảng tính, nội lực CSV, `.e2k`, `.s2k`, file dự án.
 
+## 3a. Triển khai kết cấu từ bản vẽ kiến trúc sơ bộ
+
+Menu **Tệp → Nhập bản vẽ kiến trúc (triển khai kết cấu)…**, hoặc nút **Từ bản vẽ KT** trên thanh công cụ:
+
+1. **Chọn file** DXF (hoặc DWG nếu máy có [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter), miễn phí; không có thì trong AutoCAD dùng SAVEAS → DXF). Có thể chọn nhiều file. Một file cũng có thể chứa nhiều mặt bằng tầng đặt cạnh nhau.
+2. **Nhận diện**: chương trình tách từng mặt bằng và đọc tên tầng ("MẶT BẰNG TẦNG 1/2/…/TUM/MÁI"; đọc được chữ Unicode, mã `\U+`, font TCVN3 .VnTime). Sau đó nó nhận ra:
+   - trục và tên trục (kể cả ký hiệu trục là block có thuộc tính);
+   - tường: 2 nét song song, chiều dày 80–450 mm, khe ≤ 1,6 m coi là cửa;
+   - cột kiến trúc, cửa đi/cửa sổ (block);
+   - phòng theo chữ ghi (P.NGỦ, WC, BẾP, BAN CÔNG, CẦU THANG, THÔNG TẦNG, KHO, GARA…);
+   - cầu thang (lớp *THANG*), ban công nhô ra ngoài tường.
+   
+   Các tầng được dời về chung hệ toạ độ bằng cách khớp tên trục, nếu không khớp được thì khớp vị trí tường.
+3. **Đề xuất kết cấu**, xem trước trên mặt bằng từng cao trình. Bấm vào dầm/cột/ô sàn để bỏ hoặc giữ. Chương trình đề xuất:
+   - cột tại giao trục trong nhà, chạy liên tục tới tầng cao nhất còn đỡ sàn;
+   - dầm chính trên trục, dầm biên, dầm công xôn ban công;
+   - dầm phụ đỡ tường không nằm trên trục, dầm viền lỗ cầu thang/thông tầng, dầm chia ô sàn lớn hơn 4,5 m;
+   - tiết diện sơ bộ;
+   - tải trọng: tường (trừ cửa) trên dầm, hoàn thiện và hoạt tải theo công năng phòng (bảng sửa được), tường chắn mái, cầu thang truyền về dầm viền lỗ.
+4. **Tạo mô hình**. Chương trình hỏi có chạy **Tự tăng tiết diện đến khi đạt** không. Nếu đồng ý, nó lặp: phân tích → thiết kế → tăng 50 mm cho dầm/cột không đạt, 10 mm cho sàn → … Mục này cũng có trong menu **Thiết kế**.
+
+Để nhận diện tốt, bản vẽ nên:
+- đặt tường trên lớp có chữ TUONG/WALL, trục trên lớp TRUC/GRID (hoặc kiểu nét CENTER), cầu thang trên lớp có chữ THANG, cửa trên lớp CUA/DOOR. Tên lớp sửa được trong mục *Thông số*;
+- ghi tên phòng bằng chữ trong phòng;
+- ghi tên hình "MẶT BẰNG TẦNG …" ngay dưới hoặc trên mỗi mặt bằng.
+
+Giới hạn hiện tại: chưa hỗ trợ tường xiên/cong, tầng hầm, tầng lửng (nhập số tầng thủ công), bản vẽ PDF/ảnh. Tường tầng 1 coi như đặt trên giằng móng, chưa đưa vào khung.
+
 ## 4. Kiểm tra chéo với ETABS / SAP2000
 
 | Cách | File | Ghi chú |
@@ -97,6 +125,7 @@ Chương trình là công cụ hỗ trợ; kỹ sư chịu trách nhiệm kiểm
 1. Dầm ngàm/khớp với tải đều, tải tam giác, tải tập trung; cột công xôn (kể biến dạng trượt); cột thép vát – so với lời giải giải tích.
 2. Khung sàn cứng; cân bằng phản lực toàn nhà theo từng trường hợp tải; tổng tải sàn dồn về dầm; đối xứng khung zamil.
 3. Nhà 7 tầng 3×3 nhịp có gió + động đất (23 tổ hợp): cân bằng lực ngang, mọi tổ hợp hữu hạn.
+3a. Bản vẽ kiến trúc mẫu (nhà phố 5×15 m, 3 tầng + tum, 4 mặt bằng trong 1 file, có block trục, block cửa, chữ TCVN3, cửa cuốn 3,8 m, ban công, cầu thang, WC): nhận diện tầng/trục/tường/phòng, đề xuất cột-dầm-sàn, cân bằng tải, tự tăng tiết diện tới khi mọi cấu kiện đạt.
 4. Lưu → mở lại mô hình → phân tích lại cho kết quả trùng khớp tuyệt đối.
 5. Mô hình rỗng và kết cấu biến hình phải báo lỗi rõ ràng, không làm sập chương trình.
 6. Chạy trọn quy trình thiết kế → bản vẽ → thuyết minh → Excel → ETABS/SAP cho 3 công trình mẫu. Mọi file DXF được đọc lại và audit bằng thư viện độc lập `ezdxf`; Word/Excel được LibreOffice mở và xuất PDF; giao diện được mở thử và kiểm tra không bị treo.

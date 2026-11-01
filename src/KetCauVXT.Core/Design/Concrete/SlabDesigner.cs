@@ -170,11 +170,13 @@ public static class SlabDesigner
         double h0x = t - c - bx.Dia / 2000.0;
         double D = RcSection.FlexuralStiffness(1.0, t, h0x, bx.AsPerM, conc, SteelOf(bx.Dia).E, msx);
         double f = D > 0 ? DeflCoef(fx) / 384.0 * qxs * Math.Pow(lx, 4) / D : 0;
+        // bản kê 4 cạnh: hệ số Marcus kể xoắn cho độ võng ν = 1 − 5/6·lx²ly²/(lx⁴+ly⁴) (ô vuông khớp: 0,00406·q·a⁴/D – khớp lời giải tấm)
+        if (d.TwoWay) f *= 1 - 5.0 / 6.0 * lx * lx * ly * ly / (Math.Pow(lx, 4) + Math.Pow(ly, 4));
         d.Deflection = f;
         d.Checks.Add(new CheckItem
         {
             Name = "Võng sàn", Demand = f * 1000, Capacity = lx / 200 * 1000, Unit = "mm",
-            Note = "f = c/384·qx·lx⁴/B (c = 5 khớp–khớp, 2 ngàm–khớp, 1 ngàm–ngàm), B = Eb/(1+φcr)·Ieff kể nứt + từ biến, giới hạn lx/200"
+            Note = "f = c/384·qx·lx⁴/B·ν (c = 5 khớp–khớp, 2 ngàm–khớp, 1 ngàm–ngàm; ν hệ số Marcus khi bản kê), B = Eb/(1+φcr)·Ieff kể nứt + từ biến, giới hạn lx/200"
         });
         double tMin = d.TwoWay ? lx / 45 : lx / 35;
         if (t < tMin - 1e-6) d.Messages.Add("Chiều dày sàn " + DesignUtil.F(t * 1000, "0") + " mm nhỏ hơn khuyến nghị " + DesignUtil.F(tMin * 1000, "0") + " mm");
