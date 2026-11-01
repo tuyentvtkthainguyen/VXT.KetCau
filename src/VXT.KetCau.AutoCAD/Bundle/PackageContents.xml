@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage SchemaVersion="1.0" AutodeskProduct="AutoCAD" ProductType="Application"
+                    Name="VXT Kết cấu" AppVersion="1.0.0" Author="Vũ Xuân Tuyến"
+                    Description="Triển khai hồ sơ kết cấu BTCT từ kiến trúc: sinh khung, ETABS/SAP2000, thiết kế TCVN 5574:2018, shop drawing thép tự động"
+                    ProductCode="{70B25BD3-B26E-4688-A965-6A9A2AB79593}" UpgradeCode="{E43127D0-7E64-44E1-A1E7-074AE71A57A3}">
+  <CompanyDetails Name="VXT" />
+  <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.1" SeriesMax="R25.9" />
+  <Components Description="AutoCAD 2022-2024">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.1" SeriesMax="R24.3" />
+    <ComponentEntry AppName="VXTKetCau" Version="1.0.0" ModuleName="./Contents/2022-2024/VXT.KetCau.AutoCAD.dll"
+                    AppDescription="VXT Kết cấu" LoadOnAutoCADStartup="True" />
+  </Components>
+  <Components Description="AutoCAD 2025-2026">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R25.0" SeriesMax="R25.9" />
+    <ComponentEntry AppName="VXTKetCau" Version="1.0.0" ModuleName="./Contents/2025-2026/VXT.KetCau.AutoCAD.dll"
+                    AppDescription="VXT Kết cấu" LoadOnAutoCADStartup="True" />
+  </Components>
+</ApplicationPackage>

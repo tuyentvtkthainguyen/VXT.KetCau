@@ -50,3 +50,33 @@ jobs:
           dotnet-version: 8.0.x
       - run: dotnet build ci/CsiStub -c Release -o ci/CsiStub/out
       - run: dotnet build src/VXT.KetCau.Cli -c Release -p:CsiApiDir="${{ github.workspace }}\ci\CsiStub\out"
+
+  autocad:
+    name: Add-in AutoCAD + bộ cài
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Thư viện giả lập CSiAPIv1 (chỉ để biên dịch, không đóng gói)
+        run: dotnet build ci/CsiStub -c Release -o ci/CsiStub/out
+      - name: Build add-in AutoCAD (2022–2024 net48, 2025–2026 net8)
+        run: dotnet build src/VXT.KetCau.AutoCAD -c Release -p:CsiApiDir="${{ github.workspace }}\ci\CsiStub\out"
+      - name: Gom VXTKetCau.bundle
+        shell: pwsh
+        run: ./installer/make-bundle.ps1
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          & $iscc installer\VXT.KetCau.AutoCAD.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC lỗi" }
+          Compress-Archive -Path dist\VXTKetCau.bundle -DestinationPath dist\VXTKetCau.bundle.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VXT.KetCau.AutoCAD
+          path: |
+            dist/*.exe
+            dist/VXTKetCau.bundle.zip

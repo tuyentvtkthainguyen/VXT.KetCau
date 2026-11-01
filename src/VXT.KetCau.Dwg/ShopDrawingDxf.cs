@@ -16,6 +16,13 @@ namespace VXT.KetCau.Dwg
         public static void Write(WorkflowResult res, DesignSettings set, string path)
         {
             var w = new DxfWriter();
+            Compose(w, res, set);
+            w.Save(path);
+        }
+
+        /// <summary>Dựng toàn bộ shop drawing lên một bề mặt vẽ bất kỳ (DXF, AutoCAD…), gốc (0,0) ở góc trên trái.</summary>
+        public static void Compose(IDraw2D w, WorkflowResult res, DesignSettings set)
+        {
             var comp = new ShopDrawingComposer(w, set);
             double TH = comp.PrintTextHeight * comp.ElevationScale;
             double y = 0;
@@ -52,7 +59,6 @@ namespace VXT.KetCau.Dwg
 
             // ---- Bảng thống kê
             comp.DrawSchedule(res.Schedule, 0, y, TH);
-            w.Save(path);
         }
     }
 }

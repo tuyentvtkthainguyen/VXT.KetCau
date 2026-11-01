@@ -67,6 +67,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Shared\Ui\Forms.cs" Link="Ui\Forms.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\VXT.KetCau.Core\VXT.KetCau.Core.csproj" />
     <ProjectReference Include="..\VXT.KetCau.Dwg\VXT.KetCau.Dwg.csproj" />
     <ProjectReference Include="..\VXT.KetCau.Csi\VXT.KetCau.Csi.csproj" />

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Add-in AutoCAD:
+      net48           → AutoCAD 2022, 2023, 2024 (R24.x)
+      net8.0-windows  → AutoCAD 2025, 2026 (R25.x)
+    Thư viện AutoCAD .NET lấy từ NuGet (AutoCAD.NET của Autodesk), không chép kèm.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <RootNamespace>VXT.KetCau.AutoCAD</RootNamespace>
+    <AssemblyName>VXT.KetCau.AutoCAD</AssemblyName>
+    <PlatformTarget>x64</PlatformTarget>
+    <UseWindowsForms>true</UseWindowsForms>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="AutoCAD.NET" Version="24.*" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <PackageReference Include="AutoCAD.NET" Version="25.*" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\Ui\Forms.cs" Link="Ui\Forms.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VXT.KetCau.Core\VXT.KetCau.Core.csproj" />
+    <ProjectReference Include="..\VXT.KetCau.Dwg\VXT.KetCau.Dwg.csproj" />
+    <ProjectReference Include="..\VXT.KetCau.Csi\VXT.KetCau.Csi.csproj" />
+  </ItemGroup>
+</Project>

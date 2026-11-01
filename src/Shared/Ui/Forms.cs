@@ -6,9 +6,10 @@ using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using VXT.KetCau.Core.Codes;
+using VXT.KetCau.Core.Workflow;
 using VXT.KetCau.Dwg;
 
-namespace VXT.KetCau.Revit.Ui
+namespace VXT.KetCau.Ui
 {
     /// <summary>Bảng thông số hiển thị trong PropertyGrid (nhãn tiếng Việt, có mô tả).</summary>
     public class SettingsView
@@ -114,8 +115,9 @@ namespace VXT.KetCau.Revit.Ui
     {
         readonly DataGridView grid = new DataGridView { Dock = DockStyle.Fill, AllowUserToAddRows = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
         public List<FloorPlanInput> Plans { get; } = new List<FloorPlanInput>();
+        readonly List<Button> extraButtons = new List<Button>();
 
-        public DwgPlansForm()
+        public DwgPlansForm(string currentDrawing = null)
         {
             Text = "Nhập hồ sơ kiến trúc DWG/DXF";
             Size = new Size(900, 480); StartPosition = FormStartPosition.CenterScreen; Font = new Font("Segoe UI", 9.5f);
@@ -142,9 +144,15 @@ namespace VXT.KetCau.Revit.Ui
                             grid.Rows.Add(f, i == 0 ? "Tầng 1" : $"Tầng {i + 1}", (i * 3.6).ToString("0.000", CultureInfo.InvariantCulture), false, "0", "0");
                         }
             };
+            if (!string.IsNullOrEmpty(currentDrawing))
+            {
+                var cur = new Button { Text = "Bản vẽ đang mở", Width = 140, Dock = DockStyle.Left };
+                cur.Click += (s, e) => { int i = grid.Rows.Count; grid.Rows.Add(currentDrawing, i == 0 ? "Tầng 1" : $"Tầng {i + 1}", (i * 3.6).ToString("0.000", CultureInfo.InvariantCulture), false, "0", "0"); };
+                extraButtons.Add(cur);
+            }
             del.Click += (s, e) => { foreach (DataGridViewRow r in grid.SelectedRows) grid.Rows.Remove(r); };
             var bar = new Panel { Dock = DockStyle.Bottom, Height = 42, Padding = new Padding(6) };
-            bar.Controls.Add(ok); bar.Controls.Add(del); bar.Controls.Add(add);
+            bar.Controls.Add(ok); bar.Controls.Add(del); foreach (var b in extraButtons) bar.Controls.Add(b); bar.Controls.Add(add);
             Controls.Add(grid); Controls.Add(hint); Controls.Add(bar);
             FormClosing += (s, e) =>
             {

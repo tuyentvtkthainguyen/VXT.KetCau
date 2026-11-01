@@ -9,20 +9,6 @@ using VXT.KetCau.Core.Workflow;
 
 namespace VXT.KetCau.Revit
 {
-    /// <summary>Thông số làm việc của dự án (lưu kèm file .rvt).</summary>
-    public class ProjectState
-    {
-        public DesignSettings Settings { get; set; } = new DesignSettings();
-        public FramingOptions Framing { get; set; } = new FramingOptions();
-        /// <summary>"ETABS" / "SAP2000" / "Sơ bộ".</summary>
-        public string Engine { get; set; } = "ETABS";
-        public bool AttachToRunning { get; set; } = true;
-        public string EnginePath { get; set; } = "";
-        public string OdaConverterPath { get; set; } = "";
-        public StructModel Model { get; set; }
-        public ArchModel Arch { get; set; }
-    }
-
     /// <summary>Trạng thái theo từng tài liệu Revit đang mở; tự lưu ra file *.vxtkc.json cạnh file .rvt.</summary>
     public static class Session
     {
