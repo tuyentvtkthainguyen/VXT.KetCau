@@ -38,6 +38,7 @@
                 <MenuItem Header="Lưu _thành..." Click="MnuSaveAs_Click"/>
                 <Separator/>
                 <MenuItem Header="Nhập _DXF..." Click="MnuImportDxf_Click"/>
+                <MenuItem Header="Nhập bản vẽ _kiến trúc (triển khai kết cấu)..." Click="MnuImportArch_Click"/>
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
                 <Separator/>
                 <MenuItem Header="T_hoát" Click="MnuExit_Click"/>
@@ -79,6 +80,7 @@
                 <Button Content="Lưu" Click="MnuSave_Click" Style="{StaticResource ToolButton}"/>
                 <Separator/>
                 <Button Content="Nhập DXF" Click="MnuImportDxf_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Từ bản vẽ KT" Click="MnuImportArch_Click" Style="{StaticResource ToolButton}" ToolTip="Nhập bản vẽ kiến trúc sơ bộ → tự triển khai kết cấu"/>
                 <Button Content="Nhập Revit" Click="MnuImportRevit_Click" Style="{StaticResource ToolButton}"/>
                 <Separator/>
                 <Button Content="Tạo khung BTCT" Click="MnuBuildGrid_Click" Style="{StaticResource ToolButton}"/>

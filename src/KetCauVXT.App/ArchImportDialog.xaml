@@ -1,0 +1,221 @@
+<Window x:Class="KetCauVXT.App.ArchImportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nhập bản vẽ kiến trúc sơ bộ → triển khai kết cấu" Width="1300" Height="820"
+        MinWidth="900" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" ShowInTaskbar="False"
+        Closing="Window_Closing">
+    <Window.Resources>
+        <Style x:Key="OptLabel" TargetType="TextBlock">
+            <Setter Property="Width" Value="190"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+    </Window.Resources>
+    <DockPanel>
+        <!-- ================= STATUS ================= -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock x:Name="txtStatus" Text="Chọn file bản vẽ kiến trúc (DXF/DWG) rồi bấm “Nhận diện”."/>
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" MinWidth="300"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ================= TRÁI ================= -->
+            <DockPanel Grid.Column="0" x:Name="leftPanel">
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="6">
+                    <Button x:Name="btnPropose" Content="Đề xuất kết cấu" Click="BtnPropose_Click" Style="{StaticResource SmallButton}" IsEnabled="False"/>
+                    <Button x:Name="btnApply" Content="Tạo mô hình" Click="BtnApply_Click" Style="{StaticResource SmallButton}" FontWeight="Bold" IsEnabled="False"/>
+                    <Button Content="Đóng" IsCancel="True" Style="{StaticResource SmallButton}" Margin="0"/>
+                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="6">
+                        <!-- a) Bản vẽ -->
+                        <GroupBox Header="Bản vẽ kiến trúc">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="2">
+                                    <Button Content="Chọn file DXF/DWG..." Click="BtnBrowse_Click" Style="{StaticResource SmallButton}"/>
+                                    <Button Content="Xoá danh sách" Click="BtnClearFiles_Click" Style="{StaticResource SmallButton}"/>
+                                </StackPanel>
+                                <ListBox x:Name="lstFiles" Height="72" Margin="2"/>
+                                <DockPanel Style="{StaticResource Field}">
+                                    <TextBlock Text="Đơn vị bản vẽ" Style="{StaticResource OptLabel}" Width="100"/>
+                                    <ComboBox x:Name="cbUnit" SelectedIndex="0">
+                                        <ComboBoxItem Content="Theo file"/>
+                                        <ComboBoxItem Content="mm"/>
+                                        <ComboBoxItem Content="cm"/>
+                                        <ComboBoxItem Content="m"/>
+                                    </ComboBox>
+                                </DockPanel>
+                                <Button x:Name="btnRead" Content="Nhận diện" Click="BtnRead_Click" Style="{StaticResource SmallButton}"
+                                        HorizontalAlignment="Left" Margin="2,4,2,2" FontWeight="Bold" IsEnabled="False"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- b) Mặt bằng tầng -->
+                        <GroupBox Header="Các mặt bằng tầng">
+                            <StackPanel>
+                                <DataGrid x:Name="dgFloors" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                          HeadersVisibility="Column" MinHeight="90" MaxHeight="260" Margin="2"
+                                          CanUserSortColumns="False">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="Dùng">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding Include, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Tên hình" Binding="{Binding Title, Mode=OneWay}" IsReadOnly="True" Width="*"/>
+                                        <DataGridTextColumn Header="Tầng" Binding="{Binding FloorNo}"/>
+                                        <DataGridTemplateColumn Header="Tum">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding IsTum, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="Mái">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding IsRoofPlan, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="H (m)" Binding="{Binding Height}"/>
+                                        <DataGridTextColumn Header="Tường" Binding="{Binding Walls.Count, Mode=OneWay}" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Trục" Binding="{Binding Grids.Count, Mode=OneWay}" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Phòng" Binding="{Binding Rooms.Count, Mode=OneWay}" IsReadOnly="True"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="2" FontSize="11"
+                                           Text="Sửa số tầng, chiều cao, đánh dấu tum/mái rồi bấm “Đề xuất kết cấu” để lập lại phương án."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- c) Thông số -->
+                        <Expander Header="Thông số triển khai" IsExpanded="True" Margin="0,4,0,0">
+                            <StackPanel Margin="4,2,0,2">
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Nhịp dầm lớn nhất (m)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtMaxBeamSpan"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cạnh ngắn ô sàn lớn nhất (m)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtMaxSlabSpan"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Công xôn lớn nhất (m)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtMaxCantilever"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bề rộng dầm (m)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtBeamWidth"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cạnh cột nhỏ nhất (m)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtMinColumnSize"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="TL riêng khối xây (kN/m³)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtWallUnitWeight"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cao trình chân cột (m)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtBaseElevation"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Chiều cao tầng 1 (m)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtGroundHeight"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Chiều cao tầng điển hình (m)" Style="{StaticResource OptLabel}"/><TextBox x:Name="txtTypicalHeight"/></DockPanel>
+                                <DockPanel Style="{StaticResource Field}">
+                                    <TextBlock Text="Cấp bê tông" Style="{StaticResource OptLabel}"/>
+                                    <ComboBox x:Name="cbConcrete">
+                                        <ComboBoxItem Content="B20"/>
+                                        <ComboBoxItem Content="B25"/>
+                                        <ComboBoxItem Content="B30"/>
+                                    </ComboBox>
+                                </DockPanel>
+                                <CheckBox x:Name="chkBeamsUnderWalls" Content="Đặt dầm phụ đỡ tường không nằm trên trục" Margin="2"/>
+                                <CheckBox x:Name="chkFixedBase" Content="Chân cột ngàm" Margin="2"/>
+                                <Expander Header="Từ khoá tên lớp (layer)" IsExpanded="False" Margin="0,4,0,0">
+                                    <StackPanel Margin="4,2,0,2">
+                                        <TextBlock Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="2"
+                                                   Text="Tên lớp chứa một trong các từ khoá (cách nhau dấu phẩy, không phân biệt hoa thường)."/>
+                                        <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tường" Style="{StaticResource OptLabel}" Width="90"/><TextBox x:Name="txtWallLayers"/></DockPanel>
+                                        <DockPanel Style="{StaticResource Field}"><TextBlock Text="Trục" Style="{StaticResource OptLabel}" Width="90"/><TextBox x:Name="txtGridLayers"/></DockPanel>
+                                        <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cột" Style="{StaticResource OptLabel}" Width="90"/><TextBox x:Name="txtColumnLayers"/></DockPanel>
+                                        <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cửa" Style="{StaticResource OptLabel}" Width="90"/><TextBox x:Name="txtDoorLayers"/></DockPanel>
+                                        <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cầu thang" Style="{StaticResource OptLabel}" Width="90"/><TextBox x:Name="txtStairLayers"/></DockPanel>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- d) Tải theo phòng -->
+                        <Expander Header="Tải theo công năng phòng" IsExpanded="False" Margin="0,4,0,0">
+                            <StackPanel Margin="2">
+                                <DataGrid x:Name="dgRooms" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                          HeadersVisibility="Column" MaxHeight="300" CanUserSortColumns="False">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Công năng" Binding="{Binding Name}" Width="110"/>
+                                        <DataGridTextColumn Header="TT h.thiện" Binding="{Binding Finish}"/>
+                                        <DataGridTextColumn Header="Hoạt tải" Binding="{Binding Live}"/>
+                                        <DataGridTemplateColumn Header="Không sàn">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding NoSlab, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Từ khoá" Binding="{Binding KeysText}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="2"
+                                           Text="Tải kN/m² (TCVN 2737:2023). Từ khoá: chữ hoa không dấu, cách nhau dấu phẩy."/>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#FFE0E0E0"/>
+
+            <!-- ================= PHẢI ================= -->
+            <TabControl Grid.Column="2" x:Name="tabRight" SelectionChanged="TabRight_SelectionChanged" Margin="0,4,4,0">
+                <TabItem Header="Mặt bằng">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,2,2,4">
+                            <TextBlock Text="Cao trình:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox x:Name="cbLevel" Width="320" SelectionChanged="CbLevel_SelectionChanged" Margin="0,0,8,0"/>
+                            <Button Content="Vừa màn hình" Click="BtnFit_Click" Style="{StaticResource SmallButton}"/>
+                            <CheckBox x:Name="chkArch" Content="Nền kiến trúc" IsChecked="True" VerticalAlignment="Center" Margin="4,0,8,0"
+                                      Checked="ChkView_Changed" Unchecked="ChkView_Changed"/>
+                            <CheckBox x:Name="chkLabels" Content="Nhãn" IsChecked="True" VerticalAlignment="Center"
+                                      Checked="ChkView_Changed" Unchecked="ChkView_Changed"/>
+                        </StackPanel>
+                        <TextBlock DockPanel.Dock="Bottom" Foreground="Gray" FontSize="11" Margin="2" TextWrapping="Wrap"
+                                   Text="Con lăn: thu phóng · kéo chuột (phải/giữa/trái): di chuyển · bấm vào dầm/cột/ô sàn: bỏ/chọn lại. Dầm chính xanh dương, dầm phụ xanh ngọc, công xôn cam, dầm biên tím; nét đứt xám = đã bỏ."/>
+                        <Border x:Name="planHost" ClipToBounds="True" Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
+                                MouseWheel="PlanHost_MouseWheel"
+                                MouseDown="PlanHost_MouseDown"
+                                MouseMove="PlanHost_MouseMove"
+                                MouseUp="PlanHost_MouseUp"
+                                SizeChanged="PlanHost_SizeChanged">
+                            <Canvas x:Name="planCanvas"/>
+                        </Border>
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="Ghi chú &amp; cảnh báo">
+                    <TextBox x:Name="txtNotes" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                             FontFamily="Consolas" FontSize="12" AcceptsReturn="True"/>
+                </TabItem>
+                <TabItem Header="Cột">
+                    <DataGrid x:Name="dgColumns" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                              HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Dùng">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding Include, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="X (m)" Binding="{Binding X, Mode=OneWay, StringFormat=0.000}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Y (m)" Binding="{Binding Y, Mode=OneWay, StringFormat=0.000}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Bx (m)" Binding="{Binding Bx, Mode=OneWay, StringFormat=0.00}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="By (m)" Binding="{Binding By, Mode=OneWay, StringFormat=0.00}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Lên đến" Binding="{Binding TopLevel, Mode=OneWay}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Diện chịu tải (m²)" Binding="{Binding TributaryArea, Mode=OneWay, StringFormat=0.0}" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Tiết diện theo tầng" Binding="{Binding Sections, Mode=OneWay}" IsReadOnly="True" Width="*"/>
+                            <DataGridTextColumn Header="Ghi chú" Binding="{Binding Note, Mode=OneWay}" IsReadOnly="True" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </DockPanel>
+</Window>

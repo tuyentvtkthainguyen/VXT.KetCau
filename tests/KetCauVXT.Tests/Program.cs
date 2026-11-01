@@ -5,6 +5,8 @@ using KetCauVXT.Design.Concrete;
 using KetCauVXT.Design.Steel;
 using KetCauVXT.Drawing;
 using KetCauVXT.Export;
+using KetCauVXT.Import;
+using KetCauVXT.Import.Arch;
 using KetCauVXT.Loads;
 using KetCauVXT.Model;
 using KetCauVXT.Report;
@@ -291,6 +293,74 @@ Console.WriteLine("12. Mô hình lỗi phải báo lỗi rõ ràng, không sập
     Check("Kết cấu biến hình → được phát hiện", handled ? 1 : 0, 1, 0);
 }
 
+Console.WriteLine("13. Bản vẽ kiến trúc sơ bộ → triển khai kết cấu (nhà phố 5×15 m, 3 tầng + tum, mặt bằng đặt cạnh nhau trong 1 file DXF)");
+var archProj = ModelBuilder.NewProject("Nhà phố từ bản vẽ kiến trúc");
+archProj.Location = "Thái Nguyên";
+AnalysisResults ar = null;
+string archDxf = Path.Combine(Path.GetTempPath(), "KienTrucMau.dxf");
+{
+    File.WriteAllText(archDxf, ArchSample.Build(), new System.Text.UTF8Encoding(false));
+    var ao = new ArchImportOptions();
+    var dwg = ArchPlanReader.Read(archDxf, ao);
+    foreach (var line in dwg.Info) Console.WriteLine("   · " + line);
+    foreach (var w in dwg.Warnings) Console.WriteLine("   ! " + w);
+    foreach (var f in dwg.Floors) foreach (var n in f.Notes) Console.WriteLine($"   ! [{f.Title}] {n}");
+    Check("Số mặt bằng nhận diện", dwg.Floors.Count, 4, 0);
+    Check("Số tầng đọc từ tên hình (1,2,3,tum)", dwg.Floors.Count(f => f.FloorNo is 1 or 2 or 3) + (dwg.Floors.Any(f => f.IsTum) ? 1 : 0), 4, 0);
+    var f1 = dwg.Floors.First(f => f.FloorNo == 1);
+    var f2 = dwg.Floors.First(f => f.FloorNo == 2);
+    var f3 = dwg.Floors.First(f => f.FloorNo == 3);
+    Check("Tên tầng 3 gõ TCVN3 được chuyển sang Unicode", f3.Title.Contains("MẶT BẰNG TẦNG 3") ? 1 : 0, 1, 0);
+    Check("Trục tầng 1: 2 trục X tên 1,2", f1.Grids.Count(g => g.Dir == GridDir.X && (g.Name == "1" || g.Name == "2")), 2, 0);
+    Check("Trục tầng 1: 4 trục Y tên A–D", f1.Grids.Count(g => g.Dir == GridDir.Y && "ABCD".Contains(g.Name)), 4, 0);
+    double area1 = Math.Abs(ImportGeometry.SignedArea(f1.Outline));
+    Check("Đường bao tầng 1 (có cửa cuốn 3,8 m) ≈ 5,22×15,22 m²", area1, 5.22 * 15.22, 0.02);
+    Check("Tầng 2 nhận ban công", f2.Zones.Count(z => z.Kind == RoomKind.Balcony), 1, 0);
+    Check("Tầng 1 nhận cầu thang", f1.Zones.Count(z => z.Kind == RoomKind.Stair), 1, 0);
+    Check("Tầng 2 có tường 220 và 110", (f2.Walls.Any(w => Math.Abs(w.Thickness - 0.22) < 0.005) ? 1 : 0) + (f2.Walls.Any(w => Math.Abs(w.Thickness - 0.11) < 0.005) ? 1 : 0), 2, 0);
+    Check("Phòng WC tầng 2 được nhận dạng", f2.Rooms.Count(r => r.Kind == RoomKind.WC), 1, 0);
+    Check("Tầng 2 dời về cùng hệ toạ độ tầng 1 (trục 1 tại x = 0)", f2.Grids.First(g => g.Name == "1").Coord, 0, 1e-6);
+
+    var prop = ArchToStructure.Propose(dwg, ao);
+    foreach (var n in prop.Notes) Console.WriteLine("   · " + n);
+    foreach (var w in prop.Warnings) Console.WriteLine("   ! " + w);
+    Console.WriteLine("   Cao trình: " + string.Join(", ", prop.Levels.Select(l => $"{l.Name} +{l.Elevation:0.000} ({l.Beams.Count} dầm, {l.Slabs.Count} ô sàn, {l.Holes.Count} lỗ)")));
+    foreach (var c in prop.Columns) Console.WriteLine($"   Cột ({c.X:0.00};{c.Y:0.00}) → {c.TopLevel}: " + string.Join(" ", c.SectionByLevel.Select(kv => kv.Key + ":" + kv.Value)) + $" A={c.TributaryArea:0.0} m²");
+    foreach (var lv in prop.Levels)
+        foreach (var b in lv.Beams.Where(b => b.Role != BeamRole.Main))
+            Console.WriteLine($"   {lv.Name} {b.Role,-10} ({b.Ax:0.00};{b.Ay:0.00})–({b.Bx:0.00};{b.By:0.00}) {b.Section} tường {b.WallLoad:0.0} kN/m {b.Note}");
+    Check("Các cao trình T2, T3, MAI, MAITUM", string.Join(",", prop.Levels.Select(l => l.Name)) == "T2,T3,MAI,MAITUM" ? 1 : 0, 1, 0);
+    Check("8 cột tại giao trục", prop.Columns.Count, 8, 0);
+    Check("4 cột lên tới mái tum", prop.Columns.Count(c => c.TopLevel == "MAITUM"), 4, 0);
+    var t2 = prop.Levels[0];
+    Check("T2: 2 dầm công xôn ban công", t2.Beams.Count(b => b.Role == BeamRole.Cantilever), 2, 0);
+    Check("T2: lỗ cầu thang", t2.Holes.Count(h => h.Kind == RoomKind.Stair), 1, 0);
+    Check("T2: dầm phụ đỡ tường WC", t2.Beams.Any(b => b.Role == BeamRole.Secondary && Math.Abs(b.Ax - 3.5) < 0.06 && Math.Abs(b.Bx - 3.5) < 0.06) ? 1 : 0, 1, 0);
+    Check("T2: mọi ô sàn có cạnh ngắn ≤ 4,5 m", t2.Slabs.All(q => Math.Min(q.X1 - q.X0, q.Y1 - q.Y0) <= 4.55) ? 1 : 0, 1, 0);
+    Check("T2: ô WC nhận tải hoàn thiện 2,0", t2.Slabs.Count(q => q.Kind == RoomKind.WC && q.Finish >= 2.0 - 1e-9) >= 1 ? 1 : 0, 1, 0);
+    Check("Mái: hoạt tải mái 0,75", prop.Levels.First(l => l.Name == "MAITUM").Slabs.All(q => Math.Abs(q.Live - 0.75) < 1e-9) ? 1 : 0, 1, 0);
+
+    var rep = ArchToStructure.Apply(archProj, dwg, prop, ao);
+    Console.WriteLine("   " + rep.ToString().Replace("\n", "\n   "));
+    double applied = archProj.FrameLoads.Where(l => l.Pattern == "HTHT").Sum(fl =>
+    {
+        double L = archProj.Length(archProj.Frame(fl.Element)), sm = 0;
+        for (int i = 0; i + 1 < fl.Points.Count; i++) sm += (fl.Points[i][1] + fl.Points[i + 1][1]) / 2 * (fl.Points[i + 1][0] - fl.Points[i][0]) * L;
+        return sm;
+    });
+    foreach (var al in archProj.AreaLoads.Where(a => a.Pattern == "HTHT"))
+    {
+        var sl = archProj.Slabs.First(q => q.Id == al.Slab);
+        var pts = sl.Nodes.Select(id => (archProj.Node(id).X, archProj.Node(id).Y)).ToList();
+        applied += al.Q * Math.Abs(ImportGeometry.SignedArea(pts));
+    }
+    var sw = Stopwatch.StartNew();
+    ar = FrameAnalysis.Run(archProj);
+    Console.WriteLine($"   Phân tích: {archProj.Nodes.Count} nút, {archProj.Frames.Count} thanh, {ar.Equations} phương trình, {sw.ElapsedMilliseconds} ms");
+    Check("HTHT (tường + hoàn thiện + cầu thang): ΣFZ phản lực = Σ tải", ar.Get("HTHT").Reactions.Values.Sum(r => r[2]), applied, 1e-6);
+    Check("Mọi chuyển vị hữu hạn", archProj.Combinations.Where(c => c.Type != ComboType.Envelope).All(c => ar.Get(c.Name).Disp.Values.All(v => v.All(double.IsFinite))) ? 1 : 0, 1, 0);
+}
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");
@@ -307,7 +377,7 @@ void Step(string name, Action a)
     catch (Exception ex) { Console.WriteLine($"  ✗ {name}: {ex.GetType().Name}: {ex.Message}"); fail++; }
 }
 
-foreach (var (proj, res, tag) in new[] { (house, hr, "NhaPho"), (tall, tr, "Nha7Tang"), (shed, sr, "NhaXuong") })
+foreach (var (proj, res, tag) in new[] { (house, hr, "NhaPho"), (tall, tr, "Nha7Tang"), (archProj, ar, "TuBanVeKienTruc"), (shed, sr, "NhaXuong") })
 {
     Console.WriteLine($"\n== {proj.Name} → {outDir}");
     string dir = Path.Combine(outDir, tag);
@@ -336,5 +406,6 @@ foreach (var (proj, res, tag) in new[] { (house, hr, "NhaPho"), (tall, tr, "Nha7
     Step("Nội lực CSV", () => ForceTables.WriteCsv(res, Path.Combine(dir, "NoiLuc")));
     Step("ETABS .e2k", () => E2kExporter.Export(proj, Path.Combine(dir, tag + ".e2k")));
     Step("SAP2000 .s2k", () => S2kExporter.Export(proj, Path.Combine(dir, tag + ".s2k")));
+    if (tag == "TuBanVeKienTruc") Step("Chép bản vẽ kiến trúc đầu vào", () => File.Copy(archDxf, Path.Combine(dir, "KienTrucMau_DauVao.dxf"), true));
 }
 return fail == 0 ? 0 : 1;
