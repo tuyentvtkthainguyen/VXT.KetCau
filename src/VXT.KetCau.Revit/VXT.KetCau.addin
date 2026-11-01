@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>VXT Kết cấu</Name>
+    <Assembly>VXT.KetCau\VXT.KetCau.Revit.dll</Assembly>
+    <AddInId>6E0C1E7A-3B5F-4C21-9D7A-5A1F2B8C4D11</AddInId>
+    <FullClassName>VXT.KetCau.Revit.App</FullClassName>
+    <VendorId>VXT</VendorId>
+    <VendorDescription>VXT — Vũ Xuân Tuyến</VendorDescription>
+  </AddIn>
+</RevitAddIns>

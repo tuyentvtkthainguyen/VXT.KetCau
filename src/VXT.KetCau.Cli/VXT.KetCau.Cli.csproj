@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Chạy toàn quy trình không cần Revit: DWG/DXF kiến trúc → khung kết cấu → ETABS/SAP2000 → thiết kế → shop drawing DXF + thuyết minh -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>vxtkc</AssemblyName>
+    <RootNamespace>VXT.KetCau.Cli</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VXT.KetCau.Core\VXT.KetCau.Core.csproj" />
+    <ProjectReference Include="..\VXT.KetCau.Dwg\VXT.KetCau.Dwg.csproj" />
+    <ProjectReference Include="..\VXT.KetCau.Csi\VXT.KetCau.Csi.csproj" />
+  </ItemGroup>
+</Project>

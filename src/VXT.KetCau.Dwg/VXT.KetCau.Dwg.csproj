@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Đọc hồ sơ kiến trúc DWG/DXF và xuất shop drawing thép ra DXF (không phụ thuộc AutoCAD) -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>VXT.KetCau.Dwg</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VXT.KetCau.Core\VXT.KetCau.Core.csproj" />
+  </ItemGroup>
+</Project>

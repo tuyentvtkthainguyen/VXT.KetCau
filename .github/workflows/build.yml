@@ -1,0 +1,27 @@
+name: Build & Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Kiểm thử lõi
+        run: dotnet test tests/VXT.KetCau.Core.Tests -c Release --logger "trx;LogFileName=ketqua.trx" --results-directory TestResults
+      - name: Build lõi + DWG
+        run: |
+          dotnet build src/VXT.KetCau.Core -c Release
+          dotnet build src/VXT.KetCau.Dwg -c Release
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ket-qua-kiem-thu
+          path: TestResults
+# Add-in Revit và CLI cần CSiAPIv1.dll (bản quyền CSI) nên không build trên máy CI — dùng build.ps1 trên máy có ETABS.

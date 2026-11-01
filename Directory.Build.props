@@ -1,0 +1,17 @@
+<Project>
+  <!-- Thiết lập chung cho toàn bộ giải pháp VXT Kết cấu -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Company>VXT</Company>
+    <Authors>Vũ Xuân Tuyến</Authors>
+    <Product>VXT Kết cấu</Product>
+    <Version>1.0.0</Version>
+    <Copyright>© 2026 VXT</Copyright>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Thư mục chứa CSiAPIv1.dll (cài kèm ETABS 21+/SAP2000 25+). Sửa nếu cài nơi khác. -->
+    <CsiApiDir Condition="'$(CsiApiDir)' == ''">C:\Program Files\Computers and Structures\ETABS 22</CsiApiDir>
+  </PropertyGroup>
+</Project>
