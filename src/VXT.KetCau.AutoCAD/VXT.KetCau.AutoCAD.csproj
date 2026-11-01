@@ -14,10 +14,10 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
-    <PackageReference Include="AutoCAD.NET" Version="24.*" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET" Version="[24.1.51000]" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
-    <PackageReference Include="AutoCAD.NET" Version="25.0.*" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET" Version="[25.0.1]" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\Shared\Ui\Forms.cs" Link="Ui\Forms.cs" />
