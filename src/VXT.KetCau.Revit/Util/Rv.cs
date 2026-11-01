@@ -26,7 +26,7 @@ namespace VXT.KetCau.Revit.Util
 #if REVIT2023_OR_GREATER
             return Mm(t.BarNominalDiameter);
 #else
-            return Mm(t.BarDiameter);
+            return Mm(t.BarNominalDiameter);
 #endif
         }
 
@@ -36,7 +36,7 @@ namespace VXT.KetCau.Revit.Util
             t.BarNominalDiameter = Ft(mm);
             t.BarModelDiameter = Ft(mm);
 #else
-            t.BarDiameter = Ft(mm);
+            t.BarNominalDiameter = Ft(mm);
 #endif
         }
 
