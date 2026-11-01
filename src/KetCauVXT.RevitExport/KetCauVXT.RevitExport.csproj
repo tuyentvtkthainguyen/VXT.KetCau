@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Add-in Revit xuất mô hình kết cấu sang Kết cấu VXT (file *.vxtrevit.json).
+
+    Mặc định: Revit 2024 → .NET Framework 4.8.
+    Chuyển sang Revit 2025 / 2026 (.NET 8):
+      1. Đổi <TargetFramework>net48</TargetFramework> thành <TargetFramework>net8.0-windows</TargetFramework>
+         (UseWindowsForms tự bật cho net8.0-windows).
+      2. Đổi RevitVersion thành 2025 (hoặc 2026) để HintPath trỏ đúng thư mục cài đặt.
+      3. Tham chiếu System.Windows.Forms chỉ dùng cho net48 (net8 dùng UseWindowsForms).
+    Lưu ý: dự án này không biên dịch được trên máy không cài Revit.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RevitVersion>2024</RevitVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <UseWindowsForms Condition="'$(TargetFramework)' != 'net48'">true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>KetCauVXT.RevitExport</RootNamespace>
+    <AssemblyName>KetCauVXT.RevitExport</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Vũ Xuân Tuyến</Authors>
+    <Product>Kết cấu VXT – xuất từ Revit</Product>
+    <RevitDir>C:\Program Files\Autodesk\Revit $(RevitVersion)\</RevitDir>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitDir)RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitDir)RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <!-- .NET Framework 4.8 không có System.Text.Json: add-in tự ghi JSON bằng JsonWriter.cs (không cần NuGet). -->
+
+  <ItemGroup>
+    <None Update="KetCauVXT.RevitExport.addin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

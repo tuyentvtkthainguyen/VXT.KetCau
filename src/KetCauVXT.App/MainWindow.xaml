@@ -1,0 +1,375 @@
+<Window x:Class="KetCauVXT.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Kết cấu VXT" Height="860" Width="1440" WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded" Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown">
+    <Window.Resources>
+        <Style TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="True"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#FFD8D8D8"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#FFD8D8D8"/>
+            <Setter Property="Margin" Value="0,2,0,4"/>
+        </Style>
+        <Style x:Key="OkRowStyle" TargetType="DataGridRow">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsOk}" Value="False">
+                    <Setter Property="Background" Value="#FFF6B8B8"/>
+                    <Setter Property="Foreground" Value="#FF8B0000"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Margin" Value="0,4,0,4"/>
+            <Setter Property="Padding" Value="4"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- ================= MENU ================= -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Tệp">
+                <MenuItem Header="_Mới" Click="MnuNew_Click" InputGestureText="Ctrl+N"/>
+                <MenuItem Header="_Mở .kcvxt..." Click="MnuOpen_Click" InputGestureText="Ctrl+O"/>
+                <MenuItem Header="_Lưu" Click="MnuSave_Click" InputGestureText="Ctrl+S"/>
+                <MenuItem Header="Lưu _thành..." Click="MnuSaveAs_Click"/>
+                <Separator/>
+                <MenuItem Header="Nhập _DXF..." Click="MnuImportDxf_Click"/>
+                <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
+                <Separator/>
+                <MenuItem Header="T_hoát" Click="MnuExit_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Mô hình">
+                <MenuItem Header="Tạo khung BTCT từ lưới trục" Click="MnuBuildGrid_Click"/>
+                <MenuItem Header="Tạo khung thép tiền chế..." Click="MnuBuildPortal_Click"/>
+                <MenuItem Header="Chia thanh tại nút" Click="MnuSplit_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Phân tích">
+                <MenuItem Header="Tạo tổ hợp tải" Click="MnuCombos_Click"/>
+                <MenuItem Header="Chạy phân tích" Click="MnuRun_Click" InputGestureText="F5"/>
+            </MenuItem>
+            <MenuItem Header="T_hiết kế">
+                <MenuItem Header="Thiết kế BTCT" Click="MnuDesignConcrete_Click"/>
+                <MenuItem Header="Kiểm tra thép" Click="MnuCheckSteel_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Xuất">
+                <MenuItem Header="Bản vẽ DXF..." Click="MnuExpDxf_Click"/>
+                <MenuItem Header="Thuyết minh Word..." Click="MnuExpWord_Click"/>
+                <MenuItem Header="Bảng tính Excel..." Click="MnuExpExcel_Click"/>
+                <MenuItem Header="Nội lực CSV..." Click="MnuExpCsv_Click"/>
+                <Separator/>
+                <MenuItem Header="Mô hình ETABS .e2k..." Click="MnuExpE2k_Click"/>
+                <MenuItem Header="Mô hình SAP2000 .s2k..." Click="MnuExpS2k_Click"/>
+                <Separator/>
+                <MenuItem Header="Xuất tất cả vào thư mục..." Click="MnuExpAll_Click"/>
+            </MenuItem>
+            <MenuItem Header="T_rợ giúp">
+                <MenuItem Header="Giới thiệu" Click="MnuAbout_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- ================= TOOLBAR ================= -->
+        <ToolBarTray DockPanel.Dock="Top">
+            <ToolBar>
+                <Button Content="Mới" Click="MnuNew_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Mở" Click="MnuOpen_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Lưu" Click="MnuSave_Click" Style="{StaticResource ToolButton}"/>
+                <Separator/>
+                <Button Content="Nhập DXF" Click="MnuImportDxf_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Nhập Revit" Click="MnuImportRevit_Click" Style="{StaticResource ToolButton}"/>
+                <Separator/>
+                <Button Content="Tạo khung BTCT" Click="MnuBuildGrid_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Khung tiền chế" Click="MnuBuildPortal_Click" Style="{StaticResource ToolButton}"/>
+                <Separator/>
+                <Button Content="▶ Phân tích" Click="MnuRun_Click" Style="{StaticResource ToolButton}" FontWeight="Bold"/>
+                <Button Content="Thiết kế BTCT" Click="MnuDesignConcrete_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Kiểm tra thép" Click="MnuCheckSteel_Click" Style="{StaticResource ToolButton}"/>
+                <Separator/>
+                <Button Content="Xuất tất cả" Click="MnuExpAll_Click" Style="{StaticResource ToolButton}" FontWeight="Bold"/>
+            </ToolBar>
+        </ToolBarTray>
+
+        <!-- ================= STATUS ================= -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock x:Name="txtStatus" Text="Sẵn sàng"/>
+            </StatusBarItem>
+            <StatusBarItem>
+                <ProgressBar x:Name="pbBusy" Width="140" Height="14" Visibility="Collapsed" IsIndeterminate="True"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock x:Name="txtFile" Foreground="Gray"/>
+            </StatusBarItem>
+        </StatusBar>
+
+        <!-- ================= MAIN ================= -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="560" MinWidth="300"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TabControl Grid.Column="0" x:Name="tabLeft">
+                <!-- ===== CÔNG TRÌNH ===== -->
+                <TabItem Header="Công trình">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="6">
+                            <GroupBox Header="Thông tin công trình">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tên công trình" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtName"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Địa điểm xây dựng" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtLocation"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Chủ đầu tư" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtOwner"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Người thiết kế" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtDesigner"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Lưới trục và tầng (m) – vd: 3.6 4.2 3.6 hoặc 3*3.3">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bước cột theo X (trục 1, 2, 3...)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtSpansX"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bước cột theo Y (trục A, B, C...)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtSpansY"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Chiều cao các tầng (dưới → trên)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtHeights"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cao độ chân cột (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtBaseElev"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Liên kết chân cột" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkFixedBase" Content="Ngàm (bỏ chọn = khớp)" IsChecked="True" VerticalAlignment="Center"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Tiết diện mặc định">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cột" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbColSec"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Dầm phương X" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbBeamXSec"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Dầm phương Y" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbBeamYSec"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Sàn" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbSlabSec"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Tải trọng (giá trị tiêu chuẩn)">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoàn thiện sàn (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtFinish"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoạt tải sàn (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtLive"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoạt tải mái (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtRoofLive"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tường biên trên dầm (kN/m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtWall"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Gió (TCVN 2737:2023)">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tính tải gió" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkWind" Content="Bật" VerticalAlignment="Center"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Áp lực gió W0 (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtW0"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Dạng địa hình" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbTerrain"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hệ số khí động tổng Cp" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtCp"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Động đất (TCVN 9386:2012)">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tính động đất" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkSeismic" Content="Bật (thêm trường hợp DDX, DDY)" VerticalAlignment="Center"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Gia tốc nền agR (g)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtAgR"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Loại nền đất" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbSeisSoil"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hệ số ứng xử q" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtQ"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Vật liệu">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bê tông cột" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbConcCol"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bê tông dầm" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbConcBeam"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bê tông sàn" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbConcSlab"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bê tông móng" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbConcFoot"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Thép dọc (Ø ≥ 10)" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbRebarMain"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Thép đai, thép sàn (Ø &lt; 10)" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbRebarStir"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Nền đất dưới móng đơn (TCVN 9362:2012)">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Góc ma sát trong φ (độ)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtPhi"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Lực dính c (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtC"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Trọng lượng riêng γ (kN/m³)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtGamma"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Độ sâu chôn móng Df (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtDepth"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="R tiêu chuẩn nhập tay (kN/m², 0 = tính)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtROverride"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+                                <Button Content="Tạo mô hình" Click="BtnBuild_Click" Style="{StaticResource SmallButton}" FontWeight="Bold"/>
+                                <Button Content="Áp dụng thông số" Click="BtnApply_Click" Style="{StaticResource SmallButton}"/>
+                            </StackPanel>
+                            <TextBlock TextWrapping="Wrap" Foreground="Gray"
+                                       Text="'Tạo mô hình' xoá mô hình hiện có và sinh lại lưới trục, tầng, cột, dầm, sàn và tải. 'Áp dụng thông số' chỉ cập nhật thông tin, vật liệu, gió, động đất, nền đất."/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- ===== TIẾT DIỆN ===== -->
+                <TabItem Header="Tiết diện">
+                    <Grid Margin="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="2*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Orientation="Horizontal">
+                            <TextBlock Text="Tiết diện thanh (mm)" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <Button Content="+ Chữ nhật BTCT" Click="BtnAddRect_Click" Style="{StaticResource SmallButton}"/>
+                            <Button Content="+ Chữ I tổ hợp" Click="BtnAddI_Click" Style="{StaticResource SmallButton}"/>
+                            <Button Content="Xoá" Click="BtnDelSection_Click" Style="{StaticResource SmallButton}"/>
+                        </StackPanel>
+                        <DataGrid Grid.Row="1" x:Name="dgSections" AutoGeneratingColumn="Grid_AutoGeneratingColumn" CellEditEnding="Grid_CellEditEnding"/>
+                        <TextBlock Grid.Row="2" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,6"
+                                   Text="Chữ nhật: b (song song trục 3) × h (song song trục 2). Chữ I: h1 đầu I, h2 đầu J (vát), bf × tf cánh, tw bụng."/>
+                        <StackPanel Grid.Row="3" Orientation="Horizontal">
+                            <TextBlock Text="Tiết diện sàn" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <Button Content="+ Thêm" Click="BtnAddSlabSec_Click" Style="{StaticResource SmallButton}"/>
+                            <Button Content="Xoá" Click="BtnDelSlabSec_Click" Style="{StaticResource SmallButton}"/>
+                        </StackPanel>
+                        <DataGrid Grid.Row="4" x:Name="dgSlabSections" AutoGeneratingColumn="Grid_AutoGeneratingColumn" CellEditEnding="Grid_CellEditEnding"/>
+                    </Grid>
+                </TabItem>
+
+                <!-- ===== TẢI TRỌNG ===== -->
+                <TabItem Header="Tải trọng">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="6">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Trường hợp tải" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <Button Content="+ Thêm" Click="BtnAddPattern_Click" Style="{StaticResource SmallButton}"/>
+                                <Button Content="Xoá" Click="BtnDelPattern_Click" Style="{StaticResource SmallButton}"/>
+                            </StackPanel>
+                            <DataGrid x:Name="dgPatterns" Height="170" AutoGeneratingColumn="Grid_AutoGeneratingColumn" CellEditEnding="Grid_CellEditEnding"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="Tổ hợp tải trọng" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <Button Content="Tạo tổ hợp tải" Click="MnuCombos_Click" Style="{StaticResource SmallButton}"/>
+                            </StackPanel>
+                            <DataGrid x:Name="dgCombos" Height="200" IsReadOnly="True" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="Tải trên thanh (kN/m)" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <Button Content="+ Cho thanh đang chọn" Click="BtnAddFrameLoad_Click" Style="{StaticResource SmallButton}"/>
+                                <Button Content="Xoá" Click="BtnDelFrameLoad_Click" Style="{StaticResource SmallButton}"/>
+                                <CheckBox x:Name="chkShowAutoLoads" Content="Hiện tải tự sinh (sàn)" VerticalAlignment="Center"
+                                          Checked="ChkShowAutoLoads_Changed" Unchecked="ChkShowAutoLoads_Changed"/>
+                            </StackPanel>
+                            <DataGrid x:Name="dgFrameLoads" Height="220" AutoGeneratingColumn="Grid_AutoGeneratingColumn" CellEditEnding="Grid_CellEditEnding"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="Tải trên sàn (kN/m²)" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <Button Content="+ Cho các ô sàn tầng đang xem" Click="BtnAddAreaLoad_Click" Style="{StaticResource SmallButton}"/>
+                                <Button Content="Xoá" Click="BtnDelAreaLoad_Click" Style="{StaticResource SmallButton}"/>
+                            </StackPanel>
+                            <DataGrid x:Name="dgAreaLoads" Height="220" AutoGeneratingColumn="Grid_AutoGeneratingColumn" CellEditEnding="Grid_CellEditEnding"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- ===== KẾT QUẢ ===== -->
+                <TabItem Header="Kết quả">
+                    <Grid Margin="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="3*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Orientation="Horizontal">
+                            <TextBlock Text="Trường hợp / tổ hợp:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox x:Name="cbCase" Width="140" SelectionChanged="CbCase_SelectionChanged"/>
+                            <TextBlock Text="Tầng:" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                            <ComboBox x:Name="cbResStory" Width="120" SelectionChanged="CbResStory_SelectionChanged"/>
+                        </StackPanel>
+                        <DataGrid Grid.Row="1" x:Name="dgForces" IsReadOnly="True" AutoGeneratingColumn="Grid_AutoGeneratingColumn"
+                                  EnableRowVirtualization="True"/>
+                        <TextBlock Grid.Row="2" Text="Phản lực chân cột (kN, kN.m)" FontWeight="Bold" Margin="0,4,0,0"/>
+                        <DataGrid Grid.Row="3" x:Name="dgReactions" IsReadOnly="True" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                        <TextBlock Grid.Row="4" Text="Cảnh báo / thông tin" FontWeight="Bold" Margin="0,4,0,0"/>
+                        <ListBox Grid.Row="5" x:Name="lstWarnings"/>
+                    </Grid>
+                </TabItem>
+
+                <!-- ===== THIẾT KẾ ===== -->
+                <TabItem Header="Thiết kế">
+                    <TabControl Margin="2">
+                        <TabItem Header="Dầm">
+                            <DataGrid x:Name="dgBeams" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                        </TabItem>
+                        <TabItem Header="Cột">
+                            <DataGrid x:Name="dgColumns" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                        </TabItem>
+                        <TabItem Header="Sàn">
+                            <DataGrid x:Name="dgSlabs" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                        </TabItem>
+                        <TabItem Header="Móng">
+                            <DataGrid x:Name="dgFootings" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                        </TabItem>
+                        <TabItem Header="Thép">
+                            <DataGrid x:Name="dgSteel" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                        </TabItem>
+                    </TabControl>
+                </TabItem>
+            </TabControl>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="#FFE0E0E0"/>
+
+            <!-- ===== VÙNG HIỂN THỊ ===== -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+                    <TextBlock Text="Tầng đang xem:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox x:Name="cbStory" Width="140" SelectionChanged="CbStory_SelectionChanged"/>
+                    <Button Content="Vừa màn hình" Click="BtnFit_Click" Style="{StaticResource SmallButton}" Margin="8,0,6,0"/>
+                    <CheckBox x:Name="chkLabels" Content="Tên cấu kiện" IsChecked="True" VerticalAlignment="Center" Margin="0,0,10,0"
+                              Checked="ChkLabels_Changed" Unchecked="ChkLabels_Changed"/>
+                    <TextBlock Text="Biểu đồ M3 theo:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox x:Name="cbDiagramCase" Width="120" SelectionChanged="CbDiagramCase_SelectionChanged"/>
+                </StackPanel>
+
+                <TabControl Grid.Row="1" x:Name="tabView">
+                    <TabItem Header="Mặt bằng">
+                        <Border x:Name="planHost" ClipToBounds="True" Background="White"
+                                MouseWheel="PlanHost_MouseWheel"
+                                MouseLeftButtonDown="PlanHost_MouseLeftButtonDown"
+                                MouseMove="PlanHost_MouseMove"
+                                MouseLeftButtonUp="PlanHost_MouseLeftButtonUp"
+                                SizeChanged="PlanHost_SizeChanged">
+                            <Canvas x:Name="planCanvas"/>
+                        </Border>
+                    </TabItem>
+                    <TabItem Header="3D">
+                        <Border x:Name="view3DHost" Background="#FF20262E" ClipToBounds="True"
+                                MouseLeftButtonDown="View3D_MouseLeftButtonDown"
+                                MouseMove="View3D_MouseMove"
+                                MouseLeftButtonUp="View3D_MouseLeftButtonUp"
+                                MouseWheel="View3D_MouseWheel">
+                            <Viewport3D x:Name="viewport3D" IsHitTestVisible="False">
+                                <Viewport3D.Camera>
+                                    <PerspectiveCamera x:Name="camera3D" FieldOfView="45" Position="30,-30,20" LookDirection="-30,30,-20" UpDirection="0,0,1"/>
+                                </Viewport3D.Camera>
+                                <ModelVisual3D x:Name="model3DVisual"/>
+                            </Viewport3D>
+                        </Border>
+                    </TabItem>
+                </TabControl>
+
+                <Border Grid.Row="2" BorderBrush="#FFBBBBBB" BorderThickness="0,1,0,0" Height="200">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="300"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                            <TextBlock x:Name="txtInfo" Margin="6" TextWrapping="Wrap" FontFamily="Consolas"
+                                       Text="Bấm chọn dầm/cột trên mặt bằng để xem thông tin."/>
+                        </ScrollViewer>
+                        <Border Grid.Column="1" x:Name="diagramHost" ClipToBounds="True" Background="#FFFBFBF7" SizeChanged="DiagramHost_SizeChanged">
+                            <Canvas x:Name="diagramCanvas"/>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>

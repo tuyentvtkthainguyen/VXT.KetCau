@@ -1,0 +1,45 @@
+<Window x:Class="KetCauVXT.App.DxfImportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nhập mặt bằng kết cấu DXF" Width="520" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
+    <StackPanel Margin="10">
+        <GroupBox Header="Lớp (layer) – có thể ghi nhiều lớp cách nhau dấu phẩy">
+            <StackPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Đường trục" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtGrid"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cột (polyline kín)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtCol"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Dầm (đường tim hoặc 2 nét)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtBeam"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Sàn (polyline kín)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtSlab"/></DockPanel>
+            </StackPanel>
+        </GroupBox>
+        <GroupBox Header="Đơn vị và tuỳ chọn">
+            <StackPanel>
+                <DockPanel Style="{StaticResource Field}">
+                    <TextBlock Text="Đơn vị bản vẽ" Style="{StaticResource FieldLabel}"/>
+                    <ComboBox x:Name="cbUnit" SelectedIndex="0">
+                        <ComboBoxItem Content="Theo $INSUNITS (mặc định mm)"/>
+                        <ComboBoxItem Content="mm"/>
+                        <ComboBoxItem Content="cm"/>
+                        <ComboBoxItem Content="m"/>
+                    </ComboBox>
+                </DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Sai số bắt điểm (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtTol"/></DockPanel>
+                <CheckBox x:Name="chkGrids" Content="Thay lưới trục của dự án bằng trục trong DXF" Margin="2"/>
+                <CheckBox x:Name="chkOrigin" Content="Dời gốc toạ độ về giao trục đầu tiên" Margin="2"/>
+                <CheckBox x:Name="chkSnap" Content="Đưa tâm cột về giao điểm trục" Margin="2"/>
+                <CheckBox x:Name="chkDouble" Content="Nhận dạng dầm vẽ 2 nét (lấy bề rộng dầm)" Margin="2"/>
+                <CheckBox x:Name="chkAutoSlab" Content="Tự tạo ô sàn trong ô kín bởi dầm (khi không có lớp sàn)" Margin="2"/>
+                <CheckBox x:Name="chkReplace" Content="Xoá cấu kiện cũ của các tầng được nhập" Margin="2"/>
+            </StackPanel>
+        </GroupBox>
+        <GroupBox Header="Áp dụng cho các tầng">
+            <ListBox x:Name="lstStories" SelectionMode="Multiple" Height="120"/>
+        </GroupBox>
+        <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,8"
+                   Text="Cột: hình chữ nhật trên lớp cột → tiết diện C{b}x{h}. Dầm: đường tim, đầu dầm được bắt vào tâm cột. Tên trục lấy theo chữ trong vòng tròn đầu trục."/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Nhập" Width="90" IsDefault="True" Click="BtnOk_Click" Margin="0,0,8,0"/>
+            <Button Content="Huỷ" Width="90" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

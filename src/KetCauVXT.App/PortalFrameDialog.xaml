@@ -1,0 +1,75 @@
+<Window x:Class="KetCauVXT.App.PortalFrameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Khung thép tiền chế" Width="560" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
+    <StackPanel Margin="10">
+        <GroupBox Header="Hình học khung">
+            <StackPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Nhịp khung L (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtSpan"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Chiều cao đỉnh cột H (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtEave"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Độ dốc mái i (%)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtSlope"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Số bước khung" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtBays"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bước khung B (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtBay"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Khoảng cách giằng / xà gồ (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtBracing"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Liên kết chân cột" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkPinned" Content="Khớp (bỏ chọn = ngàm)" VerticalAlignment="Center"/></DockPanel>
+            </StackPanel>
+        </GroupBox>
+        <GroupBox Header="Tải trọng mái (kN/m², tiêu chuẩn) và hệ số khí động gió ngang nhà">
+            <StackPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tĩnh tải mái (tôn + xà gồ)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtDead"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoạt tải mái" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtLive"/></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Ce cột đón gió / khuất gió" Style="{StaticResource FieldLabel}"/>
+                    <StackPanel Orientation="Horizontal"><TextBox x:Name="txtCe1" Width="70"/><TextBox x:Name="txtCe2" Width="70" Margin="6,0,0,0"/></StackPanel></DockPanel>
+                <DockPanel Style="{StaticResource Field}"><TextBlock Text="Ce mái đón gió / khuất gió" Style="{StaticResource FieldLabel}"/>
+                    <StackPanel Orientation="Horizontal"><TextBox x:Name="txtCe3" Width="70"/><TextBox x:Name="txtCe4" Width="70" Margin="6,0,0,0"/></StackPanel></DockPanel>
+            </StackPanel>
+        </GroupBox>
+        <GroupBox Header="Tiết diện chữ I tổ hợp vát (mm) – h1 đầu dưới / đầu cột, h2 đầu trên / đỉnh mái">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="110"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="h1" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="h2" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="3" Text="bf" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="tf" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="5" Text="tw" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="6" Text="Mác thép" HorizontalAlignment="Center"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Cột" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtCH1" Margin="2"/>
+                <TextBox Grid.Row="1" Grid.Column="2" x:Name="txtCH2" Margin="2"/>
+                <TextBox Grid.Row="1" Grid.Column="3" x:Name="txtCBf" Margin="2"/>
+                <TextBox Grid.Row="1" Grid.Column="4" x:Name="txtCTf" Margin="2"/>
+                <TextBox Grid.Row="1" Grid.Column="5" x:Name="txtCTw" Margin="2"/>
+                <ComboBox Grid.Row="1" Grid.Column="6" x:Name="cbColSteel" Margin="2"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Kèo" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" x:Name="txtRH1" Margin="2"/>
+                <TextBox Grid.Row="2" Grid.Column="2" x:Name="txtRH2" Margin="2"/>
+                <TextBox Grid.Row="2" Grid.Column="3" x:Name="txtRBf" Margin="2"/>
+                <TextBox Grid.Row="2" Grid.Column="4" x:Name="txtRTf" Margin="2"/>
+                <TextBox Grid.Row="2" Grid.Column="5" x:Name="txtRTw" Margin="2"/>
+                <ComboBox Grid.Row="2" Grid.Column="6" x:Name="cbRafSteel" Margin="2"/>
+            </Grid>
+        </GroupBox>
+        <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,8"
+                   Text="Khung phẳng trong mặt phẳng XZ, đặt tại các trục Y = 0, B, 2B... Gió ngang nhà gán trực tiếp lên cột và kèo theo W0, địa hình ở tab Công trình."/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Tạo khung" Width="100" IsDefault="True" Click="BtnOk_Click" Margin="0,0,8,0"/>
+            <Button Content="Huỷ" Width="90" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

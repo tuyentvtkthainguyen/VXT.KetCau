@@ -1,0 +1,97 @@
+name: Ket cau VXT - build & test
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: Build + kiem thu (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build toan bo (Release)
+        shell: pwsh
+        run: |
+          dotnet build KetCauVXT.sln -c Release -warnaserror- 2>&1 | Tee-Object build.log
+          if ($LASTEXITCODE -ne 0) {
+            Select-String -Path build.log -Pattern 'error' | ForEach-Object { Write-Host "::error::$($_.Line)" }
+            throw "build loi"
+          }
+
+      - name: Chay bo kiem thu + quy trinh mau
+        shell: pwsh
+        run: |
+          dotnet run --project tests/KetCauVXT.Tests -c Release --no-build -- "$PWD\KetQuaMau" 2>&1 | Tee-Object test.log
+          $code = $LASTEXITCODE
+          Get-Content test.log | Where-Object { $_ -match 'FAIL|LOI|Exception' } | ForEach-Object { Write-Host "::warning::$_" }
+          if ($code -ne 0) { throw "kiem thu loi ($code)" }
+
+      - name: Kiem tra file dau ra
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse KetQuaMau | Format-Table FullName, Length -AutoSize | Out-String -Width 300
+          $need = '*.dxf','*.docx','*.xlsx','*.e2k','*.s2k','*.kcvxt'
+          foreach ($n in $need) {
+            $f = Get-ChildItem -Recurse KetQuaMau -Filter $n
+            if (-not $f) { throw "thieu file $n" }
+            foreach ($x in $f) { if ($x.Length -lt 200) { throw "file qua nho: $($x.FullName)" } }
+          }
+          # docx/xlsx phai mo duoc nhu zip hop le
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          Get-ChildItem -Recurse KetQuaMau -Include *.docx,*.xlsx | ForEach-Object {
+            $z = [System.IO.Compression.ZipFile]::OpenRead($_.FullName); $z.Dispose()
+          }
+
+      - name: Kiem tra Word/Excel bang LibreOffice (doc noi dung)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          choco install libreoffice-fresh -y --no-progress | Out-Null
+          $so = "C:\Program Files\LibreOffice\program\soffice.exe"
+          New-Item -ItemType Directory pdf | Out-Null
+          Get-ChildItem -Recurse KetQuaMau -Include *.docx,*.xlsx | ForEach-Object {
+            & $so --headless --convert-to pdf --outdir pdf $_.FullName | Out-Null
+          }
+          Get-ChildItem pdf | Format-Table Name, Length
+
+      - name: Publish App (exe tu chua, khong can cai .NET)
+        shell: pwsh
+        run: |
+          dotnet publish src/KetCauVXT.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+          Get-ChildItem publish
+
+      - name: Khoi dong thu giao dien
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath publish\KetCauVXT.exe -PassThru
+          Start-Sleep -Seconds 20
+          $p.Refresh()
+          if ($p.HasExited) { throw "App thoat ngay sau khi mo, ma thoat $($p.ExitCode)" }
+          Write-Host "Tieu de cua so: '$($p.MainWindowTitle)'  Responding=$($p.Responding)"
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("$PWD\KetQuaMau\manhinh_app.png")
+          if (-not $p.Responding) { throw "App bi treo" }
+          Stop-Process -Id $p.Id
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: KetQuaMau
+          path: |
+            KetQuaMau
+            pdf
+            build.log
+            test.log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KetCauVXT-win-x64
+          path: publish
