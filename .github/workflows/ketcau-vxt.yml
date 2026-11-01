@@ -17,7 +17,7 @@ jobs:
       - name: Build toan bo (Release)
         shell: pwsh
         run: |
-          dotnet build KetCauVXT.sln -c Release -warnaserror- 2>&1 | Tee-Object build.log
+          dotnet build KetCauVXT.sln -c Release 2>&1 | Tee-Object build.log
           if ($LASTEXITCODE -ne 0) {
             Select-String -Path build.log -Pattern 'error' | ForEach-Object { Write-Host "::error::$($_.Line)" }
             throw "build loi"
