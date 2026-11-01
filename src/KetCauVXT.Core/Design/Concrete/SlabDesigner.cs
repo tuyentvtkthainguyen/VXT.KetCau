@@ -165,13 +165,16 @@ public static class SlabDesigner
 
         // ---- võng (TTGH II) ----
         double qxs = q > 1e-9 ? qx * qs / q : 0;
-        double D = CrackedStiffnessFactor * conc.E * t * t * t / 12.0;
-        double f = D > 0 ? 5.0 / 384.0 * qxs * Math.Pow(lx, 4) / D : 0;
+        // dải 1 m phương ngắn: Ms tiêu chuẩn tỉ lệ với mô men nhịp tính toán; B kể nứt + từ biến theo thép thực bố trí
+        double msx = q > 1e-9 ? m1 * qs / q : 0;
+        double h0x = t - c - bx.Dia / 2000.0;
+        double D = RcSection.FlexuralStiffness(1.0, t, h0x, bx.AsPerM, conc, SteelOf(bx.Dia).E, msx);
+        double f = D > 0 ? DeflCoef(fx) / 384.0 * qxs * Math.Pow(lx, 4) / D : 0;
         d.Deflection = f;
         d.Checks.Add(new CheckItem
         {
             Name = "Võng sàn", Demand = f * 1000, Capacity = lx / 200 * 1000, Unit = "mm",
-            Note = "f = 5/384·qx·lx⁴/(0,3·Eb·t³/12) (coi khớp 2 đầu – thiên về an toàn), giới hạn lx/200"
+            Note = "f = c/384·qx·lx⁴/B (c = 5 khớp–khớp, 2 ngàm–khớp, 1 ngàm–ngàm), B = Eb/(1+φcr)·Ieff kể nứt + từ biến, giới hạn lx/200"
         });
         double tMin = d.TwoWay ? lx / 45 : lx / 35;
         if (t < tMin - 1e-6) d.Messages.Add("Chiều dày sàn " + DesignUtil.F(t * 1000, "0") + " mm nhỏ hơn khuyến nghị " + DesignUtil.F(tMin * 1000, "0") + " mm");
@@ -183,7 +186,7 @@ public static class SlabDesigner
     }
 
     /// <summary>Hệ số độ võng giữa dải: 5 (khớp–khớp), 2 (ngàm–khớp), 1 (ngàm–ngàm), từ f = c·q·l⁴/(384·EI).</summary>
-    private static double DeflCoef(int fixedEnds) => fixedEnds >= 2 ? 1.0 : fixedEnds == 1 ? 2.0 : 5.0;
+    private static double DeflCoef(int fixedEnds) => fixedEnds >= 2 ? 1.0 : fixedEnds == 1 ? 2.08 : 5.0;
 
     /// <summary>Mô men dải bản: khớp–khớp M = qL²/8; ngàm–khớp Mnh = 9qL²/128, Mg = −qL²/8; ngàm–ngàm Mnh = qL²/24, Mg = −qL²/12.</summary>
     private static void StripMoments(double q, double L, int fixedEnds, out double mSpan, out double mSup)

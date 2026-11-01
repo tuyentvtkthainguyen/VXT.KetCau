@@ -48,7 +48,10 @@ public class Node
     public bool[] Restraint { get; set; } = new bool[6];
     public string Story { get; set; } = "";
     public Vec3 P => new(X, Y, Z);
-    public bool IsSupport => Restraint.Any(r => r);
+    /// <summary>Nút có ít nhất một bậc tự do bị giữ (kể cả giữ ngoài mặt phẳng của khung phẳng).</summary>
+    public bool HasRestraint => Restraint.Any(r => r);
+    /// <summary>Gối thật (chân cột/móng): bị giữ chuyển vị đứng UZ.</summary>
+    public bool IsSupport => Restraint[2];
 
     public static bool[] Fixed => new[] { true, true, true, true, true, true };
     public static bool[] Pinned => new[] { true, true, true, false, false, false };

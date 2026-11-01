@@ -159,7 +159,7 @@ public static class S2kExporter
 
         // ---------------- gối ----------------
         T("JOINT RESTRAINT ASSIGNMENTS");
-        foreach (var n in p.Nodes.Where(n_ => n_.IsSupport))
+        foreach (var n in p.Nodes.Where(n_ => n_.HasRestraint))
         {
             string Y(int i) => n.Restraint[i] ? "Yes" : "No";
             L($"   Joint={n.Id}   U1={Y(0)}   U2={Y(1)}   U3={Y(2)}   R1={Y(3)}   R2={Y(4)}   R3={Y(5)}");

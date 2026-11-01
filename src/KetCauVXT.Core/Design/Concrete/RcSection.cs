@@ -397,6 +397,28 @@ public static class RcSection
     /// <summary>Diện tích một thanh Ø d (mm), m².</summary>
     public static double BarArea(int d) => Math.PI * d * d / 4.0 * 1e-6;
 
+    /// <summary>Hệ số từ biến dài hạn φb,cr dùng khi tính độ võng toàn phần (TCVN 5574:2018 Bảng 11, độ ẩm 40–75 %, B20–B30 ≈ 2,5).</summary>
+    public const double CreepLongTerm = 2.5;
+
+    /// <summary>Độ cứng chống uốn B = Eb,red·Ieff (kN·m²) của tiết diện chữ nhật b×h có thép chịu kéo As (m²) dưới mô men tiêu chuẩn Ms (kN·m).
+    /// Eb,red = Eb/(1+φb,cr) kể từ biến dài hạn; I nứt quy đổi Icr (vùng nén x từ b·x²/2 = αs·As·(h0−x));
+    /// Ieff nội suy giữa Ig và Icr theo Mcr/Ms (Bischoff): Ieff = Icr / (1 − (1 − Icr/Ig)(Mcr/Ms)²) ≤ Ig,
+    /// Mcr = Rbt,ser·b·h²/6 với Rbt,ser ≈ 1,3·Rbt. Gần đúng tương đương 8.2.3 TCVN 5574:2018.</summary>
+    public static double FlexuralStiffness(double b, double h, double h0, double As, Material conc, double Es, double Ms)
+    {
+        double ebRed = conc.E / (1 + CreepLongTerm);
+        double ig = b * h * h * h / 12.0;
+        if (As <= 0 || h0 <= 0) return ebRed * ig;
+        double a = Es / ebRed;
+        double n = a * As;
+        double x = (-n + Math.Sqrt(n * n + 2 * b * n * h0)) / b;
+        double icr = b * x * x * x / 3.0 + n * (h0 - x) * (h0 - x);
+        double mcr = 1.3 * conc.Rbt * b * h * h / 6.0;
+        Ms = Math.Abs(Ms);
+        double ieff = Ms <= mcr ? ig : icr / (1 - (1 - icr / ig) * (mcr / Ms) * (mcr / Ms));
+        return ebRed * Math.Min(ig, Math.Max(icr, ieff));
+    }
+
     /// <summary>Số thanh tối đa trên một hàng: khoảng hở giữa các thanh ≥ max(25 mm; d) (TCVN 5574:2018 mục 10.3.5),
     /// bề rộng bố trí = b − 2·lớp bảo vệ (lớp bảo vệ tính tới mép cốt dọc).</summary>
     public static int MaxBarsInLayer(double width, double cover, int d)

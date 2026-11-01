@@ -405,14 +405,21 @@ public static class BeamDesigner
         double I = b * h * h * h / 12.0;
         double[] mSls = new double[ns];
         double[] mSlsSup = new double[ns];
+        double[] mDefl = new double[ns];   // Mgiữa − 0,1·(|M trái| + |M phải|) của cùng tổ hợp – dầm liên tục
         foreach (string cn in sls)
         {
             var cr = r.Get(cn);
             for (int k = 0; k < ns; k++)
             {
                 var ser = SpanSeries(cr, li.Spans[k]);
-                foreach (var t in ser) mSls[k] = Math.Max(mSls[k], t.M);
-                if (ser.Count > 0) mSlsSup[k] = Math.Max(mSlsSup[k], Math.Max(-ser[0].M, -ser[^1].M));
+                double mmax = 0;
+                foreach (var t in ser) { mSls[k] = Math.Max(mSls[k], t.M); mmax = Math.Max(mmax, t.M); }
+                if (ser.Count > 0)
+                {
+                    mSlsSup[k] = Math.Max(mSlsSup[k], Math.Max(-ser[0].M, -ser[^1].M));
+                    double ml = Math.Max(0, -ser[0].M), mr = Math.Max(0, -ser[^1].M);
+                    mDefl[k] = Math.Max(mDefl[k], mmax - 0.1 * (ml + mr));
+                }
             }
         }
 
@@ -455,16 +462,23 @@ public static class BeamDesigner
 
             // độ võng ước lượng
             bool cantilever = (k == 0 && !sp.SupL) || (k == ns - 1 && !sp.SupR);
-            double B = CrackedStiffnessFactor * conc.E * I;
             double f;
-            if (cantilever) f = mSlsSup[k] * sp.L * sp.L / (4 * B);
-            else f = 5.0 / 48.0 * mSls[k] * sp.L * sp.L / B;
+            if (cantilever)
+            {
+                double Bc = RcSection.FlexuralStiffness(b, h, h0, Math.Max(res.AsTopLeftProv, res.AsTopRightProv), conc, main.E, mSlsSup[k]);
+                f = mSlsSup[k] * sp.L * sp.L / (4 * Bc);
+            }
+            else
+            {
+                double B = RcSection.FlexuralStiffness(b, h, h0b, res.AsBotProv, conc, main.E, mSls[k]);
+                f = 5.0 / 48.0 * Math.Max(mDefl[k], 0) * sp.L * sp.L / B;
+            }
             double lim = (cantilever ? 2 * sp.L : sp.L) / Math.Max(cs.BeamDeflectionLimit, 1);
             res.Deflection = f; res.DeflectionLimit = lim;
             d.Checks.Add(new CheckItem
             {
                 Name = "Võng" + sk, Demand = f * 1000, Capacity = lim * 1000, Unit = "mm",
-                Note = cantilever ? "Công xôn: f = M·L²/(4·0,3·Eb·I)" : "f = 5/48·M·L²/(0,3·Eb·I)"
+                Note = cantilever ? "Công xôn: f = M·L²/(4·B), B = Eb/(1+φcr)·Ieff (kể nứt + từ biến)" : "f = 5/48·[Mg − 0,1(Mt + Mp)]·L²/B, B = Eb/(1+φcr)·Ieff (kể nứt + từ biến)"
             });
         }
         if (extraBot.Concat(extraTop).Any(e => !e.Ok))

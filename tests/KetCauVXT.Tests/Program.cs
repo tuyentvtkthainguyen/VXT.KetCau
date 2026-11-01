@@ -206,7 +206,7 @@ ModelBuilder.BuildPortalFrames(shed, new ModelBuilder.PortalOptions { Span = 24,
 AnalysisResults sr = FrameAnalysis.Run(shed);
 {
     var tt = sr.Get("TT");
-    var bases = shed.Nodes.Where(n => n.IsSupport && Math.Abs(n.Y - 6) < 1e-6).OrderBy(n => n.X).ToList();
+    var bases = shed.Nodes.Where(n => n.IsSupport && Math.Abs(n.Y - 6) < 1e-6 && Math.Abs(n.Z - shed.BaseElevation) < 1e-6).OrderBy(n => n.X).ToList();
     Check("Phản lực ngang hai chân cột trái/phải trực đối", tt.Reactions[bases[0].Id][0], -tt.Reactions[bases[1].Id][0], 1e-6);
     Check("Phản lực đứng hai chân bằng nhau", tt.Reactions[bases[0].Id][2], tt.Reactions[bases[1].Id][2], 1e-6);
 }
@@ -241,6 +241,14 @@ foreach (var (proj, res, tag) in new[] { (house, hr, "NhaPho"), (shed, sr, "NhaX
         int bad = ds.All.Count(m => !m.Ok);
         Console.WriteLine($"    dầm {ds.Beams.Count}, cột {ds.Columns.Count}, sàn {ds.Slabs.Count}, móng {ds.Footings.Count}, thanh thép {ds.Steel.Count}; không đạt: {bad}");
         foreach (var w in ds.Warnings.Take(10)) Console.WriteLine("    · " + w);
+        // bảng tóm tắt: mỗi cấu kiện – hạng mục kiểm tra bất lợi nhất
+        foreach (var m in ds.All)
+        {
+            var worst = m.Checks.OrderByDescending(c => c.Ratio).FirstOrDefault();
+            string wtxt = worst == null ? "-" : $"{worst.Name}: {worst.Demand:0.##}/{worst.Capacity:0.##} {worst.Unit} (k={worst.Ratio:0.00})";
+            Console.WriteLine($"    {(m.Ok ? "ĐẠT" : "KHÔNG ĐẠT"),-10} {m.Name,-12} {wtxt}");
+            foreach (var msg in m.Messages.Where(x => x.StartsWith("LỖI")).Take(3)) Console.WriteLine("               " + msg);
+        }
     }
     Step("Bản vẽ DXF", () => DrawingSet.ExportAll(proj, ds, Path.Combine(dir, "BanVe")));
     Step("Thuyết minh Word", () => CalculationReport.Export(proj, res, ds, Path.Combine(dir, "ThuyetMinh.docx")));

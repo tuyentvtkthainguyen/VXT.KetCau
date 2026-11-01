@@ -385,7 +385,7 @@ public class FrameAnalysis
             {
                 if (nid <= 0) continue;
                 var node = _p.Node(nid);
-                if (!node.IsSupport) continue;
+                if (!node.HasRestraint) continue;
                 if (!reac.TryGetValue(nid, out var r)) reac[nid] = r = new double[6];
                 for (int d = 0; d < 6; d++) r[d] += fg[off + d];
             }

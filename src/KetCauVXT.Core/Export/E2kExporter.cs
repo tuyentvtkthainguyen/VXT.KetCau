@@ -189,7 +189,7 @@ public static class E2kExporter
 
         // ----- gán -----
         L("$ POINT ASSIGNS");
-        foreach (var n in p.Nodes.Where(n_ => n_.IsSupport))
+        foreach (var n in p.Nodes.Where(n_ => n_.HasRestraint))
         {
             var flags = new List<string>();
             string[] nm = { "UX", "UY", "UZ", "RX", "RY", "RZ" };
