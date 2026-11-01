@@ -92,6 +92,30 @@ Menu **Tệp → Nhập bản vẽ kiến trúc (triển khai kết cấu)…**,
 
 Giới hạn hiện tại: chưa hỗ trợ tường xiên/cong, tầng hầm, tầng lửng (nhập số tầng thủ công), bản vẽ PDF/ảnh. Tường tầng 1 coi như đặt trên giằng móng, chưa đưa vào khung.
 
+## 3b. Sửa mô hình trên mặt bằng, biểu đồ nội lực, mô hình móng
+
+**Công cụ trên tab Mặt bằng** (chọn tầng đang xem trước):
+
+| Nút | Thao tác |
+|---|---|
+| Chọn | Bấm chọn cột, dầm, lỗ sàn hoặc ô sàn. Đối tượng chọn sáng màu vàng trên mặt bằng, 3D, biểu đồ và mô hình móng. Rê chuột sẽ sáng nhẹ đối tượng dưới con trỏ. |
+| ＋ Ô sàn | Bấm vào ô kín bởi dầm → thêm ô sàn theo công năng đang chọn: phòng ở, vệ sinh, ban công, hành lang, kho, mái. |
+| ＋ Ban công | Bấm vào dầm biên → dầm công xôn tại các cột (vươn theo ô "Vươn"), dầm biên đầu công xôn, ô sàn ban công (hoạt tải 2,0), lan can (ô "Lan can", kN/m). |
+| ＋ Cầu thang | Bấm vào ô sàn → bỏ sàn, vẽ ký hiệu cầu thang. Tải bản thang 6,5 kN/m² và hoạt tải 3,0 kN/m² (nửa vế) truyền vào dầm viền. |
+| ＋ Giếng trời | Bấm vào ô sàn → bỏ sàn (ô thông tầng), lan can 0,5 kN/m quanh lỗ. |
+| Sàn vệ sinh | Bấm vào ô sàn → hoàn thiện 2,0 kN/m² (chống thấm, hạ cốt). Bấm lại để trả về phòng thường. |
+| Xoá | Xoá ô sàn hoặc lỗ sàn (xoá lỗ sẽ đặt lại sàn). |
+| Hoàn tác | Ctrl+Z, tối đa 30 bước. Phím Delete xoá đối tượng đang chọn, Esc về chế độ Chọn. |
+
+**Tab Biểu đồ nội lực:** chọn đại lượng M3, M2, V2, V3, N, T và trường hợp/tổ hợp tải (BAO: vẽ cả max và min). Có 3 khung nhìn:
+- *Mặt bằng tầng*;
+- *Mặt đứng theo trục*: khung trong mặt phẳng trục, mô men vẽ phía thớ chịu kéo;
+- *3D*.
+
+**Tab Mô hình móng:** mặt bằng móng với kích thước L×B×H, lực dọc N, màu đạt/không đạt. Bấm vào một móng để xem mặt cắt (cổ móng, cao độ, thép đáy). Móng cũng hiện trong khung 3D.
+
+**Tự kiểm tra giao diện:** `KetCauVXT.exe --selftest <file.kcvxt> <thư mục>` mở dự án, phân tích, thiết kế, chọn, sửa và chụp ảnh từng tab. CI chạy lệnh này mỗi lần build. Mở dự án trực tiếp: `KetCauVXT.exe <file.kcvxt>`.
+
 ## 4. Kiểm tra chéo với ETABS / SAP2000
 
 | Cách | File | Ghi chú |
