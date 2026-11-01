@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- CHỈ DÙNG CHO CI: thư viện giả lập chữ ký CSiAPIv1 để biên dịch add-in Revit/CLI trên máy không cài ETABS.
+       Không chạy được — bản thật lấy từ thư mục cài ETABS/SAP2000. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>CSiAPIv1</AssemblyName>
+    <RootNamespace>CSiAPIv1</RootNamespace>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

@@ -7,6 +7,7 @@ on:
 
 jobs:
   core:
+    name: Lõi + kiểm thử
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,13 +16,37 @@ jobs:
           dotnet-version: 8.0.x
       - name: Kiểm thử lõi
         run: dotnet test tests/VXT.KetCau.Core.Tests -c Release --logger "trx;LogFileName=ketqua.trx" --results-directory TestResults
-      - name: Build lõi + DWG
-        run: |
-          dotnet build src/VXT.KetCau.Core -c Release
-          dotnet build src/VXT.KetCau.Dwg -c Release
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ket-qua-kiem-thu
           path: TestResults
-# Add-in Revit và CLI cần CSiAPIv1.dll (bản quyền CSI) nên không build trên máy CI — dùng build.ps1 trên máy có ETABS.
+
+  revit:
+    name: Add-in Revit ${{ matrix.rv }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rv: [R22, R23, R24, R25, R26]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      # CSiAPIv1.dll có bản quyền CSI → CI dùng thư viện giả lập chữ ký chỉ để biên dịch
+      - name: Thư viện giả lập CSiAPIv1
+        run: dotnet build ci/CsiStub -c Release -o ci/CsiStub/out
+      - name: Build add-in
+        run: dotnet build src/VXT.KetCau.Revit -c "Release ${{ matrix.rv }}" -p:CsiApiDir="${{ github.workspace }}\ci\CsiStub\out"
+
+  cli:
+    name: Dòng lệnh vxtkc
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet build ci/CsiStub -c Release -o ci/CsiStub/out
+      - run: dotnet build src/VXT.KetCau.Cli -c Release -p:CsiApiDir="${{ github.workspace }}\ci\CsiStub\out"

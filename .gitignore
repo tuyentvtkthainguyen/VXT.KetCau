@@ -1,0 +1,4 @@
+bin/
+obj/
+TestResults/
+ci/CsiStub/out/
