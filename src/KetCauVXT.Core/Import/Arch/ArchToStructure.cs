@@ -734,6 +734,12 @@ public static class ArchToStructure
                     p.FrameLoads.Add(fl);
                 }
             }
+            foreach (var h in lv.Holes)
+                p.Openings.Add(new FloorOpening
+                {
+                    Id = p.Openings.Count + 1, Story = lv.Name, Kind = h.Kind == RoomKind.Stair ? OpeningKind.Stair : OpeningKind.Void,
+                    X0 = h.X0, Y0 = h.Y0, X1 = h.X1, Y1 = h.Y1, Note = h.Note
+                });
             int sk = 1;
             foreach (var sl in lv.Slabs.Where(q => q.Include))
             {

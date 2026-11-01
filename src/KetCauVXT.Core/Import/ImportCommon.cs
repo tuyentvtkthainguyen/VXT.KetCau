@@ -268,7 +268,7 @@ public static class ImportGeometry
 
     public static void ClearModel(Project p)
     {
-        p.Nodes.Clear(); p.Frames.Clear(); p.Slabs.Clear(); p.Footings.Clear();
+        p.Nodes.Clear(); p.Frames.Clear(); p.Slabs.Clear(); p.Footings.Clear(); p.Openings.Clear();
         p.FrameLoads.Clear(); p.NodeLoads.Clear(); p.AreaLoads.Clear();
         p.InvalidateIndex();
     }

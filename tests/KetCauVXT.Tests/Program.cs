@@ -369,6 +369,58 @@ string archDxf = Path.Combine(Path.GetTempPath(), "KienTrucMau.dxf");
     ar = rz.Analysis;
 }
 
+Console.WriteLine("14. Sửa mô hình trên mặt bằng: cầu thang, giếng trời, sàn vệ sinh, ban công, xoá/thêm sàn");
+{
+    var ed = ModelBuilder.NewProject("Sửa mô hình");
+    ModelBuilder.SetGrid(ed, new[] { 5.0 }, new[] { 4.5, 4.5, 4.5 });
+    ModelBuilder.SetStories(ed, new[] { 3.9, 3.3, 3.3, 3.3 }, -0.6);
+    ModelBuilder.BuildFromGrid(ed, new ModelBuilder.GridFrameOptions { ColumnSection = "C22x30", BeamSectionX = "D22x30", BeamSectionY = "D22x40", PerimeterWallLoad = 7.5 });
+    string st = "T3";
+    int slabs0 = ed.Slabs.Count(q => q.Story == st);
+    var r1 = ModelEdit.AddOpening(ed, st, 2.5, 6.75, OpeningKind.Stair);
+    Console.WriteLine("   · " + r1.Message);
+    Check("Cầu thang: bỏ 1 ô sàn", ed.Slabs.Count(q => q.Story == st), slabs0 - 1, 0);
+    Check("Cầu thang: tải bản thang lên dầm viền", ed.FrameLoads.Count(l => l.Source == "OPEN1") > 0 ? 1 : 0, 1, 0);
+    var r2 = ModelEdit.AddOpening(ed, st, 2.5, 11.25, OpeningKind.Void);
+    Console.WriteLine("   · " + r2.Message);
+    Check("Giếng trời: 2 lỗ sàn trên tầng", ed.Openings.Count(o => o.Story == st), 2, 0);
+    var wc = ModelEdit.SlabAt(ed, st, 2.5, 2.25);
+    Console.WriteLine("   · " + ModelEdit.SetSlabUse(ed, wc, SlabUse.WC).Message);
+    Check("Sàn vệ sinh: công năng WC", ModelEdit.UseOf(ed, wc) == SlabUse.WC ? 1 : 0, 1, 0);
+    var edge = ModelEdit.StoryBeams(ed, st).First(f => Math.Abs(ed.Node(f.NodeI).Y) < 1e-6 && Math.Abs(ed.Node(f.NodeJ).Y) < 1e-6);
+    var r3 = ModelEdit.AddBalcony(ed, st, edge, 1.2, 1.0);
+    Console.WriteLine("   · " + r3.Message);
+    Check("Ban công: có ô sàn ban công", r3.NewSlabs.Count, 1, 0);
+    Check("Ban công: đầu công xôn tại y = −1,2 m", ed.Nodes.Count(n => n.Story == st && Math.Abs(n.Y + 1.2) < 1e-6), 2, 0);
+    Check("Ban công: tải ban công 2,0 kN/m²", ed.AreaLoads.Any(a => a.Slab == r3.NewSlabs[0] && a.Pattern == "HT" && Math.Abs(a.Q - 2.0) < 1e-9) ? 1 : 0, 1, 0);
+    var r4 = ModelEdit.AddSlab(ed, st, 2.5, 2.25);
+    Check("Không cho thêm sàn chồng lên sàn có sẵn", r4.Ok ? 0 : 1, 1, 0);
+    var r5 = ModelEdit.RemoveOpening(ed, ed.Openings.First(o => o.Kind == OpeningKind.Void));
+    Console.WriteLine("   · " + r5.Message);
+    Check("Xoá giếng trời → đặt lại ô sàn", ModelEdit.SlabAt(ed, st, 2.5, 11.25) != null ? 1 : 0, 1, 0);
+    var dl = ModelEdit.DeleteSlab(ed, ModelEdit.SlabAt(ed, st, 2.5, 11.25));
+    var ad = ModelEdit.AddSlab(ed, st, 2.5, 11.25, SlabUse.Storage);
+    Check("Xoá rồi thêm lại ô sàn (kho)", dl.Ok && ad.Ok ? 1 : 0, 1, 0);
+    string tmp = Path.Combine(Path.GetTempPath(), "suamohinh.kcvxt");
+    ed.Save(tmp);
+    Check("Lưu/mở lại giữ lỗ sàn", Project.Load(tmp).Openings.Count, ed.Openings.Count, 0);
+    double applied = ed.FrameLoads.Where(l => l.Pattern == "HTHT").Sum(fl =>
+    {
+        double L = ed.Length(ed.Frame(fl.Element)), sm = 0;
+        for (int i = 0; i + 1 < fl.Points.Count; i++) sm += (fl.Points[i][1] + fl.Points[i + 1][1]) / 2 * (fl.Points[i + 1][0] - fl.Points[i][0]) * L;
+        return sm;
+    });
+    foreach (var al in ed.AreaLoads.Where(a => a.Pattern == "HTHT"))
+    {
+        var sl = ed.Slabs.First(q => q.Id == al.Slab);
+        applied += al.Q * Math.Abs(ImportGeometry.SignedArea(sl.Nodes.Select(id => (ed.Node(id).X, ed.Node(id).Y)).ToList()));
+    }
+    var er = FrameAnalysis.Run(ed);
+    Check("Sau khi sửa: HTHT ΣFZ phản lực = Σ tải", er.Get("HTHT").Reactions.Values.Sum(r => r[2]), applied, 1e-6);
+    var eds = ConcreteDesigner.Design(ed, er);
+    Check("Thiết kế chạy được sau khi sửa (có dầm công xôn ban công)", eds.Beams.Any(b => b.Frames.Any(id => r3.NewFrames.Contains(id))) ? 1 : 0, 1, 0);
+}
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

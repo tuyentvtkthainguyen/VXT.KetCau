@@ -95,6 +95,8 @@ public class Project
     public List<FrameElement> Frames { get; set; } = new();
     public List<Slab> Slabs { get; set; } = new();
     public List<Footing> Footings { get; set; } = new();
+    /// <summary>Lỗ sàn: cầu thang, giếng trời (ô không có sàn)</summary>
+    public List<FloorOpening> Openings { get; set; } = new();
 
     public List<LoadPattern> Patterns { get; set; } = new();
     public List<FrameLoad> FrameLoads { get; set; } = new();
