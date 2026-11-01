@@ -275,7 +275,7 @@ namespace VXT.KetCau.Core.Design
             int dStir = Math.Max(stirrupDias.Min(), (int)Math.Ceiling(res.D / 4.0));
             dStir = stirrupDias.Where(x => x >= dStir).DefaultIfEmpty(stirrupDias.Max()).Min();
             double s = Math.Floor(Math.Min(15 * res.D, Math.Min(Math.Min(b, h), 400)) / 50) * 50;
-            double sDense = Math.Max(100, Math.Floor(Math.Min(10 * res.D, 150) / 50) * 50);
+            double sDense = Math.Max(100, Math.Floor(Math.Min(10.0 * res.D, 150) / 50) * 50);
             res.Stirrup = new StirrupSpec { D = dStir, Legs = 2, S = s };
             res.StirrupDense = new StirrupSpec { D = dStir, Legs = 2, S = Math.Min(sDense, s) };
             if (res.Mu > 0.03) res.Warnings.Add($"μ = {res.Mu * 100:0.00}% > 3% — nên tăng tiết diện");
