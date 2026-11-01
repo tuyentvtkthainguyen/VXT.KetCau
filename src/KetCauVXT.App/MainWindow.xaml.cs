@@ -59,6 +59,7 @@ public partial class MainWindow : Window
 
         SetProject(ModelBuilder.NewProject(), null);
         SetStatus("Sẵn sàng – nhập lưới trục, chiều cao tầng rồi bấm 'Tạo mô hình', hoặc mở/nhập mô hình có sẵn.");
+        HandleCommandLine();
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)

@@ -22,6 +22,13 @@ public partial class App : Application
 
     private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
+        if (global::KetCauVXT.App.MainWindow.SelfTestOut != null)
+        {
+            try { System.IO.File.AppendAllText(System.IO.Path.Combine(global::KetCauVXT.App.MainWindow.SelfTestOut, "selftest.log"), "LỖI KHÔNG BẮT: " + e.Exception + "\n"); } catch { }
+            e.Handled = true;
+            Shutdown(2);
+            return;
+        }
         MessageBox.Show("Lỗi không mong muốn:\n" + e.Exception.Message + "\n\n" + e.Exception.GetType().Name,
             "Kết cấu VXT", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
