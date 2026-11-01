@@ -1,5 +1,8 @@
 name: Ket cau VXT - build & test
 
+permissions:
+  contents: write
+
 on:
   push:
   workflow_dispatch:
@@ -121,6 +124,27 @@ jobs:
         with:
           name: KetCauVXT-win-x64
           path: publish
+
+      - name: Dang file exe len Releases + nhanh ketcau-vxt-dist
+        if: github.ref == 'refs/heads/ketcau-vxt'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory dist -Force | Out-Null
+          Copy-Item README.md publish\HuongDan.md
+          Compress-Archive -Path publish\* -DestinationPath dist\KetCauVXT-win-x64.zip -Force
+          Get-ChildItem dist
+          $tag = "ketcau-vxt-latest"
+          gh release delete $tag -y --cleanup-tag 2>$null
+          gh release create $tag dist\KetCauVXT-win-x64.zip --target $env:GITHUB_SHA --title "Kết cấu VXT – bản Windows mới nhất" --notes "Giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
+          # nhánh chỉ chứa file phát hành (để tải bằng git)
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git checkout --orphan ketcau-vxt-dist
+          git rm -rf --cached . | Out-Null
+          git add -f dist/KetCauVXT-win-x64.zip
+          git commit -m "Ban phat hanh tu $env:GITHUB_SHA"
+          git push -f origin ketcau-vxt-dist
 
   revit:
     name: Add-in Revit ${{ matrix.rv }}
