@@ -12,8 +12,10 @@
     Lưu ý: dự án này không biên dịch được trên máy không cài Revit.
   -->
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
-    <RevitVersion>2024</RevitVersion>
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2024</RevitVersion>
+    <!-- Revit 2025 trở đi chạy trên .NET 8 -->
+    <TargetFramework Condition="$(RevitVersion) &gt;= 2025">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="$(RevitVersion) &lt; 2025">net48</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>

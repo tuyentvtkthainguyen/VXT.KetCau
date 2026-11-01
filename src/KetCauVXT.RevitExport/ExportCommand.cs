@@ -248,7 +248,7 @@ namespace KetCauVXT.RevitExport
             foreach (var fi in beams)
             {
                 if (fi.StructuralType != StructuralType.Beam && fi.StructuralType != StructuralType.Brace
-                    && fi.StructuralType != StructuralType.Other) continue;
+                    && fi.StructuralType != StructuralType.UnknownFraming) continue;
                 var lc = fi.Location as LocationCurve;
                 if (lc == null || lc.Curve == null) continue;
                 var c = lc.Curve;

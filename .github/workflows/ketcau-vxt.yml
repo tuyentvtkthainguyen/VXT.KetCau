@@ -47,6 +47,30 @@ jobs:
             $z = [System.IO.Compression.ZipFile]::OpenRead($_.FullName); $z.Dispose()
           }
 
+      - name: Kiem tra DXF bang ezdxf (doc + audit doc lap)
+        shell: pwsh
+        run: |
+          python -m pip install --quiet ezdxf
+          $py = @'
+          import sys, glob, ezdxf
+          from ezdxf import recover
+          bad = 0
+          for f in sorted(glob.glob("KetQuaMau/**/*.dxf", recursive=True)):
+              try:
+                  doc, auditor = recover.readfile(f)
+                  msp = doc.modelspace()
+                  n = len(msp)
+                  layers = sorted({e.dxf.layer for e in msp})
+                  errs = len(auditor.errors)
+                  print(f"{f}: {n} doi tuong, layer={layers}, loi audit={errs}")
+                  if n == 0 or errs: bad += 1
+              except Exception as ex:
+                  print(f"{f}: KHONG DOC DUOC - {ex}"); bad += 1
+          sys.exit(1 if bad else 0)
+          '@
+          $py | Out-File -Encoding utf8 chkdxf.py
+          python chkdxf.py
+
       - name: Kiem tra Word/Excel bang LibreOffice (doc noi dung)
         shell: pwsh
         continue-on-error: true
@@ -102,18 +126,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - rv: 2024
-            tfm: net48
-          - rv: 2025
-            tfm: net8.0-windows
+        rv: [2023, 2024, 2025, 2026]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
       - name: Build add-in
-        run: dotnet build src/KetCauVXT.RevitExport -c Release -p:RevitVersion=${{ matrix.rv }} -p:TargetFramework=${{ matrix.tfm }} -o out
+        run: dotnet build src/KetCauVXT.RevitExport -c Release -p:RevitVersion=${{ matrix.rv }} -o out
       - uses: actions/upload-artifact@v4
         with:
           name: KetCauVXT.RevitExport-${{ matrix.rv }}

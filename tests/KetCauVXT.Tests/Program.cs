@@ -211,6 +211,86 @@ AnalysisResults sr = FrameAnalysis.Run(shed);
     Check("Phản lực đứng hai chân bằng nhau", tt.Reactions[bases[0].Id][2], tt.Reactions[bases[1].Id][2], 1e-6);
 }
 
+Console.WriteLine("10. Nhà 7 tầng 3×3 nhịp – gió + động đất, cân bằng phản lực, chạy ổn định");
+var tall = ModelBuilder.NewProject("Nhà 7 tầng mẫu");
+tall.Location = "Thái Nguyên";
+ModelBuilder.SetGrid(tall, new[] { 4.2, 4.2, 4.2 }, new[] { 5.0, 4.0, 5.0 });
+ModelBuilder.SetStories(tall, new[] { 3.9, 3.6, 3.3, 3.3, 3.3, 3.3, 3.3 }, -1.0);
+ModelBuilder.BuildFromGrid(tall, new ModelBuilder.GridFrameOptions
+{
+    ColumnSection = "C30x30", BeamSectionX = "D22x40", BeamSectionY = "D22x50", SlabSection = "S120", PerimeterWallLoad = 7.5
+});
+tall.Seismic.Enabled = true; tall.Seismic.AgR = 0.0611; tall.Seismic.Soil = "C";
+foreach (var n in new[] { "DDX", "DDY" })
+    if (tall.Pattern(n) == null) tall.Patterns.Add(new LoadPattern { Name = n, Type = LoadType.Seismic, Gamma = 1.0 });
+ComboGenerator.Generate(tall);
+AnalysisResults tr = null;
+{
+    var sw = Stopwatch.StartNew();
+    tr = FrameAnalysis.Run(tall);
+    Console.WriteLine($"   {tall.Nodes.Count} nút, {tall.Frames.Count} thanh, {tr.Equations} phương trình, {tall.Combinations.Count} tổ hợp, {sw.ElapsedMilliseconds} ms");
+    foreach (var w in tr.Warnings.Take(5)) Console.WriteLine("   · " + w);
+    foreach (var lf in tr.LateralForces.Where(x => x.Pattern == "DDX").Take(8)) Console.WriteLine($"   · {lf.Pattern} {lf.Story} z={lf.Elevation:0.00}: Fx={lf.Fx:0.0} kN, Fy={lf.Fy:0.0} kN {lf.Note}");
+    foreach (var pn in new[] { "GX", "GY", "DDX", "DDY" })
+    {
+        var cr = tr.Get(pn);
+        double sx = tall.NodeLoads.Where(l => l.Pattern == pn).Sum(l => l.Fx), sy = tall.NodeLoads.Where(l => l.Pattern == pn).Sum(l => l.Fy);
+        Check($"{pn}: có tải ngang", Math.Abs(sx) + Math.Abs(sy) > 1 ? 1 : 0, 1, 0);
+        Check($"{pn}: ΣFX phản lực = −Σ tải", cr.Reactions.Values.Sum(r => r[0]), -sx, 1e-6);
+        Check($"{pn}: ΣFY phản lực = −Σ tải", cr.Reactions.Values.Sum(r => r[1]), -sy, 1e-6);
+    }
+    bool finite = tall.Combinations.Where(c => c.Type != ComboType.Envelope).All(c =>
+    {
+        var cr = tr.Get(c.Name);
+        return cr.Disp.Values.All(d => d.All(double.IsFinite));
+    });
+    Check("Mọi tổ hợp cho chuyển vị hữu hạn", finite ? 1 : 0, 1, 0);
+}
+
+Console.WriteLine("11. Lưu → mở lại mô hình, phân tích lại cho kết quả trùng khớp");
+{
+    string tmp = Path.Combine(Path.GetTempPath(), "kcvxt_roundtrip.kcvxt");
+    tall.Save(tmp);
+    var re = Project.Load(tmp);
+    var rr = FrameAnalysis.Run(re);
+    double maxDiff = 0;
+    foreach (var c in new[] { "TT", "HT", "GX", "DDX" })
+        foreach (var kv in tr.Get(c).Disp)
+            for (int d = 0; d < 6; d++) maxDiff = Math.Max(maxDiff, Math.Abs(kv.Value[d] - rr.Get(c).Disp[kv.Key][d]));
+    Check("Sai khác chuyển vị lớn nhất sau khi mở lại", maxDiff, 0, 1e-9);
+    Check("Số nút / thanh giữ nguyên", re.Nodes.Count * 1000 + re.Frames.Count, tall.Nodes.Count * 1000 + tall.Frames.Count, 0);
+}
+
+Console.WriteLine("12. Mô hình lỗi phải báo lỗi rõ ràng, không sập chương trình");
+{
+    var bad = ModelBuilder.NewProject("Lỗi");
+    bool clear = false;
+    try { FrameAnalysis.Run(bad); }
+    catch (InvalidOperationException ex) { clear = ex.Message.Length > 10; Console.WriteLine("   · " + ex.Message.Split('\n')[0]); }
+    catch (Exception ex) { Console.WriteLine("   · Ngoại lệ không mong đợi: " + ex.GetType().Name); }
+    Check("Mô hình rỗng → InvalidOperationException có thông báo", clear ? 1 : 0, 1, 0);
+
+    // cơ cấu (cột khớp 2 đầu, không giằng) → phải báo lỗi hoặc cảnh báo, không treo
+    var mech = ModelBuilder.NewProject("Cơ cấu");
+    var n1 = mech.GetOrAddNode(0, 0, 0); n1.Restraint = Node.Pinned;
+    var n2 = mech.GetOrAddNode(0, 0, 3);
+    mech.Frames.Add(new FrameElement { Id = 1, NodeI = n1.Id, NodeJ = n2.Id, Kind = FrameKind.Column, Section = "C22x22" });
+    mech.NodeLoads.Add(new NodeLoad { Node = n2.Id, Pattern = "GX", Fx = 10 });
+    ComboGenerator.Generate(mech);
+    bool handled = false;
+    try
+    {
+        var mr = FrameAnalysis.Run(mech);
+        handled = mr.Warnings.Count > 0 || mr.Get("GX").Disp.Values.Any(d => d.Any(v => Math.Abs(v) > 1e3) || d.Any(v => !double.IsFinite(v)));
+        Console.WriteLine("   · Cảnh báo: " + string.Join(" | ", mr.Warnings.Take(2)));
+    }
+    catch (Exception ex) when (ex is InvalidOperationException || ex is SingularStiffnessException)
+    {
+        handled = true; Console.WriteLine("   · " + ex.Message.Split('\n')[0]);
+    }
+    Check("Kết cấu biến hình → được phát hiện", handled ? 1 : 0, 1, 0);
+}
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");
@@ -227,7 +307,7 @@ void Step(string name, Action a)
     catch (Exception ex) { Console.WriteLine($"  ✗ {name}: {ex.GetType().Name}: {ex.Message}"); fail++; }
 }
 
-foreach (var (proj, res, tag) in new[] { (house, hr, "NhaPho"), (shed, sr, "NhaXuong") })
+foreach (var (proj, res, tag) in new[] { (house, hr, "NhaPho"), (tall, tr, "Nha7Tang"), (shed, sr, "NhaXuong") })
 {
     Console.WriteLine($"\n== {proj.Name} → {outDir}");
     string dir = Path.Combine(outDir, tag);
