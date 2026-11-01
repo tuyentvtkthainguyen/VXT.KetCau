@@ -79,9 +79,10 @@ jobs:
           $so = "C:\Program Files\LibreOffice\program\soffice.exe"
           New-Item -ItemType Directory pdf | Out-Null
           Get-ChildItem -Recurse KetQuaMau -Include *.docx,*.xlsx | ForEach-Object {
-            & $so --headless --convert-to pdf --outdir pdf $_.FullName | Out-Null
+            $od = Join-Path pdf $_.Directory.Name
+            & $so --headless --convert-to pdf --outdir $od $_.FullName | Out-Null
           }
-          Get-ChildItem pdf | Format-Table Name, Length
+          Get-ChildItem -Recurse pdf -File | Format-Table FullName, Length -AutoSize | Out-String -Width 200
 
       - name: Publish App (exe tu chua, khong can cai .NET)
         shell: pwsh

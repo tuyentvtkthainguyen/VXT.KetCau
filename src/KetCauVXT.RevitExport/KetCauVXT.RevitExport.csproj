@@ -3,13 +3,9 @@
   <!--
     Add-in Revit xuất mô hình kết cấu sang Kết cấu VXT (file *.vxtrevit.json).
 
-    Mặc định: Revit 2024 → .NET Framework 4.8.
-    Chuyển sang Revit 2025 / 2026 (.NET 8):
-      1. Đổi <TargetFramework>net48</TargetFramework> thành <TargetFramework>net8.0-windows</TargetFramework>
-         (UseWindowsForms tự bật cho net8.0-windows).
-      2. Đổi RevitVersion thành 2025 (hoặc 2026) để HintPath trỏ đúng thư mục cài đặt.
-      3. Tham chiếu System.Windows.Forms chỉ dùng cho net48 (net8 dùng UseWindowsForms).
-    Lưu ý: dự án này không biên dịch được trên máy không cài Revit.
+    Chọn phiên bản: dotnet build -p:RevitVersion=2025 (mặc định 2024).
+    Revit ≤ 2024 → .NET Framework 4.8; Revit 2025, 2026 → .NET 8 (tự chọn).
+    Không cài Revit: tự dùng gói tham chiếu Nice3point.Revit.Api trên NuGet.
   -->
   <PropertyGroup>
     <RevitVersion Condition="'$(RevitVersion)' == ''">2024</RevitVersion>

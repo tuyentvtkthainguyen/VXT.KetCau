@@ -23,8 +23,9 @@ public static class DrawingSet
             ProjectName = p.Name, Title = title, SheetNo = no, Designer = p.Designer, Owner = p.Owner, Location = p.Location
         };
 
-        void Write(string file, List<Figure> figs, double scale, string title, string no)
+        void Write(string file, List<Figure> figs, double scale, string title, string no, bool always = false)
         {
+            if (figs.Count == 0 && !always) return;   // không xuất tờ trống (vd. nhà thép không có cột/sàn BTCT)
             if (figs.Count == 0)
             {
                 var empty = new DxfWriter(scale);
@@ -39,7 +40,7 @@ public static class DrawingSet
 
         // KC-01 mặt bằng kết cấu các tầng
         Write("KC-01_MatBangKetCau.dxf", FramingPlan.BuildAll(p, s), FramingPlan.SheetScale,
-            "MẶT BẰNG KẾT CẤU CÁC TẦNG", "KC-01");
+            "MẶT BẰNG KẾT CẤU CÁC TẦNG", "KC-01", always: true);
 
         // KC-02 móng
         Write("KC-02_Mong.dxf", FootingDrawing.BuildAll(p, s), FootingDrawing.SheetScale,
@@ -68,7 +69,8 @@ public static class DrawingSet
         Write("KC-05_San.dxf", SlabDrawing.BuildAll(p, s, ss), ss, "MẶT BẰNG THÉP SÀN", "KC-05");
 
         // KC-06 thống kê thép (vẽ theo mm giấy, tỷ lệ 1/1)
-        Write("KC-06_ThongKeThep.dxf", RebarSchedule.BuildFigures(s, 1), 1, "THỐNG KÊ CỐT THÉP", "KC-06");
+        if (s.All.Any(m => m.Bars.Count > 0))
+            Write("KC-06_ThongKeThep.dxf", RebarSchedule.BuildFigures(s, 1), 1, "THỐNG KÊ CỐT THÉP", "KC-06");
         return paths;
     }
 

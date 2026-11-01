@@ -23,7 +23,12 @@ dotnet run --project tests/KetCauVXT.Tests -- D:\KetQua   # ghi kết quả ví 
 dotnet run --project src/KetCauVXT.App                 # mở giao diện
 ```
 
-> **Lưu ý:** mã nguồn được viết và kiểm tra cú pháp trong môi trường không có .NET SDK, nên **lần build đầu tiên có thể còn lỗi biên dịch nhỏ** (sai tên thuộc tính, thiếu ép kiểu…). Khi gặp lỗi, copy nguyên danh sách lỗi trong cửa sổ *Error List* gửi lại để sửa. Phần lõi tính (`Analysis/`) đã được đối chiếu thuật toán bằng một bản sao Python với lời giải giải tích – xem mục 6.
+**Không muốn build?** Mỗi lần đẩy mã lên nhánh `ketcau-vxt`, GitHub Actions (`.github/workflows/ketcau-vxt.yml`) tự build trên Windows, chạy toàn bộ kiểm thử và đóng gói. Vào tab *Actions* của repo → lần chạy mới nhất → mục *Artifacts*:
+- `KetCauVXT-win-x64`: file `KetCauVXT.exe` chạy ngay, không cần cài .NET;
+- `KetQuaMau`: bản vẽ DXF, thuyết minh Word, bảng tính Excel, file .e2k/.s2k của 3 công trình mẫu, kèm PDF xuất bằng LibreOffice và ảnh chụp màn hình giao diện;
+- `KetCauVXT.RevitExport-2023…2026`: add-in Revit cho từng phiên bản.
+
+Add-in Revit: máy có cài Revit thì tham chiếu DLL trong thư mục cài đặt; máy không có Revit tự dùng gói tham chiếu `Nice3point.Revit.Api` từ NuGet. Chọn phiên bản bằng `-p:RevitVersion=2025` (2025 trở đi tự chuyển sang .NET 8).
 
 ## 2. Cấu trúc mã nguồn
 
@@ -78,17 +83,23 @@ Nguyên nhân sai lệch thường gặp khi so với ETABS: ETABS mặc định
 | Tải trọng | TCVN 2737:2023 | γf theo trường hợp tải (người dùng sửa). Gió tĩnh: W = W0·k(z)·c, k(z) dạng hàm mũ theo địa hình A/B/C – **cần đối chiếu W0 và bảng k(z) của địa danh theo QCVN 02:2022 / TCVN 2737:2023**. Chưa tính thành phần động của gió (nhà ≤ 40 m thường không cần). |
 | Động đất | TCVN 9386:2012 | Phương pháp tĩnh lực ngang tương đương, T1 = Ct·H^¾, phổ loại 1. Chưa xét độ lệch tâm ngẫu nhiên. |
 | Phân tích | – | Tuyến tính bậc nhất (chưa P-Delta). Sàn tuyệt đối cứng trong mặt phẳng, không tham gia chịu uốn của khung; tải sàn dồn 45°. |
-| Dầm | TCVN 5574:2018 | Tiết diện chữ nhật (chưa kể cánh T – thiên về an toàn); cắt với c = 2h0; võng gần đúng với hệ số độ cứng nứt 0.3. |
+| Dầm | TCVN 5574:2018 | Tiết diện chữ nhật (chưa kể cánh T – thiên về an toàn); cắt với c = 2h0; võng dài hạn với độ cứng B = Eb/(1+φb,cr)·Ieff (kể nứt theo thép thực bố trí, φb,cr = 2,5), dầm liên tục f = 5/48·[Mg − 0,1(Mt+Mp)]·L²/B. |
 | Cột | TCVN 5574:2018 | Cốt thép đối xứng, lệch tâm xiên bằng đường bao tải trọng (load contour), uốn dọc theo hệ số η. |
-| Sàn | – | Ô chữ nhật, phương pháp Marcus theo điều kiện biên, bỏ qua giảm mô men xoắn. |
+| Sàn | – | Ô chữ nhật, phương pháp Marcus theo điều kiện biên, bỏ qua giảm mô men xoắn. Võng dài hạn kể nứt + từ biến, hệ số liên kết cạnh. |
 | Móng | TCVN 9362:2012, TCVN 5574:2018 | Móng đơn trên nền thiên nhiên: sức chịu tải R, áp lực đáy móng, chọc thủng, uốn. **Chưa tính lún**, chưa có móng cọc / móng băng (dự kiến phiên bản sau, TCVN 10304:2014). |
-| Thép tiền chế | TCVN 5575 | Bền, ổn định trong/ngoài mặt phẳng (φ theo độ mảnh quy ước), độ mảnh, ổn định cục bộ đơn giản, võng kèo, chuyển vị đỉnh cột. **Cần đối chiếu công thức với bản TCVN 5575:2024** trước khi dùng cho hồ sơ chính thức. Chưa thiết kế liên kết bu lông, bản mã. |
+| Thép tiền chế | TCVN 5575 | Bền, ổn định trong/ngoài mặt phẳng (φ theo độ mảnh quy ước), độ mảnh [λ] = 180 − 60α, ổn định cục bộ bụng theo α = (σ−σ1)/σ (TCVN 5575:2012 7.6.2), bụng mảnh kể tiết diện hữu hiệu, võng kèo, chuyển vị đỉnh cột. **Cần đối chiếu công thức với bản TCVN 5575:2024** trước khi dùng cho hồ sơ chính thức. Chưa thiết kế liên kết bu lông, bản mã. |
 
 Chương trình là công cụ hỗ trợ; kỹ sư chịu trách nhiệm kiểm tra kết quả, đặc biệt các hệ số tải trọng và điều kiện địa chất của từng công trình.
 
 ## 6. Kiểm chứng
 
-`tests/KetCauVXT.Tests` kiểm tra tự động: dầm ngàm/khớp (tải đều, tam giác, tập trung), cột công xôn (kể biến dạng trượt), khung sàn cứng, cột thép vát, cân bằng phản lực toàn nhà theo từng trường hợp tải, tổng tải sàn dồn về dầm, đối xứng khung zamil. Thuật toán phần tử (ma trận độ cứng, khử giải phóng liên kết, tải nút tương đương, tích phân nội lực, ràng buộc sàn cứng) đã được đối chiếu bằng bản sao Python với lời giải giải tích – tất cả đạt.
+`tests/KetCauVXT.Tests` (52 phép kiểm, chạy tự động trên CI mỗi lần đẩy mã):
+1. Dầm ngàm/khớp với tải đều, tải tam giác, tải tập trung; cột công xôn (kể biến dạng trượt); cột thép vát – so với lời giải giải tích.
+2. Khung sàn cứng; cân bằng phản lực toàn nhà theo từng trường hợp tải; tổng tải sàn dồn về dầm; đối xứng khung zamil.
+3. Nhà 7 tầng 3×3 nhịp có gió + động đất (23 tổ hợp): cân bằng lực ngang, mọi tổ hợp hữu hạn.
+4. Lưu → mở lại mô hình → phân tích lại cho kết quả trùng khớp tuyệt đối.
+5. Mô hình rỗng và kết cấu biến hình phải báo lỗi rõ ràng, không làm sập chương trình.
+6. Chạy trọn quy trình thiết kế → bản vẽ → thuyết minh → Excel → ETABS/SAP cho 3 công trình mẫu. Mọi file DXF được đọc lại và audit bằng thư viện độc lập `ezdxf`; Word/Excel được LibreOffice mở và xuất PDF; giao diện được mở thử và kiểm tra không bị treo.
 
 ## 7. Định dạng file dự án `.kcvxt`
 
