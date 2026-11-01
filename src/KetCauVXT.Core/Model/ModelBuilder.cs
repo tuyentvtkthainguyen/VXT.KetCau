@@ -205,9 +205,9 @@ public static class ModelBuilder
     public static void BuildPortalFrames(Project p, PortalOptions o)
     {
         if (p.FrameSections.All(s => s.Name != o.ColumnSection))
-            p.FrameSections.Add(FrameSection.WeldedISection(o.ColumnSection, 300, 600, 200, 10, 6));
+            p.FrameSections.Add(FrameSection.WeldedISection(o.ColumnSection, 400, 800, 250, 12, 8));
         if (p.FrameSections.All(s => s.Name != o.RafterSection))
-            p.FrameSections.Add(FrameSection.WeldedISection(o.RafterSection, 600, 350, 180, 8, 5));
+            p.FrameSections.Add(FrameSection.WeldedISection(o.RafterSection, 800, 450, 250, 12, 8));
         foreach (var pn in new[] { ("TT", LoadType.Dead, 1.0, 1.1), ("HT", LoadType.RoofLive, 0.0, 1.3), ("GX", LoadType.Wind, 0.0, 1.2) })
             if (p.Pattern(pn.Item1) == null)
                 p.Patterns.Add(new LoadPattern { Name = pn.Item1, Type = pn.Item2, SelfWeight = pn.Item3, Gamma = pn.Item4 });

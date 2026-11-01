@@ -334,7 +334,20 @@ public static class SteelDesigner
                         lim = 5.5 * sqrtEf;
                         how = "chủ yếu uốn: [hw/tw] = 5,5√(E/f); khi hw/tw > 3,2√(E/f) cần sườn ngang";
                     }
-                    tr.Update(ChkWeb, hw / sec.Tw, lim, "", $"{at}; {how}");
+                    double rw = hw / sec.Tw;
+                    if (Nc > 1e-6 && rw > lim && lim < 3.8 * sqrtEf - 1e-9)
+                    {
+                        // TCVN 5575:2012 7.6.2.6: bụng mảnh chịu nén – chỉ kể 2 dải bụng rộng 0,85·tw·√(E/f) sát cánh
+                        double hEff = Math.Min(hw, 2 * 0.85 * sec.Tw * sqrtEf);
+                        double aRed = Math.Max(sp.A - (hw - hEff) * sec.Tw, 1e-9);
+                        double phixW = Phi(lx * Math.Sqrt(mat.F / E), mat.F, E);
+                        double neW = Math.PI * Math.PI * E * aRed / Math.Max(lx * lx, 1e-9);
+                        double ampW = Math.Max(1 - Nc / neW, 0.01);
+                        double rRed = Nc / (phixW * aRed * fd) + SafeDiv(Math.Abs(M3), sp.W33 * fd * ampW) + SafeDiv(Math.Abs(M2), sp.W22 * fd);
+                        tr.Update(ChkWeb, rRed, 1.0, "",
+                            $"{at}; hw/tw = {F(rw, "0.0")} > [{F(lim, "0.0")}] ({how}) → bụng mảnh, kể tiết diện hữu hiệu A = {F(aRed * 1e4, "0.0")} cm² (7.6.2.6)");
+                    }
+                    else tr.Update(ChkWeb, rw, lim, "", $"{at}; {how}");
                 }
 
                 double gov = Math.Max(rStrength, Math.Max(rIn, rOut));
