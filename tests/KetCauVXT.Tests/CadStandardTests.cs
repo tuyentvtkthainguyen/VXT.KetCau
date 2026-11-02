@@ -217,7 +217,7 @@ public static class CadStandardTests
     {
         check("VNI → Unicode: \"Phoøng nguû\"", B(VniText.Convert("Phoøng nguû") == "Phòng ngủ"), 1, 0);
         check("VNI → Unicode: \"MAËT BAÈNG TAÀNG 2\"", B(VniText.Convert("MAËT BAÈNG TAÀNG 2") == "MẶT BẰNG TẦNG 2"), 1, 0);
-        check("VNI → Unicode: ơ, ư, đ (\"Ñöôøng Ñoâ\")", B(VniText.Convert("Ñöôøng ñoâi") == "Đường đôi"), 1, 0);
+        check("VNI → Unicode: ơ, ư, đ (\"Ñöôøng ñoâi\")", B(VniText.Convert("Ñöôøng ñoâi") == "Đường đôi"), 1, 0);
         check("Tự nhận VNI / TCVN3 / Unicode", B(VnText.Fix("Phoøng khaùch") == "Phòng khách" && VnText.Fix("MÆT B»NG TÇNG 3") == "MẶT BẰNG TẦNG 3" && VnText.Fix("Phòng khách") == "Phòng khách"), 1, 0);
         check("Gợi ý font VNI-Times / .VnTime", B(VnText.Fix("Taàng", "VNI") == "Tầng" && VnText.Fix("TÇng", "TCVN3") == "Tầng"), 1, 0);
     }
@@ -275,14 +275,14 @@ public static class CadStandardTests
         using (CadStandard.Use(std))
         {
             check("CadStandard.Use: bộ ghi không đặt Standard dùng chuẩn đang áp dụng", B(Fig().ToDxfString().Contains("  8\r\nKC-BETONG\r\n") && DxfWriter.OutputLayerName(Lay.Thep) == "KC-THEP"), 1, 0);
-            check("Font thuyết minh theo chuẩn (Arial nếu chọn)", B(Report.DocxWriter.DefaultFont == CadStandard.FontTimes), 1, 0);
+            check("Font thuyết minh theo chuẩn đang áp dụng", B(Report.DocxWriter.DefaultFont == CadStandard.FontTimes), 1, 0);
         }
         check("CadStandard.Use: Dispose trả lại chuẩn cũ", B(CadStandard.Active == null && Fig().ToDxfString().Contains("  8\r\nBE_TONG\r\n") && Report.DocxWriter.DefaultFont == "Times New Roman"), 1, 0);
         var std2 = CadStandard.Default(); std2.ReportFont = CadStandard.FontArial;
         using (CadStandard.Use(std2))
         {
             string docx = Path.Combine(Path.GetTempPath(), "kcvxt_cadstd_font.docx");
-            new Report.DocxWriter().Para("Thuyết minh").Save(docx);
+            new Report.DocxWriter().Paragraph("Thuyết minh").Save(docx);
             using var z = System.IO.Compression.ZipFile.OpenRead(docx);
             using var rs = new StreamReader(z.GetEntry("word/styles.xml").Open());
             string st = rs.ReadToEnd();

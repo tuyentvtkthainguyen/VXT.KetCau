@@ -91,14 +91,15 @@ public static class VniText
 
     private static char[] ModOf(char c) => Mods.TryGetValue(char.ToLowerInvariant(c), out var m) ? m : null;
 
-    /// <summary>Số cặp "nguyên âm + ký tự dấu VNI" và có ký tự chỉ VNI mới dùng (ø û ï å ä ë ü ö ñ æ…).</summary>
+    /// <summary>Có cặp "nguyên âm + ký tự dấu VNI" và có ký tự chỉ VNI mới dùng (ø û ï å ä ë ü ö ñ æ…). Không chắc → dùng gợi ý font.</summary>
     public static bool Looks(string s)
     {
         if (string.IsNullOrEmpty(s) || s.Any(c => c > 0xFF)) return false;
         int pairs = 0;
         for (int i = 0; i + 1 < s.Length; i++)
             if ((IsVowel(s[i]) || s[i] == 'ô' || s[i] == 'Ô' || s[i] == 'ö' || s[i] == 'Ö') && ModOf(s[i + 1]) != null) pairs++;
-        return pairs >= 1 && (s.Any(c => Strong.IndexOf(c) >= 0) || pairs >= 2);
+        // chữ Unicode tiếng Việt chỉ gồm ký tự Latin-1 (vd. "Hoà", "khách") cũng có cặp nguyên âm + dấu → bắt buộc có ký tự chỉ VNI mới dùng
+        return pairs >= 1 && s.Any(c => Strong.IndexOf(c) >= 0);
     }
 
     public static string Convert(string s)

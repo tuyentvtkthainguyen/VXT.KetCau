@@ -9,7 +9,7 @@ namespace KetCauVXT.Report;
 
 /// <summary>Xuất thuyết minh tính toán kết cấu (.docx) tiếng Việt.
 /// Số thập phân dùng dấu chấm (định dạng invariant). Đơn vị: kN, kN.m, mm, cm², MPa.</summary>
-public static class CalculationReport
+public static partial class CalculationReport   // thuyết minh tự động: CalculationReport.Auto.cs
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private static string N(double v, string fmt = "0.00") => double.IsFinite(v) ? v.ToString(fmt, Inv) : "-";
@@ -189,6 +189,8 @@ public static class CalculationReport
         AreaLoadTable(p, d, live, "Hoạt tải phân bố trên sàn:");
         FrameLoadTable(p, d, live, "Hoạt tải trên thanh:");
 
+        bool lateralOn = LateralOn;   // [AutoReport] chương gió/động đất có được chọn không (CalculationReport.Auto.cs)
+        if (lateralOn) {
         d.Heading($"{n}.4. Tải trọng gió", 2);
         var w = p.Wind;
         var windPats = p.Patterns.Where(t => t.Type == LoadType.Wind).Select(t => t.Name).ToHashSet();
@@ -207,9 +209,10 @@ public static class CalculationReport
             FrameLoadTable(p, d, windPats, "Tải gió gán trực tiếp lên khung (kN/m):");
         }
         else d.Paragraph("Không xét tải trọng gió.");
+        }   // [AutoReport] hết if (lateralOn)
 
         var eqPats = p.Patterns.Where(t => t.Type == LoadType.Seismic).Select(t => t.Name).ToHashSet();
-        if (p.Seismic.Enabled && eqPats.Count > 0)
+        if (lateralOn && p.Seismic.Enabled && eqPats.Count > 0)   // [AutoReport] lateralOn
         {
             d.Heading($"{n}.5. Tải trọng động đất", 2);
             var sm = p.Seismic;
@@ -224,7 +227,7 @@ public static class CalculationReport
             if (eqw != null) d.Paragraph(eqw);
         }
 
-        d.Heading($"{n}.{(p.Seismic.Enabled && eqPats.Count > 0 ? 6 : 5)}. Tổ hợp tải trọng", 2);
+        d.Heading($"{n}.{(!lateralOn ? 4 : p.Seismic.Enabled && eqPats.Count > 0 ? 6 : 5)}. Tổ hợp tải trọng", 2);   // [AutoReport] !lateralOn
         d.Paragraph("TTGH I: tổ hợp cơ bản 1 (tĩnh tải + 1 tải trọng tạm thời) và tổ hợp cơ bản 2 (tĩnh tải + ≥ 2 tải trọng tạm thời nhân hệ số tổ hợp ψ = 0.9); tổ hợp đặc biệt có động đất G + ψE·Q ± E1 ± 0.3·E2. TTGH II: giá trị tiêu chuẩn.");
         d.Table(new[] { "Tên", "Loại", "Thành phần" },
             p.Combinations.Select(c => new[]
@@ -436,6 +439,7 @@ public static class CalculationReport
             d.Paragraph("Ghi chú: phép tính minh hoạ dùng a = lớp bảo vệ + 10 mm; kết quả bố trí cuối cùng lấy theo chương trình (có xét đường kính thực tế, số lớp thép).", false, true);
         }
 
+        ExtraBeamExamples(p, s, d, n);   // [AutoReport] ví dụ bổ sung (CalculationReport.Auto.cs)
         d.Heading($"{n}.2. Bảng tổng hợp thiết kế dầm", 2);
         var rows = new List<string[]>();
         foreach (var b in s.Beams)
@@ -550,6 +554,7 @@ public static class CalculationReport
             d.Paragraph("Ghi chú: phép tính minh hoạ theo phương pháp quy đổi gần đúng; kết quả bố trí lấy theo chương trình (kiểm tra bằng biểu đồ tương tác).", false, true);
         }
 
+        ExtraColumnExamples(p, s, d, n);   // [AutoReport]
         d.Heading($"{n}.2. Bảng tổng hợp thiết kế cột", 2);
         var rows = new List<string[]>();
         foreach (var c in s.Columns)
@@ -589,6 +594,7 @@ public static class CalculationReport
             }
             d.Equation($"Bố trí: lớp dưới phương ngắn {s0.BotX}, phương dài {s0.BotY}; mũ gối {s0.TopX} / {s0.TopY}.");
         }
+        ExtraSlabExamples(p, s, d, n);   // [AutoReport]
         d.Heading($"{n}.2. Bảng tổng hợp thiết kế sàn", 2);
         d.Table(new[] { "Ô sàn", "Lx×Ly (m)", "hb (mm)", "q (kN/m²)", "M1", "M2", "MI", "MII", "Dưới X", "Dưới Y", "Mũ X", "Mũ Y", "KL" },
             s.Slabs.Select(x => new[]
@@ -617,6 +623,7 @@ public static class CalculationReport
         foreach (var c in f0.Checks)
             d.Equation($"{c.Name}: {N(c.Demand)} / {N(c.Capacity)} {c.Unit} → tỷ số {N(c.Ratio, "0.000")} – {OkText(c.Ok)}");
 
+        ExtraFootingExamples(p, s, d, n);   // [AutoReport]
         d.Heading($"{n}.2. Bảng tổng hợp thiết kế móng", 2);
         d.Table(new[] { "Móng", "SL", "N (kN)", "Mx", "My", "L×B×H (m)", "R", "Ptb", "Pmax", "Pmin", "Thép L", "Thép B", "KL" },
             s.Footings.Select(x => new[]

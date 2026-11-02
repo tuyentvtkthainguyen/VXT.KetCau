@@ -8,7 +8,7 @@ public enum ParaAlign { Left, Center, Right, Justify }
 
 /// <summary>Trình ghi file Word (.docx) tối giản – tự sinh các phần OpenXML, không dùng thư viện ngoài.
 /// Khổ A4 đứng, lề trên 2 cm, dưới 2 cm, trái 3 cm, phải 1.5 cm. Font Times New Roman 13 pt.</summary>
-public class DocxWriter
+public partial class DocxWriter   // phần mở rộng: DocxWriter.Fields.cs (mục lục, số trang, tên bảng)
 {
     /// <summary>Font thuyết minh (CadStandard.ReportFont) – mặc định Times New Roman.</summary>
     public static string DefaultFont { get; set; } = "Times New Roman";
@@ -141,6 +141,7 @@ public class DocxWriter
         int nc = headers?.Length ?? 0;
         foreach (var r in rowList) nc = Math.Max(nc, r?.Length ?? 0);
         if (nc == 0) return this;
+        if (AutoCaptions) AutoCaption();   // [DocxWriter.Fields.cs]
 
         int[] w = new int[nc];
         if (colWidthsCm != null && colWidthsCm.Length >= nc)
@@ -204,12 +205,13 @@ public class DocxWriter
         if (File.Exists(path)) File.Delete(path);
         using var fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
         using var zip = new ZipArchive(fs, ZipArchiveMode.Create);
-        Put(zip, "[Content_Types].xml", ContentTypes);
+        Put(zip, "[Content_Types].xml", ContentTypesXml());   // [DocxWriter.Fields.cs]
         Put(zip, "_rels/.rels", Rels);
-        Put(zip, "word/_rels/document.xml.rels", DocRels);
+        Put(zip, "word/_rels/document.xml.rels", DocRelsXml());
         Put(zip, "word/styles.xml", string.IsNullOrWhiteSpace(DefaultFont) || DefaultFont == "Times New Roman" ? Styles : Styles.Replace("Times New Roman", SecurityElement.Escape(DefaultFont.Trim())));
-        Put(zip, "word/settings.xml", Settings);
+        Put(zip, "word/settings.xml", SettingsXml());
         Put(zip, "word/document.xml", Document());
+        PutExtraParts(zip);
     }
 
     private static void Put(ZipArchive zip, string name, string content)
@@ -226,11 +228,11 @@ public class DocxWriter
         sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
         sb.Append("<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" ")
           .Append("xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><w:body>");
-        sb.Append(_body);
+        sb.Append(BodyXml());   // [DocxWriter.Fields.cs] – thay mục lục
         // A4: 11906 x 16838 twips; lề trên 2, dưới 2, trái 3, phải 1.5 cm
-        sb.Append("<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/>")
+        sb.Append("<w:sectPr>").Append(FooterRefXml()).Append("<w:pgSz w:w=\"11906\" w:h=\"16838\"/>")
           .Append($"<w:pgMar w:top=\"{Cm(2)}\" w:right=\"{Cm(1.5)}\" w:bottom=\"{Cm(2)}\" w:left=\"{Cm(3)}\" w:header=\"567\" w:footer=\"567\" w:gutter=\"0\"/>")
-          .Append("<w:cols w:space=\"708\"/></w:sectPr>");
+          .Append("<w:cols w:space=\"708\"/>").Append(TitlePgXml()).Append("</w:sectPr>");
         sb.Append("</w:body></w:document>");
         return sb.ToString();
     }

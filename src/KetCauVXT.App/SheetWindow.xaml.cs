@@ -977,6 +977,9 @@ public partial class SheetWindow : Window
         if (sheets.Count == 0) { SetStatus("Chưa có tờ để xuất."); return; }
         var dlg = new OpenFolderDialog { Title = "Chọn thư mục lưu các file DXF (mỗi tờ một file)" };
         if (dlg.ShowDialog(this) != true) return;
+        IDisposable layerScope = Owner is MainWindow mw ? mw.BeginDxfExport(ExportLayerProbe.ForSheets(_p, _r, _d, sheets), "Xuất tờ in DXF", this) : null;
+        if (Owner is MainWindow && layerScope == null) return;
+        using var _ls = layerScope;
         try
         {
             Mouse.OverrideCursor = Cursors.Wait;

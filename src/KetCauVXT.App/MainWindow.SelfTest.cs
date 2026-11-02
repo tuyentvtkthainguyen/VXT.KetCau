@@ -133,6 +133,8 @@ public partial class MainWindow
                 StLog("dàn trang: PDF " + tag + "_DanTrang.pdf");
                 sw.Close();
             }
+            await SelfTestCadStandard(tag); // chuẩn layer CAD – MainWindow.SelfTestCad.cs
+            await SelfTestAcadLink(tag); // nhận dữ liệu AutoCAD – MainWindow.SelfTestAcad.cs
             await SelfTestManualSheet(tag); // dàn trang thủ công – MainWindow.SelfTestSheetEdit.cs
             StLog("XONG – không lỗi");
         }

@@ -118,7 +118,7 @@ internal sealed class OutputLayerRow : RowBase
 /// <summary>Kiểm tra tên layer xuất: ký tự cấm DXF, rỗng, trùng tên (= gộp layer).</summary>
 internal static class LayerNameCheck
 {
-    public const string Illegal = "<>/\\\":;?*|=`";
+    public const string Illegal = "<>/\\\":;?*|=`,";
 
     public static string BadChars(string name) => new string((name ?? "").Where(c => Illegal.IndexOf(c) >= 0 || c < 32).Distinct().ToArray());
 
@@ -558,7 +558,14 @@ internal sealed class CadStandardWindow : Window
                     CadStandard.SaveUserDefault(_std);
             }
         }
-        CadStandard.Activate(_p?.CadStandard ?? CadStandard.LoadUserDefault());
+        if (_p != null) CadStandard.Activate(_p.CadStandard ?? CadStandard.LoadUserDefault());
+        else
+        {
+            // mở từ hộp nhập bản vẽ kiến trúc (không gắn dự án): Đồng ý = lưu làm mặc định của người dùng
+            try { CadStandard.SaveUserDefault(_std); }
+            catch (Exception ex) { MessageBox.Show(this, "Không lưu được: " + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); return; }
+            if (CadStandard.Active == null || CadStandard.Active.ToJson() == CadStandard.Default().ToJson()) CadStandard.Activate(_std);
+        }
         Changed = true;
         Close();
     }

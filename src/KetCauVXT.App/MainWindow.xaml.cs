@@ -641,6 +641,8 @@ public partial class MainWindow : Window
         if (_busy || !await EnsureDesign()) return;
         string folder = AskFolder("Chọn thư mục lưu bộ bản vẽ DXF");
         if (folder == null) return;
+        using var layerScope = BeginDxfExport(KetCauVXT.Drawing.ExportLayerProbe.ForDrawingSet()); // xem/đổi tên layer trước khi xuất
+        if (layerScope == null) return;
         List<string> files = null;
         var ds = _design;
         if (await RunBusy("Lỗi xuất bản vẽ", prog => { prog.Report("Đang vẽ..."); files = DrawingSet.ExportAll(_p, ds, folder); }))
@@ -701,6 +703,8 @@ public partial class MainWindow : Window
         string root = AskFolder("Chọn thư mục để xuất toàn bộ hồ sơ");
         if (root == null) return;
         if (!await EnsureDesign()) return;
+        using var layerScope = BeginDxfExport(KetCauVXT.Drawing.ExportLayerProbe.ForDrawingSet(), "Xuất toàn bộ hồ sơ"); // xem/đổi tên layer trước khi xuất
+        if (layerScope == null) return;
         string folder = Path.Combine(root, SafeName(_p.Name) + "_" + DateTime.Now.ToString("yyyyMMdd_HHmm", CultureInfo.InvariantCulture));
         var res = _res; var ds = _design;
         var errors = new List<string>();

@@ -333,7 +333,7 @@ public static class RebarShop
             if (!string.IsNullOrEmpty(o.Category) && CategoryGroup(cat) != o.Category && cat != o.Category) continue;
             var conc = ConcreteFor(p, m);
             int q = Math.Max(1, m.Quantity);
-            foreach (var g in m.Bars.Where(b => b.Count > 0 && b.Length > 0 && b.Dia > 0).GroupBy(b => b.Mark).OrderBy(g => g.Key))
+            foreach (var g in m.Bars.Where(b => b.Count > 0 && b.Length > 0 && b.Dia > 0).GroupBy(b => b.Mark).OrderBy(t => t.Key))
             {
                 var rows = new List<ShopBar>();
                 bool splitAny = false;
@@ -364,7 +364,7 @@ public static class RebarShop
                     continue;
                 }
                 int k = 0;
-                foreach (var r in merged.OrderBy(r => r.Segments.Count > 1 && r.Shape != "Thẳng" ? 0 : 1).ThenByDescending(r => r.CutLengthMm))
+                foreach (var r in merged.OrderBy(x => x.Segments.Count > 1 && x.Shape != "Thẳng" ? 0 : 1).ThenByDescending(x => x.CutLengthMm))
                 {
                     r.Label = merged.Count == 1 ? g.Key.ToString(DrawUtil.Inv) : g.Key.ToString(DrawUtil.Inv) + (char)('a' + Math.Min(k, 25));
                     if (r.Spliced) r.Note = "nối chồng ll = " + DxfWriter.N0(r.LapMm) + " mm" + (o.Stagger ? ", so le ≥ 1,3·ll" : "");
