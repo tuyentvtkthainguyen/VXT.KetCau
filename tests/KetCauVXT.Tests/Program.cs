@@ -494,6 +494,9 @@ AcadLinkTests.Run(Check, Path.Combine(Path.GetTempPath(), "kcvxt_acad"));
 Console.WriteLine("25. Lựa chọn bố trí thép, shop drawing (nối chồng, mã hình dạng, cắt thép tối ưu)");
 RebarShopTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("26. Bảng khối lượng vật tư, thuyết minh tính toán tự động");
+QuantityTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

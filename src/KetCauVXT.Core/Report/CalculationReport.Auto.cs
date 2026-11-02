@@ -223,6 +223,7 @@ public static partial class CalculationReport
             double As = xi * Rb * b * h0 / Rs;
             d.Equation($"ξ = 1 − √(1 − 2αm) = {N(xi, "0.0000")};  As = ξ·Rb·b·h0/Rs = {N(As * 1e6, "0")} mm²");
         }
+        if (asReq <= 0 && asProv <= 0) { if (!string.IsNullOrEmpty(text)) d.Equation("Bố trí: " + text); return; }
         d.Equation($"As yêu cầu = {Cm2(asReq)} cm²; bố trí {(string.IsNullOrEmpty(text) ? "-" : text)} (As = {Cm2(asProv)} cm²) → {(asProv + 1e-9 >= asReq ? "đạt" : "KHÔNG ĐẠT")}");
     }
 
