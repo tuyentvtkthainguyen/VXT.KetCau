@@ -72,7 +72,7 @@ public static class RegulationTests
         check("NĐ 217/2026: ngày 19/6/2026, hiệu lực \"theo văn bản\"", B(nd217.IssuedDate == "19/6/2026" && nd217.EffectiveDate == Regulations.ByDocument), 1, 0);
         check("NĐ 217/2026: ghi chú Điều 16, 19–23, 24, 25", B(nd217.Note.Contains("Điều 16") && nd217.Note.Contains("Điều 19–23") && nd217.Note.Contains("Điều 24") && nd217.Note.Contains("Điều 25")), 1, 0);
         check("NĐ 212/2026: 17/6/2026, hiệu lực 01/7/2026", B(F("212/2026/NĐ-CP").IssuedDate == "17/6/2026" && F("212/2026/NĐ-CP").EffectiveDate == "01/7/2026"), 1, 0);
-        check("NĐ 175/2024: trạng thái Kiểm tra, được ghi thay bởi 217/2026", B(F("175/2024/NĐ-CP").Status == RegulationStatus.KiemTra && F("175/2024/NĐ-CP").ReplacedBy == "217/2026/NĐ-CP"), 1, 0);
+        check("NĐ 175/2024: hết hiệu lực từ 01/7/2026, thay bởi 217/2026", B(F("175/2024/NĐ-CP").Status == RegulationStatus.HetHieuLuc && F("175/2024/NĐ-CP").ReplacedBy == "217/2026/NĐ-CP"), 1, 0);
         check("NĐ 15/2021: hết hiệu lực", B(F("15/2021/NĐ-CP").Status == RegulationStatus.HetHieuLuc), 1, 0);
         check("NĐ 10/2021 → NĐ 206/2026 (ghi \"kiểm tra\")", B(F("10/2021/NĐ-CP").ReplacedBy == "206/2026/NĐ-CP" && F("206/2026/NĐ-CP").Note.Contains("kiểm tra")), 1, 0);
         check("TT 06/2021/TT-BXD → TT 34/2026/TT-BXD", B(F("06/2021/TT-BXD").Status == RegulationStatus.HetHieuLuc && F("06/2021/TT-BXD").ReplacedBy == "34/2026/TT-BXD"), 1, 0);
@@ -122,12 +122,12 @@ public static class RegulationTests
         var ap = RegulationService.Applied(p).Select(d => d.Code).ToList();
         check("Applied: Luật 135, NĐ 217, TT 34, TCVN 2737, 5574, QCVN 02, TCVN 9362",
             B(new[] { "135/2025/QH15", "217/2026/NĐ-CP", "34/2026/TT-BXD", "TCVN 2737:2023", "TCVN 5574:2018", "QCVN 02:2022/BXD", "TCVN 9362:2012" }.All(ap.Contains)), 1, 0);
-        check("Applied: chưa bật động đất → không có TCVN 9386-1, móng đơn → không có TCVN 10304", B(!ap.Contains("TCVN 9386-1:2025") && !ap.Contains("TCVN 10304:2014")), 1, 0);
+        check("Applied: luôn nêu TCVN 9386-1:2025 và NĐ 212/2026 (năng lực); móng đơn → không có TCVN 10304", B(ap.Contains("TCVN 9386-1:2025") && ap.Contains("212/2026/NĐ-CP") && !ap.Contains("TCVN 10304:2014")), 1, 0);
         p.Seismic.Enabled = true; p.Foundation.Type = FoundationType.Pile;
         ap = RegulationService.Applied(p, true).Select(d => d.Code).ToList();
         check("Applied: bật động đất → TCVN 9386-1:2025 + 9386-5:2025; móng cọc → TCVN 10304:2014",
             B(ap.Contains("TCVN 9386-1:2025") && ap.Contains("TCVN 9386-5:2025") && ap.Contains("TCVN 10304:2014") && !ap.Contains("TCVN 9362:2012")), 1, 0);
-        check("Applied (có khối lượng): TT 38/2026 + CV 9947", B(ap.Contains("38/2026/TT-BXD") && ap.Contains("9947/BXD-VPB")), 1, 0);
+        check("Applied (có khối lượng): NĐ 206/2026, TT 36, 37, 38/2026 + CV 9947", B(new[] { "206/2026/NĐ-CP", "36/2026/TT-BXD", "37/2026/TT-BXD", "38/2026/TT-BXD", "9947/BXD-VPB" }.All(ap.Contains)), 1, 0);
         check("Applied: không có văn bản hết hiệu lực", RegulationService.Applied(p, true).Count(d => !d.IsCurrent), 0, 0);
     }
 
@@ -366,7 +366,7 @@ public static class RegulationTests
         var p7 = ModelBuilder.NewProject("Nghị định 175");
         p7.QuantitySettings.NormSource = "Căn cứ NĐ 175/2024/NĐ-CP";
         var w7 = RegulationService.CheckProject(p7).FirstOrDefault(w => w.Code == "175/2024/NĐ-CP");
-        check("Kiểm tra dự án: NĐ 175/2024 (chưa xác minh bị thay) → \"Lưu ý\", không phải cảnh báo", B(w7 != null && !w7.IsWarning), 1, 0);
+        check("Kiểm tra dự án: NĐ 175/2024 (đã hết hiệu lực) → cảnh báo", B(w7 != null && w7.IsWarning), 1, 0);
 
         var p8 = ModelBuilder.NewProject("Động đất");
         p8.Seismic.Enabled = true;

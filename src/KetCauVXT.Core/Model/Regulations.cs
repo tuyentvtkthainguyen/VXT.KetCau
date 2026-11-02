@@ -385,10 +385,10 @@ public sealed class Regulations
                 new[] { "50/2014/QH13", "62/2020/QH14" }, "",
                 "Thay thế Luật Xây dựng số 50/2014/QH13 và Luật số 62/2020/QH14 sửa đổi, bổ sung một số điều của Luật Xây dựng.",
                 "Ngày hiệu lực 01/7/2026 theo tài liệu phổ biến của Bộ Xây dựng – đối chiếu văn bản gốc.", UrlLuat135),
-            D(RegulationKind.NghiDinh, "217/2026/NĐ-CP", "Quy định chi tiết một số điều của Luật Xây dựng về quản lý hoạt động xây dựng", "19/6/2026", ByDocument, HL,
-                RegulationScope.PhapLy, Topics.Decree, new[] { "15/2021/NĐ-CP", "175/2024/NĐ-CP" }, "",
+            D(RegulationKind.NghiDinh, "217/2026/NĐ-CP", "Quy định chi tiết một số điều của Luật Xây dựng về quản lý hoạt động xây dựng", "19/6/2026", "01/7/2026", HL,
+                RegulationScope.PhapLy, Topics.Decree, new[] { "175/2024/NĐ-CP" }, "",
                 "Bước thiết kế (Điều 16); nội dung thiết kế (Điều 19–23); chỉ dẫn kỹ thuật (Điều 24 – không bắt buộc với nhà ở riêng lẻ); quản lý thiết kế (Điều 25).",
-                "Ngày hiệu lực: theo văn bản (chưa xác minh). Việc thay thế NĐ 15/2021/NĐ-CP, NĐ 175/2024/NĐ-CP: kiểm tra điều khoản thi hành.", UrlNd217),
+                "Hiệu lực 01/7/2026; NĐ 175/2024/NĐ-CP hết hiệu lực kể từ ngày NĐ 217/2026/NĐ-CP có hiệu lực (theo thuviennhadat.vn) – đối chiếu văn bản gốc.", UrlNd217),
             D(RegulationKind.NghiDinh, "212/2026/NĐ-CP", "Quy định về điều kiện năng lực hoạt động xây dựng, Hệ thống thông tin và cơ sở dữ liệu quốc gia về hoạt động xây dựng",
                 "17/6/2026", "01/7/2026", HL, RegulationScope.PhapLy, Topics.Capacity, null, "",
                 "Điều kiện năng lực tổ chức, cá nhân thiết kế.", "", UrlNd212),
@@ -452,9 +452,9 @@ public sealed class Regulations
             D(RegulationKind.Luat, "62/2020/QH14", "Luật sửa đổi, bổ sung một số điều của Luật Xây dựng", "", "", HHL, RegulationScope.PhapLy, Topics.Law, null, "135/2025/QH15",
                 "Được thay thế bởi Luật Xây dựng số 135/2025/QH15."),
             D(RegulationKind.NghiDinh, "15/2021/NĐ-CP", "Quy định chi tiết một số nội dung về quản lý dự án đầu tư xây dựng", "", "", HHL, RegulationScope.PhapLy, Topics.Decree,
-                null, "217/2026/NĐ-CP", "", "Văn bản thay thế trực tiếp và thời điểm hết hiệu lực: kiểm tra."),
-            D(RegulationKind.NghiDinh, "175/2024/NĐ-CP", "Quy định chi tiết Luật Xây dựng về quản lý hoạt động xây dựng (trước NĐ 217/2026/NĐ-CP)", "", "", KT, RegulationScope.PhapLy, Topics.Decree,
-                null, "217/2026/NĐ-CP", "", "Chưa xác minh NĐ 217/2026/NĐ-CP có thay thế NĐ 175/2024/NĐ-CP – kiểm tra điều khoản thi hành của NĐ 217/2026/NĐ-CP."),
+                null, "175/2024/NĐ-CP", "", "Đã được thay thế bởi NĐ 175/2024/NĐ-CP, nay là NĐ 217/2026/NĐ-CP – kiểm tra."),
+            D(RegulationKind.NghiDinh, "175/2024/NĐ-CP", "Quy định chi tiết một số điều và biện pháp thi hành Luật Xây dựng về quản lý hoạt động xây dựng", "", "", HHL, RegulationScope.PhapLy, Topics.Decree,
+                new[] { "15/2021/NĐ-CP" }, "217/2026/NĐ-CP", "Hết hiệu lực từ 01/7/2026, được thay thế bởi Nghị định 217/2026/NĐ-CP.", ""),
             D(RegulationKind.NghiDinh, "10/2021/NĐ-CP", "Quản lý chi phí đầu tư xây dựng", "", "", HHL, RegulationScope.ChiPhi, Topics.CostDecree, null, "206/2026/NĐ-CP",
                 "", "Thay thế bởi NĐ 206/2026/NĐ-CP theo báo chí – kiểm tra."),
             D(RegulationKind.ThongTu, "06/2021/TT-BXD", "Quy định về phân cấp công trình xây dựng", "", "", HHL, RegulationScope.CapCongTrinh, Topics.Grade, null, "34/2026/TT-BXD"),
@@ -554,8 +554,9 @@ public static class RegulationService
     public static List<RegulationDoc> Applied(Project p, bool includeQuantities = false)
     {
         var reg = Registry;
-        var topics = new List<string> { Topics.Law, Topics.Decree, Topics.Grade };
-        if (includeQuantities) { topics.Add(Topics.Norms); topics.Add(Topics.NormLetter); }
+        // căn cứ pháp lý lập hồ sơ thiết kế: Luật XD, NĐ quản lý hoạt động XD, NĐ điều kiện năng lực (tổ chức/cá nhân thiết kế), TT cấp công trình
+        var topics = new List<string> { Topics.Law, Topics.Decree, Topics.Capacity, Topics.Grade };
+        if (includeQuantities) { topics.Add(Topics.CostDecree); topics.Add(Topics.CostCircular); topics.Add(Topics.NormMethod); topics.Add(Topics.Norms); topics.Add(Topics.NormLetter); }
         topics.Add(Topics.Loads);
         topics.Add(Topics.NaturalData);
         bool hasFrames = p != null && p.Frames.Count > 0;
@@ -563,7 +564,8 @@ public static class RegulationService
         bool steel = p != null && p.Frames.Any(f => !f.IsConcrete);
         if (concrete) { topics.Add(Topics.Concrete); topics.Add(Topics.Rebar); }
         if (steel) topics.Add(Topics.Steel);
-        if (p != null && p.Seismic != null && p.Seismic.Enabled) { topics.Add(Topics.Seismic); topics.Add(Topics.SeismicGeo); }
+        // động đất: luôn nêu căn cứ (khi không tính động đất, thuyết minh ghi lý do không xét theo TCVN 9386-1:2025 / QCVN 02:2022/BXD)
+        topics.Add(Topics.Seismic); topics.Add(Topics.SeismicGeo);
         var ft = p?.Foundation?.Type ?? FoundationType.Isolated;
         bool piles = ft == FoundationType.Pile || (p?.Footings.Any(f => f.Type == FoundationType.Pile) ?? false);
         bool shallow = ft != FoundationType.Pile || (p?.Footings.Any(f => f.Type != null && f.Type != FoundationType.Pile) ?? false);
