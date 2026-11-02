@@ -184,10 +184,18 @@ public static class PileCapDesigner
         double bc = DesignUtil.ColumnDimAlong(p, col, Vec3.UnitY);
         var loads = FoundationUtil.Loads(r, n.Id, combos);
         if (loads.Count == 0) throw new InvalidOperationException("không có phản lực tại nút " + n.Id);
-        if (!(fs.PileCapacity > 0)) throw new InvalidOperationException("chưa khai báo sức chịu tải cọc [P] > 0");
+        // [P] và chiều dài cọc theo SPT hố khoan gần nhất (GeotechCalc.PileCapacity) khi PileCapacityFromBorehole
+        PileCapacityResult geo = null;
+        if (fs.PileCapacityFromBorehole)
+        {
+            var bh = GeotechCalc.SelectBorehole(p, n.X, n.Y);
+            if (bh != null) geo = GeotechCalc.PileCapacity(p, bh, fs);
+        }
+        if (geo == null && !(fs.PileCapacity > 0)) throw new InvalidOperationException("chưa khai báo sức chịu tải cọc [P] > 0");
 
         double d = Math.Max(fs.PileSize, 0.10);
-        double P = fs.PileCapacity, Pt = Math.Max(fs.PileTension, 0);
+        double P = geo != null ? Math.Floor(geo.Allowable) : fs.PileCapacity, Pt = Math.Max(fs.PileTension, 0);
+        if (!(P > 0)) throw new InvalidOperationException("sức chịu tải cọc tính từ hố khoan [P] ≤ 0");
         double edge = Math.Max(fs.CapEdge, 0.05);
         double s = RcSection.CeilTo(Math.Max(fs.PileSpacingFactor, 1.5) * d, 0.05);
         double embed = Math.Clamp(fs.PileEmbed, 0, 0.5);
@@ -201,9 +209,14 @@ public static class PileCapDesigner
         var dsn = new PileCapDesign
         {
             NodeIds = new List<int> { n.Id }, X = n.X, Y = n.Y, ColumnB = bc, ColumnH = hc, Depth = Df, Story = "Móng",
-            PileSize = d, PileRound = fs.PileRound, PileCapacity = P, PileLength = fs.PileLength, Spacing = s
+            PileSize = d, PileRound = fs.PileRound, PileCapacity = P, PileLength = geo != null ? Math.Round(geo.Length, 2) : fs.PileLength, Spacing = s
         };
         dsn.Locations.Add((n.X, n.Y));
+        if (geo != null)
+            dsn.Messages.Add("[P] theo SPT hố khoan " + geo.Borehole + " (TCVN 10304:2014 G.3.2): mũi cọc " + DesignUtil.F(geo.TipDepth, "0.0#") + " m, L = "
+                             + DesignUtil.F(geo.Length, "0.0#") + " m, Rc,u = " + DesignUtil.F(geo.Rcu, "0") + " kN, [P]đn = " + DesignUtil.F(geo.Pdn, "0")
+                             + " kN, Pvl = " + DesignUtil.F(geo.Pvl, "0") + " kN → [P] = " + DesignUtil.F(P, "0") + " kN");
+        else if (fs.PileCapacityFromBorehole) dsn.Messages.Add("Chưa có hố khoan – dùng [P] nhập tay = " + DesignUtil.F(P, "0") + " kN");
         double Nmax = loads.Max(l => l.N);
         if (Nmax <= 0) dsn.Messages.Add("Chân cột chịu kéo ở mọi tổ hợp – kiểm tra sức chịu nhổ của cọc");
         else if (loads.Any(l => l.N <= 0)) dsn.Messages.Add("Có tổ hợp chân cột chịu nhổ – kiểm tra sức chịu nhổ của cọc");

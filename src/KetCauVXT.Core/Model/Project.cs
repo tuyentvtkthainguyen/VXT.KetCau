@@ -34,15 +34,25 @@ public class ConcreteDesignSettings
     public double BeamDeflectionLimit { get; set; } = 250;
 }
 
-/// <summary>Thông số nền đất cho móng đơn trên nền thiên nhiên (TCVN 9362:2012).</summary>
+/// <summary>Thông số nền đất cho móng đơn trên nền thiên nhiên (TCVN 9362:2012).
+/// Mặc định = "nền đất tốt giả định": sét pha dẻo cứng γ = 19 kN/m³, φ = 16°, c = 25 kPa, E = 10 MPa (SoilPresets.GoodSoil).</summary>
 public class SoilSettings
 {
     /// <summary>Góc ma sát trong φ (độ)</summary>
     public double Phi { get; set; } = 16;
     /// <summary>Lực dính c, kN/m²</summary>
-    public double C { get; set; } = 15;
+    public double C { get; set; } = 25;
     /// <summary>Trọng lượng riêng đất dưới đáy móng, kN/m³</summary>
-    public double Gamma { get; set; } = 18.5;
+    public double Gamma { get; set; } = 19;
+    /// <summary>Mô đun biến dạng nền dưới đáy móng E (MPa) – dùng ước tính độ lún khi chưa có hố khoan</summary>
+    public double E { get; set; } = 10;
+    /// <summary>true = thiết kế móng lấy chỉ tiêu nền từ hố khoan (Project.Boreholes)</summary>
+    public bool UseBorehole { get; set; }
+    /// <summary>Tên hố khoan áp dụng; "" = hố khoan gần chân cột nhất</summary>
+    public string Borehole { get; set; } = "";
+    /// <summary>true = khi chưa dùng hố khoan, coi nền là "nền đất tốt giả định" (chỉ tiêu nhập ở trên, mặc định sét pha dẻo cứng);
+    /// false = chưa có cơ sở địa chất – gợi ý phương án móng chỉ mang tính tham khảo, cần khảo sát.</summary>
+    public bool AssumeGoodSoil { get; set; } = true;
     /// <summary>Trọng lượng riêng đất trên đáy móng, kN/m³</summary>
     public double GammaAbove { get; set; } = 18.0;
     /// <summary>Độ sâu chôn móng Df tính từ cốt tự nhiên, m</summary>
@@ -77,6 +87,10 @@ public class Project
 {
     public string Name { get; set; } = "Công trình mới";
     public string Location { get; set; } = "";
+    /// <summary>Tỉnh/thành phố nơi xây dựng (tên sau 01/7/2025) – để tra vùng gió, agR</summary>
+    public string LocationProvince { get; set; } = "";
+    /// <summary>Xã/phường (hoặc huyện cũ) nơi xây dựng</summary>
+    public string LocationName { get; set; } = "";
     public string Owner { get; set; } = "";
     public string Designer { get; set; } = "";
     public string Version { get; set; } = "1.0";
@@ -117,6 +131,8 @@ public class Project
     public ConcreteDesignSettings Concrete { get; set; } = new();
     public SteelDesignSettings Steel { get; set; } = new();
     public SoilSettings Soil { get; set; } = new();
+    /// <summary>Hố khoan khảo sát địa chất (Model/Geotech.cs)</summary>
+    public List<Borehole> Boreholes { get; set; } = new();
 
     // ------------------------------------------------------------------
     // Truy vấn

@@ -95,6 +95,8 @@ public class WindSettings
     public bool Enabled { get; set; } = true;
     /// <summary>Áp lực gió cơ sở W0 (kN/m²) của vùng áp lực gió – lấy theo phụ lục TCVN 2737:2023 / QCVN 02:2022 cho địa danh.</summary>
     public double W0 { get; set; } = 0.95;
+    /// <summary>Vùng áp lực gió I…V theo QCVN 02:2022/BXD ("" = nhập W0 trực tiếp). W0 vẫn là giá trị dùng tính toán.</summary>
+    public string Zone { get; set; } = "";
     /// <summary>Dạng địa hình A, B, C</summary>
     public string Terrain { get; set; } = "B";
     /// <summary>Hệ số khí động tổng (đón gió + hút gió), mặc định 0.8 + 0.6 = 1.4</summary>

@@ -17,6 +17,8 @@ internal sealed class FoundationDialog : Window
     private readonly TextBox _tPileSize, _tPileLen, _tCap, _tTension, _tSpacing, _tEdge, _tEmbed, _tCapH;
     private readonly TextBox _tRib, _tK, _tOver;
     private readonly GroupBox _gPile, _gStrip;
+    private readonly CheckBox _chkGeo, _chkBored;
+    private readonly TextBox _tTip, _tFs;
 
     /// <summary>true = người dùng bấm "Thiết kế móng" (chạy thiết kế sau khi đóng)</summary>
     public bool RunDesign { get; private set; }
@@ -39,6 +41,10 @@ internal sealed class FoundationDialog : Window
         _tEdge = Box(f.CapEdge * 1000, "0");
         _tEmbed = Box(f.PileEmbed * 1000, "0");
         _tCapH = Box(f.CapMinHeight * 1000, "0");
+        _chkGeo = new CheckBox { Content = "Tính [P] và chiều dài cọc từ hố khoan (SPT – TCVN 10304:2014 G.3.2)", IsChecked = f.PileCapacityFromBorehole, VerticalAlignment = VerticalAlignment.Center };
+        _chkBored = new CheckBox { Content = "Cọc khoan nhồi (qb = 150·Np; bỏ chọn = cọc ép / đóng, qb = 300·Np)", IsChecked = f.PileBored, VerticalAlignment = VerticalAlignment.Center };
+        _tTip = Box(f.PileTipDepth, "0.##");
+        _tFs = Box(f.PileSafetyFactor, "0.##");
         _cbStripDir = new ComboBox { ItemsSource = StripDirNames, SelectedIndex = Math.Clamp(f.StripDirection, 0, 3), Width = 160 };
         _tRib = Box(f.StripRibWidth * 1000, "0");
         _tK = Box(f.SubgradeModulus, "0");
@@ -59,6 +65,12 @@ internal sealed class FoundationDialog : Window
         pile.Children.Add(Line("Đoạn cọc ngàm vào đài (mm)", _tEmbed));
         pile.Children.Add(Line("Chiều cao đài tối thiểu (mm)", _tCapH));
         pile.Children.Add(DialogUi.Hint("[P] lấy theo thí nghiệm nén tĩnh hoặc tính theo TCVN 10304:2014 (giá trị nhỏ hơn giữa vật liệu và đất nền)."));
+        pile.Children.Add(_chkGeo);
+        pile.Children.Add(_chkBored);
+        pile.Children.Add(Line("Độ sâu mũi cọc từ mặt đất (m, 0 = tự chọn)", _tTip));
+        pile.Children.Add(Line("Hệ số an toàn FS ([P]đn = Rc,u/FS)", _tFs));
+        pile.Children.Add(DialogUi.Hint("Khi tính từ hố khoan: mỗi chân cột dùng hố khoan gần nhất (tab 'Địa chất'); đầu cọc tại đáy đài Df; mũi tự chọn = mặt lớp đầu tiên có N ≥ 30 (đất rời) / N ≥ 20 (đất dính) + 3d, ≤ 40 m; " +
+                                        "[P] = min(Rc,u/FS; Pvl), Pvl = Rb·Ab + Rsc·As (B25, As mặc định 4Ø16 khi d ≤ 300 mm, 6Ø18 khi lớn hơn). FS là hệ số an toàn tổng thể, tương đương γk·γn/γ0 của TCVN 10304:2014."));
         _gPile = new GroupBox { Header = "Móng cọc", Content = pile, Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(4) };
         root.Children.Add(_gPile);
 
@@ -125,6 +137,8 @@ internal sealed class FoundationDialog : Window
         double edge = Get(_tEdge, 50, 1000, "Mép đài (mm)");
         double emb = Get(_tEmbed, 0, 1500, "Ngàm cọc (mm)");
         double capH = Get(_tCapH, 300, 3000, "Chiều cao đài (mm)");
+        double tip = Get(_tTip, 0, 80, "Độ sâu mũi cọc (m)");
+        double fsf = Get(_tFs, 1.2, 5, "Hệ số an toàn FS");
         double rib = Get(_tRib, 150, 1500, "Bề rộng sườn (mm)");
         double k = Get(_tK, 0, 1e7, "Hệ số nền (kN/m³)");
         double over = Get(_tOver, 0, 3, "Độ vươn đầu dải (m)");
@@ -135,6 +149,8 @@ internal sealed class FoundationDialog : Window
         }
         _f.Type = (FoundationType)Math.Clamp(_cbType.SelectedIndex, 0, 2);
         _f.PileRound = _cbPileShape.SelectedIndex == 1;
+        _f.PileCapacityFromBorehole = _chkGeo.IsChecked == true; _f.PileBored = _chkBored.IsChecked == true;
+        _f.PileTipDepth = tip; _f.PileSafetyFactor = fsf;
         _f.PileSize = size / 1000; _f.PileLength = len; _f.PileCapacity = cap; _f.PileTension = ten;
         _f.PileSpacingFactor = sp; _f.CapEdge = edge / 1000; _f.PileEmbed = emb / 1000; _f.CapMinHeight = capH / 1000;
         _f.StripDirection = Math.Clamp(_cbStripDir.SelectedIndex, 0, 3);

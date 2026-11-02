@@ -48,6 +48,7 @@ public partial class MainWindow : Window
     {
         cbTerrain.ItemsSource = new[] { "A", "B", "C" };
         cbSeisSoil.ItemsSource = new[] { "A", "B", "C", "D", "E" };
+        InitLocationUi();
         foreach (var cb in new[] { cbConcCol, cbConcBeam, cbConcSlab, cbConcFoot }) cb.ItemsSource = Model.Material.ConcreteClasses;
         foreach (var cb in new[] { cbRebarMain, cbRebarStir }) cb.ItemsSource = Model.Material.RebarGrades;
 
@@ -80,6 +81,7 @@ public partial class MainWindow : Window
         else if (ctrl && e.Key == Key.O) { MnuOpen_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (ctrl && e.Key == Key.S) { MnuSave_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.F5) { MnuRun_Click(this, new RoutedEventArgs()); e.Handled = true; }
+        else if (e.Key == Key.F1) { ShowAppendix(); e.Handled = true; }   // MainWindow.Help.cs
         else if (HandlePlanEditKey(e.Key, ctrl)) e.Handled = true; // Delete / Esc / Ctrl+Z – MainWindow.Edit.cs
     }
 
@@ -283,12 +285,14 @@ public partial class MainWindow : Window
 
             chkWind.IsChecked = _p.Wind.Enabled; txtW0.Text = F(_p.Wind.W0); cbTerrain.SelectedItem = _p.Wind.Terrain; txtCp.Text = F(_p.Wind.Cp);
             chkSeismic.IsChecked = _p.Seismic.Enabled; txtAgR.Text = F(_p.Seismic.AgR); cbSeisSoil.SelectedItem = _p.Seismic.Soil; txtQ.Text = F(_p.Seismic.Q);
+            LoadLocationUi();
             cbConcCol.SelectedItem = _p.Concrete.ConcreteColumn; cbConcBeam.SelectedItem = _p.Concrete.ConcreteBeam;
             cbConcSlab.SelectedItem = _p.Concrete.ConcreteSlab; cbConcFoot.SelectedItem = _p.Concrete.ConcreteFooting;
             cbRebarMain.SelectedItem = _p.Concrete.RebarMain; cbRebarStir.SelectedItem = _p.Concrete.RebarStirrup;
             txtPhi.Text = F(_p.Soil.Phi); txtC.Text = F(_p.Soil.C); txtGamma.Text = F(_p.Soil.Gamma);
             txtDepth.Text = F(_p.Soil.Depth); txtROverride.Text = F(_p.Soil.ROverride);
             RefreshSectionCombos();
+            LoadGeoUi();   // tab Địa chất – MainWindow.Geotech.cs
         }
         finally { _loadingUi = false; }
     }
@@ -316,6 +320,7 @@ public partial class MainWindow : Window
         _p.Wind.Enabled = chkWind.IsChecked == true;
         _p.Wind.W0 = Num(txtW0, _p.Wind.W0);
         _p.Wind.Terrain = cbTerrain.SelectedItem as string ?? "B";
+        ApplyLocationUi();
         _p.Wind.Cp = Num(txtCp, _p.Wind.Cp);
         _p.Seismic.Enabled = chkSeismic.IsChecked == true;
         _p.Seismic.AgR = Num(txtAgR, _p.Seismic.AgR);

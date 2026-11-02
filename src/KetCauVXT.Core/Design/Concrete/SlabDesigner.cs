@@ -9,7 +9,7 @@ namespace KetCauVXT.Design.Concrete;
 /// võng bằng nhau tại giữa ô, bỏ qua giảm mô men do xoắn – thiên về an toàn.</summary>
 public static class SlabDesigner
 {
-    /// <summary>Hệ số độ cứng khi nứt dùng ước lượng độ võng: B = 0,3·Eb·t³/12 (gần đúng).</summary>
+    /// <summary>Hệ số độ cứng khi nứt dùng ước lượng độ võng: tham khảo; độ võng dải sàn tính theo độ cứng tiết diện có vết nứt.</summary>
     public const double CrackedStiffnessFactor = 0.3;
     /// <summary>Hàm lượng thép tối thiểu sàn (%)</summary>
     public const double MinRatioSlab = 0.10;
@@ -187,7 +187,7 @@ public static class SlabDesigner
         return d;
     }
 
-    /// <summary>Hệ số độ võng giữa dải: 5 (khớp–khớp), 2 (ngàm–khớp), 1 (ngàm–ngàm), từ f = c·q·l⁴/(384·EI).</summary>
+    /// <summary>Hệ số độ võng giữa dải: 5 (khớp–khớp), 2,08 (ngàm–khớp), 1 (ngàm–ngàm), từ f = c·q·l⁴/(384·EI).</summary>
     private static double DeflCoef(int fixedEnds) => fixedEnds >= 2 ? 1.0 : fixedEnds == 1 ? 2.08 : 5.0;
 
     /// <summary>Mô men dải bản: khớp–khớp M = qL²/8; ngàm–khớp Mnh = 9qL²/128, Mg = −qL²/8; ngàm–ngàm Mnh = qL²/24, Mg = −qL²/12.</summary>

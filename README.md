@@ -132,13 +132,13 @@ Nguyên nhân sai lệch thường gặp khi so với ETABS: ETABS mặc định
 
 | Hạng mục | Cơ sở | Giả thiết / giới hạn của phiên bản 1.0 |
 |---|---|---|
-| Tải trọng | TCVN 2737:2023 | γf theo trường hợp tải (người dùng sửa). Gió tĩnh: W = W0·k(z)·c, k(z) dạng hàm mũ theo địa hình A/B/C – **cần đối chiếu W0 và bảng k(z) của địa danh theo QCVN 02:2022 / TCVN 2737:2023**. Chưa tính thành phần động của gió (nhà ≤ 40 m thường không cần). |
+| Tải trọng | TCVN 2737:2023 | γf theo trường hợp tải (người dùng sửa; mặc định TT 1,1, hoàn thiện 1,3, hoạt tải 1,3, gió 1,2). Gió tĩnh: W = W0·k(z)·c, k(z) dạng hàm mũ theo địa hình A/B/C. W0 chọn theo **vùng gió I–V (QCVN 02:2022 Bảng 5.1)** qua danh mục tỉnh/địa danh; bảng phân vùng chi tiết đến xã/phường có thể nhập từ CSV/XLSX – **cần đối chiếu với QCVN 02:2022 cho địa danh cụ thể**. Chưa tính thành phần động của gió (nhà ≤ 40 m thường không cần). |
 | Động đất | TCVN 9386:2012 | Phương pháp tĩnh lực ngang tương đương, T1 = Ct·H^¾, phổ loại 1. Chưa xét độ lệch tâm ngẫu nhiên. |
 | Phân tích | – | Tuyến tính bậc nhất (chưa P-Delta). Sàn tuyệt đối cứng trong mặt phẳng, không tham gia chịu uốn của khung; tải sàn dồn 45°. |
 | Dầm | TCVN 5574:2018 | Tiết diện chữ nhật (chưa kể cánh T – thiên về an toàn); cắt với c = 2h0; võng dài hạn với độ cứng B = Eb/(1+φb,cr)·Ieff (kể nứt theo thép thực bố trí, φb,cr = 2,5), dầm liên tục f = 5/48·[Mg − 0,1(Mt+Mp)]·L²/B. |
 | Cột | TCVN 5574:2018 | Cốt thép đối xứng, lệch tâm xiên bằng đường bao tải trọng (load contour), uốn dọc theo hệ số η. |
 | Sàn | – | Ô chữ nhật, phương pháp Marcus theo điều kiện biên, bỏ qua giảm mô men xoắn. Võng dài hạn kể nứt + từ biến, hệ số liên kết cạnh. |
-| Móng | TCVN 9362:2012, TCVN 5574:2018 | Móng đơn trên nền thiên nhiên: sức chịu tải R, áp lực đáy móng, chọc thủng, uốn. **Chưa tính lún**, chưa có móng cọc / móng băng (dự kiến phiên bản sau, TCVN 10304:2014). |
+| Móng | TCVN 9362:2012, TCVN 5574:2018 | Móng đơn, móng băng trên nền thiên nhiên (R, áp lực đáy, chọc thủng, uốn, lún cộng lớp phân tố); móng cọc (TCVN 10304:2014, sức chịu tải theo SPT/chỉ tiêu cơ lý). Địa chất: hố khoan khảo sát hoặc nền mặc định “đất tốt”; chương trình gợi ý phương án móng. Xem Phụ lục tính toán (menu Trợ giúp). |
 | Thép tiền chế | TCVN 5575 | Bền, ổn định trong/ngoài mặt phẳng (φ theo độ mảnh quy ước), độ mảnh [λ] = 180 − 60α, ổn định cục bộ bụng theo α = (σ−σ1)/σ (TCVN 5575:2012 7.6.2), bụng mảnh kể tiết diện hữu hiệu, võng kèo, chuyển vị đỉnh cột. **Cần đối chiếu công thức với bản TCVN 5575:2024** trước khi dùng cho hồ sơ chính thức. Chưa thiết kế liên kết bu lông, bản mã. |
 
 Chương trình là công cụ hỗ trợ; kỹ sư chịu trách nhiệm kiểm tra kết quả, đặc biệt các hệ số tải trọng và điều kiện địa chất của từng công trình.

@@ -248,8 +248,8 @@ public static class ImportGeometry
     public static void EnsurePatterns(Project p)
     {
         if (p.Pattern("TT") == null) p.Patterns.Add(new LoadPattern { Name = "TT", Type = LoadType.Dead, SelfWeight = 1, Gamma = 1.1 });
-        if (p.Pattern("HTHT") == null) p.Patterns.Add(new LoadPattern { Name = "HTHT", Type = LoadType.SuperDead, Gamma = 1.2 });
-        if (p.Pattern("HT") == null) p.Patterns.Add(new LoadPattern { Name = "HT", Type = LoadType.Live, Gamma = 1.2 });
+        if (p.Pattern("HTHT") == null) p.Patterns.Add(new LoadPattern { Name = "HTHT", Type = LoadType.SuperDead, Gamma = 1.3 });
+        if (p.Pattern("HT") == null) p.Patterns.Add(new LoadPattern { Name = "HT", Type = LoadType.Live, Gamma = 1.3 });
     }
 
     /// <summary>Thêm thanh nếu chưa có thanh nào nối đúng 2 nút này.</summary>

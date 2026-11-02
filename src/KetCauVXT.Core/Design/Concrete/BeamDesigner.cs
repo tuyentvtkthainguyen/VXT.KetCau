@@ -8,7 +8,7 @@ namespace KetCauVXT.Design.Concrete;
 public static class BeamDesigner
 {
     private const double Tol = 1e-3;
-    /// <summary>Hệ số độ cứng khi nứt dùng ước lượng độ võng: B = 0,3·Eb·I (gần đúng, thiên về an toàn so với 8.2.3 TCVN 5574:2018).</summary>
+    /// <summary>Hệ số độ cứng khi nứt dùng ước lượng độ võng: hiện chỉ dùng để tham khảo – độ võng tính theo độ cứng chống uốn của tiết diện có vết nứt (8.2.3 TCVN 5574:2018).</summary>
     public const double CrackedStiffnessFactor = 0.3;
     /// <summary>Chiều dài cây thép thương phẩm, m – vượt quá phải nối chồng.</summary>
     public const double StockLength = 11.7;

@@ -62,6 +62,7 @@ public partial class MainWindow
         var xs = new List<double>(); var ys = new List<double>();
         foreach (var n in _p.Nodes) { xs.Add(n.X); ys.Add(n.Y); }
         foreach (var g in _p.Grids) { if (g.Dir == GridDir.X) xs.Add(g.Coord); else ys.Add(g.Coord); }
+        if (_p.Boreholes != null) foreach (var bh in _p.Boreholes) { xs.Add(bh.X); ys.Add(bh.Y); }
         if (_design != null)
         {
             foreach (var f in _design.Footings) { xs.Add(f.X - f.L / 2); xs.Add(f.X + f.L / 2); ys.Add(f.Y - f.B / 2); ys.Add(f.Y + f.B / 2); }
@@ -159,6 +160,7 @@ public partial class MainWindow
             if (!covered.Contains(n.Id)) _fndHits.Add((new Rect(c.X - rw / 2 - 3, c.Y - rh / 2 - 3, rw + 6, rh + 6), 0, col, null));
             if (labels && nAll == 0) CText(fndCanvas, col.Label, new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 12), Brushes.Black, 9, false);
         }
+        DrawBoreholeMarkers();   // hố khoan – MainWindow.Geotech.cs
 
         int bad = foots.Count(f => !f.Ok) + badOther;
         CText(fndCanvas, $"Mặt bằng móng ({FoundationTypeName(_p.Foundation.Type).ToLowerInvariant()}) – cao độ chân cột {Elev(_p.BaseElevation)}" +

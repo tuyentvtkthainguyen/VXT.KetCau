@@ -47,6 +47,7 @@ public static class ExcelReport
             foreach (var m in s.Warnings) w.AddRow("Thiết kế", m);
             w.SetColumnWidths(14, 120);
         }
+        AppendixReport.AddSheet(p, x.AddSheet("Phu luc"));   // Report/AppendixReport.cs
         x.Save(path);
     }
 

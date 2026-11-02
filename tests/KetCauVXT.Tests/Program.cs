@@ -467,8 +467,17 @@ Console.WriteLine("15. Tường khai báo theo vị trí (110/220, trát/không 
 Console.WriteLine("16. Móng cọc, móng băng, móng đơn (thiết kế trực tiếp)");
 FoundationTests.Run(Check);
 
+Console.WriteLine("18. Địa danh → vùng gió, W0 (QCVN 02:2022), nhập bảng tra");
+LocationTests.Run(Check, Path.Combine(Path.GetTempPath(), "kcvxt_loc"));
+
 Console.WriteLine("17. Dàn trang bản vẽ (sheet), xuất DXF theo tờ");
 SheetTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
+Console.WriteLine("19. Địa chất: hố khoan, nền mặc định, chỉ tiêu gợi ý, lún, sức chịu tải cọc theo SPT, gợi ý phương án móng");
+GeoTests.Run(Check);
+
+Console.WriteLine("20. Phụ lục tính toán (công thức, hệ số, giải thích) + xuất Word");
+AppendixTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

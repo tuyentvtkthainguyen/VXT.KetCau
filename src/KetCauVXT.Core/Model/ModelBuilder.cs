@@ -26,8 +26,8 @@ public static class ModelBuilder
 
         // Trường hợp tải mặc định – γf theo TCVN 2737:2023 (người dùng điều chỉnh theo loại vật liệu/hoạt tải)
         p.Patterns.Add(new LoadPattern { Name = "TT", Type = LoadType.Dead, SelfWeight = 1, Gamma = 1.1 });
-        p.Patterns.Add(new LoadPattern { Name = "HTHT", Type = LoadType.SuperDead, Gamma = 1.2 });
-        p.Patterns.Add(new LoadPattern { Name = "HT", Type = LoadType.Live, Gamma = 1.2 });
+        p.Patterns.Add(new LoadPattern { Name = "HTHT", Type = LoadType.SuperDead, Gamma = 1.3 });  // TCVN 2737: hoàn thiện tại công trường 1,3; hoạt tải <2,0 kN/m² lấy 1,3
+        p.Patterns.Add(new LoadPattern { Name = "HT", Type = LoadType.Live, Gamma = 1.3 });
         p.Patterns.Add(new LoadPattern { Name = "GX", Type = LoadType.Wind, Gamma = 1.2 });
         p.Patterns.Add(new LoadPattern { Name = "GY", Type = LoadType.Wind, Gamma = 1.2 });
         return p;

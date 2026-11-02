@@ -79,7 +79,9 @@ public static class FootingDesigner
 
     private static FootingDesign DesignOne(Project p, AnalysisResults r, Node n, FrameElement col, List<string> combos)
     {
-        var cs = p.Concrete; var soil = p.Soil;
+        var cs = p.Concrete;
+        // nền: hố khoan gần nhất khi Soil.UseBorehole, ngược lại p.Soil (GeotechCalc.SoilFor)
+        var soil = KetCauVXT.Design.Foundation.GeotechCalc.SoilFor(p, n.X, n.Y, out var geoBh);
         var sec = p.Section(col.Section);
         var conc = DesignUtil.ConcreteOf(p, cs.ConcreteFooting, cs.ConcreteFooting);
         var main = p.Material(cs.RebarMain);
@@ -233,8 +235,24 @@ public static class FootingDesigner
             Length = DesignUtil.R10(lenB + 2 * hookB), Shape = "U", Start = c, End = B - c,
             Segments = new List<double> { DesignUtil.Mm(hookB), DesignUtil.Mm(lenB), DesignUtil.Mm(hookB) }
         });
+        if (geoBh != null) AddSettlementCheck(d, geoBh, soil, L, B, ptb);
         RebarNumbering.Renumber(d.Bars);
         return d;
+    }
+
+    /// <summary>Kiểm tra lún khi nền lấy theo hố khoan: S = GeotechCalc.Settlement(hố khoan, L, B, Df, ptb) ≤ Sgh = 8 cm
+    /// (thêm vào cuối danh sách Checks; không thêm khi không dùng hố khoan).</summary>
+    private static void AddSettlementCheck(FootingDesign d, Borehole bh, SoilSettings soil, double L, double B, double ptb)
+    {
+        var st = KetCauVXT.Design.Foundation.GeotechCalc.Settlement(bh, L, B, soil.Depth, ptb);
+        d.Checks.Add(new CheckItem
+        {
+            Name = "Độ lún S ≤ Sgh", Demand = st.S * 100, Capacity = st.Limit * 100, Unit = "cm",
+            Note = "hố khoan " + bh.Name + ", Hc = " + DesignUtil.F(st.Hc, "0.0") + " m"
+        });
+        d.Messages.Add("Nền theo hố khoan " + bh.Name + ": φ = " + DesignUtil.F(soil.Phi, "0.#") + "°, c = " + DesignUtil.F(soil.C, "0.#") + " kPa, γ = " + DesignUtil.F(soil.Gamma, "0.##") + " kN/m³");
+        var weak = KetCauVXT.Design.Foundation.GeotechCalc.WeakLayerBelow(bh, soil.Depth, Math.Min(L, B));
+        if (weak != null) d.Messages.Add("Cảnh báo: lớp đất yếu \"" + weak.Name + "\" ở độ sâu " + DesignUtil.F(weak.Top, "0.0") + " m nằm trong phạm vi 2B dưới đáy móng – xem xét móng cọc");
     }
 
     /// <summary>Diện tích thép trên 1 m: As = M/(0,9·Rs·h0) (gần đúng cánh tay đòn z = 0,9h0).</summary>

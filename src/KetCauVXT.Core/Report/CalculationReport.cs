@@ -34,12 +34,14 @@ public static class CalculationReport
         BeamsSection(p, s, d, sec++);
         ColumnsSection(p, s, d, sec++);
         SlabsSection(p, s, d, sec++);
+        if (p.Boreholes != null && p.Boreholes.Count > 0) GeotechReport.Section(p, s, d, sec++);   // Report/GeotechReport.cs
         if (s.Footings.Count > 0 || (s.PileCaps.Count == 0 && s.StripFootings.Count == 0)) FootingsSection(p, s, d, sec++);
         if (s.PileCaps.Count > 0) PileCapsSection(p, s, d, sec++);
         if (s.StripFootings.Count > 0) StripFootingsSection(p, s, d, sec++);
         if (s.Steel.Count > 0) SteelSection(p, s, d, sec++);
         Conclusion(s, d, sec++);
         Appendix(r, s, d);
+        AppendixReport.Write(p, d);   // PHỤ LỤC TÍNH TOÁN – Report/AppendixReport.cs
         d.Save(path);
     }
 

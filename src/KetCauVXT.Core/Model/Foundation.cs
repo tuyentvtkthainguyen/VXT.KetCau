@@ -27,6 +27,16 @@ public class FoundationSettings
     public double PileEmbed { get; set; } = 0.10;
     /// <summary>Chiều cao đài tối thiểu (m)</summary>
     public double CapMinHeight { get; set; } = 0.6;
+    /// <summary>true = [P] và chiều dài cọc tính từ hố khoan theo SPT (TCVN 10304:2014 G.3.2, GeotechCalc.PileCapacity) cho từng chân cột (hố khoan gần nhất)</summary>
+    public bool PileCapacityFromBorehole { get; set; }
+    /// <summary>Độ sâu mũi cọc tính từ mặt đất (m); 0 = tự chọn: mặt lớp đầu tiên có N ≥ 30 (đất rời) hoặc N ≥ 20 (đất dính) + 3d, ≤ 40 m</summary>
+    public double PileTipDepth { get; set; }
+    /// <summary>Hệ số an toàn tổng thể FS: [P]đn = Rc,u/FS (tương đương γk·γn/γ0 của TCVN 10304:2014)</summary>
+    public double PileSafetyFactor { get; set; } = 2.5;
+    /// <summary>true = cọc khoan nhồi (qb = 150·Np), false = cọc đóng / ép (qb = 300·Np)</summary>
+    public bool PileBored { get; set; }
+    /// <summary>Diện tích thép dọc cọc As (m²) dùng tính Pvl; 0 = tự lấy 4Ø16 (d ≤ 300 mm) hoặc 6Ø18</summary>
+    public double PileRebarArea { get; set; }
 
     // ---- móng băng ----
     /// <summary>Phương dải móng băng: 0 = tự chọn (theo phương có nhiều cột thẳng hàng), 1 = dọc trục X, 2 = dọc trục Y, 3 = giao thoa 2 phương</summary>

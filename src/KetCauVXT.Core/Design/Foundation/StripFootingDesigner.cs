@@ -242,7 +242,9 @@ public static class StripFootingDesigner
     private static StripFootingDesign DesignOne(Project p, AnalysisResults r, bool alongX, List<(Node Node, FrameElement Column)> members,
         Dictionary<int, int> count, List<string> uls, List<string> sls, FoundationSettings fs)
     {
-        var cs = p.Concrete; var soil = p.Soil;
+        var cs = p.Concrete;
+        // nền: hố khoan gần tâm dải khi Soil.UseBorehole, ngược lại p.Soil (GeotechCalc.SoilFor)
+        var soil = GeotechCalc.SoilFor(p, members.Average(m => m.Node.X), members.Average(m => m.Node.Y), out var geoBh);
         var conc = DesignUtil.ConcreteOf(p, cs.ConcreteFooting, cs.ConcreteFooting);
         var main = p.Material(cs.RebarMain);
         var stirMat = p.Material(cs.RebarStirrup);
@@ -516,6 +518,19 @@ public static class StripFootingDesigner
             AddFlangeBars(d, sc.Dia, sc.Spacing, cover);
         }
         AddRibBars(d, bot, top, cover);
+        if (geoBh != null)
+        {
+            // lún móng băng L × B, áp lực trung bình tiêu chuẩn ptb (GeotechCalc.Settlement)
+            var st = GeotechCalc.Settlement(geoBh, Ls, B, Df, pavg);
+            d.Checks.Add(new CheckItem
+            {
+                Name = "Độ lún S ≤ Sgh", Demand = st.S * 100, Capacity = st.Limit * 100, Unit = "cm",
+                Note = "hố khoan " + geoBh.Name + ", Hc = " + DesignUtil.F(st.Hc, "0.0") + " m"
+            });
+            d.Messages.Add("Nền theo hố khoan " + geoBh.Name + ": φ = " + DesignUtil.F(soil.Phi, "0.#") + "°, c = " + DesignUtil.F(soil.C, "0.#") + " kPa, γ = " + DesignUtil.F(soil.Gamma, "0.##") + " kN/m³");
+            var weak = GeotechCalc.WeakLayerBelow(geoBh, Df, B);
+            if (weak != null) d.Messages.Add("Cảnh báo: lớp đất yếu \"" + weak.Name + "\" ở độ sâu " + DesignUtil.F(weak.Top, "0.0") + " m nằm trong phạm vi 2B dưới đáy móng – xem xét móng cọc");
+        }
         RebarNumbering.Renumber(d.Bars);
         return d;
     }
