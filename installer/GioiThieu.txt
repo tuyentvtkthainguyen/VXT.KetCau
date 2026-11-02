@@ -1,0 +1,11 @@
+﻿KẾT CẤU VXT – phần mềm thiết kế kết cấu nhà dân dụng (dưới 7 tầng) và khung thép tiền chế.
+
+• Phân tích khung 3D, thiết kế BTCT theo TCVN 5574:2018, tải trọng TCVN 2737:2023, móng đơn/băng/cọc, cầu thang.
+• Xuất bản vẽ DXF, thuyết minh Word, bảng tính Excel, kiểm tra chéo với ETABS/SAP2000.
+• Nhập bản vẽ kiến trúc DWG/DXF, liên kết AutoCAD (add-in tuỳ chọn ở bước sau).
+
+Yêu cầu: Windows 10/11 64-bit (không cần cài .NET).
+Nếu Kết cấu VXT đang mở: hãy LƯU công việc và đóng chương trình trước khi tiếp tục – bộ cài sẽ không tự đóng để tránh mất dữ liệu.
+Dữ liệu dự án (.kcvxt) và thiết lập cá nhân không bị xoá khi cài đè hoặc gỡ cài đặt.
+
+Kết quả tính toán cần được kỹ sư có chứng chỉ hành nghề kiểm tra trước khi sử dụng cho hồ sơ chính thức.

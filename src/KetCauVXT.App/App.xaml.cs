@@ -8,8 +8,13 @@ namespace KetCauVXT.App;
 
 public partial class App : Application
 {
+    /// <summary>Mutex báo "chương trình đang chạy" – bộ cài (Inno Setup, AppMutex) dùng để yêu cầu người dùng tự lưu và đóng
+    /// chương trình trước khi cài đè/gỡ, không đóng cưỡng bức (tránh mất dữ liệu chưa lưu).</summary>
+    private static Mutex _runningMutex;
+
     protected override void OnStartup(StartupEventArgs e)
     {
+        try { _runningMutex = new Mutex(false, "KetCauVXT_DangChay"); } catch { }
         // Số thập phân dùng dấu chấm trong toàn bộ giao diện (giống ETABS/SAP2000), tránh nhầm với dấu phẩy.
         var ci = (CultureInfo)CultureInfo.InvariantCulture.Clone();
         CultureInfo.DefaultThreadCurrentCulture = ci;

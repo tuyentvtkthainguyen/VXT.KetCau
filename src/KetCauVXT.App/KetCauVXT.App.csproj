@@ -14,8 +14,14 @@
     <AssemblyTitle>Kết cấu VXT – thiết kế kết cấu nhà dân dụng và khung thép tiền chế</AssemblyTitle>
     <Authors>Vũ Xuân Tuyến</Authors>
     <Version>1.0.0</Version>
+    <ApplicationIcon>KetCauVXT.ico</ApplicationIcon>
     <NoWarn>CS1591;CS8632</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- biểu tượng cửa sổ (Window.Icon) -->
+    <Resource Include="KetCauVXT.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../KetCauVXT.Core/KetCauVXT.Core.csproj" />
