@@ -826,6 +826,7 @@ public partial class MainWindow : Window
 
     private void RefreshResults()
     {
+        UpdateResultSourceStatus();   // "Nội lực: nhập từ ETABS (file…)" – MainWindow.ResultImport.cs
         RedrawSecondaryViews(); // biểu đồ nội lực, móng, 3D (vẽ trễ, gộp lần gọi)
         lstWarnings.ItemsSource = null;
         dgForces.ItemsSource = null;

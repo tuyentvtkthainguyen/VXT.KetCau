@@ -156,6 +156,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
 
     private static void ModelSection(Project p, AnalysisResults r, DocxWriter d, int n)
     {
+        if (r?.External != null) { ExternalResultsSection(p, r, d, n); return; }   // nội lực nhập từ ETABS/SAP/SAFE – CalculationReport.External.cs
         d.Heading($"{n}. SƠ ĐỒ TÍNH VÀ PHẦN MỀM", 1);
         d.Paragraph("Kết cấu được tính toán bằng chương trình Kết cấu VXT theo phương pháp phần tử hữu hạn (phương pháp độ cứng trực tiếp) với mô hình khung không gian:");
         d.Bullet("Cột, dầm, kèo được mô hình bằng phần tử thanh Timoshenko 12 bậc tự do (kể biến dạng cắt); giải phóng liên kết đầu thanh bằng khử tĩnh.");

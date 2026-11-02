@@ -12,7 +12,10 @@ public static partial class SlabDesigner
         ref double m1, ref double mI, ref double m2, ref double mII)
     {
         if (r == null || r.SlabMoments.Count == 0 || !r.SlabMoments.TryGetValue(slab.Id, out var byCase) || byCase.Count == 0) return;
-        var combos = r.DesignCombos();
+        // tổ hợp thiết kế của khung; nếu dải SAFE dùng tên khác → các tổ hợp TTGH I của SAFE; cuối cùng: mọi trường hợp có số liệu
+        var combos = r.DesignCombos().Where(byCase.ContainsKey).ToList();
+        if (combos.Count == 0 && r.External != null) combos = r.External.SlabDesignCases.Where(byCase.ContainsKey).ToList();
+        if (combos.Count == 0) combos = byCase.Keys.ToList();
         double xs = double.NaN, xg = double.NaN, ys = double.NaN, yg = double.NaN;
         int nx = 0, ny = 0;
         string src = "";

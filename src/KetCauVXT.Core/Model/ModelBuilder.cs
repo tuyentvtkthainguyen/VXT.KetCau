@@ -299,7 +299,8 @@ public static class ModelBuilder
                     {
                         Id = p.NextFrameId(), NodeI = onArc.n.Id, NodeJ = f.NodeJ, Kind = f.Kind, Section = f.Section, Story = f.Story,
                         Label = f.Label, DesignGroup = f.DesignGroup, Angle = f.Angle, ReleaseJ = f.ReleaseJ, UnbracedLength22 = f.UnbracedLength22,
-                        CurveMidOffset = CurvedBeam.SagittaOfPiece(arc, onArc.t, 1), CurveSegments = 0
+                        CurveMidOffset = CurvedBeam.SagittaOfPiece(arc, onArc.t, 1), CurveSegments = 0,
+                        ExternalName = f.ExternalName, ExternalStory = f.ExternalStory
                     };
                     foreach (var fl in p.FrameLoads.Where(l => l.Element == f.Id).ToList())
                     {
@@ -326,7 +327,8 @@ public static class ModelBuilder
                 var f2 = new FrameElement
                 {
                     Id = p.NextFrameId(), NodeI = mid.n.Id, NodeJ = f.NodeJ, Kind = f.Kind, Section = f.Section, Story = f.Story,
-                    Label = f.Label, DesignGroup = f.DesignGroup, Angle = f.Angle, ReleaseJ = f.ReleaseJ, UnbracedLength22 = f.UnbracedLength22
+                    Label = f.Label, DesignGroup = f.DesignGroup, Angle = f.Angle, ReleaseJ = f.ReleaseJ, UnbracedLength22 = f.UnbracedLength22,
+                    ExternalName = f.ExternalName, ExternalStory = f.ExternalStory
                 };
                 // chia lại tải trên thanh
                 double r = mid.t / L;

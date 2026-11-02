@@ -40,6 +40,7 @@
                 <MenuItem Header="Nhập mặt bằng kết cấu _DWG/DXF..." Click="MnuImportDxf_Click"/>
                 <MenuItem Header="Nhập bản vẽ _kiến trúc (triển khai kết cấu)..." Click="MnuImportArch_Click"/>
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
+                <MenuItem Header="Nhập mô hình _ETABS/SAP (.e2k/.s2k)…" Click="MnuImportCsiModel_Click"/>
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
                 <MenuItem Header="Chuẩn _layer CAD…" Click="MnuCadStandard_Click"/>
                 <MenuItem Header="Thiết lập _bản vẽ (tỷ lệ, cỡ chữ)…" Click="MnuDrawingStyle_Click"/>
@@ -60,6 +61,7 @@
             <MenuItem Header="_Phân tích">
                 <MenuItem Header="Tạo tổ hợp tải" Click="MnuCombos_Click"/>
                 <MenuItem Header="Chạy phân tích" Click="MnuRun_Click" InputGestureText="F5"/>
+                <MenuItem Header="Nhập kết quả _nội lực (ETABS/SAP/SAFE/khác)…" Click="MnuImportResults_Click"/>
             </MenuItem>
             <MenuItem Header="T_hiết kế">
                 <MenuItem Header="Thiết kế BTCT" Click="MnuDesignConcrete_Click"/>

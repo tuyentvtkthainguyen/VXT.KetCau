@@ -18,6 +18,8 @@ public class ExternalResultInfo
     public List<string> UlsCases { get; set; } = new();
     /// <summary>Trường hợp/tổ hợp TTGH II (võng, nứt, móng theo tiêu chuẩn); rỗng = theo dự án.</summary>
     public List<string> SlsCases { get; set; } = new();
+    /// <summary>Trường hợp/tổ hợp TTGH I có mô men sàn nhập (SAFE) – dùng thiết kế sàn khi tổ hợp thiết kế khung khác tên.</summary>
+    public List<string> SlabDesignCases { get; set; } = new();
     /// <summary>Tên tổ hợp bao TTGH I sinh khi nhập (vd. "BAO-ETABS") – mặc định vẽ biểu đồ.</summary>
     public string EnvelopeName { get; set; } = "";
     public int MatchedFrames { get; set; }

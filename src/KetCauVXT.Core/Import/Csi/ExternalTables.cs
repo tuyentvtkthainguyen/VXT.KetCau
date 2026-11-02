@@ -22,6 +22,10 @@ public class ExtTable
     public string Program { get; set; } = "";
     /// <summary>Loại bảng nhận diện (ResultImporter.Classify).</summary>
     public ExtTableKind Kind { get; set; }
+    /// <summary>Cột Station là vị trí tương đối 0…1 (bảng "phần mềm khác" đã ánh xạ).</summary>
+    public bool StationRelative { get; set; }
+    /// <summary>Bảng đọc từ file dạng Khoá=Giá trị (.s2k/.$2k/.$et) – bảng không nhận diện là bảng mô hình (bỏ qua).</summary>
+    public bool KeyValue { get; set; }
 
     public int RowCount => Rows.Count;
     public override string ToString() => $"{Name} ({Rows.Count} dòng)";
@@ -110,8 +114,10 @@ public static class UnitConv
     private static readonly Dictionary<string, double> OtherU = new(StringComparer.OrdinalIgnoreCase)
     {
         ["rad"] = 1, ["radians"] = 1, ["radian"] = 1, ["deg"] = Math.PI / 180, ["degrees"] = Math.PI / 180, ["degree"] = Math.PI / 180,
-        ["c"] = 1, ["f"] = 1, ["unitless"] = 1, ["sec"] = 1, ["s"] = 1, ["%"] = 1
+        ["unitless"] = 1, ["sec"] = 1, ["%"] = 1
     };
+    /// <summary>Nhiệt độ / giây: chỉ chấp nhận khi đứng riêng (tránh nhầm tên "C1", "F1001" là đơn vị).</summary>
+    private static readonly HashSet<string> Bare = new(StringComparer.OrdinalIgnoreCase) { "c", "f", "s" };
 
     public static bool IsForce(string u) => ForceU.ContainsKey((u ?? "").Trim());
     public static bool IsLength(string u) => LengthU.ContainsKey((u ?? "").Trim());
@@ -122,6 +128,7 @@ public static class UnitConv
         f = 1;
         string s = (unit ?? "").Trim().Trim('"', '(', ')', '[', ']');
         if (s.Length == 0) return false;
+        if (Bare.Contains(s)) return true;
         s = s.Replace('²', '2').Replace('³', '3').Replace('·', '-').Replace('*', '-').Replace('.', '-').Replace('×', '-');
         var parts = s.Split('/');
         if (parts.Length > 2) return false;
@@ -143,7 +150,14 @@ public static class UnitConv
             int exp = 1;
             int k = t.Length;
             while (k > 0 && char.IsDigit(t[k - 1])) k--;
-            if (k < t.Length && k > 0) { exp = int.Parse(t.Substring(k), CultureInfo.InvariantCulture); t = t.Substring(0, k); }
+            if (k == 0) return false;
+            if (k < t.Length)
+            {
+                // số mũ chỉ hợp lệ với đơn vị dài, tối đa 4 ("m2", "cm3", "m4")
+                if (t.Length - k > 1 || !int.TryParse(t.Substring(k), NumberStyles.Integer, CultureInfo.InvariantCulture, out exp) || exp < 1 || exp > 4) return false;
+                t = t.Substring(0, k);
+                if (!LengthU.ContainsKey(t)) return false;
+            }
             double b;
             if (ForceU.TryGetValue(t, out b) || LengthU.TryGetValue(t, out b) || OtherU.TryGetValue(t, out b)) f *= Math.Pow(b, exp);
             else return false;
@@ -262,7 +276,7 @@ public static class ExternalTableReader
             }
         }
         Flush();
-        foreach (var tb in res) { tb.FileForceUnit = force; tb.FileLengthUnit = length; tb.Program = program; }
+        foreach (var tb in res) { tb.FileForceUnit = force; tb.FileLengthUnit = length; tb.Program = program; tb.KeyValue = true; }
         return res;
     }
 
@@ -372,7 +386,8 @@ public static class ExternalTableReader
             if (expectUnits)
             {
                 expectUnits = false;
-                if (numeric == 0 && row.Any(c => UnitConv.TryFactor(c, out _)))
+                var cellsU = row.Where(c => !string.IsNullOrWhiteSpace(c)).ToList();
+                if (numeric == 0 && cellsU.Count > 0 && cellsU.All(c => UnitConv.TryFactor(c, out _)))
                 {
                     cur.Units = row.Select(c => (c ?? "").Trim()).ToList();
                     continue;
