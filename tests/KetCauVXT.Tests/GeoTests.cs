@@ -3,6 +3,7 @@ using KetCauVXT.Design;
 using KetCauVXT.Design.Concrete;
 using KetCauVXT.Design.Foundation;
 using KetCauVXT.Model;
+using KetCauVXT.Report;
 
 namespace KetCauVXT.Tests;
 
@@ -31,11 +32,11 @@ public static class GeoTests
 
         // ---------------- ứng suất hữu hiệu ----------------
         // γ' = γsat − 10 dưới mực nước 2 m; γsat mặc định = γ + 1
-        double s12 = 17 * 1.2, s2 = s12 + 19 * 0.8, s4 = s2 + (20 - 10) * 2.0, s9 = s4 + (17 - 10) * 5.0, s18 = s9 + (20 - 10) * 9.0;
-        check("σ'bt(1,2 m) = 17·1,2", GeotechCalc.EffectiveStress(bh, 1.2), s12, 1e-9);
-        check("σ'bt(3 m) – dưới mực nước", GeotechCalc.EffectiveStress(bh, 3.0), s2 + 10 * 1.0, 1e-9);
-        check("σ'bt(9 m)", GeotechCalc.EffectiveStress(bh, 9.0), s9, 1e-9);
-        check("σ'bt(20 m)", GeotechCalc.EffectiveStress(bh, 20.0), s18 + (21 - 10) * 2.0, 1e-9);
+        double sg12 = 17 * 1.2, sg2 = sg12 + 19 * 0.8, sg4 = sg2 + (20 - 10) * 2.0, sg9 = sg4 + (17 - 10) * 5.0, sg18 = sg9 + (20 - 10) * 9.0;
+        check("σ'bt(1,2 m) = 17·1,2", GeotechCalc.EffectiveStress(bh, 1.2), sg12, 1e-9);
+        check("σ'bt(3 m) – dưới mực nước", GeotechCalc.EffectiveStress(bh, 3.0), sg2 + 10 * 1.0, 1e-9);
+        check("σ'bt(9 m)", GeotechCalc.EffectiveStress(bh, 9.0), sg9, 1e-9);
+        check("σ'bt(20 m)", GeotechCalc.EffectiveStress(bh, 20.0), sg18 + (21 - 10) * 2.0, 1e-9);
         check("Lớp tại 4,0 m (ranh giới) = bùn sét", GeotechCalc.LayerAt(bh, 4.0)?.Name == "Bùn sét" ? 1 : 0, 1, 0);
         check("Lớp dưới đáy hố khoan = lớp cuối", GeotechCalc.LayerAt(bh, 35)?.Name == "Cát thô" ? 1 : 0, 1, 0);
 
@@ -62,9 +63,9 @@ public static class GeoTests
                 return Math.Min(a, 1) * cu;
             }
             // đoạn chia tại ranh giới lớp và mực nước ngầm; σ'v tại giữa đoạn
-            double q1 = u * Clay(10, s12 + 19 * 0.55) * 0.5;     // 1,5–2,0 sét pha
-            double q2 = u * Clay(10, s2 + 10 * 1.0) * 2.0;       // 2,0–4,0 sét pha
-            double q3 = u * Clay(2, s4 + 7 * 2.5) * 5.0;         // 4–9 bùn sét
+            double q1 = u * Clay(10, sg12 + 19 * 0.55) * 0.5;     // 1,5–2,0 sét pha
+            double q2 = u * Clay(10, sg2 + 10 * 1.0) * 2.0;       // 2,0–4,0 sét pha
+            double q3 = u * Clay(2, sg4 + 7 * 2.5) * 5.0;         // 4–9 bùn sét
             double q4 = u * (10 * 20 / 3.0) * 9.0;               // 9–18 cát vừa
             double q5 = u * (10 * 40 / 3.0) * 0.9;               // 18–18,9 cát thô
             double qb = 300 * 40 * Ab;                           // Np = 40 (18,6 … 20,1 m trong cát thô)
@@ -179,6 +180,21 @@ public static class GeoTests
             check("Cọc theo hố khoan: có đài cọc", s3.PileCaps.Count > 0 ? 1 : 0, 1, 0);
             check("Cọc theo hố khoan: [P] = ⌊min([P]đn, Pvl)⌋", s3.PileCaps.Count > 0 ? s3.PileCaps[0].PileCapacity : -1, Math.Floor(pr.Allowable), 1e-9);
             check("Cọc theo hố khoan: L = mũi − đáy đài", s3.PileCaps.Count > 0 ? s3.PileCaps[0].PileLength : -1, Math.Round(pr.TipDepth - p.Soil.Depth, 2), 1e-9);
+
+            // thuyết minh có mục "ĐỊA CHẤT VÀ NỀN MÓNG" (bảng hố khoan, lún, sức chịu tải cọc)
+            try
+            {
+                string dir = Path.Combine(Path.GetTempPath(), "kcvxt_geo_test");
+                Directory.CreateDirectory(dir);
+                CalculationReport.Export(p, r, s2, Path.Combine(dir, "tm_mongdon_hk.docx"));
+                CalculationReport.Export(p, r, s3, Path.Combine(dir, "tm_coc_hk.docx"));
+                check("Thuyết minh có mục địa chất (móng đơn + móng cọc)", 1, 1, 0);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("   · lỗi xuất thuyết minh địa chất: " + ex.Message);
+                check("Thuyết minh có mục địa chất (móng đơn + móng cọc)", 0, 1, 0);
+            }
 
             // móng băng có hố khoan: thêm kiểm tra lún
             p.Foundation.Type = FoundationType.Strip;
