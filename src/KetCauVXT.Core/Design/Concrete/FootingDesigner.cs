@@ -44,34 +44,41 @@ public static class FootingDesigner
         if (plan != null) foreach (var w in plan.Notes) warnings.Add("Cảnh báo: " + w);
         // ---- hết [MóngLệchTâm] ----
 
-        foreach (var (n, f) in order)
+        // [CặpĐàiBiên] hai móng biên đối diện nối chung một dầm cân bằng: e2 của móng đối diện lấy theo kết quả thiết kế thật, lặp tới khi hội tụ (EccentricPairs.Sync)
+        for (int pass = 0; pass < 4; pass++)
         {
-            try
+            list.Clear();
+            var passWarn = new List<string>();
+            foreach (var (n, f) in order)
             {
-                // [MóngLệchTâm] móng kết hợp: nút phụ thiết kế chung với nút chính
-                var epn = plan?.Get(n.Id);
-                if (epn != null && epn.Secondary) continue;
-                var d = epn != null && epn.CombinedWith != 0 && epn.Scheme == EccentricScheme.Combined
-                    ? CombinedFootingDesigner.Design(p, r, plan, epn, combos)
-                    : DesignOne(p, r, n, f, combos, plan);
-                string sig = Signature(d);
-                int k = list.FindIndex(x => x.sig == sig);
-                if (k >= 0)
+                try
                 {
-                    var keep = list[k].d;
-                    keep.Quantity++;
-                    keep.RebarKeys.AddRange(d.RebarKeys.Where(x => !keep.RebarKeys.Contains(x)));
-                    for (int i = 0; i < keep.Checks.Count && i < d.Checks.Count; i++)
-                        if (d.Checks[i].Ratio > keep.Checks[i].Ratio) keep.Checks[i] = d.Checks[i];
-                    keep.Messages.Add("Gộp móng giống hệt tại " + DesignUtil.GridName(p, d.X, d.Y));
-                    EccentricFooting.Merge(keep.Eccentric, d.Eccentric);   // [MóngLệchTâm]
+                    // [MóngLệchTâm] móng kết hợp: nút phụ thiết kế chung với nút chính
+                    var epn = plan?.Get(n.Id);
+                    if (epn != null && epn.Secondary) continue;
+                    var d = epn != null && epn.CombinedWith != 0 && epn.Scheme == EccentricScheme.Combined
+                        ? CombinedFootingDesigner.Design(p, r, plan, epn, combos)
+                        : DesignOne(p, r, n, f, combos, plan);
+                    string sig = Signature(d);
+                    int k = list.FindIndex(x => x.sig == sig);
+                    if (k >= 0)
+                    {
+                        var keep = list[k].d;
+                        keep.Quantity++;
+                        keep.RebarKeys.AddRange(d.RebarKeys.Where(x => !keep.RebarKeys.Contains(x)));
+                        for (int i = 0; i < keep.Checks.Count && i < d.Checks.Count; i++)
+                            if (d.Checks[i].Ratio > keep.Checks[i].Ratio) keep.Checks[i] = d.Checks[i];
+                        keep.Messages.Add("Gộp móng giống hệt tại " + DesignUtil.GridName(p, d.X, d.Y));
+                        EccentricFooting.Merge(keep.Eccentric, d.Eccentric);   // [MóngLệchTâm]
+                    }
+                    else list.Add((d, sig));
                 }
-                else list.Add((d, sig));
+                catch (Exception ex)
+                {
+                    passWarn.Add("LỖI thiết kế móng tại " + DesignUtil.GridName(p, n.X, n.Y) + ": " + ex.Message);
+                }
             }
-            catch (Exception ex)
-            {
-                warnings.Add("LỖI thiết kế móng tại " + DesignUtil.GridName(p, n.X, n.Y) + ": " + ex.Message);
-            }
+            if (pass == 3 || plan == null || !EccentricPairs.Sync(plan)) { warnings.AddRange(passWarn); break; }
         }
         if (plan != null) list = list.OrderBy(x => rank.TryGetValue(x.d.NodeId, out int k) ? k : 0).ToList();   // [MóngLệchTâm] giữ thứ tự đặt tên như cũ
         int no = 1;
@@ -153,6 +160,20 @@ public static class FootingDesigner
         // [CừTràm] gia cố nền bằng cừ tràm: sức chịu tải nền R ← [p] theo kích thước móng (CuTramCalc.Evaluate); không gia cố → R theo TCVN 9362 như cũ
         bool cuOn = CuTramCalc.ActiveAt(p, n.Id);
         double RofSize(double LL, double BB) => cuOn ? CuTramCalc.Evaluate(p, n.X, n.Y, soil, LL, BB).Allowable : BearingR(soil, Math.Min(LL, BB));
+        // [CừTràm] giới hạn kích thước móng trên nền cừ tràm: L ≤ 0,5·bước cột theo X, B ≤ 0,5·bước cột theo Y – vượt quá → không khả thi, dùng cọc
+        double cuLimX = double.PositiveInfinity, cuLimY = double.PositiveInfinity, cuPL = 0, cuPB = 0;
+        bool cuCapped = false;
+        if (cuOn)
+        {
+            foreach (var (bn, _) in FoundationUtil.BaseColumns(p))
+            {
+                if (bn.Id == n.Id) continue;
+                double ddx = Math.Abs(bn.X - n.X), ddy = Math.Abs(bn.Y - n.Y);
+                if (ddy < 0.3 && ddx > 0.3) cuLimX = Math.Min(cuLimX, 0.5 * ddx);
+                if (ddx < 0.3 && ddy > 0.3) cuLimY = Math.Min(cuLimY, 0.5 * ddy);
+            }
+            cuLimX = Math.Max(cuLimX, MinSize); cuLimY = Math.Max(cuLimY, MinSize);
+        }
 
         // ---- kích thước đáy (TCVN 9362:2012 mục 4.6) ----
         double Nmax = loads.Max(l => l.N) / kt;
@@ -186,6 +207,8 @@ public static class FootingDesigner
             {
                 double sl = RcSection.CeilTo(bs * asp, 0.1);
                 L = longX ? sl : bs; B = longX ? bs : sl;
+                if (cuOn && it > 0 && (L > cuLimX + 1e-9 || B > cuLimY + 1e-9)) { L = cuPL; B = cuPB; Rv = RofSize(L, B); Eval(L, B); cuCapped = true; break; }   // [CừTràm]
+                cuPL = L; cuPB = B;
                 Rv = RofSize(L, B);   // [CừTràm]
                 Eval(L, B);   // [MóngLệchTâm]
                 if (ep == null ? ptb <= Rv + 1e-6 && pmax <= 1.2 * Rv + 1e-6 && pmin >= -1e-6 : EccentricFooting.PressureOk(epr, Rv)) { sized = true; break; }
@@ -202,6 +225,8 @@ public static class FootingDesigner
                 {
                     double sl = RcSection.CeilTo(bs * asp, 0.1);
                     L = longX ? sl : bs; B = longX ? bs : sl;
+                    if (cuOn && it > 0 && (L > cuLimX + 1e-9 || B > cuLimY + 1e-9)) { L = cuPL; B = cuPB; Rv = RofSize(L, B); Eval(L, B); cuCapped = true; break; }   // [CừTràm]
+                    cuPL = L; cuPB = B;
                     Rv = RofSize(L, B);   // [CừTràm]
                     Eval(L, B);
                     if (ptb <= Rv + 1e-6) break;
@@ -341,6 +366,10 @@ public static class FootingDesigner
         if (cuOn)   // [CừTràm] kết quả 2 phương pháp + kiểm tra độ bền (MNN), lún khối quy ước, áp lực mũi cừ
         {
             d.CuTram = CuTramCalc.Evaluate(p, n.X, n.Y, soil, L, B, ptb, pmax, loads.Max(l => l.N) / kt);
+            if (cuCapped || !sized)
+                CuTramCalc.MarkInfeasible(d.CuTram, d.Messages, cuCapped
+                    ? $"móng cần lớn hơn 0,5·bước cột (giới hạn {DesignUtil.F(Math.Min(cuLimX, cuLimY), "0.00")} m) mà vẫn chưa thoả [p] – dừng ở {DesignUtil.F(L, "0.00")}×{DesignUtil.F(B, "0.00")} m"
+                    : "không chọn được kích thước móng thoả [p] của nền gia cố");
             CuTramCalc.AddChecks(d.Checks, d.Messages, d.CuTram);
         }
         if (ep != null) AttachEccentric(p, plan, ep, d, eox, eoy, epr, L, B, kt, gtb, Df, Rv);   // [MóngLệchTâm]

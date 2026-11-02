@@ -137,6 +137,10 @@ public sealed class CuTramResult
     /// <summary>Diễn giải công thức (thuyết minh, hộp thoại)</summary>
     public List<string> Notes { get; set; } = new();
     public bool AnyFail => Items.Any(i => i.Status == CheckStatus.Fail);
+    /// <summary>false = móng nông trên nền cừ tràm KHÔNG KHẢ THI (kích thước vượt giới hạn mà chưa thoả [p]) → dùng cọc BTCT</summary>
+    public bool Feasible { get; set; } = true;
+    /// <summary>Kết luận ngắn (rỗng = khả thi)</summary>
+    public string Conclusion { get; set; } = "";
 }
 
 /// <summary>Tính toán gia cố nền bằng cừ tràm: cừ đơn (ma sát + mũi), nhóm cừ – nền phức hợp, nền tương đương sau gia cố,
@@ -516,6 +520,22 @@ public static class CuTramCalc
             checks.Add(new CheckItem { Name = "Cừ tràm: áp lực mũi khối quy ước σ ≤ R mũi", Demand = r.SigmaTip, Capacity = r.RTip, Unit = "kN/m²", Note = $"Lqu×Bqu = {F(r.Lqu)}×{F(r.Bqu)} m" });
         messages.Add($"Gia cố nền cừ tràm: {r.Count} cây Ø{F(r.D1 * 100, "0")}–{F(r.D2 * 100, "0.#")} cm dài {F(r.Length)} m ({F(r.Density, "0")} cây/m²); [p]1 = {F(r.P1, "0")}, [p]2 = {F(r.P2, "0")} → [p] = {F(r.Allowable, "0")} kN/m² ({CuTramSettings.MethodName(r.Method)})");
         foreach (var w in r.Warnings.Where(w => !messages.Contains(w))) messages.Add(w.StartsWith("LỖI") ? w.Replace("LỖI cừ tràm", "Cảnh báo: cừ tràm") : w.StartsWith("Cảnh báo") ? w : "Cảnh báo: " + w);
+    }
+
+    /// <summary>Đánh dấu phương án móng nông trên nền cừ tràm KHÔNG KHẢ THI (móng dừng ở kích thước giới hạn): hạng mục KHÔNG ĐẠT + thông báo LỖI
+    /// "không khả thi – dùng cọc" (móng hiển thị KHÔNG ĐẠT, không phóng to móng vô hạn).</summary>
+    public static void MarkInfeasible(CuTramResult r, List<string> messages, string why)
+    {
+        if (r == null) return;
+        r.Feasible = false;
+        r.Conclusion = "KHÔNG KHẢ THI – dùng móng cọc BTCT: " + why;
+        r.Items.Insert(0, new SafetyItem
+        {
+            Group = Group, Name = "Khả thi móng nông trên nền cừ tràm", Value = r.Ptb, Limit = r.Allowable, Unit = "kPa", Status = CheckStatus.Fail,
+            Formula = "Kích thước móng ≤ 0,5·bước cột (móng không chạm nhau)", Explanation = r.Conclusion
+        });
+        r.Warnings.Insert(0, "LỖI cừ tràm – " + r.Conclusion);
+        messages?.Add("LỖI móng trên nền cừ tràm KHÔNG KHẢ THI – dùng móng cọc BTCT (hoặc móng băng / bè trên nền gia cố): " + why);
     }
 
     /// <summary>Lún lệch giữa các móng cừ tràm kề nhau: ΔS/l ≤ 0,002 (TCVN 9362:2012 Bảng 16, khung BTCT) – thêm cảnh báo vào móng.</summary>

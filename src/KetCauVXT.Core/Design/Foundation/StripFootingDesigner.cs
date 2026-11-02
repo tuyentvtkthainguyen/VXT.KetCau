@@ -575,6 +575,7 @@ public static class StripFootingDesigner
         if (cuOn)   // [CừTràm] kết quả cừ tràm dưới dải + kiểm tra độ bền, lún khối quy ước
         {
             d.CuTram = CuTramCalc.Evaluate(p, cuX, cuY, soil, Ls, B, pavg, pmax, slsLoads.Max(ll => ll.Count > 0 ? ll.Max(x2 => x2.N) : 0));
+            if (!sized) CuTramCalc.MarkInfeasible(d.CuTram, d.Messages, $"bề rộng móng băng tới {DesignUtil.F(B, "0.00")} m vẫn chưa thoả [p] của nền gia cố");
             CuTramCalc.AddChecks(d.Checks, d.Messages, d.CuTram);
         }
         if (geoBh != null && !cuOn)

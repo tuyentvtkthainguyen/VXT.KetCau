@@ -75,7 +75,7 @@ public static class GroundAdvisor
         o.Feasible = why.Count == 0;
         o.Reason = o.Feasible
             ? "Lớp đất nông yếu, mực nước ngầm cao: cừ tràm nén chặt nền, chi phí thấp – phù hợp nhà thấp tầng tải nhỏ (đầu cừ luôn dưới MNN)"
-            : string.Join("; ", why);
+            : "KHÔNG KHẢ THI – dùng cọc BTCT: " + string.Join("; ", why);
         // thứ tự ưu tiên: móng đơn → móng băng → cừ tràm → cọc
         if (o.Feasible && adv.Recommended != null && adv.Recommended.Type == FoundationType.Pile)
         {

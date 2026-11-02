@@ -67,6 +67,10 @@ public sealed class PileSetbackInfo
     public bool HasStrap { get; set; }
     public double N1 { get; set; }
     public double R1 { get; set; } = double.NaN;
+    /// <summary>[CặpĐàiBiên] true = dầm cân bằng chung với đài biên đối diện; e2 của đài đối diện (m); R1 nhỏ nhất qua các tổ hợp (kN)</summary>
+    public bool OppositePair { get; set; }
+    public double E2 { get; set; }
+    public double R1Min { get; set; } = double.NaN;
     public double Span { get; set; }
     public string Recommended { get; set; } = "";
     public string Recommendation { get; set; } = "";
@@ -199,6 +203,14 @@ public static class PileSetback
         return (np, nL, nB, nox, noy, info);
     }
 
+    private static double PartnerN(EccPlan plan, EccNode ep, string combo)
+    {
+        var q = plan?.Get(ep.StrapX ? ep.PartnerX : ep.PartnerY);
+        if (q == null) return 0;
+        foreach (var l in q.Loads) if (l.Combo == combo) return l.N;
+        return 0;
+    }
+
     private static double RoundMm(double v) => Math.Abs(v) < 1e-9 ? 0 : v > 0 ? Math.Ceiling(v * 1000 - 1e-6) / 1000 : -Math.Ceiling(-v * 1000 - 1e-6) / 1000;
 
     /// <summary>Kiểm tra bổ sung cho đài đã lùi cọc: khoảng lùi, phản lực cọc có / không dầm cân bằng, cọc chịu kéo, công xôn đài (uốn – tăng thép lớp trên nếu cần, cắt),
@@ -230,7 +242,30 @@ public static class PileSetback
             info.PmaxStrap = dsn.PMax;
             info.Span = ep.StrapX ? ep.SpanX : ep.SpanY;
             var g = loads.OrderByDescending(l => l.N).First();
-            info.R1 = EccentricFooting.LeverReaction(g.N, 0, info.Span, Math.Abs(ep.StrapX ? info.GroupEx : info.GroupEy), ep.StrapX ? ep.PartnerEX : ep.PartnerEY);
+            // [CặpĐàiBiên] đài đối diện lệch tâm e2: R1 = [N1·(L − e2) − N2·e2]/(L − e1 − e2) với N2 cùng tổ hợp (e2 = 0: R1 = N1·L/(L − e1))
+            info.E2 = ep.StrapX ? ep.PartnerEX : ep.PartnerEY;
+            info.R1 = EccentricFooting.LeverReaction(g.N, info.E2 > 0 ? PartnerN(plan, ep, g.Combo) : 0, info.Span, Math.Abs(ep.StrapX ? info.GroupEx : info.GroupEy), info.E2);
+        }
+        if (info.HasStrap && EccentricPairs.Opposite(ep))
+        {
+            info.OppositePair = true;
+            double e1 = Math.Abs(ep.StrapX ? info.GroupEx : info.GroupEy), e2 = info.E2, Lsp = Math.Max(info.Span, 0.1);
+            double rmin = double.PositiveInfinity; string cmin = "";
+            foreach (var l in loads)
+            {
+                double r1 = EccentricFooting.LeverReaction(l.N, PartnerN(plan, ep, l.Combo), Lsp, e1, e2);
+                if (r1 < rmin) { rmin = r1; cmin = l.Combo; }
+            }
+            info.R1Min = rmin;
+            double ratio = (e1 + e2) / Lsp;
+            var st = rmin >= 0.25 * Math.Max(info.N1, 1e-6) && ratio <= 0.5 ? CheckStatus.Ok : rmin > 0 ? CheckStatus.Warning : CheckStatus.Fail;
+            it.Add(new SafetyItem
+            {
+                Group = Group, Name = "Hai đài biên đối diện chung dầm cân bằng: R1 > 0 mọi tổ hợp (hợp lực trong nhóm cọc)", Value = rmin, Limit = 0.25 * info.N1, Unit = "kN", Inverse = true, Status = st,
+                Formula = $"R1 = [N1·(L − e2) − N2·e2]/(L − e1 − e2), L = {F(Lsp)} m, e1 = {F(e1, "0.000")}, e2 = {F(e2, "0.000")} m; (e1 + e2)/L = {F(ratio, "0.00")}; tổ hợp {cmin}",
+                Explanation = st == CheckStatus.Ok ? "Dầm cân bằng chung giữa hai đài biên cân bằng mô men lệch tâm cả hai phía; mỗi đài nhận hợp lực R1 đặt tại trọng tâm nhóm cọc"
+                    : "Lệch tâm hai phía lớn so với nhịp (R1 nhỏ / âm: cọc gần như không chịu tải hoặc bị nhổ) – dùng đài chung / băng cọc ngang nhịp, hoặc bố trí 3–4 cọc dưới cột giảm e"
+            });
         }
         it.Add(SafetyItem.Make(Group, "Phản lực cọc Pmax – KHÔNG dầm cân bằng (mô men (N + G)·e do nhóm cọc)", pmx, P, "kN", "Pi = (N + G)/n + ax·(xi − x̄) + ay·(yi − ȳ)",
             "Nhóm cọc lệch tâm tự cân bằng được", "Cọc phía cột quá tải khi không có dầm cân bằng – cần dầm móng cân bằng / đài chung", false, info.HasStrap ? CheckStatus.Info : CheckStatus.Fail));
@@ -317,16 +352,23 @@ public static class PileSetback
         bool partner = ep != null && (ep.PartnerX != 0 || ep.PartnerY != 0);
         double span = partner ? Math.Max(ep.PartnerX != 0 ? ep.SpanX : ep.SpanY, 0.1) : 0;
         bool selfOk = pmx <= P + 1e-6 && pmn >= -Pt - 1e-6;
-        info.Options.Add(partner
+        bool pairBad = info.OppositePair && (info.R1Min < 0.25 * info.N1 || (e + info.E2) / Math.Max(span, 0.1) > 0.5);
+        info.Options.Add(info.OppositePair
+            ? $"(a) Một dầm cân bằng chung giữa hai đài biên đối diện (L = {F(span)} m, e1 = {F(e, "0.000")}, e2 = {F(info.E2, "0.000")} m): R1 = [N1(L − e2) − N2·e2]/(L − e1 − e2) = {F(info.R1, "0.0")} kN (nhỏ nhất {F(info.R1Min, "0.0")} kN), dầm chịu mô men ≈ N·e, lực cắt nhỏ"
+            : partner
             ? $"(a) Dầm móng cân bằng tới cột trong (L = {F(span)} m): R1 = N1·L/(L − e) = {F(EccentricFooting.LeverReaction(info.N1, 0, span, e), "0.0")} kN, phản lực cọc gần đều theo phương dầm"
             : "(a) Dầm móng cân bằng: không có cột trong cùng trục trong phạm vi nối dầm");
         info.Options.Add($"(b) Đài console tự cân bằng: Pmax = {F(pmx, "0.0")} kN, Pmin = {F(pmn, "0.0")} kN so với [P] = {F(P, "0")}, [Pk] = {F(Pt, "0")} → {(selfOk ? "đạt" : "KHÔNG ĐẠT")}; "
                          + $"công xôn M = {F(info.MCant, "0.0")} kN.m, Q = {F(info.VCant, "0.0")} kN; mô men N·e = {F(info.N1 * e, "0.0")} kN.m do nhóm cọc + giằng móng");
-        info.Options.Add(partner && e / span > 0.25
+        info.Options.Add(pairBad
+            ? "(c) Đài chung / băng cọc ngang nhịp giữa hai cột biên (hoặc 3–4 cọc dưới cột giảm lệch tâm): nên dùng – R1 nhỏ / âm hoặc (e1 + e2)/L > 0,5"
+            : !info.OppositePair && partner && e / span > 0.25
             ? $"(c) Đài chung với cột trong: nên dùng – e/L = {F(e / span, "0.00")} > 0,25 (dầm cân bằng rất lớn)"
             : "(c) Đài chung với cột trong: dùng khi hai đài gần chạm nhau hoặc e/L > 0,25 (khai báo bằng bố trí cọc tuỳ chọn cho đài chung)");
         if (e <= 0.05) { info.Recommended = "Đài thường"; info.Recommendation = "Độ lệch tâm nhỏ (≤ 50 mm) – đài làm việc như đài thường"; }
-        else if (partner && e / span > 0.25) { info.Recommended = "(c) Đài chung"; info.Recommendation = "Lệch tâm lớn so với nhịp tới cột trong – đề xuất gộp đài với cột trong (đài chung)"; }
+        else if (pairBad) { info.Recommended = "(c) Đài chung / băng cọc ngang nhịp"; info.Recommendation = "Hai đài biên đối diện lệch tâm lớn so với nhịp – dầm cân bằng chung không hiệu quả (R1 nhỏ / âm); đề xuất đài chung hoặc băng cọc ngang nhịp, hoặc 3–4 cọc dưới cột"; }
+        else if (info.OppositePair) { info.Recommended = "(a) Dầm cân bằng chung hai đài biên"; info.Recommendation = "Nhà một nhịp, ranh giới hai phía: một dầm móng cân bằng giữa hai đài biên đối diện cân bằng mô men lệch tâm cả hai phía"; }
+        else if (!info.OppositePair && partner && e / span > 0.25) { info.Recommended = "(c) Đài chung"; info.Recommendation = "Lệch tâm lớn so với nhịp tới cột trong – đề xuất gộp đài với cột trong (đài chung)"; }
         else if (partner) { info.Recommended = "(a) Dầm móng cân bằng"; info.Recommendation = "Có cột trong cùng trục – đề xuất dầm móng cân bằng tiếp nhận mô men N·e (đòn bẩy)"; }
         else if (selfOk) { info.Recommended = "(b) Đài console"; info.Recommendation = "Không có cột trong để nối dầm – đài console tự cân bằng đạt phản lực cọc; giằng móng tiếp nhận mô men lệch tâm"; }
         else { info.Recommended = "Tăng số cọc / đài chung"; info.Recommendation = "Không có cột trong để nối dầm và đài console không đạt phản lực cọc – tăng số cọc hoặc dùng đài chung"; }
@@ -339,4 +381,37 @@ public static class PileSetback
             foreach (var x in it.Where(q => q.Status == CheckStatus.Fail)) dsn.Safety.Warnings.Add("Lùi cọc – " + x.Name + ": " + x.Explanation);
         }
     }
+}
+
+/// <summary>[CặpĐàiBiên] Hai móng / đài biên ĐỐI DIỆN (nhà 1 nhịp, ranh giới hai phía) nối chung một dầm móng cân bằng.
+/// Đòn bẩy: R1 = [N1·(L − e2) − N2·e2]/(L − e1 − e2), R2 = [N2·(L − e1) − N1·e1]/(L − e1 − e2) (R1 + R2 = N1 + N2; đối xứng N1 = N2, e1 = e2 → R1 = N1:
+/// dầm chịu mô men không đổi N·e, lực cắt ≈ 0). Kế hoạch lệch tâm chỉ có e2 ƯỚC LƯỢNG (theo móng đơn sơ bộ) – với đài cọc lùi khỏi ranh giới
+/// ước lượng này có thể sai rất nhiều (e2 → L/2 làm R1 → 0, cọc gần như không chịu lực / bị nhổ). Sync thay e2 bằng độ lệch tâm thật của móng đối diện
+/// sau mỗi lượt thiết kế; trả về true nếu có thay đổi &gt; 5 mm (cần thiết kế lại).</summary>
+public static class EccentricPairs
+{
+    public const double Tolerance = 0.005;
+
+    public static bool Sync(EccPlan plan)
+    {
+        if (plan == null) return false;
+        bool changed = false;
+        foreach (var n in plan.Nodes.Values)
+        {
+            if (n.StrapX && n.PartnerEX > 0)
+            {
+                var q = plan.Get(n.PartnerX);
+                if (q != null && q.Designed && Math.Abs(Math.Abs(q.FinalOx) - n.PartnerEX) > Tolerance) { n.PartnerEX = Math.Abs(q.FinalOx); changed = true; }
+            }
+            if (n.StrapY && n.PartnerEY > 0)
+            {
+                var q = plan.Get(n.PartnerY);
+                if (q != null && q.Designed && Math.Abs(Math.Abs(q.FinalOy) - n.PartnerEY) > Tolerance) { n.PartnerEY = Math.Abs(q.FinalOy); changed = true; }
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>true nếu nút nối dầm cân bằng với móng biên đối diện (theo X hoặc Y).</summary>
+    public static bool Opposite(EccNode n) => n != null && ((n.StrapX && n.PartnerEX > 0) || (n.StrapY && n.PartnerEY > 0));
 }

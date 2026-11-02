@@ -170,7 +170,8 @@ internal sealed class CuTramDialog : Window
             string where = f != null ? $"móng {f.Name} {L:0.00}×{B:0.00} m (ptb = {ptb:0.0} kN/m²)" : $"móng thử {L:0.00}×{B:0.00} m";
             _sum.Text = $"{where}, hố khoan {r.Borehole}{(assumed ? " (GIẢ ĐỊNH)" : "")}: {r.Count} cây; PP(1) [p]1 = {r.P1:0.0} kN/m², PP(2) [p]2 = {r.P2:0.0} kN/m² → [p] = {r.Allowable:0.0} kN/m²; "
                         + $"lún khối quy ước {(r.Settlement?.S ?? double.NaN) * 100:0.00} cm; đầu cừ {r.TopDepth:0.00} m / MNN {(double.IsFinite(r.WaterDepth) ? r.WaterDepth.ToString("0.00") + " m" : "không gặp")} → "
-                        + (r.AnyFail ? "KHÔNG ĐẠT" : "ĐẠT");
+                        + (f?.CuTram != null && !f.CuTram.Feasible ? f.CuTram.Conclusion : r.AnyFail ? "KHÔNG ĐẠT" : "ĐẠT");
+            if (f?.CuTram != null && !f.CuTram.Feasible) foreach (var it in f.CuTram.Items.Where(i => i.Name.StartsWith("Khả thi")).Take(1)) r.Items.Insert(0, it);
             _sum.Foreground = r.AnyFail ? Brushes.DarkRed : Brushes.DarkGreen;
             var rep = new FoundationCheckReport
             {

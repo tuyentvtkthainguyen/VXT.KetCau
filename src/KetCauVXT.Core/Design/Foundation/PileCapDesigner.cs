@@ -39,18 +39,26 @@ public static class PileCapDesigner
             foreach (var w in plan.Notes) warnings.Add("Cảnh báo: " + w);
         }
         // ---- hết [MóngLệchTâm] ----
-        foreach (var (n, col) in bcols)
+        // [CặpĐàiBiên] hai đài biên đối diện nối chung một dầm cân bằng: độ lệch tâm e2 của đài đối diện lấy theo kết quả thiết kế thật
+        // (lượt đầu dùng ước lượng) – lặp tới khi e2 hội tụ (≤ 5 mm), tối đa 4 lượt (EccentricPairs.Sync)
+        for (int pass = 0; pass < 4; pass++)
         {
-            if (FoundationUtil.TypeOf(p, n.Id) != FoundationType.Pile) continue;
-            try
+            all.Clear();
+            var passWarn = new List<string>();
+            foreach (var (n, col) in bcols)
             {
-                var d = DesignOne(p, r, n, col, combos, fs, plan);
-                all.Add((d, Signature(d)));
+                if (FoundationUtil.TypeOf(p, n.Id) != FoundationType.Pile) continue;
+                try
+                {
+                    var d = DesignOne(p, r, n, col, combos, fs, plan);
+                    all.Add((d, Signature(d)));
+                }
+                catch (Exception ex)
+                {
+                    passWarn.Add("LỖI thiết kế đài cọc tại " + DesignUtil.GridName(p, n.X, n.Y) + ": " + ex.Message);
+                }
             }
-            catch (Exception ex)
-            {
-                warnings.Add("LỖI thiết kế đài cọc tại " + DesignUtil.GridName(p, n.X, n.Y) + ": " + ex.Message);
-            }
+            if (pass == 3 || plan == null || !EccentricPairs.Sync(plan)) { warnings.AddRange(passWarn); break; }
         }
         if (plan != null) all = all.OrderBy(x => rank.TryGetValue(x.d.NodeIds[0], out int k) ? k : 0).ToList();   // [MóngLệchTâm] thứ tự đặt tên như cũ
         foreach (var g in all.GroupBy(x => x.sig))
@@ -258,6 +266,9 @@ public static class PileCapDesigner
         double myMax = loads.Max(l => Math.Abs(l.My) + Math.Abs(l.Qx) * Hmin);
         double mxMax = loads.Max(l => Math.Abs(l.Mx) + Math.Abs(l.Qy) * Hmin);
         bool longX = myMax >= mxMax;
+        // [LùiCọcRanh] cột sát một cạnh ranh giới + lùi ép cọc: hàng cọc đặt song song ranh giới (giảm độ lệch tâm nhóm cọc, mô men lệch tâm do dầm cân bằng tiếp nhận)
+        var epRow = plan?.Get(n.Id);
+        if (epRow != null && epRow.Scheme != EccentricScheme.None && !epRow.Manual && (epRow.Limits.EdgeX ^ epRow.Limits.EdgeY) && PileSetback.Active(p)) longX = epRow.Limits.EdgeY;
 
         int n0 = Math.Max(1, (int)Math.Ceiling(1.2 * Math.Max(Nmax, 0) / P - 1e-9));
         bool singleOk = d + 2 * edge >= Math.Max(hc, bc) + 0.10 - 1e-9;
@@ -486,7 +497,22 @@ public static class PileCapDesigner
         var bc = FoundationUtil.BaseColumns(p).FirstOrDefault(x => x.Node.Id == nodeId);
         if (bc.Node == null) throw new InvalidOperationException("nút " + nodeId + " không phải chân cột BTCT");
         var plan = EccentricFooting.Plan(p, r, r.DesignCombos(), FoundationUtil.BaseColumns(p).Where(x => FoundationUtil.TypeOf(p, x.Node.Id) == FoundationType.Pile || x.Node.Id == nodeId));   // [MóngLệchTâm]
-        var d = DesignOne(p, r, bc.Node, bc.Column, r.DesignCombos(), fs ?? p.Foundation ?? new FoundationSettings(), plan);
+        var fsT = fs ?? p.Foundation ?? new FoundationSettings();
+        // [CặpĐàiBiên] đài biên đối diện: thiết kế trước đài đối diện để có e2 thật (không dùng ước lượng)
+        var en = plan?.Get(nodeId);
+        if (EccentricPairs.Opposite(en))
+            for (int pass = 0; pass < 3; pass++)
+            {
+                foreach (int pid in new[] { en.StrapX && en.PartnerEX > 0 ? en.PartnerX : 0, en.StrapY && en.PartnerEY > 0 ? en.PartnerY : 0 }.Where(x => x != 0).Distinct())
+                {
+                    var pc = FoundationUtil.BaseColumns(p).FirstOrDefault(x => x.Node.Id == pid);
+                    if (pc.Node == null) continue;
+                    try { DesignOne(p, r, pc.Node, pc.Column, r.DesignCombos(), p.Foundation ?? fsT, plan); } catch (Exception) { }
+                }
+                try { DesignOne(p, r, bc.Node, bc.Column, r.DesignCombos(), fsT, plan); } catch (Exception) { }
+                if (!EccentricPairs.Sync(plan)) break;
+            }
+        var d = DesignOne(p, r, bc.Node, bc.Column, r.DesignCombos(), fsT, plan);
         d.Name = "ĐC";
         return d;
     }

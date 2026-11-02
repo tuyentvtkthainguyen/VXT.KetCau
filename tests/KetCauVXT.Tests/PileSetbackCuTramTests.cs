@@ -23,6 +23,7 @@ public static class PileSetbackCuTramTests
         AdjustUnit(check);
         var (p, r) = TownHouse();
         SetbackDesign(check, p, r, outDir);
+        OneBay(check);
         Console.WriteLine("   [CừTràm] gia cố nền bằng cừ tràm");
         CuTramFormulas(check);
         CuTramDesign(check, outDir);
@@ -178,6 +179,87 @@ public static class PileSetbackCuTramTests
             check("Lùi cọc khỏi ranh giới – chạy không lỗi", 0, 1, 0);
         }
         finally { p.Foundation = JsonSerializer.Deserialize<FoundationSettings>(save, Project.JsonOptions); }
+    }
+
+    // ------------------------------------------------------------------
+    /// <summary>[CặpĐàiBiên] Nhà phố 1 nhịp 5 m (X) × 3 nhịp 4,5 m (Y), 4 tầng, ranh giới hai phía, lùi ép cọc 500 mm: mọi cột là cột biên,
+    /// dầm cân bằng chung giữa hai đài biên đối diện. Trước khi sửa: e2 lấy theo ước lượng móng đơn (≈ L/2) → R1 ≈ 0, Pmax ≈ 20 kN, cọc bị nhổ → đài KHÔNG ĐẠT.</summary>
+    private static void OneBay(Action<string, double, double, double> check)
+    {
+        var p = ModelBuilder.NewProject("Nhà phố 1 nhịp – lùi cọc hai phía");
+        ModelBuilder.SetGrid(p, new[] { 5.0 }, new[] { 4.5, 4.5, 4.5 });
+        ModelBuilder.SetStories(p, new[] { 3.9, 3.3, 3.3, 3.3 }, -0.6);
+        ModelBuilder.BuildFromGrid(p, new ModelBuilder.GridFrameOptions { ColumnSection = "C22x30", BeamSectionX = "D22x30", BeamSectionY = "D22x40", PerimeterWallLoad = 7.5 });
+        var r = FrameAnalysis.Run(p);
+        var gx = p.GridsX.ToList();
+        var fs = p.Foundation;
+        fs.Boundaries = new List<PropertyBoundary>
+        {
+            new() { Side = BoundarySide.Left, Grid = gx[0].Name, Offset = 0.11 },
+            new() { Side = BoundarySide.Right, Grid = gx[^1].Name, Offset = 0.11 }
+        };
+        fs.Type = FoundationType.Pile;
+        fs.PileSize = 0.25; fs.PileCapacity = 450; fs.PileTension = 0;
+        fs.PileSetbackEnabled = true; fs.PileSetback = 0.5;
+        fs.EccentricDefault = EccentricScheme.Auto;
+        try
+        {
+            var s = ConcreteDesigner.Design(p, r);
+            var combos = r.DesignCombos();
+            check("1 nhịp 5 m: không lỗi thiết kế đài", s.Warnings.Count(w => w.StartsWith("LỖI thiết kế đài")), 0, 0);
+            check("1 nhịp 5 m: tổng số đài (kể gộp) = 8", s.PileCaps.Sum(c => Math.Max(1, c.Quantity)), 8, 0);
+            foreach (var c in s.PileCaps)
+            {
+                var ei = c.Eccentric; var sb = c.Setback;
+                Console.WriteLine($"   · {c.Name} ×{c.Quantity}: {c.Piles.Count} cọc, đài {c.L:0.000}×{c.B:0.000}×{c.H:0.00}, e = {(sb?.GroupEx ?? 0) * 1000:0} mm, e2 = {(sb?.E2 ?? 0) * 1000:0} mm, "
+                                  + $"N' = {c.N:0.0}, Pmax = {c.PMax:0.0}, Pmin = {c.PMin:0.0} kN – {(c.Ok ? "đạt" : "KHÔNG ĐẠT")}");
+                if (!c.Ok)
+                {
+                    foreach (var ck in c.Checks.Where(x => !x.Ok)) Console.WriteLine($"       ✗ {ck.Name}: {ck.Demand:0.0} / {ck.Capacity:0.0} {ck.Unit} {ck.Note}");
+                    foreach (var m in c.Messages.Where(x => x.StartsWith("LỖI"))) Console.WriteLine("       ✗ " + m);
+                }
+                check($"{c.Name}: đạt (1 nhịp, lùi cọc hai phía)", B(c.Ok), 1, 0);
+                check($"{c.Name}: có lùi cọc", B(sb != null && sb.Shifted), 1, 0);
+                if (sb == null || ei == null) continue;
+                double dmin = sb.Sides.SelectMany(sd => c.Piles.Select(q => sd.Inward * (c.X + q.X - sd.Boundary))).Min();
+                check($"{c.Name}: tim cọc cách ranh ≥ 0,5 m", B(dmin >= 0.5 - 1e-6), 1, 0);
+                check($"{c.Name}: hàng cọc song song ranh giới (e nhỏ nhất)", c.Piles.Select(q => Math.Round(q.X, 4)).Distinct().Count(), 1, 0);
+                check($"{c.Name}: phản lực cọc không quá nhỏ (Pmax ≥ 0,25·N/n)", B(c.PMax >= 0.25 * sb.N1 / c.Piles.Count), 1, 0);
+                check($"{c.Name}: không cọc bị nhổ (Pmin ≥ 0)", B(c.PMin >= -1e-6), 1, 0);
+                check($"{c.Name}: dầm cân bằng chung với đài đối diện", B(ei.Scheme == EccentricScheme.Strap && sb.OppositePair), 1, 0);
+                var pc = s.PileCaps.FirstOrDefault(q => q.NodeIds.Contains(ei.PartnerX));
+                if (pc?.Eccentric == null) { check($"{c.Name}: tìm thấy đài đối diện", 0, 1, 0); continue; }
+                double e1 = Math.Abs(ei.OffsetX), e2 = Math.Abs(pc.Eccentric.OffsetX);
+                check($"{c.Name}: e2 = độ lệch tâm thật của đài đối diện (không phải ước lượng)", Math.Abs(sb.E2 - e2), 0, 0.006);
+                int own = ei.Locations[0].NodeId;
+                var g = FoundationUtil.Loads(r, own, combos).OrderByDescending(l => l.N).First();
+                var g2 = FoundationUtil.Loads(r, ei.PartnerX, combos).First(l => l.Combo == g.Combo);
+                double R1 = EccentricFooting.LeverReaction(g.N, g2.N, ei.SpanX, e1, sb.E2), R2 = EccentricFooting.LeverReaction(g2.N, g.N, ei.SpanX, sb.E2, e1);
+                check($"{c.Name}: R1 = [N1(L − e2) − N2·e2]/(L − e1 − e2)", ei.R1, R1, 1e-9);
+                check($"{c.Name}: R1 + R2 = N1 + N2 (cân bằng lực)", R1 + R2, g.N + g2.N, 1e-9);
+                check($"{c.Name}: ΣM tại cột 1 = 0: R1·e1 + R2·(L − e2) = N2·L", R1 * e1 + R2 * (ei.SpanX - sb.E2), g2.N * ei.SpanX, 1e-9);
+                check($"{c.Name}: hai phía cân bằng → R1 ≈ N1 (|ΔR| < 30%)", B(Math.Abs(R1 - g.N) < 0.3 * g.N), 1, 0);
+                var it = sb.Items.FirstOrDefault(i => i.Name.StartsWith("Hai đài biên đối diện"));
+                check($"{c.Name}: kiểm tra hợp lực hai đài đối diện đạt", B(it != null && it.Status == CheckStatus.Ok), 1, 0);
+            }
+            check("1 nhịp 5 m: 4 dầm cân bằng ngang nhịp (kể gộp)", s.StrapBeams.Sum(x => Math.Max(1, x.Quantity)), 4, 0);
+            foreach (var sb in s.StrapBeams)
+            {
+                Console.WriteLine($"   · {sb.Name} ×{sb.Quantity}: {sb.B * 1000:0}×{sb.H * 1000:0}, L = {sb.Span:0.00}, e1 = {sb.E1 * 1000:0}, e2 = {sb.E2 * 1000:0} mm, M = {sb.M:0.0}, Q = {sb.V:0.0} – {(sb.Ok ? "đạt" : "KHÔNG ĐẠT")}");
+                check($"{sb.Name}: dầm cân bằng chung 2 đài biên – e2 > 0", B(sb.E2 > 0.3), 1, 0);
+                check($"{sb.Name}: đạt", B(sb.Ok), 1, 0);
+            }
+            // hộp thoại bố trí cọc: đài đối diện được thiết kế trước → cùng kết quả
+            var c0 = s.PileCaps.First(c => c.Eccentric != null);
+            var t = PileCapDesigner.DesignNode(p, r, c0.Eccentric.Locations[0].NodeId);
+            check("Thiết kế thử 1 đài (hộp thoại): e2 thật – Pmax như thiết kế toàn bộ (±2%)", t.PMax, c0.PMax, 0.02);
+            check("Thiết kế thử 1 đài: e2 thật của đài đối diện", Math.Abs((t.Setback?.E2 ?? 0) - (c0.Setback?.E2 ?? 0)), 0, 0.006);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("   · lỗi nhà 1 nhịp: " + ex);
+            check("Nhà 1 nhịp lùi cọc hai phía – chạy không lỗi", 0, 1, 0);
+        }
     }
 
     // ------------------------------------------------------------------
