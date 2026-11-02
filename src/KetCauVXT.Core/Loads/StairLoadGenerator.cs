@@ -266,15 +266,17 @@ public static class StairLoadGenerator
     {
         if (Math.Abs(q) < 1e-12) return;
         var L = c.L;
-        if (Math.Abs(z - L.ZTop) < 1e-6)
+        bool top = Math.Abs(z - L.ZTop) < 1e-6, bot = Math.Abs(z - L.ZBot) < 1e-6;
+        if (top || bot)
         {
+            double zz = top ? L.ZTop : L.ZBot;
+            string st = top ? L.TopStory : L.BottomStory, what = top ? "đầu vế trên" : "chân thang";
             var (x1, y1) = L.ToXY(u, v0); var (x2, y2) = L.ToXY(u, v1);
-            Line(c, L.ZTop, L.TopStory, x1, y1, x2, y2, q, "đầu vế trên", false);
-        }
-        else if (Math.Abs(z - L.ZBot) < 1e-6)
-        {
-            var (x1, y1) = L.ToXY(u, v0); var (x2, y2) = L.ToXY(u, v1);
-            Line(c, L.ZBot, L.BottomStory, x1, y1, x2, y2, q, "chân thang", true);
+            if (Line(c, zz, st, x1, y1, x2, y2, q, what, bot, quiet: true)) return;
+            // đầu vế không trùng dầm / sàn: đưa về mép ô thang gần nhất (dầm viền ô)
+            double ue = u <= L.Lr / 2 ? 0 : L.Lr;
+            (x1, y1) = L.ToXY(ue, v0); (x2, y2) = L.ToXY(ue, v1);
+            Line(c, zz, st, x1, y1, x2, y2, q, what + " (đưa về dầm viền ô thang)", bot);
         }
         else if (L.HasLandingBeam) c.LandingBeamLoad += q * (v1 - v0);
         else FarEdge(c, q * (v1 - v0), v0, v1);

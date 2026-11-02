@@ -84,7 +84,7 @@ public class Stair
     public double Gap { get; set; } = 0.10;
     /// <summary>Tổng số bậc (cổ bậc) của cầu thang; 0 = chiều cao tầng / ~170 mm</summary>
     public int Risers { get; set; }
-    /// <summary>Số cổ bậc vế 1; 0 = chia đều</summary>
+    /// <summary>Số cổ bậc vế 1; 0 = chia đều (số bậc lẻ: vế trên nhiều hơn)</summary>
     public int FirstFlightRisers { get; set; }
     /// <summary>Bề rộng mặt bậc b (m); 0 = 0,63 − 2h trong khoảng 260…300 mm, co lại nếu ô thang ngắn</summary>
     public double Tread { get; set; }
@@ -437,7 +437,8 @@ public class StairLayout
 
     private static int[] Split2(int n, int first)
     {
-        int n1 = first > 1 && first < n - 1 ? first : (int)Math.Ceiling(n / 2.0);
+        // số bậc lẻ: vế trên nhiều hơn 1 bậc → vế trên về đúng mép sàn tầng trên (dầm viền ô thang)
+        int n1 = first > 1 && first < n - 1 ? first : n / 2;
         return new[] { n1, n - n1 };
     }
 

@@ -509,6 +509,9 @@ ArchGeometryTests.Run(Check, Path.Combine(Path.GetTempPath(), "kcvxt_archgeo"));
 Console.WriteLine("30. Nguyên tắc nối thép: không nối trong vùng nguy hiểm, so le, ống nối ren");
 SpliceRuleTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("31. Thiết lập bản vẽ: tỷ lệ, cỡ chữ, kiểu kích thước theo tỷ lệ, ghi chú chung");
+DrawingStyleTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");
