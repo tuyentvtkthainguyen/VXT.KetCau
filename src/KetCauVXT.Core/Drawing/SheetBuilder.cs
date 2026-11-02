@@ -63,6 +63,7 @@ public static partial class SheetBuilder
         SheetViewKind.RebarSchedule => "Bảng thống kê thép",
         SheetViewKind.Notes => "Ghi chú chung",
         SheetViewKind.View3D => "Phối cảnh 3D",
+        SheetViewKind.RebarShop => "Gia công thép (shop drawing)",   // RebarShopDrawing.cs
         _ => k.ToString()
     };
 
@@ -71,7 +72,7 @@ public static partial class SheetBuilder
     {
         SheetViewKind.PlanStory, SheetViewKind.SlabRebarPlan, SheetViewKind.Elevation, SheetViewKind.ForceDiagram,
         SheetViewKind.FoundationPlan, SheetViewKind.FoundationDetail, SheetViewKind.BeamDetail, SheetViewKind.ColumnDetail,
-        SheetViewKind.RebarSchedule, SheetViewKind.Notes
+        SheetViewKind.RebarSchedule, SheetViewKind.Notes, SheetViewKind.RebarShop
     };
 
     public static string Describe(SheetView v)
@@ -278,6 +279,11 @@ public static partial class SheetBuilder
                 case SheetViewKind.View3D:
                     res.Add(Placeholder("Phối cảnh 3D chưa hỗ trợ trên tờ in"));
                     break;
+                // ---- gia công thép (shop drawing) – RebarShopDrawing.cs ----
+                case SheetViewKind.RebarShop:
+                    if (d != null && d.All.Any(m => m.Bars.Count > 0)) res.AddRange(RebarShopDrawing.BuildFigures(p, d, par));
+                    break;
+                // ---- hết gia công thép ----
             }
         }
         catch (Exception ex)
@@ -289,7 +295,7 @@ public static partial class SheetBuilder
         if (res.Count == 0)
         {
             bool needDesign = v.Kind is SheetViewKind.FoundationPlan or SheetViewKind.FoundationDetail or SheetViewKind.BeamDetail
-                or SheetViewKind.ColumnDetail or SheetViewKind.RebarSchedule;
+                or SheetViewKind.ColumnDetail or SheetViewKind.RebarSchedule or SheetViewKind.RebarShop;
             res.Add(Placeholder(needDesign && d == null
                 ? $"{KindName(v.Kind)}: cần chạy \"Thiết kế BTCT\" trước"
                 : $"{KindName(v.Kind)} {par}: không có dữ liệu"));
@@ -484,7 +490,7 @@ public static partial class SheetBuilder
     /// <summary>Chuỗi tỷ lệ cho khung tên từ các khung nhìn đã xếp.</summary>
     public static string ScaleText(IEnumerable<(SheetView V, ViewLayout L)> views)
     {
-        var den = views.Where(t => t.V.Kind is not (SheetViewKind.Notes or SheetViewKind.RebarSchedule or SheetViewKind.View3D))
+        var den = views.Where(t => t.V.Kind is not (SheetViewKind.Notes or SheetViewKind.RebarSchedule or SheetViewKind.View3D or SheetViewKind.RebarShop))
             .Select(t => Math.Round(t.L.EffectiveScale)).Where(x => x > 0).Distinct().ToList();
         if (den.Count == 0) return "";
         if (den.Count == 1) return "1/" + den[0].ToString("0", Inv);
@@ -565,6 +571,10 @@ public static partial class SheetBuilder
             case SheetViewKind.ColumnDetail:
                 res.Add("");
                 if (d != null) res.AddRange(d.Columns.Select(c => c.Name).Distinct());
+                break;
+            case SheetViewKind.RebarShop:   // gia công thép theo loại cấu kiện
+                res.Add("");
+                res.AddRange(RebarShopDrawing.Categories);
                 break;
             default: res.Add(""); break;
         }
@@ -672,7 +682,7 @@ public static partial class SheetBuilder
         {
             var v = new SheetView { Kind = k, Param = par ?? "" };
             var figs = Figures(p, r, d, v);
-            v.Scale = k == SheetViewKind.RebarSchedule || k == SheetViewKind.Notes ? 1 : NativeScale(figs);
+            v.Scale = k == SheetViewKind.RebarSchedule || k == SheetViewKind.Notes || k == SheetViewKind.RebarShop ? 1 : NativeScale(figs);
             var (w, h) = NativeSize(figs, area.W - 2 * ViewPad);
             double W = Ceil5(w + 2 * ViewPad), H = Ceil5(h + 2 * ViewPad);
             bool fit = W <= area.W + 1e-6 && (H <= area.H - TitleH - Gap + 1e-6 || (W <= area.W - TitleW - Gap && H <= area.H));

@@ -7,7 +7,7 @@ namespace KetCauVXT.Import;
 public static class DwgConverter
 {
     public const string HowToMessage =
-        "Không đọc trực tiếp được DWG. Cài ODA File Converter (miễn phí, opendesign.com) hoặc trong AutoCAD dùng SAVEAS → DXF.";
+        "Không đọc trực tiếp được DWG. Lưu bản vẽ dạng DXF (SaveAs DXF) hoặc dùng add-in AutoCAD VXT; hoặc cài ODA File Converter (miễn phí, opendesign.com) để chương trình tự chuyển.";
 
     /// <summary>Thời gian chờ tối đa cho một lần chuyển đổi, ms.</summary>
     public const int TimeoutMs = 120_000;

@@ -12,12 +12,13 @@ public partial class MainWindow
     {
         if (_busy) return;
         ApplyUiToProject(false);
-        var dlg = new ArchImportDialog { Owner = this };
+        var dlg = new ArchImportDialog { Owner = this, InitialLayerMap = _p.ArchLayerMap };
         if (dlg.ShowDialog() != true || dlg.Proposal == null || dlg.Drawing == null) return;
         try
         {
             Mouse.OverrideCursor = Cursors.Wait;
             var rep = ArchToStructure.Apply(_p, dlg.Drawing, dlg.Proposal, dlg.Options);
+            _p.ArchLayerMap = dlg.UsedLayerMap;   // ghi lại bảng gán layer đã dùng
             Mouse.OverrideCursor = null;
             _res = null; _design = null; _sel = null;
             MarkDirty();

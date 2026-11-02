@@ -20,7 +20,8 @@ public static class ArchToStructure
         public double C, A, B;     // toạ độ cố định, đoạn [A,B] theo phương dầm
         public BeamRole Role;
         public string Grid = "";
-        public string Tag = "";    // "wall", "hole", "split", "edge", "grid"
+        public string Tag = "";    // "wall", "hole", "split", "edge", "grid", "drawn"
+        public double W;           // bề rộng dầm vẽ sẵn (0 = mặc định)
         public double Len => B - A;
     }
 
@@ -145,6 +146,11 @@ public static class ArchToStructure
             foreach (var z in above.Zones.Where(z => z.Kind == RoomKind.Balcony))
                 polys.Add(new List<(double X, double Y)> { (z.X0, z.Y0), (z.X1, z.Y0), (z.X1, z.Y1), (z.X0, z.Y1) });
         }
+        // vùng sàn vẽ sẵn (layer nhóm Sàn) của sàn cao trình này: mặt bằng tầng trên (hoặc mặt bằng mái / tầng dưới khi là mái)
+        var slabPlan = above ?? roofPlan ?? below;
+        var slabRegs = (slabPlan?.SlabRegions ?? new List<ArchSlabRegion>()).ToList();
+        if (above == null && roofPlan != null && roofPlan.SlabRegions.Count == 0) slabRegs = below.SlabRegions.ToList();
+        foreach (var r in slabRegs.Where(r => !r.IsOpening && r.Points.Count >= 3)) polys.Add(r.Points.ToList());
         polys = polys.Where(p => p != null && p.Count >= 3).ToList();
         bool Inside(double x, double y, double tol) => polys.Any(p => ArchPlanReader.PointInPoly(p, x, y, tol));
         lv.Outline = UnionOutline(polys);
@@ -158,6 +164,10 @@ public static class ArchToStructure
             holes.AddRange(below.Zones.Where(z => z.Kind == RoomKind.Stair));
             holes.AddRange(above.Zones.Where(z => z.Kind == RoomKind.Void));
         }
+        foreach (var r in slabRegs.Where(r => r.IsOpening && r.X1 - r.X0 > 0.3 && r.Y1 - r.Y0 > 0.3))
+            holes.Add(new ArchZone { Kind = RoomKind.Void, X0 = r.X0, Y0 = r.Y0, X1 = r.X1, Y1 = r.Y1, Note = "lỗ sàn vẽ trên layer sàn " + r.Layer });
+        if (slabRegs.Count > 0)
+            s.Notes.Add($"{lv.Name}: dùng {slabRegs.Count(r => !r.IsOpening)} vùng sàn và {slabRegs.Count(r => r.IsOpening)} lỗ sàn vẽ sẵn trên layer sàn.");
 
         var xsBreak = s.GridX.Concat(polys.SelectMany(p => p.Select(q => q.X))).Concat(holes.SelectMany(h => new[] { h.X0, h.X1 })).Append(bx0).Append(bx1);
         var ysBreak = s.GridY.Concat(polys.SelectMany(p => p.Select(q => q.Y))).Concat(holes.SelectMany(h => new[] { h.Y0, h.Y1 })).Append(by0).Append(by1);
@@ -200,9 +210,31 @@ public static class ArchToStructure
         }
         foreach (var ln in lines.Where(l => l.Tag == "hole").ToList()) ExtendToSupports(lines, ln, 1.0, 0.3);
 
+        // 3b. dầm vẽ sẵn trên bản vẽ (layer nhóm Dầm): mặt bằng tầng dưới (dầm trần, nét đứt) hoặc tầng trên
+        var drawnSrc = o.DrawnBeamsAtCeiling ? below : (above ?? below);
+        int drawn = 0;
+        foreach (var db in (drawnSrc?.Beams ?? new List<ArchBeamLine>()).OrderByDescending(b => b.Length))
+        {
+            if (!db.AlongX && !db.AlongY) continue;
+            bool ax = db.AlongX;
+            double c = ax ? db.Ay : db.Ax, a = ax ? Math.Min(db.Ax, db.Bx) : Math.Min(db.Ay, db.By), b = ax ? Math.Max(db.Ax, db.Bx) : Math.Max(db.Ay, db.By);
+            var grids = ax ? s.GridY : s.GridX;
+            double gNear = grids.OrderBy(g => Math.Abs(g - c)).First();
+            if (Math.Abs(gNear - c) <= 0.2) c = gNear; else c = Math.Round(c / 0.05) * 0.05;
+            a = Math.Round(a / 0.05) * 0.05; b = Math.Round(b / 0.05) * 0.05;
+            if (b - a < 0.5) continue;
+            drawn++;
+            var same = lines.FirstOrDefault(q => q.AlongX == ax && Math.Abs(q.C - c) <= Math.Max(0.1, db.Width / 2) && Math.Min(q.B, b) - Math.Max(q.A, a) >= 0.8 * (b - a));
+            if (same != null) { if (db.Width >= 0.1) same.W = Math.Max(same.W, db.Width); continue; }
+            var ln = new Ln { AlongX = ax, C = c, A = a, B = b, Role = BeamRole.Secondary, Tag = "drawn", W = db.Width };
+            ExtendToSupports(lines, ln, 1.0, 0.3);
+            AddLine(lines, ln, 0.02);
+        }
+        if (drawn > 0) s.Notes.Add($"{lv.Name}: {drawn} dầm theo dầm vẽ sẵn trên \"{drawnSrc.Title}\" (layer dầm)" + (o.DrawnBeamsReplaceAuto ? " – không tự đặt thêm dầm đỡ tường." : "."));
+
         // 4. dầm phụ đỡ tường (tường đặt trên cao trình này)
         var wallsOn = WallsOnLevel(above, lv);
-        if (o.BeamsUnderWalls)
+        if (o.BeamsUnderWalls && !(drawn > 0 && o.DrawnBeamsReplaceAuto))
             foreach (var w in wallsOn.OrderByDescending(w => w.Length))
             {
                 if (w.Length < 1.0) continue;
@@ -268,6 +300,7 @@ public static class ArchToStructure
         });
 
         var beams = new List<PropBeam>();
+        var drawnWidth = new Dictionary<PropBeam, double>();
         foreach (var (ln, a, b) in segs)
         {
             var p1 = P(ln, a); var p2 = P(ln, b);
@@ -287,8 +320,10 @@ public static class ArchToStructure
                 if (!double.IsNaN(lo) && !double.IsNaN(hi)) { role = BeamRole.Main; span = hi - lo; }
             }
             var pb = new PropBeam { Ax = p1.X, Ay = p1.Y, Bx = p2.X, By = p2.Y, Role = role, Grid = ln.Grid, Span = span };
+            if (ln.W >= 0.1) drawnWidth[pb] = ln.W;
+            if (ln.Tag == "drawn") pb.Note = "Dầm vẽ sẵn trên bản vẽ (layer dầm).";
             bool free1 = !c1 && Degree(p1.X, p1.Y) <= 1, free2 = !c2 && Degree(p2.X, p2.Y) <= 1;
-            if (role != BeamRole.Cantilever && (free1 || free2)) pb.Note = "Đầu dầm tự do (không có cột/dầm đỡ) – kiểm tra lại.";
+            if (role != BeamRole.Cantilever && (free1 || free2)) pb.Note = (pb.Note.Length > 0 ? pb.Note + " " : "") + "Đầu dầm tự do (không có cột/dầm đỡ) – kiểm tra lại.";
             if (role == BeamRole.Cantilever && pb.Length > o.MaxCantilever + 0.05)
                 s.Warnings.Add($"{lv.Name}: dầm công xôn dài {pb.Length:0.00} m > {o.MaxCantilever:0.0} m tại ({p1.X:0.00};{p1.Y:0.00})–({p2.X:0.00};{p2.Y:0.00}).");
             beams.Add(pb);
@@ -376,6 +411,12 @@ public static class ArchToStructure
         }
 
         SizeBeams(beams, lines, o);
+        // bề rộng dầm vẽ sẵn (2 nét) giữ theo bản vẽ
+        foreach (var (pb, w) in drawnWidth)
+        {
+            pb.B = Math.Round(w, 2);
+            pb.Section = ImportGeometry.RectName("D", pb.B, pb.H);
+        }
         lv.Beams = beams;
         return lines;
     }

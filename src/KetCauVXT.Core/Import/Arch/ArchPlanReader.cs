@@ -30,30 +30,86 @@ public static class ArchPlanReader
         var files = paths.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
         d.Source = string.Join(", ", files.Select(Path.GetFileName));
         var raw = new List<ArchFloorPlan>();
+        var lc = LayerClassifier.For(o);
         foreach (var f in files)
         {
-            DxfReader dxf;
-            if (Path.GetExtension(f).Equals(".dwg", StringComparison.OrdinalIgnoreCase))
+            DxfReader dxf = ReadFile(f, o.ScaleOverride, d);
+            if (dxf == null) continue;
+            string fn = Path.GetFileName(f);
+            d.Warnings.AddRange(dxf.Warnings.Select(w => fn + ": " + w));
+            d.Info.Add($"{fn}: {dxf.Entities.Count} thực thể (+{dxf.FillEntities.Count} miền tô), $INSUNITS = {dxf.InsUnits} → ×{dxf.Scale.ToString(CultureInfo.InvariantCulture)} (đơn vị bản vẽ → m)");
+            var (ents, fills) = VisibleEntities(dxf, o, d, fn);
+            var tmp = new ArchDrawing();
+            var plans = SplitPlans(ents, fills, o, lc, tmp, Path.GetFileNameWithoutExtension(f), files.Count == 1);
+            // không tách được mặt bằng nào, đơn vị theo file: thử đơn vị m / cm (bản vẽ vẽ theo m nhưng $INSUNITS = mm hoặc không khai báo)
+            if (plans.Count == 0 && o.ScaleOverride <= 0)
             {
-                dxf = DwgConverter.ReadAny(f, o.ScaleOverride, out string err);
-                if (dxf == null) { d.Warnings.Add(Path.GetFileName(f) + ": " + err); continue; }
+                double span = Span(dxf.Entities);
+                foreach (double k in span > 0 && span < 0.5 ? new[] { 1000.0 } : span >= 0.5 && span < 5 ? new[] { 10.0 } : Array.Empty<double>())
+                {
+                    var dx2 = ReadFile(f, dxf.Scale * k, null);
+                    if (dx2 == null) continue;
+                    var (e2, f2) = VisibleEntities(dx2, o, null, fn);
+                    var tmp2 = new ArchDrawing();
+                    var p2 = SplitPlans(e2, f2, o, lc, tmp2, Path.GetFileNameWithoutExtension(f), files.Count == 1);
+                    if (p2.Count == 0) continue;
+                    d.Warnings.Add($"{fn}: kích thước bản vẽ theo $INSUNITS chỉ {span:0.###} m – có vẻ bản vẽ vẽ theo {(k >= 1000 ? "m" : "cm")}; đã tự đổi đơn vị (×{(dxf.Scale * k).ToString(CultureInfo.InvariantCulture)}). Chọn \"Đơn vị bản vẽ\" thủ công nếu sai.");
+                    plans = p2; tmp = tmp2;
+                    break;
+                }
             }
-            else dxf = DxfReader.Read(f, o.ScaleOverride);
-            d.Warnings.AddRange(dxf.Warnings.Select(w => Path.GetFileName(f) + ": " + w));
-            d.Info.Add($"{Path.GetFileName(f)}: {dxf.Entities.Count} thực thể, $INSUNITS = {dxf.InsUnits} → ×{dxf.Scale.ToString(CultureInfo.InvariantCulture)} (đơn vị bản vẽ → m)");
-            var plans = SplitPlans(dxf.Entities, o, d, Path.GetFileNameWithoutExtension(f), files.Count == 1);
+            d.Warnings.AddRange(tmp.Warnings); d.Info.AddRange(tmp.Info);
             raw.AddRange(plans);
         }
+        foreach (var kv in lc.Seen) d.LayerCategories[kv.Key] = kv.Value;
         Finish(d, raw, o);
         return d;
     }
 
+    /// <summary>Hàm đọc file dùng thay cho DxfReader/ODA (vd. bộ đọc DWG riêng). null = mặc định. Trả null kèm lỗi nếu không đọc được.</summary>
+    public static Func<string, double, (DxfReader reader, string error)> CustomReader { get; set; }
+
+    private static DxfReader ReadFile(string f, double scale, ArchDrawing d)
+    {
+        DxfReader dxf = null; string err = null;
+        if (CustomReader != null) { var r = CustomReader(f, scale); dxf = r.reader; err = r.error; }
+        else if (DwgConverter.IsDwg(f)) dxf = DwgConverter.ReadAny(f, scale, out err);
+        else dxf = DxfReader.Read(f, scale);
+        if (dxf == null) d?.Warnings.Add(Path.GetFileName(f) + ": " + (err ?? "không đọc được bản vẽ") +
+                                          (DwgConverter.IsDwg(f) ? " – Lưu bản vẽ dạng DXF (SaveAs DXF) hoặc dùng add-in AutoCAD VXT." : ""));
+        return dxf;
+    }
+
+    /// <summary>Thực thể trên layer đang bật (bỏ layer tắt nếu SkipOffLayers).</summary>
+    private static (List<DxfEntity> ents, List<DxfEntity> fills) VisibleEntities(DxfReader dxf, ArchImportOptions o, ArchDrawing d, string fn)
+    {
+        if (!o.SkipOffLayers || dxf.OffLayers.Count == 0) return (dxf.Entities, dxf.FillEntities);
+        var ents = dxf.Entities.Where(e => !dxf.OffLayers.Contains(e.Layer)).ToList();
+        var fills = dxf.FillEntities.Where(e => !dxf.OffLayers.Contains(e.Layer)).ToList();
+        int skipped = dxf.Entities.Count - ents.Count;
+        if (skipped > 0) d?.Info.Add($"{fn}: bỏ {skipped} thực thể trên layer đang tắt: {string.Join(", ", dxf.OffLayers.Take(8))}{(dxf.OffLayers.Count > 8 ? "…" : "")}");
+        return (ents, fills);
+    }
+
+    private static double Span(List<DxfEntity> ents)
+    {
+        if (ents.Count == 0) return 0;
+        double x0 = double.MaxValue, y0 = double.MaxValue, x1 = double.MinValue, y1 = double.MinValue;
+        foreach (var e in ents) foreach (var (x, y) in e.Points) { x0 = Math.Min(x0, x); x1 = Math.Max(x1, x); y0 = Math.Min(y0, y); y1 = Math.Max(y1, y); }
+        return Math.Max(x1 - x0, y1 - y0);
+    }
+
     /// <summary>Đọc từ danh sách thực thể đã có (dùng cho kiểm thử).</summary>
-    public static ArchDrawing FromEntities(List<DxfEntity> ents, ArchImportOptions o, string source = "")
+    public static ArchDrawing FromEntities(List<DxfEntity> ents, ArchImportOptions o, string source = "") => FromEntities(ents, null, o, source);
+
+    /// <summary>Đọc từ danh sách thực thể + miền tô (HATCH/SOLID) đã có – dùng cho kiểm thử và bộ đọc DWG riêng.</summary>
+    public static ArchDrawing FromEntities(List<DxfEntity> ents, List<DxfEntity> fills, ArchImportOptions o, string source = "")
     {
         o ??= new ArchImportOptions();
         var d = new ArchDrawing { Source = source };
-        var plans = SplitPlans(ents, o, d, source, true);
+        var lc = LayerClassifier.For(o);
+        var plans = SplitPlans(ents ?? new List<DxfEntity>(), fills ?? new List<DxfEntity>(), o, lc, d, source, true);
+        foreach (var kv in lc.Seen) d.LayerCategories[kv.Key] = kv.Value;
         Finish(d, plans, o);
         return d;
     }
@@ -61,14 +117,15 @@ public static class ArchPlanReader
     // ==================================================================
     // 1. TÁCH CÁC MẶT BẰNG
     // ==================================================================
-    private static List<ArchFloorPlan> SplitPlans(List<DxfEntity> ents, ArchImportOptions o, ArchDrawing d, string fileTag, bool singleFile)
+    private static List<ArchFloorPlan> SplitPlans(List<DxfEntity> ents, List<DxfEntity> fills, ArchImportOptions o, LayerClassifier lc, ArchDrawing d, string fileTag, bool singleFile)
     {
         var res = new List<ArchFloorPlan>();
-        foreach (var e in ents.Where(e => e.Type == DxfEntityType.Text)) e.Text = Tcvn3.Fix(e.Text);
-        var wallEnts = ents.Where(e => e.Type != DxfEntityType.Text && Match(e.Layer, o.WallLayers)).ToList();
+        foreach (var e in ents) lc.Of(e.Layer);
+        foreach (var e in ents.Where(e => e.Type == DxfEntityType.Text)) e.Text = VnText.Fix(e.Text, e.FontHint);
+        var wallEnts = ents.Where(e => e.Type != DxfEntityType.Text && lc.Is(e.Layer, CadCategory.Tuong)).ToList();
         if (wallEnts.Count == 0)
         {
-            d.Warnings.Add($"{fileTag}: không tìm thấy nét trên lớp tường ({o.WallLayers}). Kiểm tra tên lớp trong mục \"Thông số\" (vd. lớp tường của văn phòng là \"KT-TUONG\" thì thêm \"KT-TUONG\").");
+            d.Warnings.Add($"{fileTag}: không tìm thấy nét trên layer nhóm Tường (từ khoá {o.WallLayers}). Gán layer tường ở bảng \"Layer trong file\" hoặc thêm quy tắc trong \"Chuẩn layer CAD…\" (vd. lớp tường của văn phòng là \"KT-TUONG\").");
             return res;
         }
         var wallSegs = Segments(wallEnts).Where(s => s.Length >= 0.05).ToList();
@@ -152,9 +209,11 @@ public static class ArchPlanReader
         {
             // phạm vi lấy thực thể: bao tường + 3 m (trục, ký hiệu trục nằm ngoài tường)
             double m = 3.0;
-            var inEnts = ents.Where(e => e.Points.Count > 0 && e.Points.Min(p => p.X) <= x1 + m && e.Points.Max(p => p.X) >= x0 - m
-                                         && e.Points.Min(p => p.Y) <= y1 + m && e.Points.Max(p => p.Y) >= y0 - m).ToList();
-            Recognize(plan, inEnts, x0, y0, x1, y1, o);
+            bool Near(DxfEntity e) => e.Points.Count > 0 && e.Points.Min(p => p.X) <= x1 + m && e.Points.Max(p => p.X) >= x0 - m
+                                      && e.Points.Min(p => p.Y) <= y1 + m && e.Points.Max(p => p.Y) >= y0 - m;
+            var inEnts = ents.Where(Near).ToList();
+            var inFills = fills.Where(Near).ToList();
+            Recognize(plan, inEnts, inFills, x0, y0, x1, y1, o, lc);
             res.Add(plan);
         }
         return res;
@@ -198,15 +257,20 @@ public static class ArchPlanReader
     // ==================================================================
     // 2. NHẬN DIỆN MỘT MẶT BẰNG
     // ==================================================================
-    private static void Recognize(ArchFloorPlan plan, List<DxfEntity> ents, double bx0, double by0, double bx1, double by1, ArchImportOptions o)
+    private static void Recognize(ArchFloorPlan plan, List<DxfEntity> ents, List<DxfEntity> fills, double bx0, double by0, double bx1, double by1, ArchImportOptions o, LayerClassifier lc)
     {
         bool InBox(double x, double y, double m = 0.3) => x >= bx0 - m && x <= bx1 + m && y >= by0 - m && y <= by1 + m;
+        bool Is(DxfEntity e, string cat) => lc.Is(e.Layer, cat);
+        // layer "Bỏ qua": không dùng cho bất kỳ nhận diện nào
+        ents = ents.Where(e => !Is(e, CadCategory.BoQua)).ToList();
 
         // ---- nền xem trước ----
         foreach (var e in ents.Where(e => e.Type != DxfEntityType.Text))
         {
-            int kind = Match(e.Layer, o.WallLayers) ? 1 : IsGridEntity(e, o) ? 2 : Match(e.Layer, o.ColumnLayers) ? 3
-                     : Match(e.Layer, o.DoorLayers) || IsDoorBlock(e.Block) ? 4 : Match(e.Layer, o.StairLayers) ? 5 : 0;
+            string cat = lc.Of(e.Layer);
+            int kind = cat == CadCategory.Tuong ? 1 : IsGridEntity(e, lc) ? 2 : cat == CadCategory.Cot ? 3
+                     : cat == CadCategory.Cua || IsDoorBlock(e.Block) ? 4 : cat == CadCategory.Thang ? 5
+                     : cat == CadCategory.Dam ? 6 : cat == CadCategory.San ? 7 : 0;
             if (e.Type == DxfEntityType.Circle)
             {
                 var (cx, cy) = e.Points[0];
@@ -221,7 +285,18 @@ public static class ArchPlanReader
         }
 
         // ---- tường ----
-        var wallSegs = Segments(ents.Where(e => e.Type != DxfEntityType.Text && Match(e.Layer, o.WallLayers)))
+        // tường vẽ bằng 1 đa tuyến có bề rộng (bề rộng = chiều dày tường)
+        bool Wide(DxfEntity e) => e.Type == DxfEntityType.Polyline && e.Width >= o.MinWallThickness - 1e-6 && e.Width <= o.MaxWallThickness + 1e-6;
+        var wideWalls = new List<ArchWall>();
+        foreach (var e in ents.Where(e => e.Type != DxfEntityType.Text && Is(e, CadCategory.Tuong) && Wide(e)))
+            foreach (var s in Segments(new[] { e }).Where(s => s.Length >= 0.05 && InBox((s.Ax + s.Bx) / 2, (s.Ay + s.By) / 2)))
+            {
+                double t = Math.Round(e.Width, 3);
+                if (s.IsAlongX(0.01)) wideWalls.Add(new ArchWall { Ax = Math.Min(s.Ax, s.Bx), Ay = (s.Ay + s.By) / 2, Bx = Math.Max(s.Ax, s.Bx), By = (s.Ay + s.By) / 2, Thickness = t, Layer = e.Layer });
+                else if (s.IsAlongY(0.01)) wideWalls.Add(new ArchWall { Ax = (s.Ax + s.Bx) / 2, Ay = Math.Min(s.Ay, s.By), Bx = (s.Ax + s.Bx) / 2, By = Math.Max(s.Ay, s.By), Thickness = t, Layer = e.Layer });
+            }
+        if (wideWalls.Count > 0) plan.Notes.Add($"{wideWalls.Count} đoạn tường vẽ bằng đa tuyến có bề rộng – lấy bề rộng nét làm chiều dày tường.");
+        var wallSegs = Segments(ents.Where(e => e.Type != DxfEntityType.Text && Is(e, CadCategory.Tuong) && !Wide(e)))
             .Where(s => s.Length >= 0.05 && InBox((s.Ax + s.Bx) / 2, (s.Ay + s.By) / 2)).ToList();
         int diag = 0;
         var hx = new List<(double c, double a, double b)>();   // nét ngang: y, x đầu, x cuối
@@ -238,7 +313,9 @@ public static class ArchPlanReader
         var walls = new List<ArchWall>();
         walls.AddRange(PairWalls(hx, true, o));
         walls.AddRange(PairWalls(vy, false, o));
-        if (walls.Count == 0 && wallSegs.Count > 0)
+        bool hadPairs = walls.Count > 0;
+        walls.AddRange(wideWalls);
+        if (!hadPairs && wallSegs.Count > 0)
         {
             // bản vẽ tường 1 nét
             foreach (var (c, a, b) in hx.Where(t => t.b - t.a >= 1.0)) walls.Add(new ArchWall { Ax = a, Ay = c, Bx = b, By = c, Thickness = o.DefaultWallThickness });
@@ -248,7 +325,7 @@ public static class ArchPlanReader
         walls = MergeWalls(walls, o).Where(w => w.Length >= o.MinWallLength).ToList();
 
         // ---- cột kiến trúc ----
-        foreach (var e in ents.Where(e => e.Type == DxfEntityType.Polyline && e.Closed && Match(e.Layer, o.ColumnLayers)))
+        foreach (var e in ents.Concat(fills).Where(e => e.Type == DxfEntityType.Polyline && e.Closed && Is(e, CadCategory.Cot)))
         {
             double x0 = e.Points.Min(p => p.X), x1 = e.Points.Max(p => p.X), y0 = e.Points.Min(p => p.Y), y1 = e.Points.Max(p => p.Y);
             double w = x1 - x0, h = y1 - y0;
@@ -261,7 +338,7 @@ public static class ArchPlanReader
 
         // ---- trục ----
         var texts = ents.Where(e => e.Type == DxfEntityType.Text).ToList();
-        var gridSegs = Segments(ents.Where(e => e.Type != DxfEntityType.Text && IsGridEntity(e, o))).ToList();
+        var gridSegs = Segments(ents.Where(e => e.Type != DxfEntityType.Text && IsGridEntity(e, lc))).ToList();
         double minLen = Math.Max(2.5, 0.35 * Math.Min(bx1 - bx0, by1 - by0));
         var gx = new List<(double c, Seg2 s)>(); var gy = new List<(double c, Seg2 s)>();
         foreach (var s in gridSegs.Where(s => s.Length >= minLen))
@@ -276,11 +353,11 @@ public static class ArchPlanReader
             plan.Grids.Clear();
             plan.Grids.AddRange(GridsFromWalls(walls, GridDir.X));
             plan.Grids.AddRange(GridsFromWalls(walls, GridDir.Y));
-            plan.Notes.Add("Không đọc được lưới trục (lớp " + o.GridLayers + ") – tự lập trục theo tim tường chính, kiểm tra lại.");
+            plan.Notes.Add("Không đọc được lưới trục (layer nhóm Trục, từ khoá " + o.GridLayers + ") – tự lập trục theo tim tường chính, kiểm tra lại.");
         }
 
         // ---- lỗ cửa ----
-        var doorEnts = ents.Where(e => e.Type != DxfEntityType.Text && (Match(e.Layer, o.DoorLayers) || IsDoorBlock(e.Block))
+        var doorEnts = ents.Where(e => e.Type != DxfEntityType.Text && (Is(e, CadCategory.Cua) || IsDoorBlock(e.Block))
                                        && e.Points.Count > 0 && InBox(e.Points[0].X, e.Points[0].Y)).ToList();
         foreach (var cl in ClusterBoxes(doorEnts, 0.08))
         {
@@ -303,7 +380,10 @@ public static class ArchPlanReader
         plan.Walls.AddRange(walls);
 
         // ---- phòng, cầu thang, thông tầng ----
-        foreach (var t in texts)
+        // có layer nhóm "Tên phòng" → chỉ đọc tên phòng trên các layer đó
+        var roomTexts = texts.Where(t => Is(t, CadCategory.TenPhong)).ToList();
+        if (roomTexts.Count == 0) roomTexts = texts;
+        foreach (var t in roomTexts)
         {
             var (px, py) = t.Points[0];
             if (!InBox(px, py, Math.Max(o.MaxCantilever, 1.0) + 0.5)) continue;
@@ -316,7 +396,7 @@ public static class ArchPlanReader
             plan.Rooms.Add(new ArchRoom { Text = t.Text, Kind = rt.Kind, X = px, Y = py });
             if (rt.Kind == RoomKind.Void) plan.Zones.Add(new ArchZone { Kind = RoomKind.Void, X0 = px, Y0 = py, X1 = px, Y1 = py, Note = "từ chữ \"" + t.Text + "\"" });
         }
-        var stairEnts = ents.Where(e => e.Type != DxfEntityType.Text && Match(e.Layer, o.StairLayers) && e.Points.Count > 0 && InBox(e.Points[0].X, e.Points[0].Y)).ToList();
+        var stairEnts = ents.Where(e => e.Type != DxfEntityType.Text && Is(e, CadCategory.Thang) && e.Points.Count > 0 && InBox(e.Points[0].X, e.Points[0].Y)).ToList();
         foreach (var cl in ClusterBoxes(stairEnts, 0.35))
         {
             double w = cl.x1 - cl.x0, h = cl.y1 - cl.y0;
@@ -326,6 +406,10 @@ public static class ArchPlanReader
         if (!plan.Zones.Any(z => z.Kind == RoomKind.Stair))
             foreach (var r in plan.Rooms.Where(r => r.Kind == RoomKind.Stair))
                 plan.Zones.Add(new ArchZone { Kind = RoomKind.Stair, X0 = r.X, Y0 = r.Y, X1 = r.X, Y1 = r.Y, Note = "từ chữ \"" + r.Text + "\"" });
+
+        // ---- dầm, vùng sàn vẽ sẵn (layer nhóm Dầm / Sàn) ----
+        ReadBeams(plan, ents.Where(e => e.Type != DxfEntityType.Text && e.Type != DxfEntityType.Circle && Is(e, CadCategory.Dam)).ToList(), InBox, o);
+        ReadSlabs(plan, ents.Concat(fills).Where(e => e.Type == DxfEntityType.Polyline && e.Closed && Is(e, CadCategory.San)).ToList(), InBox);
 
         // ---- đường bao sàn ----
         plan.Outline = Footprint(walls, plan.Columns);
@@ -338,7 +422,10 @@ public static class ArchPlanReader
     // ------------------------------------------------------------------
     private static readonly double[] StdThick = { 0.10, 0.11, 0.15, 0.20, 0.22, 0.25, 0.30, 0.33 };
 
-    private static IEnumerable<ArchWall> PairWalls(List<(double c, double a, double b)> lines, bool horiz, ArchImportOptions o)
+    private static IEnumerable<ArchWall> PairWalls(List<(double c, double a, double b)> lines, bool horiz, ArchImportOptions o) =>
+        PairWalls(lines, horiz, o.MinWallThickness, o.MaxWallThickness);
+
+    private static IEnumerable<ArchWall> PairWalls(List<(double c, double a, double b)> lines, bool horiz, double minT, double maxT)
     {
         var sorted = lines.OrderBy(l => l.c).ToList();
         var used = new HashSet<(int, int)>();
@@ -351,8 +438,8 @@ public static class ArchPlanReader
                 {
                     var lj = sorted[j];
                     double d = Math.Abs(lj.c - li.c);
-                    if (d > o.MaxWallThickness) break;
-                    if (d < o.MinWallThickness) continue;
+                    if (d > maxT) break;
+                    if (d < minT) continue;
                     double ov = Math.Min(li.b, lj.b) - Math.Max(li.a, lj.a);
                     if (ov < Math.Min(0.3, 0.5 * Math.Min(li.b - li.a, lj.b - lj.a))) continue;
                     double score = StdThick.Min(t => Math.Abs(t - d)) - 0.001 * d;
@@ -474,6 +561,79 @@ public static class ArchPlanReader
         }
         for (int i = 0; i < res.Count; i++) { res[i].Name = ImportGeometry.AutoName(dir, i); res[i].Auto = true; }
         return res;
+    }
+
+    // ------------------------------------------------------------------
+    // Dầm, vùng sàn vẽ sẵn
+    // ------------------------------------------------------------------
+    /// <summary>Dầm vẽ 2 nét (cách nhau 100–800 mm) → tim dầm + bề rộng; dầm vẽ 1 nét (≥ 0,5 m, không thuộc cặp) → bề rộng 0 (lấy mặc định).</summary>
+    private static void ReadBeams(ArchFloorPlan plan, List<DxfEntity> ents, Func<double, double, double, bool> inBox, ArchImportOptions o)
+    {
+        if (ents.Count == 0) return;
+        var hx = new List<(double c, double a, double b)>(); var vy = new List<(double c, double a, double b)>();
+        int diag = 0;
+        foreach (var s in Segments(ents).Where(s => s.Length >= 0.05 && inBox((s.Ax + s.Bx) / 2, (s.Ay + s.By) / 2, 1.0)))
+        {
+            if (s.IsAlongX(0.01)) hx.Add(((s.Ay + s.By) / 2, Math.Min(s.Ax, s.Bx), Math.Max(s.Ax, s.Bx)));
+            else if (s.IsAlongY(0.01)) vy.Add(((s.Ax + s.Bx) / 2, Math.Min(s.Ay, s.By), Math.Max(s.Ay, s.By)));
+            else if (s.Length > 0.5) diag++;
+        }
+        var res = new List<ArchBeamLine>();
+        foreach (bool horiz in new[] { true, false })
+        {
+            var lines = horiz ? hx : vy;
+            var pairs = PairWalls(lines, horiz, 0.10, 0.80).Where(w => w.Length >= 0.3).ToList();
+            foreach (var w in pairs) res.Add(new ArchBeamLine { Ax = w.Ax, Ay = w.Ay, Bx = w.Bx, By = w.By, Width = w.Thickness });
+            foreach (var (c, a, b) in lines.Where(l => l.b - l.a >= 0.5))
+            {
+                bool inPair = pairs.Any(w =>
+                {
+                    double wc = horiz ? w.Ay : w.Ax, wa = horiz ? Math.Min(w.Ax, w.Bx) : Math.Min(w.Ay, w.By), wb = horiz ? Math.Max(w.Ax, w.Bx) : Math.Max(w.Ay, w.By);
+                    return Math.Abs(wc - c) <= w.Thickness / 2 + 0.02 && Math.Min(b, wb) - Math.Max(a, wa) > 0.5 * (b - a);
+                });
+                if (!inPair) res.Add(horiz ? new ArchBeamLine { Ax = a, Ay = c, Bx = b, By = c } : new ArchBeamLine { Ax = c, Ay = a, Bx = c, By = b });
+            }
+        }
+        // gộp đoạn thẳng hàng chồng/kề nhau
+        var merged = new List<ArchBeamLine>();
+        foreach (var g in res.GroupBy(b => (b.AlongX, Math.Round((b.AlongX ? b.Ay : b.Ax) / 0.02))))
+        {
+            var iv = g.Select(b => (a: b.AlongX ? Math.Min(b.Ax, b.Bx) : Math.Min(b.Ay, b.By), b: b.AlongX ? Math.Max(b.Ax, b.Bx) : Math.Max(b.Ay, b.By), w: b.Width, c: b.AlongX ? b.Ay : b.Ax))
+                      .OrderBy(t => t.a).ToList();
+            var cur = iv[0];
+            void Emit() => merged.Add(g.Key.AlongX ? new ArchBeamLine { Ax = cur.a, Ay = cur.c, Bx = cur.b, By = cur.c, Width = cur.w } : new ArchBeamLine { Ax = cur.c, Ay = cur.a, Bx = cur.c, By = cur.b, Width = cur.w });
+            for (int k = 1; k < iv.Count; k++)
+            {
+                if (iv[k].a <= cur.b + 0.05) cur = (cur.a, Math.Max(cur.b, iv[k].b), Math.Max(cur.w, iv[k].w), cur.c);
+                else { Emit(); cur = iv[k]; }
+            }
+            Emit();
+        }
+        string layer = ents[0].Layer;
+        foreach (var b in merged) b.Layer = layer;
+        plan.Beams.AddRange(merged.Where(b => b.Length >= 0.5));
+        if (diag > 0) plan.Notes.Add($"{diag} nét dầm xiên – chưa hỗ trợ, bỏ qua.");
+        if (plan.Beams.Count > 0) plan.Notes.Add($"{plan.Beams.Count} dầm vẽ sẵn trên layer dầm ({string.Join(", ", ents.Select(e => e.Layer).Distinct().Take(4))}).");
+    }
+
+    /// <summary>Đa tuyến kín trên layer sàn → vùng sàn; vùng nằm trọn trong vùng sàn khác → lỗ sàn.</summary>
+    private static void ReadSlabs(ArchFloorPlan plan, List<DxfEntity> ents, Func<double, double, double, bool> inBox)
+    {
+        var regs = new List<ArchSlabRegion>();
+        foreach (var e in ents)
+        {
+            if (e.Points.Count < 3) continue;
+            var pts = e.Points.ToList();
+            double x0 = pts.Min(p => p.X), x1 = pts.Max(p => p.X), y0 = pts.Min(p => p.Y), y1 = pts.Max(p => p.Y);
+            if (!inBox((x0 + x1) / 2, (y0 + y1) / 2, 2.5)) continue;
+            var r = new ArchSlabRegion { Points = pts, X0 = x0, Y0 = y0, X1 = x1, Y1 = y1, Layer = e.Layer };
+            if (r.Area < 0.25) continue;
+            if (regs.Any(q => Math.Abs(q.X0 - x0) < 0.01 && Math.Abs(q.X1 - x1) < 0.01 && Math.Abs(q.Y0 - y0) < 0.01 && Math.Abs(q.Y1 - y1) < 0.01)) continue;
+            regs.Add(r);
+        }
+        foreach (var r in regs)
+            r.IsOpening = regs.Any(q => q != r && q.Area > r.Area + 1e-6 && r.Points.All(p => PointInPoly(q.Points, p.X, p.Y, 0.01)));
+        plan.SlabRegions.AddRange(regs);
     }
 
     // ------------------------------------------------------------------
@@ -691,7 +851,8 @@ public static class ArchPlanReader
         d.Floors = plans;
         d.Info.Add($"Nhận diện {plans.Count} mặt bằng: " + string.Join("; ", plans.Select(p => $"[{(p.IsRoofPlan ? "Mái" : p.IsTum ? "Tum" : "T" + p.FloorNo)}] {p.Title}")));
         foreach (var p in plans)
-            d.Info.Add($"  {p.Title}: {p.Walls.Count} đoạn tường ({p.Walls.Sum(w => w.Length):0.0} m), {p.Grids.Count} trục, {p.Columns.Count} cột KT, {p.Rooms.Count} phòng, {p.Openings.Count} cửa, {p.Zones.Count} vùng đặc biệt");
+            d.Info.Add($"  {p.Title}: {p.Walls.Count} đoạn tường ({p.Walls.Sum(w => w.Length):0.0} m), {p.Grids.Count} trục, {p.Columns.Count} cột KT, {p.Rooms.Count} phòng, {p.Openings.Count} cửa, {p.Zones.Count} vùng đặc biệt"
+                       + (p.Beams.Count > 0 ? $", {p.Beams.Count} dầm vẽ sẵn" : "") + (p.SlabRegions.Count > 0 ? $", {p.SlabRegions.Count(r => !r.IsOpening)} vùng sàn + {p.SlabRegions.Count(r => r.IsOpening)} lỗ sàn vẽ sẵn" : ""));
     }
 
     /// <summary>Khớp tầng bằng vị trí tường khi không khớp được tên trục: chọn độ dời làm trùng nhiều chiều dài tường nhất
@@ -740,6 +901,12 @@ public static class ArchPlanReader
         foreach (var r in p.Rooms) { r.X += dx; r.Y += dy; }
         foreach (var z in p.Zones) { z.X0 = R(z.X0 + dx); z.X1 = R(z.X1 + dx); z.Y0 = R(z.Y0 + dy); z.Y1 = R(z.Y1 + dy); }
         foreach (var op in p.Openings) { op.X += dx; op.Y += dy; }
+        foreach (var b in p.Beams) { b.Ax = R(b.Ax + dx); b.Bx = R(b.Bx + dx); b.Ay = R(b.Ay + dy); b.By = R(b.By + dy); }
+        foreach (var sr in p.SlabRegions)
+        {
+            sr.Points = sr.Points.Select(q => (R(q.X + dx), R(q.Y + dy))).ToList();
+            sr.X0 = R(sr.X0 + dx); sr.X1 = R(sr.X1 + dx); sr.Y0 = R(sr.Y0 + dy); sr.Y1 = R(sr.Y1 + dy);
+        }
         for (int i = 0; i < p.Preview.Count; i++)
         {
             var l = p.Preview[i];
@@ -765,9 +932,11 @@ public static class ArchPlanReader
         return false;
     }
 
-    private static bool IsGridEntity(DxfEntity e, ArchImportOptions o)
+    private static bool IsGridEntity(DxfEntity e, LayerClassifier lc)
     {
-        if (Match(e.Layer, o.GridLayers)) return true;
+        string cat = lc.Of(e.Layer);
+        if (cat == CadCategory.Truc) return true;
+        if (cat == CadCategory.Dam || cat == CadCategory.San || cat == CadCategory.BoQua) return false;   // tim dầm nét CENTER không phải trục
         string lt = (e.LineType ?? "").ToUpperInvariant();
         return e.Type == DxfEntityType.Line && (lt.Contains("CENTER") || lt.Contains("DASHDOT") || lt.Contains("AXIS") || lt.Contains("TRUC"));
     }

@@ -21,6 +21,17 @@ public sealed partial class DxfWriter
         ("DASHDOT", "__ . __ . __", 25.4, new[] { 12.7, -6.35, 0.0, -6.35 }),
     };
 
+    /// <summary>Các layer (tên nội bộ, trước khi đổi theo chuẩn) mà thực thể của bộ ghi này đang dùng – theo thứ tự gặp.</summary>
+    public List<string> UsedLayers()
+    {
+        var res = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var e in _ents)
+            foreach (var (code, val) in e.Codes)
+                if (code == 8 && val is string ln && seen.Add(ln)) res.Add(ln);
+        return res;
+    }
+
     /// <summary>Tên layer nội bộ → tên layer xuất (chỉ các layer có khai báo trong chuẩn).</summary>
     private static Dictionary<string, string> OutputNameMap(CadStandard std)
     {
@@ -100,4 +111,38 @@ public sealed partial class DxfWriter
 
     /// <summary>Kiểu nét đã khai báo trong bảng LTYPE của lần ghi hiện tại (null = ghi kiểu cũ, không kiểm tra).</summary>
     private HashSet<string> _definedLtypes;
+}
+
+/// <summary>Liệt kê các layer (tên nội bộ) sẽ được ghi trong một lần xuất – dùng cho hộp "Xem/đổi tên layer trước khi xuất".</summary>
+public static class ExportLayerProbe
+{
+    /// <summary>Bộ bản vẽ KC-01…KC-06 (DrawingSet.ExportAll) dùng các layer chuẩn của chương trình.</summary>
+    public static List<string> ForDrawingSet() => Model.CadStandard.InternalLayerKeys.ToList();
+
+    /// <summary>Các tờ dàn trang (SheetBuilder.ExportDxf / ExportAllDxf): ghép thử từng tờ rồi lấy layer thực thể dùng
+    /// (gồm cả layer tự đặt của đối tượng chú thích).</summary>
+    public static List<string> ForSheets(Model.Project p, Analysis.AnalysisResults r, Design.DesignSummary d, IEnumerable<Model.Sheet> sheets)
+    {
+        var res = new List<string>();
+        foreach (var s in sheets ?? Enumerable.Empty<Model.Sheet>())
+        {
+            try
+            {
+                foreach (var l in SheetBuilder.Compose(p, r, d, s).UsedLayers())
+                    if (!res.Contains(l)) res.Add(l);
+            }
+            catch (Exception) { /* tờ lỗi: bỏ qua khi liệt kê */ }
+        }
+        foreach (var k in Model.CadStandard.InternalLayerKeys) if (!res.Contains(k)) res.Add(k);
+        return res;
+    }
+
+    /// <summary>Từ các bộ ghi đã dựng sẵn.</summary>
+    public static List<string> ForWriters(IEnumerable<DxfWriter> writers)
+    {
+        var res = new List<string>();
+        foreach (var w in writers ?? Enumerable.Empty<DxfWriter>())
+            foreach (var l in w.UsedLayers()) if (!res.Contains(l)) res.Add(l);
+        return res;
+    }
 }

@@ -180,7 +180,7 @@ public class DxfReader
         }
         if (bytes.Length >= 6 && StartsWith(bytes, "AC10") && bytes[4] >= (byte)'0' && bytes[4] <= (byte)'9')
         {
-            r.Warnings.Add("File này là bản vẽ DWG (không phải DXF). Không đọc trực tiếp được DWG – cài ODA File Converter (miễn phí, opendesign.com) hoặc trong AutoCAD dùng SAVEAS → DXF.");
+            r.Warnings.Add("File này là bản vẽ DWG (không phải DXF). Không đọc trực tiếp được DWG – Lưu bản vẽ dạng DXF (SaveAs DXF) hoặc dùng add-in AutoCAD VXT; hoặc cài ODA File Converter (miễn phí, opendesign.com).");
             return r;
         }
         string text = r.Decode(bytes);

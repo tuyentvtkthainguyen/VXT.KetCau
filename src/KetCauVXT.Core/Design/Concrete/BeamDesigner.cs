@@ -608,7 +608,7 @@ public static class BeamDesigner
                 Note = "Ø" + sdk[k] + "a" + DesignUtil.F(shear[k].SSupport * 1000, "0") + " – " + res.ComboQ + (string.IsNullOrEmpty(shear[k].Note) ? "" : "; " + shear[k].Note)
             });
             if (!shear[k].Ok && !userShear[k]) d.Messages.Add("LỖI" + sk + ": " + shear[k].Note);
-            foreach (var ci in d.Checks.Where(ci => userNames.Contains(ci.Name) && !ci.Ok).ToList())
+            foreach (var ci in d.Checks.Where(q => userNames.Contains(q.Name) && !q.Ok).ToList())
                 d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + ci.Name + ": " + ci.Note);
             if (tor != null)
             {

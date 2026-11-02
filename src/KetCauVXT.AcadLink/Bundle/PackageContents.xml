@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Gói tự nạp (Autoloader) của AutoCAD: chép cả thư mục KetCauVXT.bundle vào
+    %APPDATA%\Autodesk\ApplicationPlugins\
+  (hoặc chạy CaiDatAutoCAD.cmd). AutoCAD 2021–2026 tự nạp DLL đúng phiên bản trong Contents\<năm>\.
+  Mã phiên bản: R24.0 = 2021, R24.1 = 2022, R24.2 = 2023, R24.3 = 2024, R25.0 = 2025, R25.1 = 2026.
+-->
+<ApplicationPackage SchemaVersion="1.0" AutodeskProduct="AutoCAD" ProductType="Application"
+                    Name="Kết cấu VXT – liên kết AutoCAD" AppVersion="1.0.0"
+                    Description="Tích chọn tường, cột, dầm, sàn, lưới trục, cửa, cầu thang, tên phòng trên bản vẽ AutoCAD, khai báo tầng và gửi sang chương trình Kết cấu VXT để triển khai hồ sơ kết cấu."
+                    Author="Vũ Xuân Tuyến"
+                    ProductCode="{7C1E3B52-4A8D-4F0B-9E61-2D5A8C3F7B10}" UpgradeCode="{0E9F4D27-6B3A-4C58-8A1D-93F2B6E4C705}">
+  <CompanyDetails Name="Vũ Xuân Tuyến – Kết cấu VXT" />
+  <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.0" SeriesMax="R25.1" />
+
+  <!-- AutoCAD 2021 (R24.0) -->
+  <Components Description="AutoCAD 2021">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.0" SeriesMax="R24.0" />
+    <ComponentEntry AppName="KetCauVXT.AcadLink" Version="1.0.0" ModuleName="./Contents/2021/KetCauVXT.AcadLink.dll"
+                    AppDescription="Liên kết AutoCAD 2021 → Kết cấu VXT" LoadOnAutoCADStartup="True" />
+  </Components>
+
+  <!-- AutoCAD 2022 (R24.1) -->
+  <Components Description="AutoCAD 2022">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.1" SeriesMax="R24.1" />
+    <ComponentEntry AppName="KetCauVXT.AcadLink" Version="1.0.0" ModuleName="./Contents/2022/KetCauVXT.AcadLink.dll"
+                    AppDescription="Liên kết AutoCAD 2022 → Kết cấu VXT" LoadOnAutoCADStartup="True" />
+  </Components>
+
+  <!-- AutoCAD 2023 (R24.2) -->
+  <Components Description="AutoCAD 2023">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.2" SeriesMax="R24.2" />
+    <ComponentEntry AppName="KetCauVXT.AcadLink" Version="1.0.0" ModuleName="./Contents/2023/KetCauVXT.AcadLink.dll"
+                    AppDescription="Liên kết AutoCAD 2023 → Kết cấu VXT" LoadOnAutoCADStartup="True" />
+  </Components>
+
+  <!-- AutoCAD 2024 (R24.3) -->
+  <Components Description="AutoCAD 2024">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.3" SeriesMax="R24.3" />
+    <ComponentEntry AppName="KetCauVXT.AcadLink" Version="1.0.0" ModuleName="./Contents/2024/KetCauVXT.AcadLink.dll"
+                    AppDescription="Liên kết AutoCAD 2024 → Kết cấu VXT" LoadOnAutoCADStartup="True" />
+  </Components>
+
+  <!-- AutoCAD 2025 (R25.0) -->
+  <Components Description="AutoCAD 2025">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R25.0" SeriesMax="R25.0" />
+    <ComponentEntry AppName="KetCauVXT.AcadLink" Version="1.0.0" ModuleName="./Contents/2025/KetCauVXT.AcadLink.dll"
+                    AppDescription="Liên kết AutoCAD 2025 → Kết cấu VXT" LoadOnAutoCADStartup="True" />
+  </Components>
+
+  <!-- AutoCAD 2026 (R25.1) -->
+  <Components Description="AutoCAD 2026">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R25.1" SeriesMax="R25.1" />
+    <ComponentEntry AppName="KetCauVXT.AcadLink" Version="1.0.0" ModuleName="./Contents/2026/KetCauVXT.AcadLink.dll"
+                    AppDescription="Liên kết AutoCAD 2026 → Kết cấu VXT" LoadOnAutoCADStartup="True" />
+  </Components>
+
+</ApplicationPackage>

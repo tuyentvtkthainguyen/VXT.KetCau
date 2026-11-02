@@ -60,17 +60,19 @@ public static class RebarSchedule
         void AddMember(MemberDesignBase m, string cat)
         {
             int q = Math.Max(1, m.Quantity);
-            foreach (var b in m.Bars.OrderBy(x => x.Mark))
+            // các BarMark cùng số hiệu (thanh đối xứng: mũ gối trái – phải, mũ sàn các cạnh…) gộp thành MỘT hàng, số thanh cộng dồn
+            foreach (var gm in m.Bars.Where(x => x.Count > 0 && x.Length > 0 && x.Dia > 0).GroupBy(x => x.Mark).OrderBy(x => x.Key))
             {
-                if (b.Count <= 0 || b.Length <= 0 || b.Dia <= 0) continue;
+                var b = gm.First();
+                int cnt = gm.Sum(x => x.Count);
                 double lmm = Math.Round(b.Length * 100) * 10;
-                int tot = b.Count * q;
+                int tot = cnt * q;
                 double tl = tot * lmm / 1000.0;
                 rows.Add(new ScheduleRow
                 {
                     Member = m.Name, Category = cat, Story = m.Story, Mark = b.Mark, Role = b.Role, Shape = b.Shape,
                     ShapeText = ShapeText(b), Segments = b.Segments?.ToList() ?? new List<double>(),
-                    Dia = b.Dia, LengthMm = lmm, MemberCount = q, BarsPerMember = b.Count, BarsTotal = tot,
+                    Dia = b.Dia, LengthMm = lmm, MemberCount = q, BarsPerMember = cnt, BarsTotal = tot,
                     TotalLengthM = Math.Round(tl, 2), WeightKg = Math.Round(UnitWeight(b.Dia) * tl, 2)
                 });
             }

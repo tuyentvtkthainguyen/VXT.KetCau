@@ -32,7 +32,22 @@ internal sealed class DrawingHost : FrameworkElement
 /// cung/tròn, miền tô SOLID. Toạ độ ra là mm giấy, trục y hướng xuống (gốc tại (ox, oy) của giấy).</summary>
 internal static class SheetRender
 {
-    private static readonly Typeface Face = new(new FontFamily("Arial"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    // ---- font chữ theo chuẩn layer CAD (CadStandard.ActiveFontName: Arial | Times New Roman) ----
+    private static string _faceName;
+    private static Typeface _face, _faceBold;
+    private static Typeface FaceOf(bool bold)
+    {
+        string n = CadStandard.ActiveFontName;
+        if (_face == null || n != _faceName)
+        {
+            _faceName = n;
+            _face = new Typeface(new FontFamily(n), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+            _faceBold = new Typeface(new FontFamily(n), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
+        }
+        return bold ? _faceBold : _face;
+    }
+    private static Typeface Face => FaceOf(false);
+    // ---- hết phần font ----
     public const double DipPerMm = 96.0 / 25.4;
 
     private static readonly Dictionary<string, (Color C, double Mm)> Styles = new()
@@ -201,7 +216,7 @@ internal static class SheetRender
         return dg;
     }
 
-    private static readonly Typeface FaceBold = new(new FontFamily("Arial"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
+    private static Typeface FaceBold => FaceOf(true);   // font theo chuẩn layer CAD
 
     private static void DrawText(DrawingContext dc, DrawPrim pr, double k, Point at, Color? color = null, bool bold = false)
     {

@@ -203,6 +203,9 @@ public class CadStandard
     /// <summary>Font thuyết minh Word: mặc định "Times New Roman"</summary>
     public string ReportFont { get; set; } = FontTimes;
 
+    /// <summary>Hỏi "Xem/đổi tên layer trước khi xuất" mỗi lần xuất DXF (false = "Không hỏi lại")</summary>
+    public bool AskLayersBeforeExport { get; set; } = true;
+
     // ==================================================================
     // Bản mặc định / mẫu có sẵn
     // ==================================================================
@@ -489,6 +492,22 @@ public class CadStandard
 
     /// <summary>Font chữ bản vẽ đang áp dụng.</summary>
     public static string ActiveFontName => Active?.FontName ?? FontArial;
+
+    /// <summary>Tạm áp dụng chuẩn khác (vd. chỉ cho một lần xuất); Dispose → trả lại chuẩn trước đó.
+    /// <code>using (CadStandard.Use(std)) DrawingSet.ExportAll(...);</code></summary>
+    public static IDisposable Use(CadStandard s)
+    {
+        var prev = Active;
+        Activate(s);
+        return new Restore(prev);
+    }
+
+    private sealed class Restore : IDisposable
+    {
+        private CadStandard _prev; private bool _done;
+        public Restore(CadStandard prev) { _prev = prev; }
+        public void Dispose() { if (_done) return; _done = true; Activate(_prev); _prev = null; }
+    }
 
     /// <summary>Áp dụng chuẩn cho bộ ghi DXF (bảng LAYER/LTYPE/STYLE) và bộ ghi Word (font thuyết minh).</summary>
     public static void Activate(CadStandard s)

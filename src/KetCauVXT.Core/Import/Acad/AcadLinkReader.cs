@@ -85,6 +85,28 @@ public static class AcadLinkReader
             if (pi != null && pi.PropertyType == typeof(string) && pi.CanWrite)
                 pi.SetValue(c, Add(pi.GetValue(c) as string, AcadCategory.SyntheticLayer(cat)));
         }
+        // chuẩn layer CAD (ArchImportOptions.LayerMap: danh sách {Layer, Category}, ưu tiên hơn mọi quy tắc) – gán thẳng lớp tổng hợp → nhóm.
+        // Dùng phản chiếu để không phụ thuộc cứng vào kiểu dữ liệu của chuẩn layer.
+        var lm = typeof(ArchImportOptions).GetProperty("LayerMap");
+        if (lm != null && lm.CanWrite && lm.PropertyType.IsGenericType && typeof(System.Collections.IList).IsAssignableFrom(lm.PropertyType))
+        {
+            var itemType = lm.PropertyType.GetGenericArguments()[0];
+            var pl = itemType.GetProperty("Layer"); var pc = itemType.GetProperty("Category");
+            if (pl != null && pc != null && itemType.GetConstructor(Type.EmptyTypes) != null
+                && Activator.CreateInstance(lm.PropertyType) is System.Collections.IList list)
+            {
+                foreach (var cat in AcadCategory.All.Where(q => q != AcadCategory.BoQua))
+                {
+                    var e = Activator.CreateInstance(itemType);
+                    pl.SetValue(e, AcadCategory.SyntheticLayer(cat));
+                    pc.SetValue(e, cat);
+                    list.Add(e);
+                }
+                if (lm.GetValue(c) is System.Collections.IEnumerable old)
+                    foreach (var q in old) if (q != null) list.Add(q);
+                lm.SetValue(c, list);   // danh sách mới – không sửa thông số gốc của hộp thoại
+            }
+        }
         return c;
     }
 
@@ -365,11 +387,27 @@ public static class AcadLinkReader
         return ok.Count >= Math.Max(1, diffs.Count / 2) ? ok.Average() : null;
     }
 
-    /// <summary>Dời toàn bộ mặt bằng (cùng quy ước với ArchPlanReader).</summary>
+    /// <summary>Phép dời của chính bộ đọc (ArchPlanReader.Shift – dời mọi thành phần của mặt bằng, kể cả phần mới thêm sau này).</summary>
+    private static readonly System.Reflection.MethodInfo ReaderShift = typeof(ArchPlanReader).GetMethod("Shift",
+        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+        null, new[] { typeof(ArchFloorPlan), typeof(double), typeof(double) }, null);
+
+    /// <summary>Dời toàn bộ mặt bằng (cùng quy ước với ArchPlanReader); OffsetX/OffsetY cộng dồn.</summary>
     private static void Shift(ArchFloorPlan p, double dx, double dy)
     {
         if (Math.Abs(dx) < 1e-12 && Math.Abs(dy) < 1e-12) return;
-        p.OffsetX += dx; p.OffsetY += dy;
+        double ox = p.OffsetX + dx, oy = p.OffsetY + dy;
+        if (ReaderShift != null)
+        {
+            try
+            {
+                ReaderShift.Invoke(null, new object[] { p, dx, dy });
+                p.OffsetX = ox; p.OffsetY = oy;
+                return;
+            }
+            catch (System.Reflection.TargetInvocationException) { /* dùng phép dời riêng bên dưới */ }
+        }
+        p.OffsetX = ox; p.OffsetY = oy;
         foreach (var w in p.Walls) { w.Ax = R(w.Ax + dx); w.Bx = R(w.Bx + dx); w.Ay = R(w.Ay + dy); w.By = R(w.By + dy); }
         foreach (var g in p.Grids) g.Coord = R(g.Coord + (g.Dir == GridDir.X ? dx : dy));
         foreach (var c in p.Columns) { c.X = R(c.X + dx); c.Y = R(c.Y + dy); }

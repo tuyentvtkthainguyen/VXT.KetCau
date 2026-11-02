@@ -13,7 +13,8 @@ public enum SheetViewKind
     ColumnDetail,     // chi tiết cột (Param = tên cột)
     RebarSchedule,    // bảng thống kê thép
     Notes,            // ghi chú chung (Param = văn bản)
-    View3D            // ảnh phối cảnh 3D
+    View3D,           // ảnh phối cảnh 3D
+    RebarShop         // bản vẽ gia công thép – shop drawing (Param = "", "Dầm", "Cột", "Sàn", "Móng") – thêm cuối để giữ số thứ tự JSON cũ
 }
 
 /// <summary>Khung nhìn trên tờ in: vị trí/kích thước theo mm giấy, tỷ lệ 1/Scale.</summary>

@@ -26,6 +26,19 @@ public readonly struct XlCell
     public XlCell(object value, XlStyle style) { Value = value; Style = style; }
 }
 
+// ---- [Công thức – dùng cho bảng khối lượng vật tư] ----
+/// <summary>Ô công thức Excel (không có dấu "=" đầu), kèm giá trị tính sẵn để hiển thị khi chưa tính lại:
+/// <c>new XlFormula("B2*E2", 123.4)</c>.</summary>
+public readonly struct XlFormula
+{
+    public readonly string Formula;
+    public readonly double Cached;
+    public readonly XlStyle? Style;
+    public XlFormula(string formula, double cached, XlStyle? style = null) { Formula = formula; Cached = cached; Style = style; }
+    public override string ToString() => Cached.ToString("0.###", CultureInfo.InvariantCulture);
+}
+// ---- [hết] ----
+
 /// <summary>Một trang tính.</summary>
 public class XlsxSheet
 {
@@ -229,6 +242,13 @@ public class XlsxWriter
                 {
                     case null:
                         sb.Append($"<c r=\"{addr}\" s=\"{(int)st.Value}\"/>");
+                        break;
+                    case XlFormula fx:   // [công thức]
+                        {
+                            var fst = fx.Style ?? st ?? sh.NumberStyle;
+                            double cv = double.IsFinite(fx.Cached) ? fx.Cached : 0;
+                            sb.Append($"<c r=\"{addr}\" s=\"{(int)fst}\"><f>{DocxWriter.Esc(fx.Formula)}</f><v>{cv.ToString("R", Inv)}</v></c>");
+                        }
                         break;
                     case double d:
                         AppendNum(sb, addr, d, st ?? sh.NumberStyle);

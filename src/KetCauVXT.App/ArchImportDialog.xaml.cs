@@ -79,6 +79,7 @@ public partial class ArchImportDialog : Window
         if (_lastFiles != null)
             foreach (var f in _lastFiles) if (System.IO.File.Exists(f)) _files.Add(f);
         RefreshFiles();
+        InitLayerTab();   // tab "Layer trong file" (ArchImportDialog.Layers.cs)
     }
 
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -151,6 +152,7 @@ public partial class ArchImportDialog : Window
         o.WallLayers = txtWallLayers.Text.Trim(); o.GridLayers = txtGridLayers.Text.Trim();
         o.ColumnLayers = txtColumnLayers.Text.Trim(); o.DoorLayers = txtDoorLayers.Text.Trim();
         o.StairLayers = txtStairLayers.Text.Trim();
+        ApplyLayerOptions(o);   // quy tắc + gán layer (ArchImportDialog.Layers.cs)
         if (bad.Count > 0) { error = "Giá trị không hợp lệ: " + string.Join(", ", bad) + "."; return false; }
         return true;
     }
@@ -178,13 +180,15 @@ public partial class ArchImportDialog : Window
         foreach (var f in dlg.FileNames)
             if (!_files.Contains(f, StringComparer.OrdinalIgnoreCase)) _files.Add(f);
         RefreshFiles();
-        SetStatus($"Đã chọn {_files.Count} file. Bấm “Nhận diện” để đọc các mặt bằng tầng.");
+        MarkLayersStale();
+        SetStatus($"Đã chọn {_files.Count} file. Bấm “Nhận diện” để đọc các mặt bằng tầng (tab “Layer trong file”: xem/gán nhóm cho từng layer).");
     }
 
     private void BtnClearFiles_Click(object sender, RoutedEventArgs e)
     {
         _files.Clear();
         RefreshFiles();
+        _scan = null; _layerRows.Clear(); _scanStale = true; DrawLayerPreview();
     }
 
     private async void BtnRead_Click(object sender, RoutedEventArgs e)

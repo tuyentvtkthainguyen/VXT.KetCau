@@ -103,9 +103,10 @@ public static class FootingDrawing
     {
         int dia = alongL ? f.DiaL : f.DiaB;
         double sp = alongL ? f.SpacingL : f.SpacingB;
-        string role = alongL ? "X" : "Y";
+        // vai trò của FootingDesigner: "Lớp dưới phương L" / "Lớp dưới phương B" (giữ cả hậu tố X/Y cũ)
+        string[] roles = alongL ? new[] { "phương L", "X" } : new[] { "phương B", "Y" };
         var bm = f.Bars.Where(b => !DrawUtil.IsStirrup(b) || b.Spacing > 0)
-                       .FirstOrDefault(b => (b.Role ?? "").EndsWith(role) && (dia == 0 || b.Dia == dia))
+                       .FirstOrDefault(b => roles.Any(r => (b.Role ?? "").EndsWith(r, StringComparison.Ordinal)) && (dia == 0 || b.Dia == dia))
                  ?? f.Bars.FirstOrDefault(b => b.Dia == dia && Math.Abs(b.Spacing - sp) < 1e-4)
                  ?? (f.Bars.Count > (alongL ? 0 : 1) ? f.Bars[alongL ? 0 : 1] : null);
         if (dia == 0) dia = bm?.Dia ?? 12;

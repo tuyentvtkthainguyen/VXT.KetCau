@@ -1,0 +1,82 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Add-in AutoCAD "Kết cấu VXT – liên kết AutoCAD": tích chọn đối tượng (tường, cột, dầm, sàn, trục, cửa, thang, tên phòng),
+    khai báo tầng, gửi dữ liệu sang chương trình Kết cấu VXT (file %AppData%\KetCauVXT\Link\acad_*.json).
+
+    Chọn phiên bản: dotnet build -p:AcadVersion=2025 (mặc định 2025).
+    AutoCAD 2021–2024 → .NET Framework 4.8; AutoCAD 2025, 2026 → .NET 8 (tự chọn).
+    Không cài AutoCAD: tự dùng gói tham chiếu AutoCAD.NET của Autodesk trên NuGet (chỉ để biên dịch, không chép DLL AutoCAD ra thư mục build).
+      2021 → 24.0.0 · 2022 → 24.1.51000 · 2023 → 24.2.0 · 2024 → 24.3.0 · 2025 → 25.0.1 · 2026 → 25.1.0
+    Không nằm trong KetCauVXT.sln (cần gói AutoCAD.NET) – CI build riêng cho từng phiên bản và đóng gói KetCauVXT.bundle.
+  -->
+  <PropertyGroup>
+    <AcadVersion Condition="'$(AcadVersion)' == ''">2025</AcadVersion>
+    <TargetFramework Condition="$(AcadVersion) &gt;= 2025">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="$(AcadVersion) &lt; 2025">net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <UseWindowsForms Condition="'$(TargetFramework)' != 'net48'">true</UseWindowsForms>
+    <UseWPF Condition="'$(TargetFramework)' != 'net48'">true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <EnableDynamicLoading Condition="'$(TargetFramework)' != 'net48'">true</EnableDynamicLoading>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>KetCauVXT.AcadLink</RootNamespace>
+    <AssemblyName>KetCauVXT.AcadLink</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Vũ Xuân Tuyến</Authors>
+    <Product>Kết cấu VXT – liên kết AutoCAD</Product>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AcadDir>C:\Program Files\Autodesk\AutoCAD $(AcadVersion)\</AcadDir>
+    <NoWarn>$(NoWarn);MSB3270;NU1701</NoWarn>
+  </PropertyGroup>
+
+  <!-- Phiên bản gói AutoCAD.NET (Autodesk) tương ứng từng bản AutoCAD – đã kiểm tra có trên nuget.org -->
+  <PropertyGroup>
+    <AcadNetVersion Condition="'$(AcadVersion)' == '2021'">24.0.0</AcadNetVersion>
+    <AcadNetVersion Condition="'$(AcadVersion)' == '2022'">24.1.51000</AcadNetVersion>
+    <AcadNetVersion Condition="'$(AcadVersion)' == '2023'">24.2.0</AcadNetVersion>
+    <AcadNetVersion Condition="'$(AcadVersion)' == '2024'">24.3.0</AcadNetVersion>
+    <AcadNetVersion Condition="'$(AcadVersion)' == '2025'">25.0.1</AcadNetVersion>
+    <AcadNetVersion Condition="'$(AcadVersion)' == '2026'">25.1.0</AcadNetVersion>
+  </PropertyGroup>
+
+  <!-- Máy có cài AutoCAD: tham chiếu DLL trong thư mục cài đặt. Máy không có AutoCAD (CI): dùng gói NuGet. -->
+  <PropertyGroup>
+    <UseAcadNuGet Condition="'$(UseAcadNuGet)' == '' And !Exists('$(AcadDir)acmgd.dll')">true</UseAcadNuGet>
+  </PropertyGroup>
+
+  <Target Name="VxtCheckAcadVersion" BeforeTargets="CollectPackageReferences;ResolveAssemblyReferences" Condition="'$(UseAcadNuGet)' == 'true' And '$(AcadNetVersion)' == ''">
+    <Error Text="AcadVersion=$(AcadVersion) chưa được hỗ trợ (2021–2026)." />
+  </Target>
+
+  <ItemGroup Condition="'$(UseAcadNuGet)' == 'true' And '$(AcadNetVersion)' != ''">
+    <PackageReference Include="AutoCAD.NET" Version="$(AcadNetVersion)" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseAcadNuGet)' != 'true'">
+    <Reference Include="accoremgd">
+      <HintPath>$(AcadDir)accoremgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="acdbmgd">
+      <HintPath>$(AcadDir)acdbmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="acmgd">
+      <HintPath>$(AcadDir)acmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+  </ItemGroup>
+
+</Project>

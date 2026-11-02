@@ -95,6 +95,7 @@ public partial class MainWindow : Window
         _res = null; _design = null; _sel = null;
         _dirty = false;
         _p.InvalidateIndex();
+        ActivateCadStandard();   // chuẩn layer CAD của dự án (MainWindow.CadStandard.cs)
         LoadUiFromProject();
         RefreshAll(true);
         UpdateTitle();
@@ -720,6 +721,7 @@ public partial class MainWindow : Window
                 Directory.CreateDirectory(d);
                 DrawingSet.ExportAll(_p, ds, d);
             });
+            Step("gia công thép (shop drawing)", () => ExportRebarShop(ds, Path.Combine(folder, "GiaCongThep")));   // MainWindow.Rebar.cs
             Step("thuyết minh Word", () => CalculationReport.Export(_p, res, ds, Path.Combine(folder, "ThuyetMinh.docx")));
             Step("bảng tính Excel", () => ExcelReport.Export(_p, res, ds, Path.Combine(folder, "BangTinh.xlsx")));
             Step("nội lực CSV", () =>

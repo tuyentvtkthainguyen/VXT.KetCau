@@ -41,6 +41,7 @@
                 <MenuItem Header="Nhập bản vẽ _kiến trúc (triển khai kết cấu)..." Click="MnuImportArch_Click"/>
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
+                <MenuItem Header="Chuẩn _layer CAD…" Click="MnuCadStandard_Click"/>
                 <Separator/>
                 <MenuItem Header="T_hoát" Click="MnuExit_Click"/>
             </MenuItem>
@@ -64,11 +65,15 @@
                 <MenuItem Header="Tự tăng tiết diện đến khi đạt" Click="MnuAutoResize_Click"/>
                 <Separator/>
                 <MenuItem Header="Thiết kế móng…" Click="MnuDesignFoundation_Click"/>
+                <Separator/>
+                <MenuItem Header="Chọn bố trí thép…" Click="BtnRebarChoice_Click"/>
+                <MenuItem Header="Tuỳ chọn chọn thép &amp; gia công…" Click="MnuRebarPrefs_Click"/>
             </MenuItem>
             <MenuItem Header="_Xuất">
                 <MenuItem Header="Bản vẽ DXF..." Click="MnuExpDxf_Click"/>
                 <MenuItem Header="Thuyết minh Word..." Click="MnuExpWord_Click"/>
                 <MenuItem Header="Bảng tính Excel..." Click="MnuExpExcel_Click"/>
+                <MenuItem Header="Xuất shop drawing thép…" Click="MnuExpShop_Click"/>
                 <MenuItem Header="Nội lực CSV..." Click="MnuExpCsv_Click"/>
                 <Separator/>
                 <MenuItem Header="Mô hình ETABS .e2k..." Click="MnuExpE2k_Click"/>
@@ -321,19 +326,45 @@
                 <TabItem Header="Thiết kế">
                     <TabControl Margin="2">
                         <TabItem Header="Dầm">
-                            <DataGrid x:Name="dgBeams" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,2,0,0">
+                                    <Button Content="Chọn bố trí thép…" Tag="Dầm" Click="BtnRebarChoice_Click" Style="{StaticResource SmallButton}" ToolTip="Chọn phương án thép cho dầm đang chọn (thép dưới, mũ gối, chạy suốt, đai)"/>
+                                </StackPanel>
+                                <DataGrid x:Name="dgBeams" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            </DockPanel>
                         </TabItem>
                         <TabItem Header="Cột">
-                            <DataGrid x:Name="dgColumns" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,2,0,0">
+                                    <Button Content="Chọn bố trí thép…" Tag="Cột" Click="BtnRebarChoice_Click" Style="{StaticResource SmallButton}" ToolTip="Chọn phương án thép dọc / đai cho cột đang chọn"/>
+                                </StackPanel>
+                                <DataGrid x:Name="dgColumns" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            </DockPanel>
                         </TabItem>
                         <TabItem Header="Sàn">
-                            <DataGrid x:Name="dgSlabs" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,2,0,0">
+                                    <Button Content="Chọn bố trí thép…" Tag="Sàn" Click="BtnRebarChoice_Click" Style="{StaticResource SmallButton}" ToolTip="Chọn Ø – bước thép lớp dưới / mũ gối cho ô sàn đang chọn"/>
+                                </StackPanel>
+                                <DataGrid x:Name="dgSlabs" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            </DockPanel>
                         </TabItem>
                         <TabItem Header="Móng">
-                            <DataGrid x:Name="dgFootings" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,2,0,0">
+                                    <Button Content="Chọn bố trí thép…" Tag="Móng" Click="BtnRebarChoice_Click" Style="{StaticResource SmallButton}" ToolTip="Chọn Ø – bước thép đáy móng đơn đang chọn"/>
+                                </StackPanel>
+                                <DataGrid x:Name="dgFootings" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            </DockPanel>
                         </TabItem>
                         <TabItem Header="Thép">
-                            <DataGrid x:Name="dgSteel" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,2,0,0">
+                                    <Button Content="Xuất shop drawing thép…" Click="MnuExpShop_Click" Style="{StaticResource SmallButton}" ToolTip="Bảng gia công, sơ đồ cắt cây 11,7 m (DXF) và bảng Excel &quot;Gia công thép&quot;"/>
+                                    <Button Content="Tuỳ chọn…" Click="MnuRebarPrefs_Click" Style="{StaticResource SmallButton}" ToolTip="Ø ưu tiên, số thanh/hàng, bước đai, chiều dài cây thép, nối so le"/>
+                                </StackPanel>
+                                <DataGrid x:Name="dgSteel" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                            </DockPanel>
                         </TabItem>
                     </TabControl>
                 </TabItem>

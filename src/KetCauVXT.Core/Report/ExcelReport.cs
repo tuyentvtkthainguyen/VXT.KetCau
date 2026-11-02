@@ -39,6 +39,13 @@ public static class ExcelReport
         if (s.StripFootings.Count > 0) SheetStrips(s, x.AddSheet("Mong bang"));
         SheetSteel(s, x.AddSheet("Thep"));
         SheetRebarSchedule(s, x.AddSheet("Thong ke thep"));
+        // gia công thép (shop drawing) – Report/RebarShopReport.cs; lỗi ở bước này không làm hỏng cả bảng tính
+        if (s.All.Any(m => m.Bars.Count > 0))
+        {
+            var gc = x.AddSheet("Gia cong thep");
+            try { RebarShopReport.AddSheet(p, KetCauVXT.Drawing.RebarShop.Build(p, s), gc); }
+            catch (Exception ex) { gc.AddRow("LỖI lập bảng gia công thép: " + ex.Message); }
+        }
         if (s.Warnings.Count > 0 || (r != null && r.Warnings.Count > 0))
         {
             var w = x.AddSheet("Canh bao");
@@ -350,13 +357,14 @@ public static class ExcelReport
         var rows = new List<RebarRow>();
         void Add(MemberDesignBase m, string type)
         {
-            foreach (var b in m.Bars.OrderBy(b => b.Mark))
+            // gộp các BarMark cùng số hiệu (thanh đối xứng) thành một dòng – giống bảng thống kê DXF
+            foreach (var g in m.Bars.Where(b => b.Dia > 0 && b.Count > 0 && b.Length > 0).GroupBy(b => b.Mark).OrderBy(g => g.Key))
             {
-                if (b.Dia <= 0 || b.Count <= 0 || b.Length <= 0) continue;
+                var b = g.First();
                 rows.Add(new RebarRow
                 {
                     Member = m.Name, Type = type, Mark = b.Mark, Role = b.Role, Shape = b.Shape, Dia = b.Dia,
-                    LengthMm = Math.Round(b.Length * 1000), Members = Math.Max(1, m.Quantity), PerMember = b.Count
+                    LengthMm = Math.Round(b.Length * 100) * 10, Members = Math.Max(1, m.Quantity), PerMember = g.Sum(x => x.Count)
                 });
             }
         }

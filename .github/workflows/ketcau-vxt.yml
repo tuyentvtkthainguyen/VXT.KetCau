@@ -98,6 +98,38 @@ jobs:
           dotnet publish src/KetCauVXT.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
           Get-ChildItem publish
 
+      # Add-in AutoCAD (KetCauVXT.AcadLink – không nằm trong .sln): build cho từng phiên bản (gói NuGet AutoCAD.NET đã xác nhận
+      # có trên nuget.org: 2021 24.0.0, 2022 24.1.51000, 2023 24.2.0, 2024 24.3.0, 2025 25.0.1, 2026 25.1.0), đóng gói autoloader
+      # publish\AutoCAD\KetCauVXT.bundle + script cài đặt → nằm trong file zip phát hành.
+      - name: Build add-in AutoCAD 2021-2026 + dong goi KetCauVXT.bundle
+        shell: pwsh
+        run: |
+          $vers = '2021','2022','2023','2024','2025','2026'
+          $root = 'publish\AutoCAD'
+          $bundle = Join-Path $root 'KetCauVXT.bundle'
+          New-Item -ItemType Directory (Join-Path $bundle 'Contents') -Force | Out-Null
+          foreach ($v in $vers) {
+            $out = "acadout\$v"
+            dotnet build src/KetCauVXT.AcadLink -c Release --no-incremental -p:AcadVersion=$v -p:UseAcadNuGet=true -o $out 2>&1 | Tee-Object "acad_$v.log"
+            if ($LASTEXITCODE -ne 0) {
+              Select-String -Path "acad_$v.log" -Pattern 'error' | ForEach-Object { Write-Host "::error::AutoCAD $v $($_.Line)" }
+              throw "build add-in AutoCAD $v loi"
+            }
+            $dll = Join-Path $out 'KetCauVXT.AcadLink.dll'
+            if (-not (Test-Path $dll)) { throw "thieu $dll" }
+            $dst = Join-Path $bundle "Contents\$v"
+            New-Item -ItemType Directory $dst -Force | Out-Null
+            Copy-Item $dll $dst
+            # gói chỉ chứa DLL add-in – không chép DLL của AutoCAD (acmgd/acdbmgd/accoremgd) dù có trong thư mục build
+            if (Get-ChildItem $out -Filter 'ac*mgd.dll') { Write-Host "::warning::AutoCAD ${v}: thu muc build co DLL AutoCAD (khong dua vao goi)" }
+          }
+          Copy-Item src/KetCauVXT.AcadLink/Bundle/PackageContents.xml $bundle
+          Copy-Item src/KetCauVXT.AcadLink/Bundle/CaiDatAutoCAD.ps1 $root
+          Copy-Item src/KetCauVXT.AcadLink/Bundle/CaiDatAutoCAD.cmd $root
+          Copy-Item docs/acad-link.md (Join-Path $root 'HuongDan_AutoCAD.md')
+          [xml](Get-Content (Join-Path $bundle 'PackageContents.xml') -Raw -Encoding UTF8) | Out-Null
+          Get-ChildItem -Recurse $root | Format-Table FullName, Length -AutoSize | Out-String -Width 300
+
       - name: Khoi dong thu giao dien
         shell: pwsh
         run: |
@@ -137,6 +169,7 @@ jobs:
             pdf
             build.log
             test.log
+            acad_*.log
 
       - uses: actions/upload-artifact@v4
         with:
@@ -155,7 +188,7 @@ jobs:
           Get-ChildItem dist
           $tag = "ketcau-vxt-latest"
           gh release delete $tag -y --cleanup-tag 2>$null
-          gh release create $tag dist\KetCauVXT-win-x64.zip --target $env:GITHUB_SHA --title "Kết cấu VXT – bản Windows mới nhất" --notes "Giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
+          gh release create $tag dist\KetCauVXT-win-x64.zip --target $env:GITHUB_SHA --title "Kết cấu VXT – bản Windows mới nhất" --notes "Giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Add-in AutoCAD 2021–2026 (tích chọn tường, cột, dầm, sàn, trục gửi sang chương trình): chạy AutoCAD\CaiDatAutoCAD.cmd. Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
           # nhánh chỉ chứa file phát hành (để tải bằng git)
           git config user.name "github-actions"; git config user.email "actions@github.com"
           git checkout --orphan ketcau-vxt-dist
