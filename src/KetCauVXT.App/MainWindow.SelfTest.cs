@@ -116,6 +116,7 @@ public partial class MainWindow
             if (!await RunAnalysis()) throw new Exception("Phân tích lại lỗi");
             tabView.SelectedItem = ViewTab("3D"); await Pause(2000); Shot($"{tag}_9_3D_SauKhiSua");
             await SelfTestWallsFoundation(tag, story);
+            await SelfTestPileLayout(tag); // bố trí cọc – MainWindow.SelfTestPileLayout.cs
             await SelfTestCurvedBeam(tag, story); // dầm cong – MainWindow.SelfTestCurved.cs
             await SelfTestGeoAppendix(tag); // địa danh gió, hố khoan, gợi ý móng, phụ lục – MainWindow.SelfTestGeo.cs
             // dầm, tường, cấu tạo sàn, móng cọc, móng băng – MainWindow.SelfTestFoundation.cs

@@ -27,7 +27,7 @@ public static partial class SlabDesigner
         {
             try
             {
-                var pn = DesignSlab(p, slab);
+                var pn = DesignSlab(p, slab, r);
                 if (pn == null) { warnings.Add("Sàn " + slab.Label + " không phải ô chữ nhật – bỏ qua thiết kế"); continue; }
                 panels.Add(pn);
             }
@@ -70,7 +70,7 @@ public static partial class SlabDesigner
         return result;
     }
 
-    private static SlabPanel DesignSlab(Project p, Slab slab)
+    private static SlabPanel DesignSlab(Project p, Slab slab, AnalysisResults r = null)
     {
         var pts = slab.Nodes.Select(id => p.Node(id).P).ToList();
         if (!SlabLoadDistributor.IsRectangle(pts, out double la, out double lb)) return null;
@@ -144,6 +144,8 @@ public static partial class SlabDesigner
         double m2, mII;
         if (d.TwoWay) StripMoments(qy, ly, fy, out m2, out mII);
         else { m2 = 0; mII = 0; }
+        // mô men dải sàn nhập từ SAFE/ETABS (thay phương pháp hệ số) – SlabDesigner.External.cs
+        ApplyExternalMoments(r, slab, d, shortIsX, ref m1, ref mI, ref m2, ref mII);
         d.M1 = m1; d.M2 = m2; d.MI = mI; d.MII = mII;
 
         // ---- thép (dải b = 1 m) ----

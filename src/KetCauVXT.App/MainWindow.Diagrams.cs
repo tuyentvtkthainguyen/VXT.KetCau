@@ -556,7 +556,7 @@ public partial class MainWindow
     }
 
     private bool IsEnvelopeCase(string name) =>
-        _p != null && _p.Combinations.Any(c => c.Name == name && c.Type == ComboType.Envelope);
+        _p != null && (_res != null ? _res.IsEnvelope(name) : _p.Combinations.Any(c => c.Name == name && c.Type == ComboType.Envelope));
 
     private static string Fmt(double v) => v.ToString(Math.Abs(v) >= 1000 ? "0" : "0.0", Inv);
 

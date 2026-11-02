@@ -99,12 +99,32 @@ public class AnalysisResults
 
     public AnalysisResults(Project p) { Project = p; }
 
+    // ---- [kết quả nhập từ phần mềm khác – Analysis/ExternalResults.cs, Import/External/ResultImporter.cs] ----
+    /// <summary>Thông tin nguồn khi nội lực được NHẬP từ ETABS/SAP2000/SAFE/phần mềm khác; null = kết quả của chương trình.</summary>
+    public ExternalResultInfo External { get; set; }
+    /// <summary>Tên nguồn kết quả để hiển thị ("Kết cấu VXT", "ETABS", "SAP2000"…).</summary>
+    public string Source => External == null ? "Kết cấu VXT" : External.Software;
+    /// <summary>Tổ hợp "ngoài" sinh khi nhập kết quả (tổ hợp bao Max/Min của ETABS, bao các tổ hợp TTGH I nhập về).
+    /// Ưu tiên hơn Project.Combinations cùng tên; không lưu vào dự án.</summary>
+    public List<LoadCombination> ExternalCombos { get; } = new();
+    /// <summary>Mô men dải sàn nhập từ SAFE/ETABS (Id ô sàn → tên trường hợp/tổ hợp → mô men kN.m/m) – thay phương pháp hệ số khi thiết kế sàn.</summary>
+    public Dictionary<int, Dictionary<string, SlabMomentSet>> SlabMoments { get; } = new();
+
+    /// <summary>Tìm tổ hợp theo tên: tổ hợp ngoài (kết quả nhập) trước, sau đó tổ hợp của dự án.</summary>
+    public LoadCombination FindCombo(string name) =>
+        ExternalCombos.FirstOrDefault(x => x.Name == name) ?? Project.Combinations.FirstOrDefault(x => x.Name == name);
+
+    /// <summary>Tên là tổ hợp bao (dùng Envelope + ExpandCombos thay cho Get).</summary>
+    public bool IsEnvelope(string name) =>
+        !string.IsNullOrEmpty(name) && !Cases.ContainsKey(name) && FindCombo(name)?.Type == ComboType.Envelope;
+    // ---- [hết] ----
+
     /// <summary>Lấy kết quả theo tên trường hợp tải hoặc tổ hợp tuyến tính (ULS/SLS).</summary>
     public CaseResult Get(string name)
     {
         if (Cases.TryGetValue(name, out var c)) return c;
         if (_combos.TryGetValue(name, out c)) return c;
-        var combo = Project.Combinations.FirstOrDefault(x => x.Name == name)
+        var combo = FindCombo(name)
                     ?? throw new KeyNotFoundException("Không có trường hợp/tổ hợp " + name);
         if (combo.Type == ComboType.Envelope)
             throw new InvalidOperationException($"Tổ hợp {name} là tổ hợp bao – dùng Envelope()");
@@ -123,13 +143,24 @@ public class AnalysisResults
     /// <summary>Danh sách tổ hợp tuyến tính thành phần (mở rộng các tổ hợp bao).</summary>
     public List<string> ExpandCombos(string name)
     {
-        var combo = Project.Combinations.FirstOrDefault(x => x.Name == name);
+        if (Cases.ContainsKey(name)) return new List<string> { name };
+        var combo = FindCombo(name);
         if (combo == null || combo.Type != ComboType.Envelope) return new List<string> { name };
         return combo.Items.SelectMany(i => ExpandCombos(i.Case)).Distinct().ToList();
     }
 
-    public IEnumerable<string> CombosOfType(ComboType t) =>
-        Project.Combinations.Where(c => c.Type == t).Select(c => c.Name);
+    public IEnumerable<string> CombosOfType(ComboType t)
+    {
+        // kết quả nhập: danh sách TTGH I / TTGH II do người dùng phân loại (rỗng = dùng tổ hợp của dự án)
+        if (External != null)
+        {
+            if (t == ComboType.ULS && External.UlsCases.Count > 0) return External.UlsCases.ToList();
+            if (t == ComboType.SLS && External.SlsCases.Count > 0) return External.SlsCases.ToList();
+            if (t == ComboType.Envelope && ExternalCombos.Any(c => c.Type == ComboType.Envelope))
+                return ExternalCombos.Where(c => c.Type == ComboType.Envelope).Select(c => c.Name).ToList();
+        }
+        return Project.Combinations.Where(c => c.Type == t).Select(c => c.Name);
+    }
 
     /// <summary>Tổ hợp dùng để thiết kế (TTGH I). Nếu chưa có tổ hợp nào thì dùng các trường hợp tải.</summary>
     public List<string> DesignCombos()
@@ -150,8 +181,10 @@ public class AnalysisResults
         FrameForces mx = null, mn = null;
         foreach (var c in combos)
         {
-            var f = Get(c).Frames[frameId];
+            // kết quả nhập có thể thiếu thanh ở một số tổ hợp → bỏ qua tổ hợp đó
+            if (!Get(c).Frames.TryGetValue(frameId, out var f) || f == null) continue;
             if (mx == null) { mx = f.CloneScaled(1); mn = f.CloneScaled(1); continue; }
+            if (f.Count != mx.Count) f = Resample(f, mx.Stations);
             for (int i = 0; i < f.Count; i++)
                 for (int k = 0; k < 6; k++)
                 {
@@ -160,6 +193,14 @@ public class AnalysisResults
                 }
         }
         return (mx, mn);
+    }
+
+    /// <summary>Nội suy nội lực về dãy mặt cắt cho trước.</summary>
+    public static FrameForces Resample(FrameForces f, double[] stations)
+    {
+        var r = new FrameForces { Stations = (double[])stations.Clone(), F = new double[stations.Length][] };
+        for (int i = 0; i < stations.Length; i++) r.F[i] = f.Count == 0 ? new double[6] : f.At(stations[i]);
+        return r;
     }
 }
 

@@ -295,7 +295,7 @@ public static class FoundationDrawing
         var mx = st.MMax != null && st.MMax.Count == st.Stations.Count ? st.MMax : st.M;
         var mn = st.MMin != null && st.MMin.Count == st.Stations.Count ? st.MMin : st.M;
         if (mx == null || mn == null || mx.Count != st.Stations.Count) return;
-        double mAbs = Math.Max(mx.Select(Math.Abs).DefaultIfEmpty(0).Max(), mn.Select(Math.Abs).DefaultIfEmpty(0).Max());
+        double mAbs = Math.Max(mx.Select(v => Math.Abs(v)).DefaultIfEmpty(0).Max(), mn.Select(v => Math.Abs(v)).DefaultIfEmpty(0).Max());
         if (mAbs < 1e-6) return;
         double th = w.Th, hDia = 6 * th, sc = hDia / mAbs;
         double y0 = w.Extents.Y1 - 3 * th - hDia;

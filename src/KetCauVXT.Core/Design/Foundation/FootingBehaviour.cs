@@ -236,18 +236,18 @@ public static class FootingBehaviour
                 "s = p/k (mô hình Winkler – chỉ là ước lượng, lún thực tính theo phương pháp cộng lún khi có hố khoan)",
                 "Độ lún ước lượng theo hệ số nền nhỏ hơn giới hạn.", "Độ lún ước lượng theo hệ số nền lớn – kiểm tra lại hệ số nền / tính lún theo hố khoan.",
                 false, CheckStatus.Warning));
-            double worst = 0; string where = "";
+            double worst = 0; string at = "";
             for (int i = 0; i + 1 < d.ColumnPositions.Count; i++)
             {
                 double l = d.ColumnPositions[i + 1] - d.ColumnPositions[i];
                 if (l <= 1e-6) continue;
                 double w1 = Interp(d.Stations, d.Pressure, d.ColumnPositions[i]) / d.K, w2 = Interp(d.Stations, d.Pressure, d.ColumnPositions[i + 1]) / d.K;
                 double r = Math.Abs(w1 - w2) / l;
-                if (r > worst) { worst = r; where = $"cột {i + 1}–{i + 2}"; }
+                if (r > worst) { worst = r; at = $"cột {i + 1}–{i + 2}"; }
             }
             if (d.ColumnPositions.Count > 1)
                 rep.Items.Add(SafetyItem.Make("Nền", "Lún lệch tương đối Δs/l ≤ 0,002", worst, RelativeSettlementLimit, "",
-                    $"Δs/l lớn nhất tại {where} (Winkler, tổ hợp tiêu chuẩn); giới hạn khung BTCT TCVN 9362:2012 Bảng 16",
+                    $"Δs/l lớn nhất tại {at} (Winkler, tổ hợp tiêu chuẩn); giới hạn khung BTCT TCVN 9362:2012 Bảng 16",
                     "Lún lệch giữa các cột nhỏ – dải đủ cứng để san đều lún.", "Lún lệch giữa các cột lớn – tăng chiều cao sườn (độ cứng EI) hoặc mở rộng đáy dưới cột tải lớn.",
                     false, CheckStatus.Warning));
         }

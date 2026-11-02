@@ -767,6 +767,7 @@ public partial class MainWindow
             sb.AppendLine($"Pmax = {sf.PMax:0.0} kN/m², R = {sf.R:0.0} kN/m²");
             sb.AppendLine(sf.Ok ? "Kết quả: ĐẠT" : "Kết quả: KHÔNG ĐẠT");
         }
+        sb.Append(FoundationSafetySummary(nodeId));   // [FoundationChecks] MainWindow.PileLayout.cs
         return sb.ToString();
     }
 
@@ -777,8 +778,7 @@ public partial class MainWindow
         if (_res == null || string.IsNullOrEmpty(caseName)) return null;
         try
         {
-            var combo = _p.Combinations.FirstOrDefault(c => c.Name == caseName);
-            if (combo != null && combo.Type == ComboType.Envelope)
+            if (_res.IsEnvelope(caseName))
             {
                 var (mx, mn) = _res.Envelope(frameId, _res.ExpandCombos(caseName));
                 min = mn;

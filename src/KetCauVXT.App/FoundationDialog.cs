@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using KetCauVXT.Design.Foundation;
 using KetCauVXT.Model;
 
 namespace KetCauVXT.App;
@@ -19,6 +20,9 @@ internal sealed class FoundationDialog : Window
     private readonly GroupBox _gPile, _gStrip;
     private readonly CheckBox _chkGeo, _chkBored;
     private readonly TextBox _tTip, _tFs;
+    // [FoundationChecks] sức chịu tải ngang cọc, tuỳ chọn bản vẽ
+    private readonly TextBox _tLat;
+    private readonly CheckBox _chkPyr, _chkMom;
 
     /// <summary>true = người dùng bấm "Thiết kế móng" (chạy thiết kế sau khi đóng)</summary>
     public bool RunDesign { get; private set; }
@@ -45,6 +49,9 @@ internal sealed class FoundationDialog : Window
         _chkBored = new CheckBox { Content = "Cọc khoan nhồi (qb = 150·Np; bỏ chọn = cọc ép / đóng, qb = 300·Np)", IsChecked = f.PileBored, VerticalAlignment = VerticalAlignment.Center };
         _tTip = Box(f.PileTipDepth, "0.##");
         _tFs = Box(f.PileSafetyFactor, "0.##");
+        _tLat = Box(f.PileLateralCapacity, "0.#");
+        _chkPyr = new CheckBox { Content = "Bản vẽ: thể hiện tháp chọc thủng 45° trên mặt cắt đài", IsChecked = f.DrawPunchingPyramid, VerticalAlignment = VerticalAlignment.Center };
+        _chkMom = new CheckBox { Content = "Bản vẽ: biểu đồ mô men sườn dưới mặt cắt dọc móng băng", IsChecked = f.DrawStripMoment, VerticalAlignment = VerticalAlignment.Center };
         _cbStripDir = new ComboBox { ItemsSource = StripDirNames, SelectedIndex = Math.Clamp(f.StripDirection, 0, 3), Width = 160 };
         _tRib = Box(f.StripRibWidth * 1000, "0");
         _tK = Box(f.SubgradeModulus, "0");
@@ -69,6 +76,11 @@ internal sealed class FoundationDialog : Window
         pile.Children.Add(_chkBored);
         pile.Children.Add(Line("Độ sâu mũi cọc từ mặt đất (m, 0 = tự chọn)", _tTip));
         pile.Children.Add(Line("Hệ số an toàn FS ([P]đn = Rc,u/FS)", _tFs));
+        pile.Children.Add(Line("[H] chịu tải ngang 1 cọc (kN, 0 = ước lượng 0,1[P])", _tLat));
+        pile.Children.Add(_chkPyr);
+        int nOvr = f.CapOverrides?.Count(o => PileLayout.IsActive(o)) ?? 0;
+        pile.Children.Add(DialogUi.Hint("Số cọc / sơ đồ bố trí / kích thước từng đài: chọn đài trên tab 'Mô hình móng' → 'Bố trí cọc…'" +
+                                        (nOvr > 0 ? $" (đang có {nOvr} chân cột bố trí riêng)." : ".")));
         pile.Children.Add(DialogUi.Hint("Khi tính từ hố khoan: mỗi chân cột dùng hố khoan gần nhất (tab 'Địa chất'); đầu cọc tại đáy đài Df; mũi tự chọn = mặt lớp đầu tiên có N ≥ 30 (đất rời) / N ≥ 20 (đất dính) + 3d, ≤ 40 m; " +
                                         "[P] = min(Rc,u/FS; Pvl), Pvl = Rb·Ab + Rsc·As (B25, As mặc định 4Ø16 khi d ≤ 300 mm, 6Ø18 khi lớn hơn). FS là hệ số an toàn tổng thể, tương đương γk·γn/γ0 của TCVN 10304:2014."));
         _gPile = new GroupBox { Header = "Móng cọc", Content = pile, Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(4) };
@@ -79,6 +91,7 @@ internal sealed class FoundationDialog : Window
         strip.Children.Add(Line("Bề rộng sườn (mm)", _tRib));
         strip.Children.Add(Line("Hệ số nền (kN/m³, 0 = ≈ 120·R)", _tK));
         strip.Children.Add(Line("Độ vươn đầu dải ra ngoài tim cột biên (m)", _tOver));
+        strip.Children.Add(_chkMom);
         _gStrip = new GroupBox { Header = "Móng băng", Content = strip, Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(4) };
         root.Children.Add(_gStrip);
 
@@ -142,6 +155,7 @@ internal sealed class FoundationDialog : Window
         double rib = Get(_tRib, 150, 1500, "Bề rộng sườn (mm)");
         double k = Get(_tK, 0, 1e7, "Hệ số nền (kN/m³)");
         double over = Get(_tOver, 0, 3, "Độ vươn đầu dải (m)");
+        double lat = Get(_tLat, 0, 50000, "[H] tải ngang cọc (kN)");
         if (err.Count > 0)
         {
             MessageBox.Show(this, "Giá trị ngoài phạm vi cho phép:\n" + string.Join("\n", err.Select(e => "  • " + e)), Title, MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -155,6 +169,7 @@ internal sealed class FoundationDialog : Window
         _f.PileSpacingFactor = sp; _f.CapEdge = edge / 1000; _f.PileEmbed = emb / 1000; _f.CapMinHeight = capH / 1000;
         _f.StripDirection = Math.Clamp(_cbStripDir.SelectedIndex, 0, 3);
         _f.StripRibWidth = rib / 1000; _f.SubgradeModulus = k; _f.StripOverhang = over;
+        _f.PileLateralCapacity = lat; _f.DrawPunchingPyramid = _chkPyr.IsChecked == true; _f.DrawStripMoment = _chkMom.IsChecked == true;
         return true;
     }
 }

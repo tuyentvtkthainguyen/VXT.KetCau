@@ -47,6 +47,9 @@ public class Node
     public double Z { get; set; }
     public bool[] Restraint { get; set; } = new bool[6];
     public string Story { get; set; } = "";
+    /// <summary>Tên điểm trong phần mềm khác (ETABS: nhãn điểm "12" + <see cref="Story"/>; SAP2000: tên Joint) khi mô hình
+    /// được nhập từ .e2k/.s2k – dùng khớp bảng chuyển vị/phản lực nhập về. Rỗng = mô hình tạo trong chương trình.</summary>
+    public string ExternalName { get; set; } = "";
     public Vec3 P => new(X, Y, Z);
     /// <summary>Nút có ít nhất một bậc tự do bị giữ (kể cả giữ ngoài mặt phẳng của khung phẳng).</summary>
     public bool HasRestraint => Restraint.Any(r => r);
@@ -95,6 +98,11 @@ public class FrameElement
     public double CurveMidOffset { get; set; }
     /// <summary>Số đoạn thẳng chia dầm cong khi phân tích/xuất ETABS; 0 = tự động (mỗi đoạn ≤ 10°).</summary>
     public int CurveSegments { get; set; }
+    /// <summary>Tên đối tượng trong phần mềm khác khi mô hình nhập từ .e2k/.s2k (ETABS: nhãn "B12"/"C3"; SAP2000: tên Frame) –
+    /// dùng khớp bảng nội lực nhập về (Import/External/ResultImporter.cs). Rỗng = thanh tạo trong chương trình.</summary>
+    public string ExternalName { get; set; } = "";
+    /// <summary>Tầng của đối tượng trong ETABS (nhãn ETABS lặp lại ở mỗi tầng: khoá khớp = tầng + nhãn). Rỗng với SAP2000.</summary>
+    public string ExternalStory { get; set; } = "";
 
     /// <summary>Thanh có khai báo độ cong (|f| &gt; 0,1 mm). Hình học cung: <see cref="CurvedBeam.Arc(Project, FrameElement)"/>.</summary>
     [System.Text.Json.Serialization.JsonIgnore]

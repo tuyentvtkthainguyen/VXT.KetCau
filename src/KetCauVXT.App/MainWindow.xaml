@@ -546,6 +546,9 @@
                                 <ComboBox x:Name="cbFndType" Width="100" Margin="0,0,4,0" SelectionChanged="CbFndType_SelectionChanged" ToolTip="Phương án móng cho cả công trình"/>
                                 <Button Content="Thông số…" Click="MnuDesignFoundation_Click" Style="{StaticResource SmallButton}" ToolTip="Thông số móng cọc, móng băng"/>
                                 <Button Content="Thiết kế móng" Click="BtnFndDesign_Click" Style="{StaticResource SmallButton}" FontWeight="Bold"/>
+                                <!-- bố trí cọc, kiểm tra an toàn (MainWindow.PileLayout.cs) -->
+                                <Button Content="Bố trí cọc…" Click="BtnPileLayout_Click" Style="{StaticResource SmallButton}" ToolTip="Chọn số cọc, sơ đồ bố trí, khoảng cách cọc, kích thước / chiều cao đài cho đài đang chọn – kiểm tra an toàn trực tiếp"/>
+                                <Button Content="Kiểm tra an toàn…" Click="BtnFndSafety_Click" Style="{StaticResource SmallButton}" ToolTip="Bảng kiểm tra an toàn và sự làm việc của móng đang chọn (đài cọc, móng đơn, móng băng)"/>
                                 <TextBlock Text="Tại chân cột này:" VerticalAlignment="Center" Margin="4,0,4,0"/>
                                 <ComboBox x:Name="cbFndNodeType" Width="120" Margin="0,0,10,0" IsEnabled="False" SelectionChanged="CbFndNodeType_SelectionChanged"
                                           ToolTip="Loại móng tại chân cột này – chọn một móng / chân cột trên mặt bằng móng trước"/>

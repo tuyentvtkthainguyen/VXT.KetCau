@@ -34,7 +34,9 @@ public static class ElevationDrawing
     public static string ResolveCase(Project p, AnalysisResults r, string name)
     {
         if (r == null) return name ?? "";
-        if (!string.IsNullOrWhiteSpace(name) && (r.Cases.ContainsKey(name) || p.Combinations.Any(c => c.Name == name))) return name;
+        if (!string.IsNullOrWhiteSpace(name) && (r.Cases.ContainsKey(name) || r.FindCombo(name) != null)) return name;
+        // kết quả nhập từ phần mềm khác: tổ hợp bao TTGH I sinh khi nhập (vd. "BAO-ETABS")
+        if (r.External != null && !string.IsNullOrEmpty(r.External.EnvelopeName) && r.FindCombo(r.External.EnvelopeName) != null) return r.External.EnvelopeName;
         if (p.Combinations.Any(c => c.Name == "BAO")) return "BAO";
         var env = p.Combinations.FirstOrDefault(c => c.Type == ComboType.Envelope);
         if (env != null) return env.Name;
@@ -167,7 +169,7 @@ public static class ElevationDrawing
         string qs = (qty ?? "").ToUpperInvariant();
         int comp = qs.StartsWith("V") ? 1 : qs.StartsWith("N") || qs.StartsWith("P") ? 0 : 5;
         string cs = diagram ? ResolveCase(p, r, caseName) : "";
-        bool env = p.Combinations.Any(c => c.Name == cs && c.Type == ComboType.Envelope);
+        bool env = r != null ? r.IsEnvelope(cs) : p.Combinations.Any(c => c.Name == cs && c.Type == ComboType.Envelope);
         double maxAbs = 0;
         string unit = comp == 5 ? "kN.m" : "kN";
         if (diagram && !string.IsNullOrEmpty(cs))

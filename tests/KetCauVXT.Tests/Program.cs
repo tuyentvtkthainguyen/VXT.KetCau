@@ -518,6 +518,9 @@ StairTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDi
 Console.WriteLine("33. Mẫu định dạng (template), khung tên người dùng từ DWG/DXF/ảnh");
 TemplateTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("34. Móng: bố trí cọc trong đài, kiểm tra an toàn, chọc thủng, sự làm việc móng đơn/móng băng");
+FoundationCheckTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

@@ -525,6 +525,7 @@ public partial class MainWindow : Window
 
     private async Task<bool> RunAnalysis()
     {
+        if (!ConfirmReplaceImportedResults()) return false;   // MainWindow.ResultImport.cs
         ApplyUiToProject(false);
         if (_p.Combinations.Count == 0) ComboGenerator.Generate(_p);
         AnalysisResults res = null;
@@ -814,6 +815,7 @@ public partial class MainWindow : Window
     private void RefreshCaseCombos()
     {
         var names = _p.Patterns.Select(x => x.Name).Concat(_p.Combinations.Select(c => c.Name)).ToList();
+        names = ImportedCaseNames(names);   // nội lực nhập từ ETABS/SAP/SAFE – MainWindow.ResultImport.cs
         string cur = cbCase.SelectedItem as string;
         cbCase.ItemsSource = names;
         cbCase.SelectedItem = cur != null && names.Contains(cur) ? cur : names.FirstOrDefault(n => n == "BAO") ?? names.FirstOrDefault();
@@ -842,8 +844,7 @@ public partial class MainWindow : Window
         {
             var rows = new List<ForceRow>();
             var reac = new List<ReactionRow>();
-            var combo = _p.Combinations.FirstOrDefault(x => x.Name == c);
-            bool env = combo != null && combo.Type == ComboType.Envelope;
+            bool env = _res.IsEnvelope(c);
             var frames = _p.Frames.Where(f => st == AllStories || f.Story == st).ToList();
             if (env)
             {
