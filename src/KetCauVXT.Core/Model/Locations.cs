@@ -216,6 +216,24 @@ public sealed class LocationDb
     public const string SourceUser = "Người dùng";
     public const string ExampleMark = "VÍ DỤ – xoá trước khi dùng";
 
+    /// <summary>Nguồn của danh mục tỉnh/vùng gió có sẵn trong chương trình.</summary>
+    public const string ProvinceListSource = "QCVN 02:2022/BXD (Bảng 5.1) – đang dự thảo sửa đổi theo đơn vị hành chính mới";
+
+    /// <summary>Nhãn nguồn hiển thị: theo trạng thái bản sửa đổi QCVN 02 trong danh mục văn bản (Model/Regulations.cs).
+    /// Khi người dùng đánh dấu bản sửa đổi "Còn hiệu lực" → nhắc nhập bảng địa danh mới (Nhập từ Excel/CSV, cột Nguồn ghi số hiệu mới).</summary>
+    public static string SourceLabel
+    {
+        get
+        {
+            var reg = RegulationService.Registry;
+            var draft = reg.Docs.FirstOrDefault(d => d.Topic == Topics.NaturalDataDraft);
+            if (draft == null || draft.Status == RegulationStatus.DuThao) return ProvinceListSource;
+            if (draft.IsCurrent)
+                return $"{draft.Code} – đã ban hành: nhập bảng địa danh theo đơn vị hành chính mới (Nhập từ Excel/CSV) và đối chiếu số liệu cũ";
+            return $"{Std.NaturalData} (Bảng 5.1)";
+        }
+    }
+
     public int Version { get; set; } = 1;
     public List<LocationEntry> Entries { get; set; } = new();
 

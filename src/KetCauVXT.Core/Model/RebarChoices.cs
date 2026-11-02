@@ -123,9 +123,9 @@ public class RebarPreferences
     // ---- nguyên tắc nối thép (không nối trong vùng nguy hiểm của cấu kiện) ----
     /// <summary>Vùng tới hạn dầm lcr = k·h tính từ mép cột (khung không kháng chấn); không nối trong nút khung và vùng này.</summary>
     public double BeamCriticalFactor { get; set; } = 1.0;
-    /// <summary>Vùng tới hạn dầm khi Project.Seismic.Enabled (khung kháng chấn, TCVN 9386:2012 5.4.3.1.2 kiểu cấp dẻo trung bình/cao): lcr = k·h.</summary>
+    /// <summary>Vùng tới hạn dầm khi Project.Seismic.Enabled (khung kháng chấn, TCVN 9386-1:2025 (thay thế TCVN 9386:2012; số điều theo bản 2012) 5.4.3.1.2 kiểu cấp dẻo trung bình/cao): lcr = k·h.</summary>
     public double BeamCriticalFactorSeismic { get; set; } = 2.0;
-    /// <summary>Vùng tới hạn cột lcr = max(hc; Hthông thuỷ / tỷ số; giá trị nhỏ nhất) ở hai đầu mỗi tầng (TCVN 9386:2012 5.4.3.2.2 / 5.5.3.2.2).</summary>
+    /// <summary>Vùng tới hạn cột lcr = max(hc; Hthông thuỷ / tỷ số; giá trị nhỏ nhất) ở hai đầu mỗi tầng (TCVN 9386-1:2025 (thay thế TCVN 9386:2012; số điều theo bản 2012) 5.4.3.2.2 / 5.5.3.2.2).</summary>
     public double ColumnCriticalMin { get; set; } = 0.45;
     public double ColumnCriticalRatio { get; set; } = 6.0;
     /// <summary>Hệ số α chiều dài nối chồng (TCVN 5574:2018 10.3.6.2): vùng kéo 1,2 (khi ≤ 50% số thanh nối tại một tiết diện), vùng nén 0,9.</summary>

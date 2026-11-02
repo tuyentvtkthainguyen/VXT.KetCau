@@ -110,11 +110,11 @@ public class WindSettings
     public double WidthForWindX { get; set; }
 }
 
-/// <summary>Thông số động đất theo TCVN 9386:2012 (phương pháp tĩnh lực ngang tương đương).</summary>
+/// <summary>Thông số động đất theo TCVN 9386-1:2025 (thay thế TCVN 9386:2012; số điều theo bản 2012) (phương pháp tĩnh lực ngang tương đương).</summary>
 public class SeismicSettings
 {
     public bool Enabled { get; set; }
-    /// <summary>Đỉnh gia tốc nền tham chiếu agR (đơn vị g), tra Phụ lục H TCVN 9386:2012</summary>
+    /// <summary>Đỉnh gia tốc nền tham chiếu agR (đơn vị g), tra QCVN 02:2022/BXD Bảng 6.1, 6.2 theo địa danh (trước đây Phụ lục H TCVN 9386:2012 – đã được thay thế bởi TCVN 9386-1:2025)</summary>
     public double AgR { get; set; } = 0.0;
     /// <summary>Loại nền đất A, B, C, D, E</summary>
     public string Soil { get; set; } = "C";

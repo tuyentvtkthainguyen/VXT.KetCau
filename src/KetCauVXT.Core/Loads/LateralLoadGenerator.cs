@@ -5,7 +5,7 @@ namespace KetCauVXT.Loads;
 
 /// <summary>Sinh tải ngang theo tầng:
 /// – Gió tĩnh theo TCVN 2737:2023: W = W0 · k(z) · c · hệ số hiệu chỉnh (giá trị tiêu chuẩn; γf đưa vào tổ hợp).
-/// – Động đất theo TCVN 9386:2012, phương pháp phân tích tĩnh lực ngang tương đương (mục 4.3.3.2).
+/// – Động đất theo TCVN 9386-1:2025 (thay thế TCVN 9386:2012; số điều theo bản 2012), phương pháp phân tích tĩnh lực ngang tương đương (mục 4.3.3.2).
 /// Lực tầng chia đều cho các nút đầu cột tại cao trình sàn (khi có sàn cứng, hợp lực đặt tại trọng tâm các nút).</summary>
 public static class LateralLoadGenerator
 {
@@ -18,7 +18,7 @@ public static class LateralLoadGenerator
         return 1.844 * Math.Pow(z / zg, 2 * a);
     }
 
-    /// <summary>Phổ thiết kế Sd(T)/g theo TCVN 9386:2012 (phổ loại 1), công thức (3.13)–(3.16).</summary>
+    /// <summary>Phổ thiết kế Sd(T)/g theo TCVN 9386-1:2025 (thay thế TCVN 9386:2012; số điều theo bản 2012) (phổ loại 1), công thức (3.13)–(3.16).</summary>
     public static double Sd(double T, SeismicSettings s)
     {
         (double S, double TB, double TC, double TD) = s.Soil switch
@@ -121,7 +121,7 @@ public static class LateralLoadGenerator
         return warn;
     }
 
-    /// <summary>Trọng lượng tham gia dao động mỗi tầng: tĩnh tải + ψE·hoạt tải (TCVN 9386:2012 mục 3.2.4).
+    /// <summary>Trọng lượng tham gia dao động mỗi tầng: tĩnh tải + ψE·hoạt tải (TCVN 9386-1:2025 (thay thế TCVN 9386:2012; số điều theo bản 2012) mục 3.2.4).
     /// Cột chia đôi cho tầng trên và dưới.</summary>
     public static Dictionary<string, double> StoryWeights(Project p, List<Story> stories)
     {

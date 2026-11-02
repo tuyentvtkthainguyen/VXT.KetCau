@@ -92,6 +92,7 @@
             </MenuItem>
             <MenuItem Header="T_rợ giúp">
                 <MenuItem Header="Phụ lục tính toán &amp; hướng dẫn…" Click="MnuAppendix_Click" InputGestureText="F1"/>
+                <MenuItem Header="Văn bản pháp lý &amp; tiêu chuẩn áp dụng…" Click="MnuRegulations_Click"/>
                 <Separator/>
                 <MenuItem Header="Giới thiệu" Click="MnuAbout_Click"/>
             </MenuItem>
@@ -200,7 +201,7 @@
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hệ số khí động tổng Cp" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtCp"/></DockPanel>
                                 </StackPanel>
                             </GroupBox>
-                            <GroupBox Header="Động đất (TCVN 9386:2012)">
+                            <GroupBox Header="Động đất (TCVN 9386-1:2025)">
                                 <StackPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tính động đất" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkSeismic" Content="Bật (thêm trường hợp DDX, DDY)" VerticalAlignment="Center"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Gia tốc nền agR (g)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtAgR"/></DockPanel>

@@ -161,7 +161,7 @@ public static class Appendix
         s.Items.Add(I("Đổi đơn vị diện tích thép", "As", "1 cm² = 10⁻⁴ m² = 100 mm²", "Thanh Ø: as = π·d²/4",
             "", "Thuyết minh ghi As bằng cm². Ví dụ 1Ø16 = 2,01 cm²; 1Ø20 = 3,14 cm².", ""));
         s.Items.Add(I("Gia tốc trọng trường", "g", "g = 9,81 m/s²", "agR nhập theo đơn vị g (vd. 0,0783g)",
-            "", "Khối lượng tham gia dao động được dùng trực tiếp dưới dạng trọng lượng W (kN); phổ Sd tính theo đơn vị g nên Fb = Sd·W.", "TCVN 9386:2012"));
+            "", "Khối lượng tham gia dao động được dùng trực tiếp dưới dạng trọng lượng W (kN); phổ Sd tính theo đơn vị g nên Fb = Sd·W.", Std.Seismic));
         s.Items.Add(I("Hệ trục tổng thể", "X, Y, Z", "", "Z hướng lên; trục X ngang mặt bằng (trục 1, 2, 3…), trục Y (A, B, C…)",
             "", "Tải trọng lực (Gravity) mang dấu dương khi hướng xuống (−Z). Tải tập trung nút nhập theo hệ tổng thể.", ""));
         s.Items.Add(I("Hệ trục địa phương thanh", "1, 2, 3", "Trục 1: từ nút I → J. Thanh đứng: trục 2 // +X, 3 = 1×2. Thanh ngang: trục 3 = 1×Z (nằm ngang), 2 = 3×1 (hướng lên)",
@@ -176,7 +176,7 @@ public static class Appendix
             "", "TT: tĩnh tải (kể trọng lượng bản thân); HTHT: tĩnh tải hoàn thiện + tường; HT: hoạt tải; GX/GY: gió theo X/Y; ĐĐX/ĐĐY: động đất", "",
             "Tên trường hợp gió/động đất chứa chữ Y được hiểu là tác dụng theo phương Y, còn lại theo phương X.", ""));
         s.Items.Add(I("TTGH I / TTGH II", "ULS / SLS", "", "TTGH I: kiểm tra độ bền (tải tính toán = tiêu chuẩn × γf); TTGH II: võng, lún, áp lực nền (tải tiêu chuẩn)", "",
-            "Tổ hợp TH… là TTGH I, TC… là TTGH II, BAO là bao các tổ hợp TTGH I.", "TCVN 2737:2023"));
+            "Tổ hợp TH… là TTGH I, TC… là TTGH II, BAO là bao các tổ hợp TTGH I.", Std.Loads));
         return s;
     }
 
@@ -276,14 +276,14 @@ public static class Appendix
         var def = ModelBuilder.NewProject("_").Patterns;
         string G(string n) => F(def.FirstOrDefault(x => x.Name == n)?.Gamma ?? 1.0);
         s.Items.Add(I("Tĩnh tải – trọng lượng bản thân", "TT", "g = γ·A (thanh, kN/m); g = γ·t (sàn, kN/m²)", "γ bê tông 25 kN/m³; thép 78,5 kN/m³", "γf = " + G("TT"),
-            "Tự tính từ tiết diện, không cần nhập. Trọng lượng bản thân sàn được dồn về dầm cùng với tải sàn.", "TCVN 2737:2023"));
+            "Tự tính từ tiết diện, không cần nhập. Trọng lượng bản thân sàn được dồn về dầm cùng với tải sàn.", Std.Loads));
         s.Items.Add(I("Tĩnh tải hoàn thiện + tường", "HTHT", "gs = Σ ti·γi + tải cố định (cấu tạo sàn)", "Xem bảng cấu tạo sàn mặc định", "γf = " + G("HTHT"),
-            "Gồm lớp lát, vữa, trát trần, chống thấm, trần treo, M&E và toàn bộ tải tường. Nếu ô sàn gán \"Cấu tạo sàn\" thì HTHT và HT lấy theo cấu tạo đó.", "TCVN 2737:2023"));
+            "Gồm lớp lát, vữa, trát trần, chống thấm, trần treo, M&E và toàn bộ tải tường. Nếu ô sàn gán \"Cấu tạo sàn\" thì HTHT và HT lấy theo cấu tạo đó.", Std.Loads));
         s.Items.Add(I("Hoạt tải sử dụng", "HT", "p theo công năng (kN/m²)", "Phòng ở 1,5; WC 1,5; ban công 2,0; sảnh/hành lang 3,0; kho 4,0; mái BTCT 0,75", "γf = " + G("HT") + " (mặc định)",
             "Giá trị tiêu chuẩn toàn phần theo công năng. Lưu ý: TCVN 2737 quy định γf lớn hơn (1,3) cho hoạt tải phân bố có giá trị nhỏ (< 2,0 kN/m²) – "
-            + "kiểm tra và sửa γf của trường hợp HT nếu cần (chương trình không tự đổi).", "TCVN 2737:2023 (bảng hoạt tải theo công năng)"));
+            + "kiểm tra và sửa γf của trường hợp HT nếu cần (chương trình không tự đổi).", Std.Loads + " (bảng hoạt tải theo công năng)"));
         s.Items.Add(I("Hoạt tải mái tôn khung thép", "HT (mái)", "", "0,30 kN/m² (mái tôn không sử dụng); tĩnh tải mái 0,15 kN/m²", "γf = 1,3; TT γf = 1,1; gió γf = 1,2",
-            "Giá trị mặc định khi tạo khung tiền chế (hộp thoại Khung tiền chế).", "TCVN 2737:2023"));
+            "Giá trị mặc định khi tạo khung tiền chế (hộp thoại Khung tiền chế).", Std.Loads));
         s.Items.Add(I("Tải tường trên 1 m² tường", "gw", "gw = t·γ + n·tp·γtrát", "t = 0,11/0,22/0,33 m; γ gạch đặc 18, gạch rỗng 15, AAC 7–9 kN/m³; tp = 15 mm, γtrát = 18 kN/m³; n = 0/1/2 mặt trát", "",
             "Tải tiêu chuẩn của tường đặc (chưa trừ cửa). Xem bảng loại tường mặc định.", ""));
         s.Items.Add(I("Tải tường phân bố trên dầm", "qw", "qw = gw·H·(1 − tỷ lệ cửa)", "H mặc định = chiều cao tầng trên − max(hdầm dưới tường; 0,35 m); tường chắn mái 0,9 m; tỷ lệ cửa ≤ 0,9", "γf của HTHT",
@@ -332,17 +332,17 @@ public static class Appendix
                   + "theo QCVN 02:2022/BXD. Thành phần động của gió chưa tính (nhà thấp tầng ≤ 40 m thường không cần)."
         };
         s.Items.Add(I("Áp lực gió cơ sở", "W0", "Theo vùng gió I…V", string.Join("; ", WindZoneTable.Select(z => $"{z.Zone}: {F(z.W0)} kN/m² (V3s,50 = {F(z.V3s, "0")} m/s)")), "",
-            "Mặc định W0 = " + F(w.W0) + " kN/m² (vùng II). Tra vùng của địa danh trong QCVN 02:2022/BXD (Phụ lục phân vùng) rồi nhập vào ô W0.", "QCVN 02:2022/BXD Bảng 5.1; TCVN 2737:2023"));
+            "Mặc định W0 = " + F(w.W0) + " kN/m² (vùng II). Tra vùng của địa danh trong QCVN 02:2022/BXD (Phụ lục phân vùng) rồi nhập vào ô W0.", Std.NaturalData + " Bảng 5.1; " + Std.Loads));
         s.Items.Add(I("Dạng địa hình", "A, B, C", "", "A: trống trải (bờ biển, hồ lớn, cánh đồng); B: tương đối trống trải, có vật cản thưa cao ≤ 10 m (ngoại ô, làng); C: bị che chắn mạnh, vật cản cao ≥ 10 m dày đặc (trong đô thị)", "",
-            "Mặc định địa hình " + w.Terrain + ". Địa hình càng trống trải gió càng lớn (k(z) lớn hơn).", "TCVN 2737:2023"));
+            "Mặc định địa hình " + w.Terrain + ". Địa hình càng trống trải gió càng lớn (k(z) lớn hơn).", Std.Loads));
         s.Items.Add(I("Hệ số thay đổi áp lực gió theo độ cao", "k(z)", "k(z) = 1,844·(z/zg)^(2α), z ≥ 3 m", "A: α = 0,07, zg = 250 m; B: α = 0,09, zg = 300 m; C: α = 0,14, zg = 400 m", "",
-            "z là cao độ sàn so với chân cột (cao độ móng). Dạng hàm mũ gần đúng – đối chiếu bảng k(z) của tiêu chuẩn áp dụng (xem bảng tra bên dưới).", "TCVN 2737:2023 (dạng hàm mũ)"));
+            "z là cao độ sàn so với chân cột (cao độ móng). Dạng hàm mũ gần đúng – đối chiếu bảng k(z) của tiêu chuẩn áp dụng (xem bảng tra bên dưới).", Std.Loads + " (dạng hàm mũ)"));
         s.Items.Add(I("Hệ số khí động tổng", "c", "c = c(đón gió) + |c(hút gió)| = 0,8 + 0,6", "Mặc định c = " + F(w.Cp), "",
-            "Gộp áp lực mặt đón gió và hút mặt khuất gió thành một lực ngang tổng. Khung tiền chế dùng hệ số riêng: cột đón gió 0,8, cột khuất gió −0,5, mái đón gió −0,6, mái khuất gió −0,4.", "TCVN 2737:2023 (bảng hệ số khí động)"));
+            "Gộp áp lực mặt đón gió và hút mặt khuất gió thành một lực ngang tổng. Khung tiền chế dùng hệ số riêng: cột đón gió 0,8, cột khuất gió −0,5, mái đón gió −0,6, mái khuất gió −0,4.", Std.Loads + " (bảng hệ số khí động)"));
         s.Items.Add(I("Hệ số hiệu chỉnh", "kh", "", "Mặc định " + F(w.Factor), "",
             "Người dùng nhập khi cần kể hệ số theo thời gian sử dụng / hệ số gió giật theo tiêu chuẩn áp dụng.", ""));
         s.Items.Add(I("Áp lực gió tiêu chuẩn tại cao trình z", "W", "W = W0·k(z)·c·kh", "kN/m²", "γf gió = 1,2 (trường hợp GX, GY)",
-            "Giá trị tiêu chuẩn; hệ số γf được đưa vào khi tổ hợp. Ô \"γ gió\" trong thiết lập gió không được dùng – γf lấy theo trường hợp tải GX/GY.", "TCVN 2737:2023"));
+            "Giá trị tiêu chuẩn; hệ số γf được đưa vào khi tổ hợp. Ô \"γ gió\" trong thiết lập gió không được dùng – γf lấy theo trường hợp tải GX/GY.", Std.Loads));
         s.Items.Add(I("Lực gió tại sàn tầng", "Fi", "Fi = W(zi)·hi·B, hi = ½·h(tầng dưới) + ½·h(tầng trên)", "B = bề rộng đón gió (mặc định = kích thước mặt bằng vuông góc phương gió)", "",
             "Tầng trên cùng chỉ lấy ½ chiều cao tầng dưới. Lực chia đều cho các nút đầu cột tại cao trình sàn; khi có sàn cứng hợp lực coi như đặt tại tâm các nút.", ""));
 
@@ -352,7 +352,7 @@ public static class Appendix
         s.Tables.Add(tk);
         var tz = new AppendixTable { Title = "Vùng áp lực gió (QCVN 02:2022/BXD, chu kỳ lặp 50 năm)", Headers = new[] { "Vùng", "W0 (kN/m²)", "W0 (daN/m²)", "V3s,50 (m/s)" } };
         foreach (var z in WindZoneTable) tz.Rows.Add(new[] { z.Zone, F(z.W0), F(z.W0 * 100, "0"), F(z.V3s, "0") });
-        tz.Note = "Danh mục vùng theo từng xã/phường: tra QCVN 02:2022/BXD; chương trình không kèm sẵn bảng đầy đủ.";
+        tz.Note = "Danh mục vùng theo từng xã/phường: tra " + Std.NaturalData + " (Bảng 5.1 – đang dự thảo sửa đổi theo đơn vị hành chính mới); chương trình không kèm sẵn bảng đầy đủ.";
         s.Tables.Add(tz);
 
         if (p != null)
@@ -393,29 +393,30 @@ public static class Appendix
         var s = new AppendixSection
         {
             Title = "Tải trọng động đất (phương pháp tĩnh lực ngang tương đương)",
-            Intro = "Động đất được quy về lực ngang tĩnh đặt tại các sàn, tính từ phổ thiết kế loại 1 của TCVN 9386:2012 và chu kỳ dao động cơ bản ước lượng T1. "
+            Intro = "Động đất được quy về lực ngang tĩnh đặt tại các sàn, tính từ phổ thiết kế loại 1 và chu kỳ dao động cơ bản ước lượng T1 theo " + Std.Seismic
+                  + " (thay thế TCVN 9386:2012; chương trình lập theo cơ sở EN 1998-1 như bản 2012, số điều khoản ghi theo bản 2012 để đối chiếu – người dùng đối chiếu phổ phản ứng, hệ số tầm quan trọng, gia tốc nền theo bản 2025). "
                   + "Phương pháp này áp dụng cho nhà đều đặn theo mặt đứng, T1 ≤ min(4TC; 2 s). Chưa xét độ lệch tâm ngẫu nhiên và chưa phân tích phổ phản ứng dạng dao động."
         };
-        s.Items.Add(I("Đỉnh gia tốc nền tham chiếu", "agR", "", "Tra Phụ lục H TCVN 9386:2012 theo địa danh (đơn vị g); mặc định " + F(d.AgR), "",
-            "Bật \"Tính động đất\" và nhập agR. Theo tiêu chuẩn: ag < 0,04g (động đất rất yếu) không cần thiết kế kháng chấn; 0,04g ≤ ag < 0,08g (yếu) được dùng biện pháp đơn giản – chương trình không tự kiểm tra ngưỡng này.", "TCVN 9386:2012 Phụ lục H; mục 3.2.1"));
+        s.Items.Add(I("Đỉnh gia tốc nền tham chiếu", "agR", "", "Tra " + Std.NaturalData + " (Bảng 6.1, 6.2) theo địa danh (đơn vị g); mặc định " + F(d.AgR), "",
+            "Bật \"Tính động đất\" và nhập agR. Theo tiêu chuẩn: ag < 0,04g (động đất rất yếu) không cần thiết kế kháng chấn; 0,04g ≤ ag < 0,08g (yếu) được dùng biện pháp đơn giản – chương trình không tự kiểm tra ngưỡng này.", Std.SeismicClause("mục 3.2.1") + "; " + Std.NaturalData + " Bảng 6.1, 6.2"));
         s.Items.Add(I("Hệ số tầm quan trọng", "γI", "ag = γI·agR", "Mặc định γI = " + F(d.ImportanceFactor) + " (nhà ở thông thường, cấp II)", "",
-            "Công trình quan trọng hơn (trường học, bệnh viện…) lấy γI > 1 theo Phụ lục E/F TCVN 9386:2012.", "TCVN 9386:2012 mục 4.2.5"));
+            "Công trình quan trọng hơn (trường học, bệnh viện…) lấy γI > 1 theo " + Std.Seismic + " (đối chiếu; bản 2012: Phụ lục E/F).", Std.SeismicClause("mục 4.2.5")));
         s.Items.Add(I("Loại nền đất", "A…E", "", "A: đá; B: cát/sỏi rất chặt, sét rất cứng; C: cát chặt vừa, sét cứng; D: đất rời xốp – trung bình, sét mềm; E: lớp phủ mỏng trên nền cứng. Mặc định " + d.Soil, "",
-            "Xác định từ hồ sơ khảo sát (vs,30, NSPT, cu). Ảnh hưởng tới S, TB, TC, TD.", "TCVN 9386:2012 Bảng 3.1"));
+            "Xác định từ hồ sơ khảo sát (vs,30, NSPT, cu). Ảnh hưởng tới S, TB, TC, TD.", Std.SeismicClause("Bảng 3.1")));
         s.Items.Add(I("Phổ thiết kế (phổ loại 1)", "Sd(T)",
             "0 ≤ T ≤ TB: Sd = ag·S·[2/3 + T/TB·(2,5/q − 2/3)]\nTB ≤ T ≤ TC: Sd = ag·S·2,5/q\nTC ≤ T ≤ TD: Sd = max(ag·S·2,5/q·TC/T; β·ag)\nT ≥ TD: Sd = max(ag·S·2,5/q·TC·TD/T²; β·ag)",
             "β = 0,2", "q (hệ số ứng xử) đóng vai trò giảm lực do khả năng biến dạng dẻo",
-            "Sd tính theo đơn vị g. Xem bảng tham số phổ theo loại nền bên dưới.", "TCVN 9386:2012 mục 3.2.2.5, công thức (3.13)–(3.16)"));
+            "Sd tính theo đơn vị g. Xem bảng tham số phổ theo loại nền bên dưới.", Std.SeismicClause("mục 3.2.2.5, công thức (3.13)–(3.16)")));
         s.Items.Add(I("Hệ số ứng xử", "q", "", "Mặc định q = " + F(d.Q) + " (khung BTCT nhiều tầng nhiều nhịp, cấp dẻo trung bình: q = 3,0·αu/α1 = 3,0×1,3)", "",
-            "Khung BTCT dẻo thấp (DCL) lấy q = 1,5. Nhập sai q làm lực động đất sai tỉ lệ nghịch.", "TCVN 9386:2012 mục 5.2.2.2"));
+            "Khung BTCT dẻo thấp (DCL) lấy q = 1,5. Nhập sai q làm lực động đất sai tỉ lệ nghịch.", Std.SeismicClause("mục 5.2.2.2")));
         s.Items.Add(I("Chu kỳ dao động cơ bản", "T1", "T1 = Ct·H^(3/4)", "Ct = 0,075 (khung BTCT); 0,085 (khung thép – khi > ½ số thanh là thép); H = chiều cao từ chân cột tới sàn trên cùng (m)", "",
-            "Công thức gần đúng cho nhà cao ≤ 40 m. Có thể so với chu kỳ ETABS (thường ETABS cho T1 lớn hơn vì kể khối lượng đầy đủ và độ cứng thực).", "TCVN 9386:2012 mục 4.3.3.2.2, công thức (4.6)"));
+            "Công thức gần đúng cho nhà cao ≤ 40 m. Có thể so với chu kỳ ETABS (thường ETABS cho T1 lớn hơn vì kể khối lượng đầy đủ và độ cứng thực).", Std.SeismicClause("mục 4.3.3.2.2, công thức (4.6)")));
         s.Items.Add(I("Trọng lượng tham gia dao động", "W", "W = Σ TT + Σ HTHT + ψE·Σ HT", "ψE = φ·ψ2, mặc định " + F(d.PsiLive), "",
-            "Gồm trọng lượng bản thân thanh, tải trên dầm (kể tải sàn đã dồn), tải nút hướng xuống. Trọng lượng cột chia đôi cho 2 cao trình; phần sát chân cột bỏ qua.", "TCVN 9386:2012 mục 3.2.4, 4.2.4"));
-        s.Items.Add(I("Hệ số hiệu chỉnh", "λ", "λ = 0,85 nếu T1 ≤ 2TC và nhà > 2 tầng; ngược lại λ = 1,0", "", "", "Kể đến khối lượng hữu hiệu của dạng dao động cơ bản nhỏ hơn tổng khối lượng.", "TCVN 9386:2012 mục 4.3.3.2.2"));
-        s.Items.Add(I("Lực cắt đáy", "Fb", "Fb = Sd(T1)·W·λ", "kN", "Tổ hợp động đất dùng hệ số 1,0 (tổ hợp đặc biệt)", "Tổng lực ngang động đất theo mỗi phương.", "TCVN 9386:2012 công thức (4.5)"));
+            "Gồm trọng lượng bản thân thanh, tải trên dầm (kể tải sàn đã dồn), tải nút hướng xuống. Trọng lượng cột chia đôi cho 2 cao trình; phần sát chân cột bỏ qua.", Std.SeismicClause("mục 3.2.4, 4.2.4")));
+        s.Items.Add(I("Hệ số hiệu chỉnh", "λ", "λ = 0,85 nếu T1 ≤ 2TC và nhà > 2 tầng; ngược lại λ = 1,0", "", "", "Kể đến khối lượng hữu hiệu của dạng dao động cơ bản nhỏ hơn tổng khối lượng.", Std.SeismicClause("mục 4.3.3.2.2")));
+        s.Items.Add(I("Lực cắt đáy", "Fb", "Fb = Sd(T1)·W·λ", "kN", "Tổ hợp động đất dùng hệ số 1,0 (tổ hợp đặc biệt)", "Tổng lực ngang động đất theo mỗi phương.", Std.SeismicClause("công thức (4.5)")));
         s.Items.Add(I("Phân phối lực theo tầng", "Fi", "Fi = Fb·zi·Wi / Σ(zj·Wj)", "zi: cao độ sàn i so với chân cột", "",
-            "Dạng dao động cơ bản tuyến tính theo chiều cao. Lực tầng chia đều cho các nút đầu cột như tải gió.", "TCVN 9386:2012 công thức (4.11)"));
+            "Dạng dao động cơ bản tuyến tính theo chiều cao. Lực tầng chia đều cho các nút đầu cột như tải gió.", Std.SeismicClause("công thức (4.11)")));
         var t = new AppendixTable { Title = "Tham số phổ đàn hồi loại 1 theo loại nền (lấy từ hàm phổ của chương trình)", Headers = new[] { "Nền", "S", "TB (s)", "TC (s)", "TD (s)" } };
         foreach (var soil in new[] { "A", "B", "C", "D", "E" })
         {
@@ -450,14 +451,14 @@ public static class Appendix
                   + "Thiết kế cấu kiện lấy bao (BAO) của tất cả tổ hợp TTGH I; võng và áp lực nền móng băng dùng tổ hợp TTGH II."
         };
         s.Items.Add(I("Tổ hợp cơ bản 1 – tĩnh tải + hoạt tải", "TH1", "Σγf·TT + γf·HT (+ γf·tải khác)", "", "γf theo từng trường hợp",
-            "Tĩnh tải gồm TT và HTHT; hoạt tải gồm HT và hoạt tải mái. Tất cả hoạt tải lấy đồng thời (chưa xét chất tải lệch nhịp).", "TCVN 2737:2023"));
-        s.Items.Add(I("Tổ hợp cơ bản 1 – tĩnh tải + gió", "TH…", "Σγf·TT ± γf·W", "Mỗi phương gió GX, GY với dấu ±", "γf gió = 1,2", "Gió X và gió Y không cộng đồng thời.", "TCVN 2737:2023"));
+            "Tĩnh tải gồm TT và HTHT; hoạt tải gồm HT và hoạt tải mái. Tất cả hoạt tải lấy đồng thời (chưa xét chất tải lệch nhịp).", Std.Loads));
+        s.Items.Add(I("Tổ hợp cơ bản 1 – tĩnh tải + gió", "TH…", "Σγf·TT ± γf·W", "Mỗi phương gió GX, GY với dấu ±", "γf gió = 1,2", "Gió X và gió Y không cộng đồng thời.", Std.Loads));
         s.Items.Add(I("Tổ hợp cơ bản 2", "TH…", "Σγf·TT + ψ·(γf·HT) ± ψ·(γf·W)", "ψ = 0,9", "ψ = 0,9 (hệ số tổ hợp khi có ≥ 2 tải tạm thời)",
-            "Khi có từ 2 tải tạm thời trở lên, các tải tạm thời nhân thêm ψ = 0,9.", "TCVN 2737:2023"));
+            "Khi có từ 2 tải tạm thời trở lên, các tải tạm thời nhân thêm ψ = 0,9.", Std.Loads));
         s.Items.Add(I("Tổ hợp đặc biệt có động đất", "TH…", "TT + HTHT + ψE·HT ± E1 ± 0,3·E2", "ψE = " + F(new SeismicSettings().PsiLive) + "; E1 phương chính, E2 phương vuông góc", "Hệ số 1,0 cho tĩnh tải và động đất",
-            "Chỉ sinh khi bật động đất và có trường hợp tải loại Seismic. Không tổ hợp gió với động đất.", "TCVN 9386:2012 mục 4.3.3.5"));
+            "Chỉ sinh khi bật động đất và có trường hợp tải loại Seismic. Không tổ hợp gió với động đất.", Std.SeismicClause("mục 4.3.3.5")));
         s.Items.Add(I("Tổ hợp tiêu chuẩn (TTGH II)", "TC…", "TC1 = TT + HTHT + HT; TC… = TT + HTHT + 0,9·HT ± 0,9·W", "Hệ số 1,0 (giá trị tiêu chuẩn)", "",
-            "Dùng tính võng dầm/sàn, chuyển vị khung thép, áp lực đáy móng băng.", "TCVN 2737:2023"));
+            "Dùng tính võng dầm/sàn, chuyển vị khung thép, áp lực đáy móng băng.", Std.Loads));
         s.Items.Add(I("Tổ hợp bao", "BAO", "max/min của mọi tổ hợp TTGH I", "", "", "Thiết kế dầm, cột, sàn, móng lấy nội lực bất lợi nhất qua các tổ hợp TTGH I.", ""));
         s.Items.Add(I("Quy đổi nội lực tính toán → tiêu chuẩn cho móng đơn", "kt", "Ntc = Ntt / kt", "kt = " + F(new SoilSettings().LoadFactorAvg) + " (hệ số vượt tải trung bình)", "",
             "Móng đơn kiểm tra áp lực nền bằng nội lực tính toán chia kt (gần đúng); móng băng dùng trực tiếp tổ hợp TC nếu có.", "TCVN 9362:2012"));
@@ -813,8 +814,8 @@ public static class Appendix
             Intro = "Độ an toàn của kết cấu đến từ nhiều lớp hệ số: tải trọng được phóng đại (γf), cường độ vật liệu được giảm (γb, γs, γM), điều kiện làm việc (γc, m1, m2) "
                   + "và các giới hạn sử dụng (võng, lún, chuyển vị). Bảng dưới tổng hợp tất cả giá trị chương trình đang dùng – kỹ sư cần nắm để biết kết quả \"an toàn\" tới đâu."
         };
-        s.Items.Add(I("Hệ số độ tin cậy tải trọng", "γf", "Ptt = γf·Ptc", "TT 1,1; HTHT 1,2; HT 1,2; gió 1,2; động đất 1,0; khung thép: HT mái 1,3", "γf", "Người dùng sửa theo từng trường hợp tải. Xem lưu ý hoạt tải nhỏ ở PL3.", "TCVN 2737:2023"));
-        s.Items.Add(I("Hệ số tổ hợp", "ψ, ψE", "", "ψ = 0,9 (≥ 2 tải tạm thời); ψE = " + F(new SeismicSettings().PsiLive) + "; thành phần động đất vuông góc 0,3", "", "", "TCVN 2737:2023; TCVN 9386:2012"));
+        s.Items.Add(I("Hệ số độ tin cậy tải trọng", "γf", "Ptt = γf·Ptc", "TT 1,1; HTHT 1,2; HT 1,2; gió 1,2; động đất 1,0; khung thép: HT mái 1,3", "γf", "Người dùng sửa theo từng trường hợp tải. Xem lưu ý hoạt tải nhỏ ở PL3.", Std.Loads));
+        s.Items.Add(I("Hệ số tổ hợp", "ψ, ψE", "", "ψ = 0,9 (≥ 2 tải tạm thời); ψE = " + F(new SeismicSettings().PsiLive) + "; thành phần động đất vuông góc 0,3", "", "", Std.Loads + "; " + Std.Seismic));
         s.Items.Add(I("Hệ số độ tin cậy bê tông", "γb, γbt", "Rb = Rb,n/γb; Rbt = Rbt,n/γbt", "γb ≈ 1,3; γbt ≈ 1,5 (đã nằm trong Rb, Rbt)", "γb, γbt", "", "TCVN 5574:2018 mục 6.1"));
         s.Items.Add(I("Hệ số độ tin cậy cốt thép", "γs", "Rs = Rs,n/γs", "γs ≈ 1,15 (đã nằm trong Rs)", "γs", "", "TCVN 5574:2018 mục 6.2"));
         s.Items.Add(I("Hệ số vật liệu thép hình / điều kiện làm việc", "γM, γc", "f = fy/γM; kiểm tra ≤ f·γc", "γM = 1,05; γc = " + F(st.GammaC), "γM, γc", "", "TCVN 5575"));
@@ -840,7 +841,7 @@ public static class Appendix
             Title = "Quy trình sử dụng cho người mới và lỗi thường gặp",
             Intro = "Làm theo thứ tự dưới đây. Sau mỗi bước hãy xem thanh trạng thái và các cảnh báo; bước sau phụ thuộc kết quả bước trước."
         };
-        s.Items.Add(I("Bước 1 – Thông tin, địa điểm", "", "", "Tên công trình, địa điểm; chọn vùng gió (W0), dạng địa hình; agR và loại nền nếu tính động đất", "", "Tra W0 theo QCVN 02:2022/BXD, agR theo TCVN 9386:2012 Phụ lục H cho đúng xã/phường.", ""));
+        s.Items.Add(I("Bước 1 – Thông tin, địa điểm", "", "", "Tên công trình, địa điểm; chọn vùng gió (W0), dạng địa hình; agR và loại nền nếu tính động đất", "", "Tra W0 (Bảng 5.1) và agR (Bảng 6.1, 6.2) theo " + Std.NaturalData + " cho đúng xã/phường – bảng địa danh đang dự thảo sửa đổi theo đơn vị hành chính mới, theo dõi để cập nhật.", ""));
         s.Items.Add(I("Bước 2 – Lưới trục, tầng", "", "", "Khoảng cách trục X/Y; số tầng và chiều cao tầng; hoặc nhập bản vẽ kiến trúc / DXF / Revit", "", "Kiểm tra cao độ chân cột (mặt móng) – ảnh hưởng chiều cao H khi tính gió, động đất.", ""));
         s.Items.Add(I("Bước 3 – Mô hình", "", "", "Tạo khung BTCT từ lưới trục; chỉnh tiết diện, thêm/xoá dầm, ô sàn, lỗ cầu thang trên mặt bằng", "", "", ""));
         s.Items.Add(I("Bước 4 – Tải trọng", "", "", "Khai báo loại tường và vẽ tường; gán cấu tạo sàn cho ô sàn (WC, ban công, mái…); kiểm tra γf các trường hợp tải", "", "", ""));

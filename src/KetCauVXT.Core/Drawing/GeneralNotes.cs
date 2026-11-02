@@ -61,11 +61,20 @@ public static class GeneralNotes
             res.Add("Số hiệu thép trên bản vẽ trùng số hiệu trong bảng thống kê cốt thép.");
         if (all)
         {
+            res.Add(StandardsLine(p));
             res.Add("Thi công và nghiệm thu theo TCVN 4453:1995, TCVN 9115:2019 và các tiêu chuẩn hiện hành.");
             res.Add("Khi có sai khác giữa bản vẽ và hiện trường phải báo cho đơn vị thiết kế để xử lý.");
         }
         for (int i = 0; i < res.Count; i++) res[i] = (i + 1).ToString(Inv) + ". " + res[i];
         return res;
+    }
+
+    /// <summary>Dòng ghi chú tiêu chuẩn thiết kế + căn cứ pháp lý (tra danh mục văn bản – Model/Regulations.cs; chỉ văn bản đang áp dụng).</summary>
+    public static string StandardsLine(Project p)
+    {
+        var stds = RegulationService.Applied(p).Where(x => !RegulationService.IsLegal(x)).Select(x => x.Citation).ToList();
+        return "Tiêu chuẩn thiết kế: " + (stds.Count > 0 ? string.Join(", ", stds) : Std.Concrete + ", " + Std.Loads)
+             + $"; căn cứ {Std.Law}, {Std.Decree}.";
     }
 
     /// <summary>Mảnh hình khối ghi chú ở tỷ lệ 1/S: tiêu đề "GHI CHÚ CHUNG" gạch chân (cỡ tên hình) + các dòng (cỡ ghi chú),

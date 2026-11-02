@@ -36,7 +36,7 @@ internal sealed class AutoReportDialog : Window
             left.Children.Add(cb);
         }
         Chk("Giới thiệu công trình", () => ch.Intro, v => ch.Intro = v);
-        Chk("Tiêu chuẩn áp dụng", () => ch.Standards, v => ch.Standards = v);
+        Chk("Căn cứ pháp lý và tiêu chuẩn áp dụng", () => ch.Standards, v => ch.Standards = v);
         Chk("Vật liệu, tiết diện", () => ch.Materials, v => ch.Materials = v);
         Chk("Sơ đồ tính, tải trọng, tổ hợp", () => ch.Loads, v => ch.Loads = v);
         Chk("Tải trọng gió, động đất", () => ch.WindSeismic, v => ch.WindSeismic = v);

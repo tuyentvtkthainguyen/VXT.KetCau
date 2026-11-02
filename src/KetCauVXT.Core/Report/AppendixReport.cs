@@ -28,6 +28,10 @@ public static class AppendixReport
                     + "có thể tìm hiểu và tự kiểm tra kết quả. Các bảng tra được tính lại bằng chính các hàm của chương trình. "
                     + "Những chỗ ghi \"đơn giản hoá\" / \"gần đúng\" cần được kỹ sư đối chiếu với tiêu chuẩn hiện hành trước khi dùng cho hồ sơ chính thức.");
         d.Paragraph("Quy ước số: dấu phẩy là dấu thập phân (0,95 = 0.95). Đơn vị tính toán kN – m.", false, true);
+        var applied = RegulationService.Applied(p);
+        if (applied.Count > 0)
+            d.Paragraph("Văn bản, tiêu chuẩn áp dụng (theo danh mục văn bản của chương trình – Trợ giúp → Văn bản pháp lý & tiêu chuẩn áp dụng): "
+                        + string.Join("; ", applied.Select(x => x.Citation)) + ".", false, true);
         foreach (var s in Appendix.Sections(p)) WriteSection(d, s);
     }
 
@@ -67,6 +71,7 @@ public static class AppendixReport
         sh.FirstRowIsHeader = false; sh.FreezeRows = 0;
         sh.AddRow(new XlCell(ChapterTitle, XlStyle.Title));
         sh.AddRow("Công thức, chỉ số, hệ số, hệ số an toàn và phương pháp áp dụng trong Kết cấu VXT (dấu phẩy là dấu thập phân).");
+        sh.AddRow("Văn bản, tiêu chuẩn áp dụng: " + string.Join("; ", RegulationService.Applied(p).Select(x => x.Citation)) + ".");
         foreach (var s in Appendix.Sections(p))
         {
             sh.AddEmptyRow();

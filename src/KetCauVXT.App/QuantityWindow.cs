@@ -154,10 +154,12 @@ internal sealed class QuantityWindow : Window
     {
         var qs = _p.QuantitySettings;
         var sp = new StackPanel { Margin = new Thickness(4) };
-        sp.Children.Add(DialogUi.Hint("Định mức mặc định chỉ để THAM KHẢO (Định mức 12/2021/TT-BXD, 1776/BXD-VP, cấp phối vật liệu kèm định mức). Người dùng kiểm tra, chỉnh sửa theo định mức áp dụng cho công trình. Đơn giá để trống (0) → bảng không có cột thành tiền."));
+        sp.Children.Add(DialogUi.Hint($"Định mức hiện hành: Định mức xây dựng ban hành kèm {Std.Norms} (Phụ lục VII – định mức vật liệu, đã được thay thế theo {Std.NormLetter}). "
+            + "Giá trị mặc định trong chương trình là THAM KHẢO (số liệu hệ định mức cũ) – người dùng phải đối chiếu và nhập lại theo định mức hiện hành: sửa trực tiếp trong bảng "
+            + "hoặc bấm “Nhập định mức từ Excel…” (cột: mã hiệu, tên, đơn vị, vật liệu, định mức). Đơn giá để trống (0) → bảng không có cột thành tiền."));
         var src = new TextBox { Text = qs.NormSource ?? "", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 6) };
         src.LostFocus += (s, e) => { qs.NormSource = src.Text.Trim(); _changed(); };
-        sp.Children.Add(DialogUi.Label("Ghi chú nguồn định mức:", double.NaN, true));
+        sp.Children.Add(DialogUi.Label("Ghi chú nguồn định mức (để trống = nguồn mặc định theo danh mục văn bản):", double.NaN, true));
         sp.Children.Add(src);
 
         var gc = EditGrid(qs.ConcreteNorms);
@@ -202,7 +204,9 @@ internal sealed class QuantityWindow : Window
         sp.Children.Add(DialogUi.Label("Đơn giá vật tư (tuỳ chọn)", double.NaN, true));
         sp.Children.Add(DialogUi.Row(
             DialogUi.Btn("Lấy danh mục vật tư từ bảng", (s, e) => FillPriceItems(gpr)),
-            DialogUi.Btn("Khôi phục định mức mặc định", (s, e) => RestoreDefaults(gc, gm, gb))));
+            DialogUi.Btn("Khôi phục định mức mặc định", (s, e) => RestoreDefaults(gc, gm, gb)),
+            DialogUi.Btn("Nhập định mức từ Excel…", (s, e) => ImportNorms(gc, gm, src)),
+            DialogUi.Btn("Xuất file mẫu định mức…", (s, e) => NormTemplate())));
         sp.Children.Add(gpr);
         return new TabItem { Header = "Định mức", Content = new ScrollViewer { Content = sp, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } };
     }
@@ -279,6 +283,37 @@ internal sealed class QuantityWindow : Window
         gc.ItemsSource = qs.ConcreteNorms; gm.ItemsSource = qs.MortarNorms; gb.ItemsSource = qs.MasonryNorms;
         _changed();
         Recalc();
+    }
+
+    /// <summary>Nhập bảng định mức hiện hành từ Excel/CSV (Model/NormImport.cs): áp cấp phối bê tông, vữa; lưu bảng tham khảo.</summary>
+    private void ImportNorms(DataGrid gc, DataGrid gm, TextBox src)
+    {
+        foreach (var g in _editGrids) DialogUi.Commit(g);
+        var dlg = new OpenFileDialog { Filter = "Bảng định mức (*.xlsx;*.csv)|*.xlsx;*.xlsm;*.csv;*.txt|Tất cả|*.*", Title = "Nhập định mức từ Excel (mã hiệu, tên, đơn vị, vật liệu, định mức)" };
+        if (dlg.ShowDialog(this) != true) return;
+        try
+        {
+            var qs = _p.QuantitySettings;
+            var r = NormImport.ImportFile(qs, dlg.FileName);
+            gc.ItemsSource = null; gc.ItemsSource = qs.ConcreteNorms;
+            gm.ItemsSource = null; gm.ItemsSource = qs.MortarNorms;
+            src.Text = qs.NormSource ?? "";
+            if (r.Rows > 0) { _changed(); Recalc(); }
+            string msg = r.ToString();
+            if (r.Messages.Count > 0) msg += "\n\n" + string.Join("\n", r.Messages.Take(15)) + (r.Messages.Count > 15 ? "\n…" : "");
+            msg += "\n\nĐối chiếu lại cấp phối với văn bản định mức gốc trước khi dùng.";
+            MessageBox.Show(this, msg, "Nhập định mức từ Excel", MessageBoxButton.OK, r.Rows > 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            _status.Text = r.ToString();
+        }
+        catch (Exception ex) { MessageBox.Show(this, "Không đọc được file:\n" + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void NormTemplate()
+    {
+        string path = AskPath("Excel (*.xlsx)|*.xlsx", "MauDinhMuc.xlsx", "Xuất file mẫu định mức");
+        if (path == null) return;
+        try { NormImport.WriteTemplate(path); _status.Text = "Đã xuất file mẫu: " + path + " – điền theo bảng định mức hiện hành rồi “Nhập định mức từ Excel…”."; }
+        catch (Exception ex) { MessageBox.Show(this, "Không ghi được file:\n" + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     // ------------------------------------------------------------------

@@ -9,7 +9,7 @@ namespace KetCauVXT.Design.Concrete;
 /// thép dưới cấm nối ở đoạn giữa nhịp (mô men dương lớn) → cho phép từ lcr đến Lo/4 tính từ mép gối;
 /// thép trên cấm nối trên gối (mô men âm, tới Lo/4 / điểm cắt mũ) → cho phép đoạn ⅓ giữa nhịp; thép giá: ngoài nút và lcr.</item>
 /// <item>Cột: cấm nối trong nút khung (chiều cao dầm đỉnh tầng) và lcr = max(hc; Hthông thuỷ/6; 450 mm) ở hai đầu mỗi tầng
-/// (TCVN 9386:2012 5.4.3.2.2) → nối ở đoạn giữa chiều cao thông thuỷ, thường quanh giữa tầng.</item>
+/// (TCVN 9386-1:2025 (thay thế TCVN 9386:2012; số điều theo bản 2012) 5.4.3.2.2) → nối ở đoạn giữa chiều cao thông thuỷ, thường quanh giữa tầng.</item>
 /// <item>Sàn: lưới dưới nối gần gối (trong Lo/4 cạnh dầm); lưới trên nối ở đoạn ⅓ giữa nhịp; không nối thép mũ trên gối.</item>
 /// <item>Móng đơn, đài cọc: không nối (dùng thanh nguyên). Móng băng (dầm ngược): thép dưới nối ở ⅓ giữa khoảng cột, thép trên nối từ lcr tới L/4 cạnh cột.</item>
 /// <item>Mối nối chồng toàn bộ chiều dài ll nằm trong vùng cho phép; không quá 50% số thanh nối tại một tiết diện (so le ≥ 1,3·ll);

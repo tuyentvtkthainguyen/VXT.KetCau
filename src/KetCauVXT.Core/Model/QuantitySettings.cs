@@ -2,9 +2,10 @@ namespace KetCauVXT.Model;
 
 // =====================================================================
 // ĐỊNH MỨC & TUỲ CHỌN TÍNH BẢNG KHỐI LƯỢNG VẬT TƯ (Report/Quantities.cs)
-// Giá trị mặc định chỉ để THAM KHẢO – trích theo Định mức dự toán 1776/BXD-VP (2007),
-// Thông tư 12/2021/TT-BXD và bảng cấp phối vật liệu kèm định mức (xi măng PC30/PC40, cát vàng, đá 1×2).
-// Người dùng kiểm tra, chỉnh sửa theo định mức / cấp phối thực tế của công trình.
+// Giá trị mặc định chỉ để THAM KHẢO (số liệu cấp phối của hệ định mức cũ). Định mức hiện hành: Định mức xây dựng
+// ban hành kèm Thông tư 38/2026/TT-BXD (Phụ lục VII – định mức vật liệu, thay thế theo Công văn 9947/BXD-VPB) –
+// người dùng phải đối chiếu và nhập lại (sửa tay hoặc "Nhập định mức từ Excel" – Model/NormImport.cs).
+// Trích dẫn nguồn lấy từ danh mục văn bản (Model/Regulations.cs).
 // Lưu trong Project.QuantitySettings (JSON); file cũ không có mục này → dùng mặc định.
 // =====================================================================
 
@@ -62,10 +63,32 @@ public class UnitPrice
 /// <summary>Tuỳ chọn + định mức tính bảng khối lượng vật tư.</summary>
 public class QuantitySettings
 {
-    public const string DefaultSource = "Tham khảo Định mức 12/2021/TT-BXD và Định mức 1776/BXD-VP (cấp phối vật liệu kèm định mức) – người dùng kiểm tra, chỉnh sửa theo định mức, cấp phối áp dụng cho công trình.";
+    /// <summary>Ghi chú nguồn định mức mặc định – trích dẫn theo danh mục văn bản (chủ đề "dinh-muc", "cv-dinh-muc").</summary>
+    public static string DefaultSource =>
+        $"Định mức xây dựng ban hành kèm {Std.Norms} (Phụ lục VII – định mức vật liệu, đã được thay thế theo {Std.NormLetter}) – "
+        + "giá trị mặc định trong chương trình là THAM KHẢO, người dùng phải đối chiếu và nhập lại theo định mức hiện hành.";
 
-    /// <summary>Ghi chú nguồn định mức (in trong bảng Định mức)</summary>
-    public string NormSource { get; set; } = DefaultSource;
+    /// <summary>Ghi chú nguồn mặc định của các phiên bản trước (tự thay bằng nguồn hiện hành khi xuất bảng).</summary>
+    public static readonly string[] LegacyDefaultSources =
+    {
+        "Tham khảo Định mức 12/2021/TT-BXD và Định mức 1776/BXD-VP (cấp phối vật liệu kèm định mức) – người dùng kiểm tra, chỉnh sửa theo định mức, cấp phối áp dụng cho công trình."
+    };
+
+    /// <summary>Ghi chú nguồn trống hoặc là ghi chú mặc định của phiên bản trước.</summary>
+    public static bool IsLegacyDefaultSource(string s) =>
+        string.IsNullOrWhiteSpace(s) || LegacyDefaultSources.Any(x => string.Equals(x, s.Trim(), StringComparison.Ordinal));
+
+    /// <summary>Ghi chú nguồn dùng khi in: nguồn người dùng ghi, hoặc nguồn mặc định hiện hành (thay ghi chú mặc định cũ).</summary>
+    public string EffectiveSource() => IsLegacyDefaultSource(NormSource) ? DefaultSource : NormSource.Trim();
+
+    /// <summary>Bảng định mức nhập từ Excel (mã hiệu, tên, đơn vị, vật liệu, định mức) – lưu để in/tra; các dòng cấp phối bê tông, vữa
+    /// đã được áp vào ConcreteNorms / MortarNorms (Model/NormImport.cs).</summary>
+    public List<NormRow> ImportedNorms { get; set; } = new();
+    /// <summary>Tên file và thời điểm nhập bảng định mức gần nhất</summary>
+    public string ImportedNormFile { get; set; } = "";
+
+    /// <summary>Ghi chú nguồn định mức của người dùng (in trong bảng Định mức); "" = nguồn mặc định theo danh mục văn bản (EffectiveSource)</summary>
+    public string NormSource { get; set; } = "";
 
     public List<ConcreteMixNorm> ConcreteNorms { get; set; } = DefaultConcreteNorms();
     public List<MortarMixNorm> MortarNorms { get; set; } = DefaultMortarNorms();
@@ -77,10 +100,10 @@ public class QuantitySettings
     public string MasonryMortar { get; set; } = "M75";
     public string PlasterMortar { get; set; } = "M75";
     public string FloorMortar { get; set; } = "M75";
-    /// <summary>Vữa trát (m³/m²) cho lớp trát dày 15 mm (tỷ lệ theo chiều dày trát của loại tường). 1776 AK.21: 0,017 m³/m²</summary>
+    /// <summary>Vữa trát (m³/m²) cho lớp trát dày 15 mm (tỷ lệ theo chiều dày trát của loại tường). Tham khảo hệ định mức cũ (AK.21): 0,017 m³/m²</summary>
     public double PlasterMortarPerM2 { get; set; } = 0.017;
 
-    /// <summary>Dây thép buộc (kg / tấn cốt thép) – 1776 AF.61: 14,28 kg/t</summary>
+    /// <summary>Dây thép buộc (kg / tấn cốt thép) – tham khảo hệ định mức cũ (AF.61): 14,28 kg/t</summary>
     public double TieWirePerTon { get; set; } = 14.28;
     /// <summary>Gỗ ván khuôn (m³ / 100 m² ván khuôn)</summary>
     public double FormworkWoodPer100 { get; set; } = 0.792;
@@ -105,7 +128,7 @@ public class QuantitySettings
     public string GraniteName { get; set; } = "Đá granite ốp bậc";
     public string WoodName { get; set; } = "Gỗ ốp bậc";
     public string StairTileName { get; set; } = "Gạch ốp bậc";
-    /// <summary>Định mức xây bậc thang gạch (viên/m³, vữa m³/m³) – 1776 AE.6x xây bậc cầu thang ≈ 550 viên, 0,29 m³ vữa</summary>
+    /// <summary>Định mức xây bậc thang gạch (viên/m³, vữa m³/m³) – tham khảo hệ định mức cũ (AE.6x) xây bậc cầu thang ≈ 550 viên, 0,29 m³ vữa</summary>
     public double StepBricks { get; set; } = 550;
     public double StepMortar { get; set; } = 0.29;
     // ---- [hết cầu thang] ----
@@ -174,11 +197,11 @@ public class QuantitySettings
         new() { Grade = "M100", Cement = 410.0, Sand = 1.05, Water = 260, Note = "XM PC30, cát vàng" },
     };
 
-    /// <summary>Xây tường thẳng gạch đặc (gạch chỉ) 6,5×10,5×22 cm – 1776 nhóm AE.22.</summary>
+    /// <summary>Xây tường thẳng gạch đặc (gạch chỉ) 6,5×10,5×22 cm – tham khảo nhóm AE.22 của hệ định mức cũ.</summary>
     public static List<MasonryNorm> DefaultMasonryNorms() => new()
     {
-        new() { Name = "Tường dày ≤ 11 cm", MaxThickness = 0.11, Bricks = 643, Mortar = 0.23, Note = "1776 AE.221xx" },
-        new() { Name = "Tường dày ≤ 33 cm", MaxThickness = 0.33, Bricks = 550, Mortar = 0.29, Note = "1776 AE.222xx" },
-        new() { Name = "Tường dày > 33 cm", MaxThickness = 9.99, Bricks = 539, Mortar = 0.30, Note = "1776 AE.223xx" },
+        new() { Name = "Tường dày ≤ 11 cm", MaxThickness = 0.11, Bricks = 643, Mortar = 0.23, Note = "Tham khảo – mã AE.221xx hệ định mức cũ, đối chiếu định mức hiện hành" },
+        new() { Name = "Tường dày ≤ 33 cm", MaxThickness = 0.33, Bricks = 550, Mortar = 0.29, Note = "Tham khảo – mã AE.222xx hệ định mức cũ, đối chiếu định mức hiện hành" },
+        new() { Name = "Tường dày > 33 cm", MaxThickness = 9.99, Bricks = 539, Mortar = 0.30, Note = "Tham khảo – mã AE.223xx hệ định mức cũ, đối chiếu định mức hiện hành" },
     };
 }

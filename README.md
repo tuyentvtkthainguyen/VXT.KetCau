@@ -39,7 +39,7 @@ src/KetCauVXT.Core/            Thư viện lõi (dùng chung cho giao diện, d�
                 ModelBuilder: tạo khung BTCT từ lưới trục, khung thép tiền chế, chia thanh tại nút
   Analysis/     Phần tử hữu hạn khung không gian: ma trận skyline LDLᵀ, phần tử Timoshenko 12 bậc tự do,
                 giải phóng liên kết, thanh vát chia đoạn, sàn cứng (diaphragm), nội lực theo mặt cắt
-  Loads/        Dồn tải sàn 45°, gió TCVN 2737:2023, động đất TCVN 9386:2012, tự sinh tổ hợp
+  Loads/        Dồn tải sàn 45°, gió TCVN 2737:2023, động đất TCVN 9386-1:2025 (phương pháp như bản 2012), tự sinh tổ hợp
   Design/       Kết quả thiết kế (hợp đồng dữ liệu)
     Concrete/   Dầm, cột (lệch tâm xiên), sàn, móng đơn – TCVN 5574:2018, TCVN 9362:2012
     Steel/      Khung thép tiền chế, xà gồ – TCVN 5575
@@ -135,7 +135,7 @@ Nguyên nhân sai lệch thường gặp khi so với ETABS: ETABS mặc định
 | Hạng mục | Cơ sở | Giả thiết / giới hạn của phiên bản 1.0 |
 |---|---|---|
 | Tải trọng | TCVN 2737:2023 | γf theo trường hợp tải (người dùng sửa; mặc định TT 1,1, hoàn thiện 1,3, hoạt tải 1,3, gió 1,2). Gió tĩnh: W = W0·k(z)·c, k(z) dạng hàm mũ theo địa hình A/B/C. W0 chọn theo **vùng gió I–V (QCVN 02:2022 Bảng 5.1)** qua danh mục tỉnh/địa danh; bảng phân vùng chi tiết đến xã/phường có thể nhập từ CSV/XLSX – **cần đối chiếu với QCVN 02:2022 cho địa danh cụ thể**. Chưa tính thành phần động của gió (nhà ≤ 40 m thường không cần). |
-| Động đất | TCVN 9386:2012 | Phương pháp tĩnh lực ngang tương đương, T1 = Ct·H^¾, phổ loại 1. Chưa xét độ lệch tâm ngẫu nhiên. |
+| Động đất | TCVN 9386-1:2025, TCVN 9386-5:2025 (thay thế TCVN 9386:2012) | Phương pháp tĩnh lực ngang tương đương, T1 = Ct·H^¾, phổ loại 1 – lập theo cơ sở EN 1998-1 như TCVN 9386:2012 (số điều khoản trong phụ lục ghi theo bản 2012 để đối chiếu). **Người dùng đối chiếu phổ phản ứng, hệ số tầm quan trọng, gia tốc nền theo bản 2025** (hiệu lực 27/10/2026 theo các trang pháp luật – kiểm tra). agR tra theo QCVN 02:2022/BXD (Bảng 6.1, 6.2). Chưa xét độ lệch tâm ngẫu nhiên. |
 | Phân tích | – | Tuyến tính bậc nhất (chưa P-Delta). Sàn tuyệt đối cứng trong mặt phẳng, không tham gia chịu uốn của khung; tải sàn dồn 45°. |
 | Dầm | TCVN 5574:2018 | Tiết diện chữ nhật (chưa kể cánh T – thiên về an toàn); cắt với c = 2h0; võng dài hạn với độ cứng B = Eb/(1+φb,cr)·Ieff (kể nứt theo thép thực bố trí, φb,cr = 2,5), dầm liên tục f = 5/48·[Mg − 0,1(Mt+Mp)]·L²/B. |
 | Dầm cong | TCVN 5574:2018 mục 8.1.4 (giản lược) | Chỉ dầm nằm ngang cong trên mặt bằng (cung tròn qua 2 nút, độ vồng `CurveMidOffset`). Phân tích: chia thành các đoạn thẳng ≤ 10° (nút trung gian nội bộ), tải theo chiều dài cung, nội lực quy về hệ trục tiếp tuyến. Thiết kế trên chiều dài cung: uốn + cắt + **xoắn** (T ≤ 0,1·Rb·b²·h tương tác tuyến tính với Q; đai kín Asw1/s = T/(2·Ak·Rsw) + qsw/(2·Rsw), bước ≤ min(uk/8; 300 mm); cốt dọc Asl = T·uk/(2·Ak·Rs) cộng ½ trên + ½ dưới). **Sàn kề dầm cong**: đa giác sàn lấy theo dây cung, tải dồn lên dây cung rải lại lên cung với hệ số c/L (bảo toàn tổng tải); cung vồng ra ngoài ô sàn (không thuộc ô sàn nào) được cộng tải viên phân R²/2·(φ − sin φ). Tường "gán lên dầm cong" coi là tường cong theo dầm (tải × chiều dài cung). Mặt đứng khung chỉ thể hiện hình chiếu của dầm cong. |
@@ -143,6 +143,21 @@ Nguyên nhân sai lệch thường gặp khi so với ETABS: ETABS mặc định
 | Sàn | – | Ô chữ nhật, phương pháp Marcus theo điều kiện biên, bỏ qua giảm mô men xoắn. Võng dài hạn kể nứt + từ biến, hệ số liên kết cạnh. |
 | Móng | TCVN 9362:2012, TCVN 5574:2018 | Móng đơn, móng băng trên nền thiên nhiên (R, áp lực đáy, chọc thủng, uốn, lún cộng lớp phân tố); móng cọc (TCVN 10304:2014, sức chịu tải theo SPT/chỉ tiêu cơ lý). Địa chất: hố khoan khảo sát hoặc nền mặc định “đất tốt”; chương trình gợi ý phương án móng. Xem Phụ lục tính toán (menu Trợ giúp). |
 | Thép tiền chế | TCVN 5575 | Bền, ổn định trong/ngoài mặt phẳng (φ theo độ mảnh quy ước), độ mảnh [λ] = 180 − 60α, ổn định cục bộ bụng theo α = (σ−σ1)/σ (TCVN 5575:2012 7.6.2), bụng mảnh kể tiết diện hữu hiệu, võng kèo, chuyển vị đỉnh cột. **Cần đối chiếu công thức với bản TCVN 5575:2024** trước khi dùng cho hồ sơ chính thức. Chưa thiết kế liên kết bu lông, bản mã. |
+
+**Căn cứ pháp lý và danh mục văn bản (cập nhật 02/11/2026)** – `Model/Regulations.cs`, menu *Trợ giúp → Văn bản pháp lý & tiêu chuẩn áp dụng…*. Thuyết minh (chương “CĂN CỨ PHÁP LÝ VÀ TIÊU CHUẨN ÁP DỤNG”), phụ lục, ghi chú chung bản vẽ và bảng khối lượng trích dẫn theo danh mục này; người dùng thêm/sửa/đánh dấu hết hiệu lực, nhập/xuất JSON, lưu làm mặc định (`%AppData%\KetCauVXT\VanBanPhapLy.json`), “Kiểm tra dự án” dò các ghi chú còn trích dẫn văn bản cũ.
+
+| Văn bản | Nội dung | Trạng thái trong chương trình |
+|---|---|---|
+| Luật Xây dựng số 135/2025/QH15 (10/12/2025) | Thay thế Luật Xây dựng 50/2014/QH13 và Luật 62/2020/QH14 | Hiệu lực 01/7/2026 |
+| Nghị định 217/2026/NĐ-CP (19/6/2026) | Quy định chi tiết Luật Xây dựng về quản lý hoạt động xây dựng (bước thiết kế Đ.16; nội dung thiết kế Đ.19–23; chỉ dẫn kỹ thuật Đ.24 – không bắt buộc với nhà ở riêng lẻ; quản lý thiết kế Đ.25) | Ngày hiệu lực: theo văn bản; việc thay thế NĐ 15/2021, NĐ 175/2024: kiểm tra |
+| Nghị định 212/2026/NĐ-CP (17/6/2026) | Điều kiện năng lực hoạt động xây dựng, Hệ thống thông tin và CSDL quốc gia | Hiệu lực 01/7/2026 |
+| Nghị định 206/2026/NĐ-CP | Quản lý chi phí đầu tư xây dựng – thay thế NĐ 10/2021/NĐ-CP (kiểm tra) | Theo văn bản |
+| Thông tư 34/2026/TT-BXD | Cấp công trình xây dựng – thay thế TT 06/2021/TT-BXD, TT 02/2025/TT-BXD | Hiệu lực 01/7/2026 |
+| Thông tư 36/2026, 37/2026 (26/6/2026), 38/2026/TT-BXD; Công văn 9947/BXD-VPB (29/6/2026) | Chi phí; phương pháp xác định định mức (thay TT 13/2021, TT 01/2025…); **định mức xây dựng** (thay hệ thống định mức theo TT 12/2021 và các TT sửa đổi 09/2024, 08/2025 – Phụ lục I–VIII thay thế theo CV 9947, trong đó Phụ lục VII là định mức vật liệu/cấp phối) | Áp dụng từ 01/7/2026 – kiểm tra phụ lục theo CV 9947 |
+| QCVN 02:2022/BXD | Số liệu điều kiện tự nhiên (vùng gió Bảng 5.1, agR Bảng 6.1, 6.2) | Còn hiệu lực; **đang dự thảo sửa đổi** theo đơn vị hành chính mới – theo dõi để cập nhật bảng địa danh |
+| TCVN 2737:2023, TCVN 5574:2018, TCVN 5575:2024, TCVN 10304:2014, TCVN 9362:2012, TCVN 1651:2018 | Tiêu chuẩn thiết kế (không đổi) | Còn hiệu lực |
+
+**Bảng khối lượng vật tư**: cấp phối mặc định trong chương trình là **THAM KHẢO** (số liệu hệ định mức cũ); nguồn ghi trên bảng: “Định mức xây dựng ban hành kèm TT 38/2026/TT-BXD (Phụ lục VII – định mức vật liệu, đã được thay thế theo CV 9947/BXD-VPB)”. Người dùng phải đối chiếu và nhập lại – sửa tay hoặc *Định mức → Nhập định mức từ Excel…* (cột: mã hiệu, tên, đơn vị, vật liệu, định mức; dòng cấp phối bê tông/vữa tự áp vào bảng cấp phối).
 
 Chương trình là công cụ hỗ trợ; kỹ sư chịu trách nhiệm kiểm tra kết quả, đặc biệt các hệ số tải trọng và điều kiện địa chất của từng công trình.
 

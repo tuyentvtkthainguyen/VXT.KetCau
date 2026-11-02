@@ -4,7 +4,7 @@ namespace KetCauVXT.Loads;
 
 /// <summary>Tự sinh tổ hợp tải trọng.
 /// TTGH I (TCVN 2737:2023): tổ hợp cơ bản 1 (tĩnh tải + 1 tải tạm thời, đủ γf) và tổ hợp cơ bản 2
-/// (tĩnh tải + ≥2 tải tạm thời nhân hệ số tổ hợp ψ = 0.9). Tổ hợp đặc biệt có động đất theo TCVN 9386:2012:
+/// (tĩnh tải + ≥2 tải tạm thời nhân hệ số tổ hợp ψ = 0.9). Tổ hợp đặc biệt có động đất theo TCVN 9386-1:2025 (thay thế TCVN 9386:2012; số điều theo bản 2012):
 /// G + ψE·Q ± E1 ± 0.3·E2. TTGH II: giá trị tiêu chuẩn (hệ số 1.0).</summary>
 public static class ComboGenerator
 {

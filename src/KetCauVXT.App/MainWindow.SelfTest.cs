@@ -120,7 +120,8 @@ public partial class MainWindow
             await SelfTestEccentricFooting(tag);
             await SelfTestCuTram(tag); // lùi cọc khỏi ranh, cừ tràm – MainWindow.SelfTestCuTram.cs // móng lệch tâm – MainWindow.SelfTestEccentric.cs
             await SelfTestCurvedBeam(tag, story); // dầm cong – MainWindow.SelfTestCurved.cs
-            await SelfTestGeoAppendix(tag); // địa danh gió, hố khoan, gợi ý móng, phụ lục – MainWindow.SelfTestGeo.cs
+            await SelfTestGeoAppendix(tag);
+            await SelfTestRegulation(tag); // văn bản pháp lý – MainWindow.SelfTestRegulation.cs // địa danh gió, hố khoan, gợi ý móng, phụ lục – MainWindow.SelfTestGeo.cs
             // dầm, tường, cấu tạo sàn, móng cọc, móng băng – MainWindow.SelfTestFoundation.cs
             // dàn trang: bộ tờ mặc định → DXF từng tờ + PDF, mở cửa sổ dàn trang và chụp ảnh
             {

@@ -55,7 +55,7 @@ public static partial class CalculationReport
 
             int sec = 1;
             if (c.Intro) Intro(p, d, sec++);
-            if (c.Standards) Standards(d, sec++);
+            if (c.Standards) Standards(p, d, sec++, c.Quantities);
             if (c.Materials) Materials(p, d, sec++);
             if (c.Loads) { ModelSection(p, r, d, sec++); LoadsSection(p, r, d, sec++); }
             else if (c.WindSeismic) LateralOnlySection(p, r, d, sec++);
@@ -134,7 +134,7 @@ public static partial class CalculationReport
         d.Heading($"{n}. TẢI TRỌNG GIÓ VÀ ĐỘNG ĐẤT", 1);
         var w = p.Wind;
         d.Heading($"{n}.1. Tải trọng gió", 2);
-        d.Paragraph($"Gió tĩnh theo TCVN 2737:2023: W0 = {N(w.W0, "0.00")} kN/m² (QCVN 02:2022/BXD), dạng địa hình {w.Terrain}, hệ số khí động c = {N(w.Cp, "0.##")}, γf = {N(w.Gamma, "0.##")}.");
+        d.Paragraph($"Gió tĩnh theo {Std.Loads}: W0 = {N(w.W0, "0.00")} kN/m² ({Std.NaturalData}), dạng địa hình {w.Terrain}, hệ số khí động c = {N(w.Cp, "0.##")}, γf = {N(w.Gamma, "0.##")}.");
         var lf = r?.LateralForces ?? new List<StoryLateralForce>();
         if (lf.Count > 0)
             d.Table(new[] { "Trường hợp", "Tầng", "Cao độ (m)", "Fx (kN)", "Fy (kN)", "Thông số" },
@@ -143,7 +143,8 @@ public static partial class CalculationReport
         {
             d.Heading($"{n}.2. Tải trọng động đất", 2);
             var sm = p.Seismic;
-            d.Paragraph($"Theo TCVN 9386:2012 (tĩnh lực ngang tương đương): agR = {N(sm.AgR, "0.0000")}g, nền loại {sm.Soil}, γI = {N(sm.ImportanceFactor, "0.##")}, q = {N(sm.Q, "0.##")}.");
+            d.Paragraph($"Theo {Std.Seismic} (tĩnh lực ngang tương đương): agR = {N(sm.AgR, "0.0000")}g, nền loại {sm.Soil}, γI = {N(sm.ImportanceFactor, "0.##")}, q = {N(sm.Q, "0.##")}.");
+            d.Paragraph(Std.SeismicMethodNote, false, true);
         }
     }
 
@@ -390,7 +391,7 @@ public static partial class CalculationReport
         if (drifts.Count > 0)
         {
             d.Paragraph($"Chuyển vị ngang lệch tầng lớn nhất theo các tổ hợp tiêu chuẩn (TTGH II), giới hạn tham khảo Δ/h ≤ 1/{N(1 / lim, "0")}" +
-                        (steelFrame ? " (đỉnh cột khung thép, TCVN 5575)." : " (nhà khung BTCT nhiều tầng, TCVN 5574:2018 / TCVN 2737:2023)."));
+                        (steelFrame ? " (đỉnh cột khung thép, TCVN 5575)." : $" (nhà khung BTCT nhiều tầng, {Std.Concrete} / {Std.Loads})."));
             d.Table(new[] { "Tầng", "Cột", "Tổ hợp", "Δ (mm)", "h (m)", "Δ/h", "Giới hạn", "Kết luận" },
                 drifts.Select(x => new[] { x.Story, x.Member, x.Combo, N(x.Delta * 1000, "0.00"), N(x.H), x.Ratio > 1e-12 ? "1/" + N(1 / x.Ratio, "0") : "0", "1/" + N(1 / lim, "0"), OkText(x.Ratio <= lim + 1e-12) }),
                 new[] { 1.8, 1.6, 2.4, 1.8, 1.6, 2.0, 2.0, 2.3 }, 10);
@@ -427,7 +428,7 @@ public static partial class CalculationReport
             notes.Add(p.Soil != null && p.Soil.AssumeGoodSoil
                 ? "Thiết kế móng đang dùng chỉ tiêu “nền đất tốt giả định”: cần khảo sát địa chất (hố khoan, SPT) và kiểm tra lại sức chịu tải, độ lún trước khi thi công."
                 : "Chưa có số liệu khảo sát địa chất: phương án móng chỉ mang tính tham khảo, cần khảo sát địa chất công trình.");
-        if (!p.Seismic.Enabled) notes.Add("Chưa xét tải trọng động đất – kiểm tra yêu cầu kháng chấn của địa điểm xây dựng theo TCVN 9386:2012 (gia tốc nền agR).");
+        if (!p.Seismic.Enabled) notes.Add($"Chưa xét tải trọng động đất – kiểm tra yêu cầu kháng chấn của địa điểm xây dựng theo {Std.Seismic} (gia tốc nền agR theo {Std.NaturalData}).");
         if (r != null && r.Warnings.Count > 0) notes.Add($"Có {r.Warnings.Count} cảnh báo phân tích (xem phụ lục) – kiểm tra lại mô hình, liên kết và tải trọng.");
         if (s.Warnings.Count > 0) notes.Add($"Có {s.Warnings.Count} cảnh báo thiết kế (xem phụ lục).");
         notes.Add("Người thiết kế kiểm tra lại số liệu đầu vào (kích thước, tải trọng, vật liệu), sơ đồ tính và kết quả trước khi sử dụng; đối chiếu điều khoản của phiên bản tiêu chuẩn đang áp dụng.");

@@ -841,7 +841,7 @@ public static class QuantityCalculator
         }
         if (qs.IncludeLintels) n.Add("Lanh tô (theo diện tích cửa của tường) là khối lượng ƯỚC TÍNH sơ bộ – kiểm tra theo bản vẽ chi tiết.");
         n.Add("Cốt thép lấy theo bảng thống kê cốt thép của chương trình (chưa kể hao hụt, thép chờ, thép cọc).");
-        n.Add("Khối lượng chưa kể hao hụt thi công. " + (string.IsNullOrWhiteSpace(qs.NormSource) ? QuantitySettings.DefaultSource : qs.NormSource));
+        n.Add("Khối lượng chưa kể hao hụt thi công. " + qs.EffectiveSource());
     }
 
     // ==================================================================

@@ -13,7 +13,7 @@ public static partial class CalculationReport
         if (s?.Stairs == null || s.Stairs.Count == 0) { d.Paragraph("Không có cầu thang."); return; }
         d.Paragraph("Cầu thang BTCT đổ toàn khối. Bản thang tựa dầm chiếu nghỉ và dầm sàn tính như dải bản nghiêng rộng 1 m, nhịp lấy theo hình chiếu bằng L0, tải theo m² mặt bằng (M = q·L0²/8 tương đương dầm nghiêng chịu tải đứng); " +
                     "bản tựa dầm cốn tính theo phương ngang vế với tải vuông góc q·cos²α. Chiếu nghỉ tính như bản một phương; dầm chiếu nghỉ, dầm cốn tính như dầm đơn giản. " +
-                    "Bậc thang xây gạch (hoặc đổ BTCT) và lớp ốp chỉ kể là tải trọng; hoạt tải cầu thang 3,0 kN/m² theo TCVN 2737:2023. Tính cốt thép theo TCVN 5574:2018.");
+                    $"Bậc thang xây gạch (hoặc đổ BTCT) và lớp ốp chỉ kể là tải trọng; hoạt tải cầu thang 3,0 kN/m² theo {Std.Loads}. Tính cốt thép theo {Std.Concrete}.");
         var sd = s.Stairs[0];
         var conc = SafeMat(p, p.Concrete.ConcreteSlab);
         d.Heading($"{n}.1. Ví dụ tính toán: cầu thang {sd.Name} (tầng {sd.Story})", 2);

@@ -314,8 +314,8 @@ public static class QuantityReport
     {
         var l = new List<QtyTable>();
         var src = new QtyTable { Title = "Nguồn định mức", Headers = new[] { "Ghi chú" }, Widths = new double[] { 140 } };
-        src.Add(string.IsNullOrWhiteSpace(qs.NormSource) ? QuantitySettings.DefaultSource : qs.NormSource);
-        src.Add("Các giá trị dưới đây là MẶC ĐỊNH THAM KHẢO – người dùng kiểm tra, chỉnh sửa trong chương trình (Xuất → Bảng khối lượng vật tư… → Định mức).");
+        src.Add(qs.EffectiveSource());
+        src.Add("Các giá trị dưới đây là MẶC ĐỊNH THAM KHẢO – người dùng kiểm tra, chỉnh sửa trong chương trình (Xuất → Bảng khối lượng vật tư… → Định mức; nhập bảng định mức hiện hành bằng nút “Nhập định mức từ Excel…”).");
         l.Add(src);
         var c = new QtyTable { Title = "Cấp phối 1 m³ bê tông", Headers = new[] { "Cấp độ bền", "Mác tương đương", "Xi măng (kg)", "Cát vàng (m³)", "Đá dăm (m³)", "Nước (lít)", "Ghi chú" }, Widths = new double[] { 11, 12, 12, 12, 12, 10, 26 } };
         foreach (var n in qs.ConcreteNorms ?? new List<ConcreteMixNorm>()) c.Add(n.Grade, n.Mark, n.Cement, n.Sand, n.Stone, n.Water, n.Note);
@@ -336,6 +336,16 @@ public static class QuantityReport
         o.Add("Cầu thang mặc định – lỗ sàn chưa khai báo (bản dày)", qs.IncludeStairs ? qs.StairSlabThickness.ToString("0.00", Inv) : "không tính", "m");
         o.Add("Lanh tô ước tính (cao; gác mỗi bên; cao cửa quy ước)", qs.IncludeLintels ? $"{qs.LintelHeight:0.00}; {qs.LintelBearing:0.00}; {qs.DoorHeight:0.00}" : "không tính", "m");
         l.Add(o);
+        if (qs.ImportedNorms != null && qs.ImportedNorms.Count > 0)
+        {
+            var im = new QtyTable
+            {
+                Title = "Định mức nhập từ Excel" + (string.IsNullOrWhiteSpace(qs.ImportedNormFile) ? "" : " (" + qs.ImportedNormFile + ")"),
+                Headers = new[] { "Mã hiệu", "Tên công tác", "Đơn vị", "Vật liệu", "Đơn vị VL", "Định mức" }
+            };
+            foreach (var r in qs.ImportedNorms) im.Add(r.Code, r.Name, r.Unit, r.Material, r.MaterialUnit, r.Value);
+            l.Add(im);
+        }
         if (qs.Prices != null && qs.Prices.Count > 0)
         {
             var pr = new QtyTable { Title = "Đơn giá vật tư (người dùng nhập)", Headers = new[] { "Vật tư", "Đơn vị", "Đơn giá (đ)" } };
@@ -384,7 +394,7 @@ public static class QuantityReport
         var qs = q.Settings ?? new QuantitySettings();
         bool prices = qs.HasPrices;
         sh.AddRow(new XlCell("PHÂN TÍCH VẬT TƯ", XlStyle.Title));
-        sh.AddRow("Nhu cầu = Khối lượng × Định mức (sửa định mức ở cột G, Excel tự tính lại). " + (string.IsNullOrWhiteSpace(qs.NormSource) ? QuantitySettings.DefaultSource : qs.NormSource));
+        sh.AddRow("Nhu cầu = Khối lượng × Định mức (sửa định mức ở cột G, Excel tự tính lại). " + qs.EffectiveSource());
         sh.AddEmptyRow();
         sh.AddHeaderRow("STT", "Nhóm", "Công tác", "Khối lượng", "Đơn vị", "Vật tư", "Định mức", "Đơn vị ĐM", "Nhu cầu", "Đơn vị VT");
         int first = sh.RowCount + 1;
@@ -470,7 +480,7 @@ public static class QuantityReport
             WordTable(d, CuTramQuantity.Table(q), 9);
         }
         d.Heading($"{n}.{k++}. Tổng hợp vật tư", 2);
-        d.Paragraph("Nhu cầu vật tư = khối lượng công tác × định mức. " + (string.IsNullOrWhiteSpace(qs.NormSource) ? QuantitySettings.DefaultSource : qs.NormSource), false, true);
+        d.Paragraph("Nhu cầu vật tư = khối lượng công tác × định mức. " + qs.EffectiveSource(), false, true);
         WordTable(d, MaterialTotals(q, qs.HasPrices), 10);
     }
 

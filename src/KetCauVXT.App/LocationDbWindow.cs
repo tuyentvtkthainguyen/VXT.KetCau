@@ -105,7 +105,7 @@ internal sealed class LocationDbWindow : Window
 
         var hint = DialogUi.Hint("Chương trình chỉ có sẵn bảng giá trị theo vùng gió I–V và danh sách 34 tỉnh/thành (từ 01/7/2025). "
             + "Phân vùng theo từng địa danh (Bảng 5.1) và agR (Bảng 6.1, 6.2) của QCVN 02:2022/BXD do người dùng nhập: dùng \"Xuất CSV mẫu…\", điền theo văn bản gốc rồi \"Nhập từ Excel/CSV…\". "
-            + "W0 riêng để trống (0) = lấy theo vùng gió. agR theo đơn vị g (vd 0,0797). Dữ liệu lưu tại: " + _path);
+            + "W0 riêng để trống (0) = lấy theo vùng gió. agR theo đơn vị g (vd 0,0797). Nguồn danh mục: " + LocationDb.SourceLabel + ". Dữ liệu lưu tại: " + _path);
 
         // ---- nút ----
         var bAdd = DialogUi.Btn("＋ Thêm", (s, e) => Add());

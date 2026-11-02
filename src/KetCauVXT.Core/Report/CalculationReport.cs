@@ -26,7 +26,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         Cover(p, d);
         int sec = 1;
         Intro(p, d, sec++);
-        Standards(d, sec++);
+        Standards(p, d, sec++);
         Materials(p, d, sec++);
         ModelSection(p, r, d, sec++);
         LoadsSection(p, r, d, sec++);
@@ -88,19 +88,41 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         }
     }
 
-    private static void Standards(DocxWriter d, int n)
+    /// <summary>Chương "CĂN CỨ PHÁP LÝ VÀ TIÊU CHUẨN ÁP DỤNG": danh sách lấy từ danh mục văn bản (Model/Regulations.cs) theo nội dung dự án.</summary>
+    private static void Standards(Project p, DocxWriter d, int n, bool includeQuantities = false)
     {
-        d.Heading($"{n}. TIÊU CHUẨN ÁP DỤNG", 1);
-        foreach (var t in new[]
+        d.Heading($"{n}. CĂN CỨ PHÁP LÝ VÀ TIÊU CHUẨN ÁP DỤNG", 1);
+        var applied = RegulationService.Applied(p, includeQuantities);
+        var legal = applied.Where(RegulationService.IsLegal).ToList();
+        var stds = applied.Where(x => !RegulationService.IsLegal(x)).ToList();
+        static string Dates(RegulationDoc x)
         {
-            "TCVN 2737:2023 – Tải trọng và tác động – Tiêu chuẩn thiết kế.",
-            "TCVN 5574:2018 – Thiết kế kết cấu bê tông và bê tông cốt thép.",
-            "TCVN 5575:2024 – Thiết kế kết cấu thép.",
-            "TCVN 9386:2012 – Thiết kế công trình chịu động đất.",
-            "TCVN 9362:2012 – Tiêu chuẩn thiết kế nền nhà và công trình.",
-            "TCVN 10304:2014 – Móng cọc – Tiêu chuẩn thiết kế.",
-            "QCVN 02:2022/BXD – Quy chuẩn kỹ thuật quốc gia về số liệu điều kiện tự nhiên dùng trong xây dựng."
-        }) d.Bullet(t);
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(x.IssuedDate)) parts.Add("ban hành " + x.IssuedDate);
+            if (!string.IsNullOrWhiteSpace(x.EffectiveDate)) parts.Add("hiệu lực " + x.EffectiveDate);
+            return parts.Count == 0 ? "-" : string.Join("; ", parts);
+        }
+        static string Status(RegulationDoc x) => x.Status == RegulationStatus.KiemTra ? "Kiểm tra hiệu lực" : x.StatusLabel;
+
+        d.Heading($"{n}.1. Văn bản pháp lý", 2);
+        if (legal.Count > 0)
+            d.Table(new[] { "STT", "Số hiệu", "Tên văn bản", "Ngày", "Trạng thái" },
+                legal.Select((x, i) => new[] { (i + 1).ToString(Inv), x.Citation, x.Title, Dates(x), Status(x) }),
+                new[] { 1.0, 4.2, 6.6, 3.0, 1.7 }, 10);
+        else d.Paragraph("Danh mục văn bản pháp lý trống – cập nhật trong Trợ giúp → Văn bản pháp lý & tiêu chuẩn áp dụng.");
+
+        d.Heading($"{n}.2. Tiêu chuẩn, quy chuẩn kỹ thuật", 2);
+        if (stds.Count > 0)
+            d.Table(new[] { "STT", "Số hiệu", "Tên tiêu chuẩn, quy chuẩn", "Phạm vi", "Trạng thái" },
+                stds.Select((x, i) => new[] { (i + 1).ToString(Inv), x.Citation, x.Title, x.ScopeLabel, Status(x) }),
+                new[] { 1.0, 3.6, 7.6, 2.3, 2.0 }, 10);
+        else d.Paragraph("Danh mục tiêu chuẩn trống – cập nhật trong Trợ giúp → Văn bản pháp lý & tiêu chuẩn áp dụng.");
+
+        foreach (var t in RegulationService.ReplacementSentences(applied)) d.Bullet(t);
+        if (p != null && p.Seismic != null && p.Seismic.Enabled) d.Paragraph(Std.SeismicMethodNote, false, true);
+        var verify = applied.Where(x => x.Status == RegulationStatus.KiemTra || x.EffectiveDate == Regulations.ByDocument).Select(x => x.Citation).ToList();
+        if (verify.Count > 0)
+            d.Paragraph("Văn bản cần kiểm tra lại hiệu lực / ngày hiệu lực trước khi phát hành hồ sơ: " + string.Join("; ", verify) + ".", false, true);
         d.Paragraph("Ghi chú: một số công thức trong chương trình là dạng đơn giản hoá; người thiết kế chịu trách nhiệm đối chiếu với điều khoản cụ thể của phiên bản tiêu chuẩn đang áp dụng.", false, true);
     }
 
@@ -189,7 +211,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         FrameLoadTable(p, d, dead, "Tải phân bố trên dầm/kèo (tường, mái...):");
 
         d.Heading($"{n}.3. Hoạt tải", 2);
-        d.Paragraph("Hoạt tải sử dụng lấy theo TCVN 2737:2023 tuỳ theo công năng phòng.");
+        d.Paragraph($"Hoạt tải sử dụng lấy theo {Std.Loads} tuỳ theo công năng phòng.");
         AreaLoadTable(p, d, live, "Hoạt tải phân bố trên sàn:");
         FrameLoadTable(p, d, live, "Hoạt tải trên thanh:");
 
@@ -198,7 +220,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         d.Heading($"{n}.4. Tải trọng gió", 2);
         var w = p.Wind;
         var windPats = p.Patterns.Where(t => t.Type == LoadType.Wind).Select(t => t.Name).ToHashSet();
-        d.Paragraph($"Gió tĩnh theo TCVN 2737:2023: W = W0·k(z)·c·hệ số hiệu chỉnh. Áp lực gió cơ sở W0 = {N(w.W0, "0.00")} kN/m² (theo QCVN 02:2022/BXD cho địa danh xây dựng); dạng địa hình {w.Terrain}; hệ số khí động tổng c = {N(w.Cp, "0.##")}; hệ số hiệu chỉnh {N(w.Factor, "0.##")}; hệ số độ tin cậy γf = {N(w.Gamma, "0.##")}.");
+        d.Paragraph($"Gió tĩnh theo {Std.Loads}: W = W0·k(z)·c·hệ số hiệu chỉnh. Áp lực gió cơ sở W0 = {N(w.W0, "0.00")} kN/m² (theo {Std.NaturalData} cho địa danh xây dựng); dạng địa hình {w.Terrain}; hệ số khí động tổng c = {N(w.Cp, "0.##")}; hệ số hiệu chỉnh {N(w.Factor, "0.##")}; hệ số độ tin cậy γf = {N(w.Gamma, "0.##")}.");
         d.Equation("k(z) = 1.844·(z/zg)^(2α);  A: α = 0.07, zg = 250 m;  B: α = 0.09, zg = 300 m;  C: α = 0.14, zg = 400 m");
         var wl = r?.LateralForces.Where(x => windPats.Contains(x.Pattern)).ToList() ?? new List<StoryLateralForce>();
         if (wl.Count > 0)
@@ -220,7 +242,8 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         {
             d.Heading($"{n}.5. Tải trọng động đất", 2);
             var sm = p.Seismic;
-            d.Paragraph($"Theo TCVN 9386:2012, phương pháp phân tích tĩnh lực ngang tương đương: agR = {N(sm.AgR, "0.0000")}g, nền loại {sm.Soil}, γI = {N(sm.ImportanceFactor, "0.##")}, hệ số ứng xử q = {N(sm.Q, "0.##")}, ψE = {N(sm.PsiLive, "0.##")}.");
+            d.Paragraph($"Theo {Std.Seismic}, phương pháp phân tích tĩnh lực ngang tương đương: agR = {N(sm.AgR, "0.0000")}g, nền loại {sm.Soil}, γI = {N(sm.ImportanceFactor, "0.##")}, hệ số ứng xử q = {N(sm.Q, "0.##")}, ψE = {N(sm.PsiLive, "0.##")}.");
+            d.Paragraph(Std.SeismicMethodNote, false, true);
             d.Equation("Fb = Sd(T1)·W·λ;   Fi = Fb·zi·Wi / Σ(zj·Wj);   T1 = Ct·H^(3/4)");
             var el = r?.LateralForces.Where(x => eqPats.Contains(x.Pattern)).ToList() ?? new List<StoryLateralForce>();
             if (el.Count > 0)

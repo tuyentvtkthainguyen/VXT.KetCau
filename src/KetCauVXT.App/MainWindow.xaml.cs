@@ -173,7 +173,7 @@ public partial class MainWindow : Window
         try
         {
             SetProject(Project.Load(dlg.FileName), dlg.FileName);
-            SetStatus($"Đã mở {dlg.FileName}: {_p.Nodes.Count} nút, {_p.Frames.Count} thanh, {_p.Slabs.Count} ô sàn.");
+            SetStatus($"Đã mở {dlg.FileName}: {_p.Nodes.Count} nút, {_p.Frames.Count} thanh, {_p.Slabs.Count} ô sàn." + RegulationStatusSuffix());   // MainWindow.Regulations.cs
         }
         catch (Exception ex) { ShowError("Không mở được file dự án", ex); }
     }
@@ -184,7 +184,8 @@ public partial class MainWindow : Window
 
     private void MnuAbout_Click(object sender, RoutedEventArgs e) =>
         MessageBox.Show("Kết cấu VXT\nPhân tích, thiết kế kết cấu nhà dân dụng BTCT (≤ 7 tầng) và khung thép tiền chế.\n" +
-                        "Tiêu chuẩn: TCVN 2737:2023, TCVN 5574:2018, TCVN 5575, TCVN 9386:2012, TCVN 9362:2012.\n\n" +
+                        $"Tiêu chuẩn: {Std.Loads}, {Std.Concrete}, {Std.Steel}, {Std.Seismic}, {Std.Soil}, {Std.Piles}.\n" +
+                        $"Căn cứ pháp lý: {Std.Law}, {Std.Decree}, {Std.Grade} (xem Trợ giúp → Văn bản pháp lý & tiêu chuẩn áp dụng).\n\n" +
                         "Đơn vị: kN, m. Kích thước tiết diện nhập bằng mm.\n\nTác giả: Vũ Xuân Tuyến",
             AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
 

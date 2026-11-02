@@ -189,10 +189,11 @@ public static partial class SheetBuilder
             $"3. Cốt thép dọc chịu lực {c.RebarMain}; cốt đai và thép sàn {c.RebarStirrup}.",
             $"4. Chiều dày lớp bê tông bảo vệ: dầm {mm(c.CoverBeam)}, cột {mm(c.CoverColumn)}, sàn {mm(c.CoverSlab)}, móng {mm(c.CoverFooting)}.",
             "5. Neo, nối cốt thép theo TCVN 5574:2018; mối nối so le, không nối quá 50% số thanh tại một mặt cắt.",
-            "6. Thi công và nghiệm thu theo TCVN 4453:1995, TCVN 9115:2019 và các tiêu chuẩn hiện hành.",
-            "7. Khi có sai khác giữa bản vẽ và hiện trường phải báo cho đơn vị thiết kế để xử lý."
+            "6. " + GeneralNotes.StandardsLine(p),
+            "7. Thi công và nghiệm thu theo TCVN 4453:1995, TCVN 9115:2019 và các tiêu chuẩn hiện hành.",
+            "8. Khi có sai khác giữa bản vẽ và hiện trường phải báo cho đơn vị thiết kế để xử lý."
         }.Concat(GeneralNotes.HasCurvedBeams(p)
-            ? new[] { "8. Dầm cong: mặt đứng thể hiện trải theo cung, chiều dài thép dọc tính theo cung; dùng đai kín móc 135°." }
+            ? new[] { "9. Dầm cong: mặt đứng thể hiện trải theo cung, chiều dài thép dọc tính theo cung; dùng đai kín móc 135°." }
             : Array.Empty<string>()));
     }
 
