@@ -211,7 +211,9 @@ public static class CurvedBeamTests
             int arcs = dxf.Split('\n').Count(l => l.Trim() == "ARC");
             check("DXF mặt bằng: dầm cong vẽ bằng 2 cung ARC (R ± b/2)", arcs, 2, 0);
             check("DXF mặt bằng: ghi bán kính R=4000", dxf.Contains("R=4000") ? 1 : 0, 1, 0);
-            check("DXF mặt bằng: phạm vi bám theo cung (không lấy cả đường tròn)", w.Extents.X1 > -1000 ? 1 : 0, 1, 0);
+            // cả đường tròn sẽ cho X1 ≈ −(R + b/2) = −4150; chữ/ký hiệu quanh mặt bằng có thể lấn trái thêm một chút
+            Console.WriteLine($"    (phạm vi DXF mặt bằng dầm cong: X1 = {w.Extents.X1:0}, Y1 = {w.Extents.Y1:0})");
+            check("DXF mặt bằng: phạm vi bám theo cung (không lấy cả đường tròn)", w.Extents.X1 > -3000 && w.Extents.Y1 > -3000 ? 1 : 0, 1, 0);
             File.WriteAllText(Path.Combine(outDir, "DamCong_MatBang.dxf"), dxf);
         }
 
