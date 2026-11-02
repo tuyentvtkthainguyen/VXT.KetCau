@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using KetCauVXT.Analysis;
 using KetCauVXT.Model;
 
@@ -38,12 +40,27 @@ public class RebarAlternative
     public double Utilization { get; set; }
     public bool IsCurrent { get; set; }
     public string Note { get; set; } = "";
+    /// <summary>Sàn: phương án bố trí (vùng RebarZones.SlabScheme / SlabSchemeStory)</summary>
+    public SlabRebarScheme? Scheme { get; set; }
+    /// <summary>Khối lượng thép của vùng (kg; phương án sàn: cả tầng) – để so sánh giữa các phương án</summary>
+    public double WeightKg { get; set; }
+    /// <summary>Khối lượng trên 1 m² sàn / móng (kg/m²); 0 = không áp dụng</summary>
+    public double WeightPerM2 { get; set; }
+    /// <summary>Chênh khối lượng so với phương án đang dùng (kg; NaN = không xác định)</summary>
+    public double DeltaVsCurrentKg { get; set; } = double.NaN;
+    /// <summary>Chênh khối lượng so với phương án tiết kiệm nhất (kg, ≥ 0)</summary>
+    public double DeltaVsBestKg { get; set; }
+    /// <summary>Cảnh báo: "Vượt +x kg (+y%) so với phương án tiết kiệm nhất", "Tiết kiệm −x kg…", "Dư thép", "Thiếu thép"</summary>
+    public string Warning { get; set; } = "";
+    /// <summary>0 bình thường, 1 vượt / dư thép (cam), 2 thiếu / không đạt (đỏ), 3 tiết kiệm (xanh)</summary>
+    public int WarnLevel { get; set; }
 
     /// <summary>Lựa chọn lưu vào Project cho cấu kiện member.</summary>
     public RebarChoice ToChoice(string member, string basis, string label) => new()
     {
         Member = member, Zone = Zone, Index = Index, Dia = Dia, NB = NB, NH = NH, Spacing = Spacing, Spacing2 = Spacing2,
-        Bars = Bars.Select(g => new RebarGroup(g.Dia, g.Count)).ToList(), Basis = basis ?? "", Label = label ?? ""
+        Bars = Bars.Select(g => new RebarGroup(g.Dia, g.Count)).ToList(), Basis = basis ?? "", Label = label ?? "",
+        Scheme = Scheme ?? SlabRebarScheme.TopBarsBottomMesh
     };
 
     public override string ToString() => Text;
@@ -259,8 +276,26 @@ public static class RebarOptions
                 });
                 Add(RebarZones.SlabBotX, "Lớp dưới phương ngắn (X)", s.BotX, false);
                 Add(RebarZones.SlabBotY, "Lớp dưới phương dài (Y)", s.BotY, false);
-                Add(RebarZones.SlabTopX, "Mũ gối phương ngắn (X)", s.TopX, true);
-                Add(RebarZones.SlabTopY, "Mũ gối phương dài (Y)", s.TopY, true);
+                bool mesh = s.Scheme != SlabRebarScheme.TopBarsBottomMesh;
+                if (mesh)
+                {
+                    Add(RebarZones.SlabMeshX, "Lưới trên phương ngắn (X)", Token(s.TopX, false), true);
+                    Add(RebarZones.SlabMeshY, "Lưới trên phương dài (Y)", Token(s.TopY, false), true);
+                }
+                Add(RebarZones.SlabTopX, (mesh ? "Mũ bổ sung" : "Mũ gối") + " phương ngắn (X)", mesh ? Token(s.TopX, true) : s.TopX, true);
+                Add(RebarZones.SlabTopY, (mesh ? "Mũ bổ sung" : "Mũ gối") + " phương dài (Y)", mesh ? Token(s.TopY, true) : s.TopY, true);
+                string sn = RebarPreferences.SchemeName(s.Scheme);
+                z.Add(new RebarZoneInfo
+                {
+                    Kind = "Sàn", Zone = RebarZones.SlabScheme, Label = "Phương án bố trí thép – ô này", Current = sn,
+                    User = p.FindRebarChoice(key, RebarZones.SlabScheme, -1) != null, B = 1.0, H = s.Thickness, Cover = cs.CoverSlab
+                });
+                var stKeys = StoryKeys(p, s.Story);
+                z.Add(new RebarZoneInfo
+                {
+                    Kind = "Sàn", Zone = RebarZones.SlabSchemeStory, Label = "Phương án bố trí thép – cả tầng " + s.Story + " (" + stKeys.Count + " ô)", Current = sn,
+                    User = stKeys.Any(k2 => p.FindRebarChoice(k2, RebarZones.SlabScheme, -1) != null), B = 1.0, H = s.Thickness, Cover = cs.CoverSlab
+                });
                 break;
             }
             case FootingDesign f:
@@ -303,7 +338,9 @@ public static class RebarOptions
                 else list.AddRange(ColumnDesigner.Alternatives(p, r, c, z.Index, max));
                 break;
             case SlabDesign s:
-                list.AddRange(SlabDesigner.Alternatives(p, s, z.Zone, max));
+                if (z.Zone == RebarZones.SlabScheme || z.Zone == RebarZones.SlabSchemeStory)
+                    list.AddRange(SchemeAlternatives(p, r, s, z.Zone == RebarZones.SlabSchemeStory));
+                else list.AddRange(SlabDesigner.Alternatives(p, s, z.Zone, max));
                 break;
             case FootingDesign f:
                 list.AddRange(FootingDesigner.Alternatives(p, f, z.Zone, max));
@@ -314,7 +351,208 @@ public static class RebarOptions
             a.Zone = z.Zone; a.Index = z.Index; a.Kind = z.Kind;
             if (m is BeamLineDesign && a.Bars.Count > 0) a.IsCurrent = RcSection.BarText(a.Bars.Select(g => (g.Dia, g.Count))) == z.Current;
         }
+        try { AddWeights(p, m, z, list); }
+        catch (Exception) { /* so sánh khối lượng chỉ để tham khảo */ }
         return list;
+    }
+
+    // ------------------------------------------------------------------
+    // Khối lượng thép & cảnh báo vượt / tiết kiệm
+    // ------------------------------------------------------------------
+    /// <summary>Khối lượng riêng thép (kg/m³) – tương đương 0,00617·d² kg/m.</summary>
+    public const double SteelDensity = 7850;
+    /// <summary>As bố trí / As yêu cầu vượt ngưỡng này → cảnh báo "Dư thép".</summary>
+    public const double OverRatio = 1.3;
+    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
+    private static readonly Regex SpTok = new(@"Ø(\d+)a(\d+)", RegexOptions.CultureInvariant);
+    private static readonly Regex BarTok = new(@"(\d+)Ø(\d+)", RegexOptions.CultureInvariant);
+
+    /// <summary>Khoá "S:{id}" của mọi ô sàn trong tầng.</summary>
+    internal static List<string> StoryKeys(Project p, string story) =>
+        p.Slabs.Where(x => (x.Story ?? "") == (story ?? "")).Select(x => "S:" + x.Id.ToString(Inv)).ToList();
+
+    /// <summary>Nhãn Ø–bước trong chuỗi thép trên sàn: "lưới Ø6a200 + mũ Ø8a150" → lưới "Ø6a200" (afterMu = false) / mũ "Ø8a150".</summary>
+    internal static string Token(string text, bool afterMu)
+    {
+        text ??= "";
+        int k = text.IndexOf("mũ", StringComparison.Ordinal);
+        string part = afterMu ? (k >= 0 ? text.Substring(k) : "") : (k >= 0 ? text.Substring(0, k) : text);
+        var m = SpTok.Match(part);
+        return m.Success ? m.Value : "";
+    }
+
+    /// <summary>Cảnh báo so sánh một phương án: ratio = As bố trí / As yêu cầu (0 = không xét), wBest = khối lượng phương án tiết kiệm nhất,
+    /// wCur = khối lượng phương án hiện tại (≤ 0 hoặc NaN = không xét).</summary>
+    public static (string Text, int Level) Compare(double w, double wBest, double wCur, double ratio, bool ok = true)
+    {
+        var parts = new List<string>();
+        int lvl = 0;
+        if (!ok) { parts.Add("Không đạt"); lvl = 2; }
+        if (ratio > 0 && ratio < 1 - 1e-6) { parts.Add(string.Format(Inv, "Thiếu thép (As/As,yc = {0:0.00})", ratio)); lvl = 2; }
+        else if (ratio > OverRatio + 1e-9) { parts.Add(string.Format(Inv, "Dư thép (As/As,yc = {0:0.00})", ratio)); lvl = Math.Max(lvl, 1); }
+        double dB = w - wBest;
+        if (wBest > 0 && dB > 0.05)
+        {
+            parts.Add(string.Format(Inv, "Vượt +{0:0.0} kg (+{1:0}%) so với phương án tiết kiệm nhất", dB, dB / wBest * 100));
+            lvl = Math.Max(lvl, 1);
+        }
+        if (wCur > 0 && w - wCur < -0.05)
+        {
+            parts.Add(string.Format(Inv, "Tiết kiệm −{0:0.0} kg (−{1:0}%) so với phương án hiện tại", wCur - w, (wCur - w) / wCur * 100));
+            if (lvl == 0) lvl = 3;
+        }
+        return (string.Join("; ", parts), lvl);
+    }
+
+    /// <summary>Gán khối lượng, chênh lệch so với phương án hiện tại / tiết kiệm nhất và cảnh báo cho các phương án.</summary>
+    public static void AddWeights(Project p, MemberDesignBase m, RebarZoneInfo z, List<RebarAlternative> list)
+    {
+        if (list.Count == 0) return;
+        foreach (var a in list.Where(x => x.WeightKg <= 0)) WeightOf(p, m, z, a);
+        bool stir = z.Zone == RebarZones.Stirrup;
+        double Ratio(RebarAlternative a) => stir || a.Scheme != null || a.AsReq <= 1e-12 ? 0 : a.AsProv / a.AsReq;
+        double wCur = list.FirstOrDefault(x => x.IsCurrent)?.WeightKg ?? double.NaN;
+        if (double.IsNaN(wCur))
+        {
+            var cur = CurrentAlternative(p, m, z);
+            if (cur != null) { WeightOf(p, m, z, cur); wCur = cur.WeightKg; }
+        }
+        var okList = list.Where(x => x.Fits && (Ratio(x) == 0 || Ratio(x) >= 1 - 1e-6) && x.WeightKg > 0).ToList();
+        double best = okList.Count > 0 ? okList.Min(x => x.WeightKg) : list.Min(x => x.WeightKg);
+        foreach (var a in list)
+        {
+            a.DeltaVsBestKg = Math.Round(a.WeightKg - best, 2);
+            a.DeltaVsCurrentKg = wCur > 0 ? Math.Round(a.WeightKg - wCur, 2) : double.NaN;
+            var (txt, lvl) = Compare(a.WeightKg, best, wCur, Ratio(a), a.Fits);
+            a.Warning = txt; a.WarnLevel = lvl;
+        }
+    }
+
+    /// <summary>Phương án tương ứng thép hiện tại của vùng (đọc từ chuỗi Current) – để tính khối lượng hiện tại.</summary>
+    private static RebarAlternative CurrentAlternative(Project p, MemberDesignBase m, RebarZoneInfo z)
+    {
+        string t = z.Current ?? "";
+        var a = new RebarAlternative { Kind = z.Kind, Zone = z.Zone, Index = z.Index };
+        if (z.Zone == RebarZones.Stirrup)
+        {
+            var ms = Regex.Match(t, @"Ø(\d+)a(\d+)/a(\d+)");
+            if (!ms.Success) return null;
+            a.Dia = int.Parse(ms.Groups[1].Value, Inv); a.Spacing = int.Parse(ms.Groups[2].Value, Inv) / 1000.0; a.Spacing2 = int.Parse(ms.Groups[3].Value, Inv) / 1000.0;
+            return a;
+        }
+        if (m is ColumnDesign c && z.Index >= 0 && z.Index < c.Stories.Count)
+        {
+            var s = c.Stories[z.Index];
+            a.Dia = s.Dia; a.NB = s.BarsAlongB; a.NH = s.BarsAlongH; a.AsProv = s.AsProv;
+            return a.Dia > 0 ? a : null;
+        }
+        if (m is BeamLineDesign)
+        {
+            foreach (Match mm in BarTok.Matches(t)) a.Bars.Add(new RebarGroup(int.Parse(mm.Groups[2].Value, Inv), int.Parse(mm.Groups[1].Value, Inv)));
+            return a.Bars.Count > 0 ? a : null;
+        }
+        var sp = SpTok.Match(t);
+        if (!sp.Success) return null;
+        a.Dia = int.Parse(sp.Groups[1].Value, Inv); a.Spacing = int.Parse(sp.Groups[2].Value, Inv) / 1000.0;
+        a.AsProv = RcSection.BarArea(a.Dia) / a.Spacing;
+        return a;
+    }
+
+    /// <summary>Khối lượng (ước tính) thép của vùng theo phương án a – dùng để so sánh tương đối giữa các phương án.</summary>
+    private static void WeightOf(Project p, MemberDesignBase m, RebarZoneInfo z, RebarAlternative a)
+    {
+        double UW(int d) => 0.00617 * d * d;   // kg/m
+        switch (m)
+        {
+            case SlabDesign s:
+            {
+                double area = s.Lx * s.Ly, za = area;
+                if (z.Zone == RebarZones.SlabTopX) za = s.FixedEdgeLenShort * s.Lx / 4;
+                else if (z.Zone == RebarZones.SlabTopY) za = s.FixedEdgeLenLong * s.Lx / 4;
+                double As = a.AsProv > 0 ? a.AsProv : (a.Spacing > 0 ? RcSection.BarArea(a.Dia) / a.Spacing : 0);
+                a.WeightKg = Math.Round(As * SteelDensity * za, 2);
+                a.WeightPerM2 = area > 0 ? Math.Round(a.WeightKg / area, 2) : 0;
+                break;
+            }
+            case FootingDesign f:
+            {
+                double area = f.L * f.B;
+                double As = a.AsProv > 0 ? a.AsProv : (a.Spacing > 0 ? RcSection.BarArea(a.Dia) / a.Spacing : 0);
+                a.WeightKg = Math.Round(As * SteelDensity * area, 2);
+                a.WeightPerM2 = area > 0 ? Math.Round(a.WeightKg / area, 2) : 0;
+                break;
+            }
+            case BeamLineDesign b:
+            {
+                double c = p.Concrete.CoverBeam;
+                int ns = b.Spans.Count;
+                double Lc(int k) => k >= 0 && k < ns ? (b.Spans[k].Lclear > 0 ? b.Spans[k].Lclear : b.Spans[k].L) : 0;
+                if (z.Zone == RebarZones.Stirrup)
+                {
+                    if (a.Dia <= 0 || a.Spacing <= 0) return;
+                    double L = Lc(z.Index), s2 = a.Spacing2 > 0 ? a.Spacing2 : a.Spacing;
+                    double n = 2 * Math.Ceiling(L / 4 / a.Spacing) + Math.Ceiling(L / 2 / s2) + 1;
+                    double cs = Math.Max(c - a.Dia / 1000.0, 0.015);
+                    double len = 2 * (b.B + b.H - 4 * cs) + 2 * Math.Max(0.075, 10 * a.Dia / 1000.0);
+                    a.WeightKg = Math.Round(n * len * UW(a.Dia), 2);
+                    break;
+                }
+                double Lz;
+                if (z.Zone == RebarZones.BeamBottom) Lz = Lc(z.Index);
+                else if (z.Zone == RebarZones.BeamTopSupport)
+                {
+                    int j = z.Index;
+                    double w = j < ns ? b.Spans[j].SupportWidthLeft : (ns > 0 ? b.Spans[ns - 1].SupportWidthRight : 0);
+                    Lz = w + (j > 0 ? Lc(j - 1) / (j < ns ? 3 : 4) : 0) + (j < ns ? Lc(j) / (j > 0 ? 3 : 4) : 0);
+                }
+                else Lz = b.TotalLength;
+                a.WeightKg = Math.Round(a.Bars.Sum(g => g.Count * UW(g.Dia)) * Lz, 2);
+                break;
+            }
+            case ColumnDesign col when z.Index >= 0 && z.Index < col.Stories.Count:
+            {
+                var s = col.Stories[z.Index];
+                if (z.Zone == RebarZones.Stirrup)
+                {
+                    if (a.Dia <= 0 || a.Spacing <= 0) return;
+                    double sAvg = (a.Spacing + (a.Spacing2 > 0 ? a.Spacing2 : a.Spacing)) / 2;
+                    double cs = Math.Max(p.Concrete.CoverColumn - a.Dia / 1000.0, 0.015);
+                    double len = 2 * (s.B + s.H - 4 * cs) + 2 * Math.Max(0.075, 10 * a.Dia / 1000.0);
+                    a.WeightKg = Math.Round((Math.Ceiling(s.Length / sAvg) + 1) * len * UW(a.Dia), 2);
+                }
+                else
+                {
+                    int n = 2 * a.NB + 2 * Math.Max(0, a.NH - 2);
+                    a.WeightKg = Math.Round(n * UW(a.Dia) * (s.Length + 30 * a.Dia / 1000.0), 2);
+                }
+                break;
+            }
+        }
+    }
+
+    /// <summary>So sánh phương án bố trí thép sàn: thiết kế lại (bản sao dự án) ô này hoặc cả tầng với từng phương án,
+    /// khối lượng thép sàn CẢ TẦNG (kg, kg/m²) – mũ cạnh chung và lưới liên tục làm khối lượng phụ thuộc ô kề.</summary>
+    private static List<RebarAlternative> SchemeAlternatives(Project p, AnalysisResults r, SlabDesign s, bool story)
+    {
+        var res = new List<RebarAlternative>();
+        var keys = story ? StoryKeys(p, s.Story) : s.RebarKeys.Distinct().ToList();
+        foreach (var sc in Enum.GetValues<SlabRebarScheme>())
+        {
+            var q = p.Clone();
+            foreach (var k in keys) q.SetRebarChoice(new RebarChoice { Member = k, Zone = RebarZones.SlabScheme, Index = -1, Scheme = sc });
+            var ds = SlabDesigner.Design(q, r, new List<string>()).Where(x => x.Story == s.Story).ToList();
+            double w = ds.Sum(x => Math.Max(1, x.Quantity) * x.Bars.Sum(b => b.Count * b.WeightPerBar));
+            double area = ds.Sum(x => Math.Max(1, x.Quantity) * x.Lx * x.Ly);
+            int bad = ds.Count(x => !x.Ok);
+            bool cur = story ? keys.All(k => SlabDesigner.SchemeOf(p, k) == sc) : s.Scheme == sc;
+            res.Add(new RebarAlternative
+            {
+                Kind = "Sàn", Index = -1, Scheme = sc, Text = RebarPreferences.SchemeName(sc), Fits = bad == 0, IsCurrent = cur,
+                WeightKg = Math.Round(w, 2), WeightPerM2 = area > 0 ? Math.Round(w / area, 2) : 0,
+                Note = "thép sàn cả tầng " + s.Story + ": " + ds.Sum(x => Math.Max(1, x.Quantity)) + " ô" + (bad > 0 ? ", " + bad + " ô không đạt" : ", đạt")
+            });
+        }
+        return res;
     }
 
     /// <summary>Phương án đai dầm cho nhịp k: mỗi Ø đai một phương án bước theo tính toán (gối/giữa nhịp) và một phương án dày hơn 50 mm.</summary>
@@ -385,10 +623,12 @@ public static class RebarOptions
     {
         if (p == null || m == null || z == null || a == null) return 0;
         int n = 0;
-        foreach (string key in m.RebarKeys.Distinct())
+        bool scheme = z.Zone == RebarZones.SlabScheme || z.Zone == RebarZones.SlabSchemeStory;
+        var keys = z.Zone == RebarZones.SlabSchemeStory && m is SlabDesign sd ? StoryKeys(p, sd.Story) : m.RebarKeys.Distinct().ToList();
+        foreach (string key in keys)
         {
-            var ch = a.ToChoice(key, z.Basis, m.Name);
-            ch.Zone = z.Zone; ch.Index = z.Index;
+            var ch = a.ToChoice(key, scheme ? "" : z.Basis, m.Name);
+            ch.Zone = scheme ? RebarZones.SlabScheme : z.Zone; ch.Index = z.Index;
             p.SetRebarChoice(ch);
             n++;
         }
@@ -400,8 +640,10 @@ public static class RebarOptions
     {
         if (p == null || m == null) return 0;
         int n = 0;
-        foreach (string key in m.RebarKeys.Distinct())
-            n += z == null ? p.ClearRebarChoice(key) : p.ClearRebarChoice(key, z.Zone, z.Index);
+        var keys = z?.Zone == RebarZones.SlabSchemeStory && m is SlabDesign sd ? StoryKeys(p, sd.Story) : m.RebarKeys.Distinct().ToList();
+        string zone = z?.Zone == RebarZones.SlabSchemeStory ? RebarZones.SlabScheme : z?.Zone;
+        foreach (string key in keys)
+            n += z == null ? p.ClearRebarChoice(key) : p.ClearRebarChoice(key, zone, z.Index);
         return n;
     }
 }

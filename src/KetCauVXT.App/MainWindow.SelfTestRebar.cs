@@ -38,6 +38,25 @@ public partial class MainWindow
             await Pause(1200);
             ShotWindow(dlg, $"{tag}_21_ChonThep_SauApDung");
 
+            // sàn: hộp thoại chọn thép ô sàn – vùng "phương án bố trí cả tầng" (so sánh khối lượng các phương án)
+            var slab = _design?.Slabs.FirstOrDefault();
+            if (slab != null)
+            {
+                var sdlg = CreateRebarDialog(slab);
+                sdlg.Width = 1450; sdlg.Height = 650;
+                sdlg.Show();
+                try
+                {
+                    await Pause(800);
+                    bool hasScheme = sdlg.SelectZone(KetCauVXT.Model.RebarZones.SlabSchemeStory);
+                    await Pause(1500);
+                    StLog($"chọn thép sàn: ô {slab.Name}, {sdlg.ZoneCount} vùng, phương án cả tầng: {(hasScheme ? sdlg.AlternativeCount + " phương án" : "không có")}");
+                    ShotWindow(sdlg, $"{tag}_20b_ChonThepSan");
+                }
+                finally { sdlg.Close(); }
+            }
+            else StLog("chọn thép sàn: không có ô sàn – bỏ qua");
+
             // shop drawing
             string dir = Path.Combine(SelfTestOut, tag + "_GiaCongThep");
             int n = 0;

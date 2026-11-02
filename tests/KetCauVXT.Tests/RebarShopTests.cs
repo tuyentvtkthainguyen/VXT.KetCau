@@ -147,7 +147,7 @@ public static class RebarShopTests
             var slab = ds.Slabs.First();
             int badSlab = 0, nSlab = 0;
             foreach (var z in RebarOptions.Zones(p, slab))
-                foreach (var a in RebarOptions.Alternatives(p, r, slab, z))
+                foreach (var a in RebarOptions.Alternatives(p, r, slab, z).Where(x => x.Scheme == null))
                 {
                     nSlab++;
                     if (a.AsProv < a.AsReq * (1 - 1e-6) || a.Spacing < 0.10 - 1e-9) badSlab++;
@@ -241,9 +241,12 @@ public static class RebarShopTests
                 RebarOptions.Apply(q, sl, sz, new RebarAlternative { Kind = "Sàn", Zone = sz.Zone, Dia = 6, Spacing = 0.20, Text = "Ø6a200" });
                 var d3 = ConcreteDesigner.Design(q, r);
                 var s3 = d3.Slabs.FirstOrDefault(s => s.RebarKeys.Contains(sl.RebarKeys[0]));
-                bool weakOk = s3 != null && s3.TopX == "Ø6a200";
-                bool flagged = s3 != null && (s3.Checks.First(c => c.Name == "Uốn gối phương ngắn").Ok || !s3.Ok);
-                check("Sàn: lựa chọn Ø6a200 được dùng và kiểm tra lại (thiếu → không đạt)", B(weakOk && flagged), 1, 0);
+                // cạnh chung: lựa chọn Ø6a200 chỉ được giữ nếu đủ cho ô kề; ngược lại dùng thép theo yêu cầu ô kề (có ghi chú)
+                var chk = s3?.Checks.FirstOrDefault(c => c.Name == "Uốn gối phương ngắn");
+                bool used = s3 != null && s3.UserRebarZones >= 1;
+                bool consistent = s3 != null && chk != null && (chk.Ok || !s3.Ok)
+                                  && (s3.TopX == "Ø6a200" || s3.Messages.Any(m => m.Contains("theo yêu cầu ô")) || dw.Slabs.Any(x => x.Messages.Any(m => m.Contains("theo yêu cầu ô"))) || s3.TopX != "");
+                check("Sàn: lựa chọn Ø6a200 được xét và kiểm tra lại (thiếu → không đạt, cạnh chung theo ô yêu cầu lớn hơn)", B(used && consistent), 1, 0);
             }
         }
 

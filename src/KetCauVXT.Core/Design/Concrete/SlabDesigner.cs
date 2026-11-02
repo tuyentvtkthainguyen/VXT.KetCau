@@ -313,7 +313,16 @@ public static partial class SlabDesigner
         double sMax = Math.Min(1.5 * t, 0.20);
         var (bxDia, bxS) = ParseSpacing(d.BotX);
         double bxAs = bxS > 0 ? RcSection.BarArea(bxDia) / bxS : 0;
-        string cur = zone == RebarZones.SlabBotX ? d.BotX : zone == RebarZones.SlabBotY ? d.BotY : zone == RebarZones.SlabTopX ? d.TopX : d.TopY;
+        bool meshScheme = d.Scheme != SlabRebarScheme.TopBarsBottomMesh;
+        string cur = zone == RebarZones.SlabBotX ? d.BotX : zone == RebarZones.SlabBotY ? d.BotY
+            : zone == RebarZones.SlabMeshX ? RebarOptions.Token(d.TopX, false) : zone == RebarZones.SlabMeshY ? RebarOptions.Token(d.TopY, false)
+            : zone == RebarZones.SlabTopX ? (meshScheme ? RebarOptions.Token(d.TopX, true) : d.TopX) : (meshScheme ? RebarOptions.Token(d.TopY, true) : d.TopY);
+        // lưới trên hiện có (phương án lưới 2 lớp): mũ bổ sung chỉ cần phần thiếu
+        var (mxD, mxS) = ParseSpacing(RebarOptions.Token(d.TopX, false));
+        var (myD, myS) = ParseSpacing(RebarOptions.Token(d.TopY, false));
+        double meshX = meshScheme && mxS > 0 ? RcSection.BarArea(mxD) / mxS : 0, meshY = meshScheme && myS > 0 ? RcSection.BarArea(myD) / myS : 0;
+        double AsMinTop(int dia) => MinRatioSlab / 100.0 * Math.Max(t - c - dia / 2000.0, 0.01);
+        double TopReq(double m, int dia) => m < -1e-9 ? RcSection.DesignRect(-m, 1.0, t - c - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As : 0;
         Func<int, double> req;
         double sMaxZ = sMax;
         if (zone == RebarZones.SlabBotX) req = dia => RcSection.DesignRect(d.M1, 1.0, t - c - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As;
@@ -322,8 +331,14 @@ public static partial class SlabDesigner
             if (d.TwoWay) req = dia => RcSection.DesignRect(d.M2, 1.0, t - c - bxDia / 1000.0 - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As;
             else { req = _ => 0.1 * bxAs; sMaxZ = Math.Min(0.25, Math.Max(sMax, 0.20)); }
         }
-        else if (zone == RebarZones.SlabTopX) req = dia => d.MI < -1e-9 ? RcSection.DesignRect(-d.MI, 1.0, t - c - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As : 0;
-        else { req = dia => d.MII < -1e-9 ? RcSection.DesignRect(-d.MII, 1.0, t - c - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As : 0; sMaxZ = Math.Max(sMax, 0.20); }
+        else if (zone == RebarZones.SlabMeshX || zone == RebarZones.SlabMeshY)
+        {
+            double mm = zone == RebarZones.SlabMeshX ? d.MI : d.MII;
+            req = d.Scheme == SlabRebarScheme.TwoLayerMesh ? dia => Math.Max(TopReq(mm, dia), AsMinTop(dia)) : dia => AsMinTop(dia);
+            sMaxZ = Math.Min(sMax, 0.20);
+        }
+        else if (zone == RebarZones.SlabTopX) req = dia => Math.Max(TopReq(d.MI, dia) - meshX, 0);
+        else { req = dia => Math.Max(TopReq(d.MII, dia) - meshY, 0); sMaxZ = Math.Max(sMax, 0.20); }
         res.AddRange(RebarOptions.SpacingAlternatives("Sàn", zone, req, dias, 0.10, sMaxZ, cur, max));
         return res;
     }

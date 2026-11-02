@@ -208,7 +208,7 @@ public static partial class SlabDesigner
                     double mesh = pn.Mesh[dir]?.AsPerM ?? 0;
                     var ud = user ? (dir == 0 ? pn.Tx : pn.Ty) : null;
                     if (ud != null) it.Choice = ud;
-                    else if (pn.ReqTop(dir, pn.Dias[0]) > mesh + 1e-9 || pn.Dias.Any(dg => pn.ReqTop(dir, dg) > mesh + 1e-9))
+                    else if (pn.ReqTop(dir, pn.Mesh[dir]?.Dia ?? pn.Dias[0]) > mesh * (1 + 1e-6) + 1e-9)
                         it.Choice = RcSection.ChooseSpacing(dg => Math.Max(pn.ReqTop(dir, dg) - mesh, 0), pn.Dias, pn.SMax, 0.10, 0.20);
                 }
                 it.User = user && it.Choice != null;

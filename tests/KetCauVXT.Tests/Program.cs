@@ -500,6 +500,9 @@ QuantityTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.Bas
 Console.WriteLine("27. Đọc file DWG (ACadSharp): thực thể, khối, layer, đơn vị, nhập mặt bằng kiến trúc");
 DwgTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("28. Thép sàn: mũ cạnh chung tính một lần, phương án lưới 2 lớp, so sánh vượt/tiết kiệm thép");
+SlabSchemeTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

@@ -25,6 +25,11 @@ internal sealed class RebarChoiceDialog : Window
         public string Clear => F(A.ClearMm, "0") + " ≥ " + F(A.ClearReqMm, "0");
         public string Util => A.Utilization > 0 ? F(A.Utilization, "0.00") : "";
         public string Note => A.Note;
+        public string Weight => A.WeightKg > 0 ? F(A.WeightKg, "0.0") : "";
+        public string PerM2 => A.WeightPerM2 > 0 ? F(A.WeightPerM2, "0.00") : "";
+        public string DCur => double.IsNaN(A.DeltaVsCurrentKg) ? "" : (A.DeltaVsCurrentKg > 0 ? "+" : "") + F(A.DeltaVsCurrentKg, "0.0");
+        public string DBest => A.WeightKg > 0 ? (A.DeltaVsBestKg > 0 ? "+" : "") + F(A.DeltaVsBestKg, "0.0") : "";
+        public string Warning => A.Warning;
         private static string F(double v, string fmt = "0.00") => v.ToString(fmt, CultureInfo.InvariantCulture);
     }
 
@@ -49,7 +54,7 @@ internal sealed class RebarChoiceDialog : Window
         Func<RebarZoneInfo, Task> clear)
     {
         _member = member; _zones = zones; _alts = alts; _apply = apply; _clear = clear;
-        DialogUi.Setup(this, "Chọn bố trí thép", 1180, 620);
+        DialogUi.Setup(this, "Chọn bố trí thép", 1450, 640);
 
         _grid.IsReadOnly = true;
         _grid.SelectionMode = DataGridSelectionMode.Single;
@@ -60,7 +65,25 @@ internal sealed class RebarChoiceDialog : Window
         _grid.Columns.Add(DialogUi.Text("Số hàng", nameof(AltRow.Layers), true, 55));
         _grid.Columns.Add(DialogUi.Text("Khe hở ≥ yêu cầu (mm)", nameof(AltRow.Clear), true, 130));
         _grid.Columns.Add(DialogUi.Text("Tỷ số", nameof(AltRow.Util), true, 50));
+        _grid.Columns.Add(DialogUi.Text("KL (kg)", nameof(AltRow.Weight), true, 65));
+        _grid.Columns.Add(DialogUi.Text("kg/m²", nameof(AltRow.PerM2), true, 55));
+        _grid.Columns.Add(DialogUi.Text("± hiện tại (kg)", nameof(AltRow.DCur), true, 85));
+        _grid.Columns.Add(DialogUi.Text("± tiết kiệm nhất (kg)", nameof(AltRow.DBest), true, 110));
+        _grid.Columns.Add(DialogUi.Text("Cảnh báo", nameof(AltRow.Warning), true, 300));
         _grid.Columns.Add(DialogUi.Text("Ghi chú", nameof(AltRow.Note), true, 220));
+        // màu cảnh báo: cam = vượt / dư thép, đỏ = thiếu / không đạt, xanh = tiết kiệm
+        _grid.LoadingRow += (s, e) =>
+        {
+            if (e.Row.Item is not AltRow r) return;
+            e.Row.Background = r.A.WarnLevel switch
+            {
+                1 => new SolidColorBrush(Color.FromRgb(255, 236, 204)),
+                2 => new SolidColorBrush(Color.FromRgb(246, 200, 200)),
+                3 => new SolidColorBrush(Color.FromRgb(214, 240, 214)),
+                _ => Brushes.White
+            };
+            e.Row.Foreground = r.A.WarnLevel == 2 ? Brushes.DarkRed : Brushes.Black;
+        };
         _grid.SelectionChanged += (s, e) => DrawSketch();
         _grid.MouseDoubleClick += async (s, e) => await ApplySelected();
         _lstZones.SelectionChanged += (s, e) => LoadAlternatives();
@@ -98,7 +121,8 @@ internal sealed class RebarChoiceDialog : Window
         var bottom = new StackPanel();
         bottom.Children.Add(DialogUi.Hint("Mọi phương án đều thoả As yêu cầu và khoảng hở TCVN 5574:2018 mục 10.3.5 (dầm: ≥ max(d; 25 mm) thép dưới, ≥ max(d; 30 mm) thép trên; "
                                           + "cột: ≥ max(d; 50 mm), tim ≤ 400 mm). Thép dầm là TỔNG số thanh tại tiết diện, gồm 2 thanh góc chạy suốt. "
-                                          + "Sau khi áp dụng chương trình thiết kế lại, kiểm tra khả năng chịu lực với thép chọn và báo \"KHÔNG ĐẠT\" nếu thiếu. Hoàn tác bằng Ctrl+Z."));
+                                          + "Sau khi áp dụng chương trình thiết kế lại, kiểm tra khả năng chịu lực với thép chọn và báo \"KHÔNG ĐẠT\" nếu thiếu. Hoàn tác bằng Ctrl+Z. "
+                                          + "KL = khối lượng thép của vùng (ước tính để so sánh; phương án sàn: thép sàn cả tầng); cam = vượt / dư thép (As/As,yc > 1,3), đỏ = thiếu, xanh = tiết kiệm."));
         var bs = DialogUi.Row(_btnApply, _btnClear, _btnClearAll, close);
         bs.HorizontalAlignment = HorizontalAlignment.Right;
         bottom.Children.Add(bs);
@@ -112,6 +136,15 @@ internal sealed class RebarChoiceDialog : Window
     /// <summary>Số phương án của vùng đang chọn.</summary>
     public int AlternativeCount => _grid.Items.Count;
     public int ZoneCount => _zoneList.Count;
+
+    /// <summary>Chọn vùng đầu tiên có tên vùng zone (tự kiểm tra); trả về false nếu không có.</summary>
+    public bool SelectZone(string zone)
+    {
+        int i = _zoneList.FindIndex(z => z.Zone == zone);
+        if (i < 0) return false;
+        _lstZones.SelectedIndex = i;
+        return true;
+    }
 
     /// <summary>Chọn vùng thứ i (tự kiểm tra).</summary>
     public void SelectZone(int i)
@@ -170,6 +203,7 @@ internal sealed class RebarChoiceDialog : Window
         _grid.ItemsSource = rows;
         int cur = rows.FindIndex(r => r.A.IsCurrent);
         _grid.SelectedIndex = rows.Count == 0 ? -1 : Math.Max(cur, 0);
+        _sketchNote.Foreground = Brushes.DimGray;
         _btnClear.IsEnabled = z.User;
         _btnApply.IsEnabled = rows.Count > 0;
         string unit = z.Kind is "Sàn" or "Móng" ? "cm²/m" : z.Kind == "Dầm" && z.Zone == RebarZones.Stirrup ? "kN (Q / Qu)" : "cm²";
@@ -293,10 +327,16 @@ internal sealed class RebarChoiceDialog : Window
             for (int i = 0; i <= n; i++) Dot(Math.Min(i * a.Spacing + 0.02, bw - 0.02), y, a.Dia, Brushes.Black);
             _sketchNote.Text = a.Text + $" – {n + 1} thanh/1 m, As = {DialogUi.F(a.AsProv * 1e4, "0.00")} cm²/m.";
         }
+        else if (a.Scheme != null)
+        {
+            _sketchNote.Text = a.Text + " – thép sàn cả tầng " + DialogUi.F(a.WeightKg, "0.0") + " kg (" + DialogUi.F(a.WeightPerM2, "0.00") + " kg/m²). "
+                               + (a.Warning.Length > 0 ? a.Warning : "Phương án tiết kiệm nhất.");
+        }
         else if (a.Spacing > 0)
         {
             _sketchNote.Text = "Đai " + a.Text + " (vùng gối / giữa nhịp) – " + a.Note;
         }
+        if (a.Warning.Length > 0 && a.Scheme == null) _sketchNote.Text += "\n⚠ " + a.Warning;
     }
 
     /// <summary>Thứ tự vị trí trong hàng: 2 góc trước, sau đó từ giữa ra (giống BeamDrawing).</summary>
@@ -316,6 +356,7 @@ internal sealed class RebarPrefsDialog : Window
 {
     private readonly TextBox _tDias, _tMaxPer, _tStirDia, _tSMin, _tSMax, _tStock, _tReuse;
     private readonly CheckBox _chkSame, _chkTwo, _chkStagger;
+    private readonly ComboBox _cbScheme;
     public RebarPreferences Result { get; private set; }
 
     public RebarPrefsDialog(RebarPreferences p)
@@ -335,6 +376,7 @@ internal sealed class RebarPrefsDialog : Window
         _chkSame = new CheckBox { Content = "Ưu tiên thép tăng cường / mũ gối cùng Ø thép chạy suốt", IsChecked = p.PreferSameDia };
         _chkTwo = new CheckBox { Content = "Cho phép đặt thép dầm 2 hàng", IsChecked = p.AllowTwoLayers };
         _chkStagger = new CheckBox { Content = "Nối so le (≤ 50% số thanh tại một tiết diện, tim nối cách ≥ 1,3·ll)", IsChecked = p.StaggerSplices };
+        _cbScheme = new ComboBox { Width = 200, ItemsSource = Enum.GetValues<SlabRebarScheme>().Select(RebarPreferences.SchemeName).ToList(), SelectedIndex = (int)p.SlabScheme };
         var root = new StackPanel { Margin = new Thickness(10) };
         StackPanel Line(string label, UIElement c) => DialogUi.Row(DialogUi.Label(label, 300), c);
         root.Children.Add(DialogUi.Label("Chọn thép", double.NaN, true));
@@ -345,6 +387,7 @@ internal sealed class RebarPrefsDialog : Window
         root.Children.Add(Line("Ø đai cố định (0 = tự chọn)", _tStirDia));
         root.Children.Add(Line("Bước đai nhỏ nhất, mm (0 = không giới hạn)", _tSMin));
         root.Children.Add(Line("Bước đai lớn nhất, mm (0 = theo cấu tạo)", _tSMax));
+        root.Children.Add(Line("Phương án thép sàn mặc định (từng ô chọn riêng được)", _cbScheme));
         root.Children.Add(DialogUi.Label("Gia công thép (shop drawing)", double.NaN, true));
         root.Children.Add(Line("Chiều dài cây thép thương phẩm, m", _tStock));
         root.Children.Add(Line("Đầu thừa tái sử dụng khi ≥ (m)", _tReuse));
@@ -375,7 +418,8 @@ internal sealed class RebarPrefsDialog : Window
             MaxStirrupSpacing = Math.Max(0, DialogUi.ParseNum(_tSMax.Text, 0)) / 1000.0,
             StockLength = Math.Clamp(DialogUi.ParseNum(_tStock.Text, 11.7), 3, 24),
             MinReuseOffcut = Math.Clamp(DialogUi.ParseNum(_tReuse.Text, 1.0), 0, 6),
-            StaggerSplices = _chkStagger.IsChecked == true
+            StaggerSplices = _chkStagger.IsChecked == true,
+            SlabScheme = _cbScheme.SelectedIndex >= 0 ? (SlabRebarScheme)_cbScheme.SelectedIndex : SlabRebarScheme.TopBarsBottomMesh
         };
     }
 }
