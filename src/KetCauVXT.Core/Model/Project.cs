@@ -111,6 +111,10 @@ public class Project
     public List<Footing> Footings { get; set; } = new();
     /// <summary>Lỗ sàn: cầu thang, giếng trời (ô không có sàn)</summary>
     public List<FloorOpening> Openings { get; set; } = new();
+    // ---- [Cầu thang bộ – Model/Stair.cs] ----
+    /// <summary>Cầu thang bộ khai báo (gắn lỗ sàn cầu thang hoặc độc lập); file cũ không có mục này → rỗng (dùng cầu thang mặc định theo lỗ sàn)</summary>
+    public List<Stair> Stairs { get; set; } = new();
+    // ---- [hết cầu thang] ----
     /// <summary>Thư viện loại tường và các đoạn tường khai báo theo vị trí</summary>
     public List<WallType> WallTypes { get; set; } = WallType.Defaults();
     public List<WallLine> Walls { get; set; } = new();

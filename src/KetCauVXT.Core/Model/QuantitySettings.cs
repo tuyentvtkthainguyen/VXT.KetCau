@@ -92,10 +92,23 @@ public class QuantitySettings
     public double LeanOffset { get; set; } = 0.10;
     public string LeanGrade { get; set; } = "B7.5";
 
-    /// <summary>Ước tính bê tông cầu thang từ lỗ sàn loại "Cầu thang" (thang 2 vế + chiếu nghỉ)</summary>
+    /// <summary>Tính cầu thang (Project.Stairs; lỗ sàn cầu thang chưa khai báo → cầu thang 2 vế mặc định)</summary>
     public bool IncludeStairs { get; set; } = true;
-    /// <summary>Chiều dày bản thang, chiếu nghỉ (m)</summary>
+    /// <summary>Chiều dày bản thang, chiếu nghỉ (m) của cầu thang mặc định (lỗ sàn chưa khai báo cầu thang)</summary>
     public double StairSlabThickness { get; set; } = 0.12;
+    // ---- [cầu thang: mặc định cho lỗ sàn chưa khai báo cầu thang – Model/Stair.cs] ----
+    /// <summary>Cấu tạo bậc mặc định: xây gạch (không tính bê tông) hoặc đổ BTCT</summary>
+    public StepConstruction StairSteps { get; set; } = StepConstruction.Brick;
+    /// <summary>Vật liệu ốp bậc mặc định</summary>
+    public StepFinish StairFinish { get; set; } = StepFinish.Granite;
+    /// <summary>Tên vật tư ốp bậc trong bảng phân tích vật tư (theo vật liệu)</summary>
+    public string GraniteName { get; set; } = "Đá granite ốp bậc";
+    public string WoodName { get; set; } = "Gỗ ốp bậc";
+    public string StairTileName { get; set; } = "Gạch ốp bậc";
+    /// <summary>Định mức xây bậc thang gạch (viên/m³, vữa m³/m³) – 1776 AE.6x xây bậc cầu thang ≈ 550 viên, 0,29 m³ vữa</summary>
+    public double StepBricks { get; set; } = 550;
+    public double StepMortar { get; set; } = 0.29;
+    // ---- [hết cầu thang] ----
 
     /// <summary>Ước tính lanh tô trên lỗ cửa của tường</summary>
     public bool IncludeLintels { get; set; } = true;

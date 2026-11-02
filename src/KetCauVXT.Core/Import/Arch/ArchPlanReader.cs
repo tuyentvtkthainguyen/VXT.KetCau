@@ -9,7 +9,9 @@ namespace KetCauVXT.Import.Arch;
 /// Quy ước nhận dạng (sửa được trong ArchImportOptions):
 /// <list type="bullet">
 /// <item>Tường: các nét trên lớp tường; 2 nét song song cách nhau 80–450 mm → tường có chiều dày bằng khoảng cách; khe hở ≤ 1,6 m giữa
-///   hai đoạn tường thẳng hàng coi là lỗ cửa.</item>
+///   hai đoạn tường thẳng hàng coi là lỗ cửa. Tường xiên (góc bất kỳ): ghép từng nhóm nét cùng phương (lệch ≤ 1°) như tường song song trục.
+///   Tường cong: 2 cung tròn đồng tâm (ARC, cung lồi của đa tuyến, CIRCLE) có bán kính chênh 80–450 mm → tường cong (mỗi đoạn ≤ 180°).</item>
+/// <item>Cột: đa tuyến kín trên lớp cột (chữ nhật xoay → cột có góc xoay); hình tròn → cột vuông cùng diện tích (cạnh = D·√π/2).</item>
 /// <item>Trục: nét trên lớp trục hoặc kiểu nét CENTER/DASHDOT; tên trục lấy chữ (hoặc thuộc tính block) gần đầu trục.
 ///   Không có trục → tự lập trục theo tim tường chính.</item>
 /// <item>Nhiều mặt bằng trên một bản vẽ: tách theo cụm tường; tên tầng đọc từ chữ "MẶT BẰNG TẦNG …" gần hình.
@@ -38,6 +40,9 @@ public static class ArchPlanReader
             string fn = Path.GetFileName(f);
             d.Warnings.AddRange(dxf.Warnings.Select(w => fn + ": " + w));
             d.Info.Add($"{fn}: {dxf.Entities.Count} thực thể (+{dxf.FillEntities.Count} miền tô), $INSUNITS = {dxf.InsUnits} → ×{dxf.Scale.ToString(CultureInfo.InvariantCulture)} (đơn vị bản vẽ → m)");
+            int nEl = dxf.Entities.Count(e => e.SourceType == "ELLIPSE"), nSp = dxf.Entities.Count(e => e.SourceType == "SPLINE");
+            if (nEl + nSp > 0)
+                d.Info.Add($"{fn}: đọc {nEl} ELLIPSE, {nSp} SPLINE – đã chia thành đa tuyến (dùng được làm biên sàn, lỗ sàn, cột, tường).");
             var (ents, fills) = VisibleEntities(dxf, o, d, fn);
             var tmp = new ArchDrawing();
             var plans = SplitPlans(ents, fills, o, lc, tmp, Path.GetFileNameWithoutExtension(f), files.Count == 1);
@@ -288,45 +293,115 @@ public static class ArchPlanReader
         // tường vẽ bằng 1 đa tuyến có bề rộng (bề rộng = chiều dày tường)
         bool Wide(DxfEntity e) => e.Type == DxfEntityType.Polyline && e.Width >= o.MinWallThickness - 1e-6 && e.Width <= o.MaxWallThickness + 1e-6;
         var wideWalls = new List<ArchWall>();
+        var special = new List<ArchWall>();   // tường xiên / cong (đã ghép, không qua MergeWalls trục giao)
+        int wideSpecial = 0;
         foreach (var e in ents.Where(e => e.Type != DxfEntityType.Text && Is(e, CadCategory.Tuong) && Wide(e)))
-            foreach (var s in Segments(new[] { e }).Where(s => s.Length >= 0.05 && InBox((s.Ax + s.Bx) / 2, (s.Ay + s.By) / 2)))
+        {
+            double t = Math.Round(e.Width, 3);
+            foreach (var ap in ArcPieces(e))
+                foreach (var cw in CurvedWalls(ap.Cx, ap.Cy, ap.R, ap.A0, ap.Sw, t, 0, e.Layer))
+                    if (InBox((cw.Ax + cw.Bx) / 2, (cw.Ay + cw.By) / 2, 1.0)) { special.Add(cw); wideSpecial++; }
+            foreach (var s in StraightSegments(new[] { e }).Where(s => s.Length >= 0.05 && InBox((s.Ax + s.Bx) / 2, (s.Ay + s.By) / 2)))
             {
-                double t = Math.Round(e.Width, 3);
-                if (s.IsAlongX(0.01)) wideWalls.Add(new ArchWall { Ax = Math.Min(s.Ax, s.Bx), Ay = (s.Ay + s.By) / 2, Bx = Math.Max(s.Ax, s.Bx), By = (s.Ay + s.By) / 2, Thickness = t, Layer = e.Layer });
-                else if (s.IsAlongY(0.01)) wideWalls.Add(new ArchWall { Ax = (s.Ax + s.Bx) / 2, Ay = Math.Min(s.Ay, s.By), Bx = (s.Ax + s.Bx) / 2, By = Math.Max(s.Ay, s.By), Thickness = t, Layer = e.Layer });
+                double ang = Math.Abs(Math.Atan2(s.By - s.Ay, s.Bx - s.Ax) * 180 / Math.PI) % 180;
+                if (s.IsAlongX(0.01) || ang < 1 || ang > 179) wideWalls.Add(new ArchWall { Ax = Math.Min(s.Ax, s.Bx), Ay = (s.Ay + s.By) / 2, Bx = Math.Max(s.Ax, s.Bx), By = (s.Ay + s.By) / 2, Thickness = t, Layer = e.Layer });
+                else if (s.IsAlongY(0.01) || Math.Abs(ang - 90) < 1) wideWalls.Add(new ArchWall { Ax = (s.Ax + s.Bx) / 2, Ay = Math.Min(s.Ay, s.By), Bx = (s.Ax + s.Bx) / 2, By = Math.Max(s.Ay, s.By), Thickness = t, Layer = e.Layer });
+                else if (s.Length >= 0.3) { special.Add(new ArchWall { Ax = s.Ax, Ay = s.Ay, Bx = s.Bx, By = s.By, Thickness = t, Layer = e.Layer }); wideSpecial++; }
             }
-        if (wideWalls.Count > 0) plan.Notes.Add($"{wideWalls.Count} đoạn tường vẽ bằng đa tuyến có bề rộng – lấy bề rộng nét làm chiều dày tường.");
-        var wallSegs = Segments(ents.Where(e => e.Type != DxfEntityType.Text && Is(e, CadCategory.Tuong) && !Wide(e)))
+        }
+        if (wideWalls.Count + wideSpecial > 0) plan.Notes.Add($"{wideWalls.Count + wideSpecial} đoạn tường vẽ bằng đa tuyến có bề rộng – lấy bề rộng nét làm chiều dày tường"
+                                                             + (wideSpecial > 0 ? $" ({wideSpecial} đoạn xiên/cong)." : "."));
+        var wallEntsN = ents.Where(e => e.Type != DxfEntityType.Text && Is(e, CadCategory.Tuong) && !Wide(e)).ToList();
+        var wallSegs = StraightSegments(wallEntsN)
             .Where(s => s.Length >= 0.05 && InBox((s.Ax + s.Bx) / 2, (s.Ay + s.By) / 2)).ToList();
-        int diag = 0;
         var hx = new List<(double c, double a, double b)>();   // nét ngang: y, x đầu, x cuối
         var vy = new List<(double c, double a, double b)>();   // nét đứng: x, y đầu, y cuối
+        var dg = new List<(double ang, Seg2 s)>();              // nét xiên: góc (độ, 1…179)
         foreach (var s in wallSegs)
         {
             double dx = s.Bx - s.Ax, dy = s.By - s.Ay;
-            double ang = Math.Abs(Math.Atan2(dy, dx) * 180 / Math.PI) % 180;
+            double ang = Math.Atan2(dy, dx) * 180 / Math.PI % 180;
+            if (ang < 0) ang += 180;
             if (ang < 1 || ang > 179) hx.Add(((s.Ay + s.By) / 2, Math.Min(s.Ax, s.Bx), Math.Max(s.Ax, s.Bx)));
             else if (Math.Abs(ang - 90) < 1) vy.Add(((s.Ax + s.Bx) / 2, Math.Min(s.Ay, s.By), Math.Max(s.Ay, s.By)));
-            else if (s.Length > 0.5) diag++;
+            else if (s.Length >= 0.3) dg.Add((ang, s));
         }
-        if (diag > 0) plan.Notes.Add($"{diag} nét tường xiên/cong – chưa hỗ trợ, bỏ qua (thêm dầm thủ công nếu cần).");
         var walls = new List<ArchWall>();
         walls.AddRange(PairWalls(hx, true, o));
         walls.AddRange(PairWalls(vy, false, o));
-        bool hadPairs = walls.Count > 0;
+        int orthoPairs = walls.Count;
+
+        // tường xiên: nhóm nét cùng phương, ghép cặp trong hệ toạ độ quay theo phương nét
+        var diagSingles = new List<ArchWall>();
+        int diagUnpaired = 0, diagPairs = 0;
+        foreach (var grp in GroupByAngle(dg, 1.0))
+        {
+            double th = grp.Average(q => q.ang) * Math.PI / 180, ux = Math.Cos(th), uy = Math.Sin(th);
+            var loc = grp.Select(q =>
+            {
+                double a1 = q.s.Ax * ux + q.s.Ay * uy, a2 = q.s.Bx * ux + q.s.By * uy;
+                double c = ((q.s.Ax + q.s.Bx) / 2) * -uy + ((q.s.Ay + q.s.By) / 2) * ux;
+                return (c, a: Math.Min(a1, a2), b: Math.Max(a1, a2));
+            }).ToList();
+            var paired = PairWalls(loc, true, o).ToList();
+            if (paired.Count == 0)
+            {
+                diagUnpaired += loc.Count;
+                foreach (var (c, a, b) in loc.Where(l => l.b - l.a >= 1.0))
+                    diagSingles.Add(ToWorld(new ArchWall { Ax = a, Ay = c, Bx = b, By = c, Thickness = o.DefaultWallThickness }, ux, uy));
+                continue;
+            }
+            diagPairs += paired.Count;
+            foreach (var w in MergeWalls(paired, o)) special.Add(ToWorld(w, ux, uy));
+        }
+
+        // tường cong: cung tròn đồng tâm
+        var arcs = new List<ArcPiece>();
+        foreach (var e in wallEntsN) arcs.AddRange(ArcPieces(e));
+        foreach (var e in ents.Where(e => e.Type == DxfEntityType.Circle && Is(e, CadCategory.Tuong) && e.Radius > 0.05 && e.Points.Count > 0))
+            arcs.Add(new ArcPiece(e.Points[0].X, e.Points[0].Y, e.Radius, 0, 2 * Math.PI, e.Layer));
+        arcs = arcs.Where(a => InBox(a.Cx + a.R * Math.Cos(a.A0 + a.Sw / 2), a.Cy + a.R * Math.Sin(a.A0 + a.Sw / 2), 1.0)).ToList();
+        var curved = PairArcs(arcs, o.MinWallThickness, o.MaxWallThickness, out var arcUnpaired);
+        special.AddRange(curved);
+
+        bool hadPairs = orthoPairs + diagPairs + curved.Count > 0;
         walls.AddRange(wideWalls);
-        if (!hadPairs && wallSegs.Count > 0)
+        if (!hadPairs && (wallSegs.Count > 0 || arcs.Count > 0))
         {
             // bản vẽ tường 1 nét
             foreach (var (c, a, b) in hx.Where(t => t.b - t.a >= 1.0)) walls.Add(new ArchWall { Ax = a, Ay = c, Bx = b, By = c, Thickness = o.DefaultWallThickness });
             foreach (var (c, a, b) in vy.Where(t => t.b - t.a >= 1.0)) walls.Add(new ArchWall { Ax = c, Ay = a, Bx = c, By = b, Thickness = o.DefaultWallThickness });
+            special.AddRange(diagSingles);
+            foreach (var ap in arcUnpaired.Where(a => a.R * a.Sw >= 1.0))
+                special.AddRange(CurvedWalls(ap.Cx, ap.Cy, ap.R, ap.A0, ap.Sw, o.DefaultWallThickness, 0, ap.Layer));
             plan.Notes.Add($"Tường vẽ 1 nét – lấy chiều dày {o.DefaultWallThickness * 1000:0} mm.");
+            diagUnpaired = 0; arcUnpaired.Clear();
         }
         walls = MergeWalls(walls, o).Where(w => w.Length >= o.MinWallLength).ToList();
+        walls.AddRange(special.Where(w => w.Length >= o.MinWallLength));
+        int nDiag = walls.Count(w => w.IsDiagonal), nCurved = walls.Count(w => w.IsCurved);
+        if (nDiag > 0)
+            plan.Notes.Add($"{nDiag} đoạn tường xiên (góc {string.Join(", ", walls.Where(w => w.IsDiagonal).Select(w => w.AngleDeg.ToString("0.#", CultureInfo.InvariantCulture) + "°").Distinct().Take(6))}) – "
+                           + "nhận từ nét song song theo phương bất kỳ; khi triển khai sẽ đặt dầm xiên đỡ tường.");
+        if (nCurved > 0)
+            plan.Notes.Add($"{nCurved} đoạn tường cong (R = {string.Join(", ", walls.Where(w => w.IsCurved).Select(w => w.Radius.ToString("0.00", CultureInfo.InvariantCulture)).Distinct().Take(6))} m) – "
+                           + "nhận từ cung tròn đồng tâm; khi triển khai sẽ đặt dầm cong đỡ tường, tải tường tính theo chiều dài cung.");
+        if (diagUnpaired + arcUnpaired.Count > 0)
+            plan.Notes.Add($"{diagUnpaired} nét xiên và {arcUnpaired.Count} cung trên layer tường không ghép được thành tường (không có nét song song/đồng tâm cách 80–450 mm) – bỏ qua.");
 
         // ---- cột kiến trúc ----
+        int nRot = 0, nRound = 0;
         foreach (var e in ents.Concat(fills).Where(e => e.Type == DxfEntityType.Polyline && e.Closed && Is(e, CadCategory.Cot)))
         {
+            // chữ nhật xoay một góc → cột có góc xoay (kích thước theo trục riêng của cột)
+            if (RotatedRect(e.Points, out double rcx, out double rcy, out double rb, out double rh, out double rang))
+            {
+                if (rb < 0.12 || rh < 0.12 || rb > 1.0 || rh > 1.0 || !InBox(rcx, rcy)) continue;
+                if (plan.Columns.Any(c => Math.Abs(c.X - rcx) < 0.05 && Math.Abs(c.Y - rcy) < 0.05)) continue;
+                plan.Columns.Add(new ArchColumn { X = rcx, Y = rcy, Bx = Math.Round(rb, 3), By = Math.Round(rh, 3), Angle = Math.Round(rang, 2) });
+                nRot++;
+                continue;
+            }
             double x0 = e.Points.Min(p => p.X), x1 = e.Points.Max(p => p.X), y0 = e.Points.Min(p => p.Y), y1 = e.Points.Max(p => p.Y);
             double w = x1 - x0, h = y1 - y0;
             if (w < 0.12 || h < 0.12 || w > 1.0 || h > 1.0) continue;
@@ -335,6 +410,24 @@ public static class ArchPlanReader
             if (plan.Columns.Any(c => Math.Abs(c.X - cx) < 0.05 && Math.Abs(c.Y - cy) < 0.05)) continue;
             plan.Columns.Add(new ArchColumn { X = cx, Y = cy, Bx = Math.Round(w, 3), By = Math.Round(h, 3) });
         }
+        // cột tròn (CIRCLE trên layer cột): quy về cột vuông cùng diện tích, cạnh a = D·√π/2
+        foreach (var e in ents.Concat(fills).Where(e => e.Type == DxfEntityType.Circle && Is(e, CadCategory.Cot) && e.Points.Count > 0))
+        {
+            double dia = 2 * e.Radius;
+            if (dia < 0.12 || dia > 1.0) continue;
+            var (cx, cy) = e.Points[0];
+            if (!InBox(cx, cy)) continue;
+            if (plan.Columns.Any(c => Math.Abs(c.X - cx) < 0.05 && Math.Abs(c.Y - cy) < 0.05)) continue;
+            double side = Math.Round(RoundColumnSide(dia), 3);
+            plan.Columns.Add(new ArchColumn { X = cx, Y = cy, Bx = side, By = side, Diameter = Math.Round(dia, 3) });
+            nRound++;
+        }
+        if (nRot > 0)
+            plan.Notes.Add($"{nRot} cột xoay (góc {string.Join(", ", plan.Columns.Where(c => Math.Abs(c.Angle) > 1e-9).Select(c => c.Angle.ToString("0.#", CultureInfo.InvariantCulture) + "°").Distinct().Take(6))}) – góc xoay được đưa vào tiết diện cột khi triển khai.");
+        if (nRound > 0)
+            plan.Notes.Add($"{nRound} cột tròn D = {string.Join(", ", plan.Columns.Where(c => c.Diameter > 0).Select(c => (c.Diameter * 1000).ToString("0", CultureInfo.InvariantCulture)).Distinct().Take(6))} mm – quy về cột vuông cùng diện tích (cạnh = D·√π/2 ≈ 0,886·D).");
+        int curvy = ents.Count(e => e.SourceType is "ELLIPSE" or "SPLINE");
+        if (curvy > 0) plan.Notes.Add($"{curvy} đường ELLIPSE/SPLINE đã chia thành đa tuyến (biên kín trên layer sàn/cột được dùng như đa tuyến kín).");
 
         // ---- trục ----
         var texts = ents.Where(e => e.Type == DxfEntityType.Text).ToList();
@@ -371,7 +464,15 @@ public static class ArchPlanReader
             ArchWall best = null; double bd = double.MaxValue;
             foreach (var w in walls)
             {
-                var (t, dist) = ImportGeometry.ProjectPoint(new Seg2(w.Ax, w.Ay, w.Bx, w.By), op.X, op.Y);
+                double t, dist;
+                if (w.IsCurved)
+                {
+                    var arc = CurvedBeam.Arc(new Vec3(w.Ax, w.Ay, 0), new Vec3(w.Bx, w.By, 0), w.Sagitta);
+                    if (arc == null) continue;
+                    t = arc.ParamOf(op.X, op.Y, out dist);
+                    if (double.IsNaN(t)) continue;
+                }
+                else (t, dist) = ImportGeometry.ProjectPoint(new Seg2(w.Ax, w.Ay, w.Bx, w.By), op.X, op.Y);
                 if (t < -0.02 || t > 1.02 || dist > w.Thickness / 2 + 0.25) continue;
                 if (dist < bd) { bd = dist; best = w; }
             }
@@ -500,7 +601,8 @@ public static class ArchPlanReader
     private static bool InGap(ArchWall w, double x, double y)
     {
         if (!GapStore.TryGetValue(w, out var gaps)) return false;
-        double s = w.AlongX ? x : y;
+        if (w.IsCurved) return false;
+        double s = w.AlongX ? x : w.AlongY ? y : (x * (w.Bx - w.Ax) + y * (w.By - w.Ay)) / Math.Max(w.Chord, 1e-9);   // tường xiên: toạ độ dọc phương tường
         return gaps.Any(g => s >= g.Item1 - 0.1 && s <= g.Item2 + 0.1);
     }
 
@@ -648,9 +750,11 @@ public static class ArchPlanReader
         if (nx < 1 || ny < 1) return new List<(double X, double Y)>();
         var inside = new bool[nx, ny];
         bool HitX(double cx, double cy, int sgn) => walls.Any(w => w.AlongY && (sgn > 0 ? w.Ax > cx : w.Ax < cx) && cy >= Math.Min(w.Ay, w.By) - 0.02 && cy <= Math.Max(w.Ay, w.By) + 0.02)
-                                                  || cols.Any(c => (sgn > 0 ? c.X > cx : c.X < cx) && Math.Abs(c.Y - cy) <= c.By / 2);
+                                                  || cols.Any(c => (sgn > 0 ? c.X > cx : c.X < cx) && Math.Abs(c.Y - cy) <= c.By / 2)
+                                                  || walls.Any(w => DiagRayHit(w, cx, cy, sgn, true));
         bool HitY(double cx, double cy, int sgn) => walls.Any(w => w.AlongX && (sgn > 0 ? w.Ay > cy : w.Ay < cy) && cx >= Math.Min(w.Ax, w.Bx) - 0.02 && cx <= Math.Max(w.Ax, w.Bx) + 0.02)
-                                                  || cols.Any(c => (sgn > 0 ? c.Y > cy : c.Y < cy) && Math.Abs(c.X - cx) <= c.Bx / 2);
+                                                  || cols.Any(c => (sgn > 0 ? c.Y > cy : c.Y < cy) && Math.Abs(c.X - cx) <= c.Bx / 2)
+                                                  || walls.Any(w => DiagRayHit(w, cx, cy, sgn, false));
         for (int i = 0; i < nx; i++)
             for (int j = 0; j < ny; j++)
             {
@@ -852,6 +956,8 @@ public static class ArchPlanReader
         d.Info.Add($"Nhận diện {plans.Count} mặt bằng: " + string.Join("; ", plans.Select(p => $"[{(p.IsRoofPlan ? "Mái" : p.IsTum ? "Tum" : "T" + p.FloorNo)}] {p.Title}")));
         foreach (var p in plans)
             d.Info.Add($"  {p.Title}: {p.Walls.Count} đoạn tường ({p.Walls.Sum(w => w.Length):0.0} m), {p.Grids.Count} trục, {p.Columns.Count} cột KT, {p.Rooms.Count} phòng, {p.Openings.Count} cửa, {p.Zones.Count} vùng đặc biệt"
+                       + (p.Walls.Any(w => w.IsDiagonal) ? $" (gồm {p.Walls.Count(w => w.IsDiagonal)} tường xiên)" : "") + (p.Walls.Any(w => w.IsCurved) ? $" (gồm {p.Walls.Count(w => w.IsCurved)} tường cong)" : "")
+                       + (p.Columns.Any(c => Math.Abs(c.Angle) > 1e-9) ? $", {p.Columns.Count(c => Math.Abs(c.Angle) > 1e-9)} cột xoay" : "") + (p.Columns.Any(c => c.Diameter > 0) ? $", {p.Columns.Count(c => c.Diameter > 0)} cột tròn" : "")
                        + (p.Beams.Count > 0 ? $", {p.Beams.Count} dầm vẽ sẵn" : "") + (p.SlabRegions.Count > 0 ? $", {p.SlabRegions.Count(r => !r.IsOpening)} vùng sàn + {p.SlabRegions.Count(r => r.IsOpening)} lỗ sàn vẽ sẵn" : ""));
     }
 
@@ -988,6 +1094,7 @@ public static class ArchPlanReader
         }
     }
 
+@@HELPERS@@
     private static double SegDist(Seg2 a, Seg2 b)
     {
         if (ImportGeometry.Intersect(a, b, out _, out _, 0)) return 0;
