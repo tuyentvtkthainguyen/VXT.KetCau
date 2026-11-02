@@ -4,7 +4,13 @@ namespace KetCauVXT.Loads;
 
 /// <summary>Dồn tải sàn (trọng lượng bản thân + tải phân bố trên sàn) về các dầm biên ô sàn.
 /// Ô chữ nhật: phân tải theo đường phân giác 45° (hình thang trên cạnh dài, tam giác trên cạnh ngắn) –
-/// giống cách ETABS phân tải cho sàn kiểu membrane. Ô đa giác khác: phân đều theo chu vi.</summary>
+/// giống cách ETABS phân tải cho sàn kiểu membrane. Ô đa giác khác: phân đều theo chu vi.
+/// <para>Dầm cong trên biên ô sàn (gần đúng, thiên về đơn giản): đa giác ô sàn vẫn lấy theo DÂY CUNG (các nút đầu dầm).
+/// Tải dồn lên đoạn dây cung tính như dầm thẳng, rồi rải lên dầm cong theo cùng vị trí tương đối nhưng nhân hệ số
+/// c/L (dây cung / chiều dài cung) để tổng tải không đổi. Nếu cung vồng RA NGOÀI ô sàn và vùng viên phân giữa cung – dây cung
+/// không thuộc ô sàn nào khác, tải của viên phân (diện tích R²/2·(φ − sin φ)) được cộng thêm lên dầm cong, phân bố theo
+/// bề rộng viên phân (lớn nhất giữa nhịp, bằng 0 ở hai đầu). Cung vồng vào trong ô sàn: giữ diện tích đa giác dây cung
+/// (thừa một viên phân – thiên về an toàn).</para></summary>
 public static class SlabLoadDistributor
 {
     public const string Source = "SLAB";
@@ -71,15 +77,19 @@ public static class SlabLoadDistributor
                     covered += t1 - t0;
                     var ts = brk.Where(t => t > t0 + 1e-6 && t < t1 - 1e-6).Append(t0).Append(t1).Distinct().ToList();
                     var rels = ts.Select(t => ((t - tI) / (tJ - tI), Trib(t))).OrderBy(x => x.Item1).ToList();
+                    // dầm cong: tải theo dây cung rải lên cung với hệ số c/L (bảo toàn tổng tải)
+                    var arc = f.IsCurved ? CurvedBeam.Arc(p, f) : null;
+                    double kArc = arc != null ? arc.Chord / arc.Length : 1.0;
                     foreach (var kv in qByPattern)
                     {
                         p.FrameLoads.Add(new FrameLoad
                         {
                             Element = f.Id, Pattern = kv.Key, Dir = LoadDir.Gravity, Source = Source,
                             Note = $"Sàn {slab.Label}",
-                            Points = rels.Select(r => new[] { r.Item1, r.Item2 * kv.Value }).ToList()
+                            Points = rels.Select(r => new[] { r.Item1, r.Item2 * kv.Value * kArc }).ToList()
                         });
                     }
+                    if (arc != null) AddSegmentLoad(p, slab, f, arc, qByPattern);
                 }
                 if (covered < le - 0.02)
                 {
@@ -105,6 +115,31 @@ public static class SlabLoadDistributor
             }
         }
         return warn;
+    }
+
+    /// <summary>Cung vồng ra ngoài ô sàn (điểm giữa cung không thuộc ô sàn nào của tầng): cộng tải viên phân giữa cung và dây cung
+    /// lên dầm cong, cường độ tỷ lệ với bề rộng viên phân R·(cos α − cos φ/2), chuẩn hoá để ∫w·ds = R²/2·(φ − sin φ).</summary>
+    private static void AddSegmentLoad(Project p, Slab slab, FrameElement f, ArcGeometry arc, Dictionary<string, double> qByPattern)
+    {
+        var mid = arc.Mid;
+        if (ModelEdit.SlabAt(p, slab.Story, mid.X, mid.Y) != null) return;   // cung vồng vào trong ô (hoặc vào ô sàn khác)
+        double phi = arc.Angle, R = arc.Radius;
+        double area = R * R / 2 * (phi - Math.Sin(phi));
+        if (area < 1e-6) return;
+        const int n = 8;
+        var w = new double[n + 1];
+        for (int k = 0; k <= n; k++) w[k] = R * (Math.Cos(phi * ((double)k / n - 0.5)) - Math.Cos(phi / 2));
+        double integ = 0;
+        for (int k = 0; k < n; k++) integ += (w[k] + w[k + 1]) / 2 * arc.Length / n;
+        if (integ < 1e-12) return;
+        double scale = area / integ;
+        foreach (var kv in qByPattern)
+            p.FrameLoads.Add(new FrameLoad
+            {
+                Element = f.Id, Pattern = kv.Key, Dir = LoadDir.Gravity, Source = Source,
+                Note = $"Sàn {slab.Label} – viên phân ngoài dây cung ({area:0.00} m²)",
+                Points = Enumerable.Range(0, n + 1).Select(k => new[] { (double)k / n, w[k] * scale * kv.Value }).ToList()
+            });
     }
 
     private static bool OnSegment(Vec3 a, Vec3 u, double le, Vec3 p, out double t)

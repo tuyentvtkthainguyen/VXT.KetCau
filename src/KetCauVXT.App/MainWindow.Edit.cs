@@ -16,7 +16,7 @@ namespace KetCauVXT.App;
 // =====================================================================
 public partial class MainWindow
 {
-    private enum PlanEditMode { Select, AddSlab, Balcony, Stair, Void, WC, Delete, AddBeam, AddWall, AssignWall, AssignBuildUp }
+    private enum PlanEditMode { Select, AddSlab, Balcony, Stair, Void, WC, Delete, AddBeam, AddWall, AssignWall, AssignBuildUp, AddCurvedBeam }
 
     private PlanEditMode _mode = PlanEditMode.Select;
 
@@ -26,7 +26,7 @@ public partial class MainWindow
     private Point? _lastMouse;
     private string _editComboSig = "";
 
-    private bool IsLineMode => _mode == PlanEditMode.AddBeam || _mode == PlanEditMode.AddWall;
+    private bool IsLineMode => _mode == PlanEditMode.AddBeam || _mode == PlanEditMode.AddWall || _mode == PlanEditMode.AddCurvedBeam;
 
     // hoàn tác: ảnh chụp JSON của dự án TRƯỚC mỗi thao tác sửa (tối đa 30); chỉ dùng cho đúng đối tượng Project đã chụp
     private const int MaxUndo = 30;
@@ -42,6 +42,7 @@ public partial class MainWindow
         PlanEditMode.WC => "Sàn vệ sinh: bấm vào ô sàn để đổi thành sàn vệ sinh; bấm lại ô WC để trả về phòng ở.",
         PlanEditMode.Delete => "Xoá: bấm vào tường, dầm, cột (hỏi lại), ô sàn hoặc lỗ sàn (cầu thang, giếng trời) để xoá.",
         PlanEditMode.AddBeam => "Thêm dầm: bấm điểm đầu rồi điểm cuối (bắt nút, giao trục, lưới 50 mm); bấm tiếp để vẽ nối; Esc để dừng.",
+        PlanEditMode.AddCurvedBeam => "Thêm dầm cong: bấm điểm đầu, điểm cuối rồi một điểm bất kỳ trên cung (định độ vồng); bấm tiếp để vẽ nối; Esc để dừng.",
         PlanEditMode.AddWall => "Thêm tường: bấm điểm đầu rồi điểm cuối (loại tường, chiều cao, diện tích cửa theo ô nhập); Esc để dừng.",
         PlanEditMode.AssignWall => "Gán tường: bấm vào dầm để đặt tường suốt chiều dài dầm (thay tường cũ trùng vị trí).",
         PlanEditMode.AssignBuildUp => "Gán cấu tạo sàn: bấm vào ô sàn để gán cấu tạo đang chọn ở ô 'Cấu tạo sàn'.",
@@ -52,7 +53,7 @@ public partial class MainWindow
     {
         if (sender is not FrameworkElement fe || fe.Tag is not string tag || !Enum.TryParse(tag, out PlanEditMode m)) return;
         _mode = m;
-        _lineStart = null;
+        _lineStart = null; _arcEnd = null;
         if (planHost != null) planHost.Cursor = m == PlanEditMode.Select ? null : Cursors.Cross;
         _hover = null;
         if (planOverlay != null) DrawHover();
@@ -116,13 +117,22 @@ public partial class MainWindow
             pEnd = SnapPlan(st, x, y);
             if (_lineStart == null || _lineStory != st)
             {
-                _lineStart = pEnd; _lineStory = st;
-                SetStatus($"Điểm đầu ({pEnd.X:0.00}; {pEnd.Y:0.00}) – bấm điểm cuối {(_mode == PlanEditMode.AddBeam ? "dầm" : "tường")} (Esc để huỷ).");
+                _lineStart = pEnd; _lineStory = st; _arcEnd = null;
+                SetStatus($"Điểm đầu ({pEnd.X:0.00}; {pEnd.Y:0.00}) – bấm điểm cuối {(_mode == PlanEditMode.AddWall ? "tường" : _mode == PlanEditMode.AddCurvedBeam ? "dầm cong" : "dầm")} (Esc để huỷ).");
                 DrawHover();
                 return;
             }
             pStart = _lineStart.Value;
-            if (Math.Abs(pStart.X - pEnd.X) < 1e-6 && Math.Abs(pStart.Y - pEnd.Y) < 1e-6) { SetStatus("Điểm cuối trùng điểm đầu – bấm điểm khác."); return; }
+            if (_mode == PlanEditMode.AddCurvedBeam && _arcEnd == null)
+            {
+                // dầm cong: bấm thứ hai = điểm cuối, chờ điểm thứ ba trên cung
+                if (Math.Abs(pStart.X - pEnd.X) < 1e-6 && Math.Abs(pStart.Y - pEnd.Y) < 1e-6) { SetStatus("Điểm cuối trùng điểm đầu – bấm điểm khác."); return; }
+                _arcEnd = pEnd;
+                SetStatus($"Điểm cuối ({pEnd.X:0.00}; {pEnd.Y:0.00}) – bấm một điểm trên cung để định độ vồng (Esc để huỷ).");
+                DrawHover();
+                return;
+            }
+            if (_mode != PlanEditMode.AddCurvedBeam && Math.Abs(pStart.X - pEnd.X) < 1e-6 && Math.Abs(pStart.Y - pEnd.Y) < 1e-6) { SetStatus("Điểm cuối trùng điểm đầu – bấm điểm khác."); return; }
         }
         string snap = Snapshot();
         EditResult r;
@@ -137,6 +147,15 @@ public partial class MainWindow
                     if (string.IsNullOrEmpty(sec)) { SetStatus("Chọn tiết diện dầm ở ô 'Tiết diện dầm' trước."); return; }
                     r = ModelEdit.AddBeam(_p, st, pStart.X, pStart.Y, pEnd.X, pEnd.Y, sec);
                     if (r.Ok) _lineStart = pEnd; // vẽ nối tiếp
+                    break;
+                }
+                case PlanEditMode.AddCurvedBeam:
+                {
+                    string sec = cbEditBeamSec.SelectedItem as string;
+                    if (string.IsNullOrEmpty(sec)) { SetStatus("Chọn tiết diện dầm ở ô 'Tiết diện dầm' trước."); return; }
+                    var pArcEnd = _arcEnd.Value;
+                    r = ModelEdit.AddCurvedBeam(_p, st, pStart, pArcEnd, pEnd, sec);
+                    if (r.Ok) { _lineStart = pArcEnd; _arcEnd = null; } // vẽ nối tiếp từ điểm cuối
                     break;
                 }
                 case PlanEditMode.AddWall:
@@ -281,7 +300,7 @@ public partial class MainWindow
         if (IsTextInputFocused()) return false; // để ô nhập / bảng tự xử lý
         if (esc && _lineStart != null)
         {
-            _lineStart = null;
+            _lineStart = null; _arcEnd = null;
             DrawHover();
             SetStatus(ModeHint(_mode));
             return true;
@@ -406,7 +425,7 @@ public partial class MainWindow
         _p.InvalidateIndex();
         _res = null; _design = null;
         _sel = null; _selSlab = null; _selOpening = null; _selFooting = 0; _selWall = null;
-        _lineStart = null;
+        _lineStart = null; _arcEnd = null;
         _hover = null;
         MarkDirty();
         LoadUiFromProject();
@@ -442,15 +461,21 @@ public partial class MainWindow
     {
         string st = CurrentStory;
         if (st == AllStories || _p.Stories.All(q => q.Name != st)) return;
-        if (_lineStart != null && _lineStory != st) _lineStart = null;
-        Brush br = _mode == PlanEditMode.AddBeam ? RubberBeam : RubberWall;
+        if (_lineStart != null && _lineStory != st) { _lineStart = null; _arcEnd = null; }
+        Brush br = _mode == PlanEditMode.AddWall ? RubberWall : RubberBeam;
         (double X, double Y)? cur = null;
         if (_lastMouse != null)
         {
             var (x, y) = S2W(_lastMouse.Value);
             cur = SnapPlan(st, x, y);
         }
-        if (_lineStart != null)
+        if (_lineStart != null && _mode == PlanEditMode.AddCurvedBeam && _arcEnd != null)
+        {
+            // dầm cong: cung qua điểm đầu, điểm cuối và vị trí chuột (MainWindow.CurvedBeam.cs)
+            DrawSnapMarker(st, _lineStart.Value, br, true);
+            DrawArcPreview(_lineStart.Value, _arcEnd.Value, cur, br);
+        }
+        else if (_lineStart != null)
         {
             var a = W2S(_lineStart.Value.X, _lineStart.Value.Y);
             DrawSnapMarker(st, _lineStart.Value, br, true);

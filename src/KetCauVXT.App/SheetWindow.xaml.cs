@@ -22,11 +22,13 @@ using PageContent = System.Windows.Documents.PageContent;
 namespace KetCauVXT.App;
 
 /// <summary>Cửa sổ dàn trang: danh sách tờ, trang giấy (kéo/đổi cỡ khung nhìn), bảng thêm khung nhìn,
-/// in (PrintDialog – có thể chọn "Microsoft Print to PDF"), xuất PDF/XPS và DXF từng tờ.</summary>
+/// in (PrintDialog – có thể chọn "Microsoft Print to PDF"), xuất PDF/XPS và DXF từng tờ.
+/// Phần dàn trang thủ công (đối tượng chú thích, chọn nhiều, bắt điểm, căn hàng, hoàn tác…) ở SheetWindow.Edit.cs.</summary>
 public partial class SheetWindow : Window
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private const string AllText = "(tất cả)";
+    private const string FitScaleText = "0 – vừa khung";
 
     private readonly Project _p;
     private readonly AnalysisResults _r;
@@ -37,8 +39,11 @@ public partial class SheetWindow : Window
     private readonly Dictionary<DxfWriter, List<DrawPrim>> _primCache = new();
 
     private Sheet _sheet;
+    /// <summary>Khung nhìn đang chọn (khi chỉ chọn đúng một khung nhìn).</summary>
     private SheetView _sel;
     private bool _loading;
+    /// <summary>Giữ nguyên thu phóng khi nạp lại tờ (hoàn tác/làm lại).</summary>
+    private bool _keepView;
 
     // hiển thị: điểm giấy (mm, y xuống) → màn hình: s = z·p + pan
     private double _zoom = 1, _panX = 20, _panY = 20;
@@ -47,7 +52,7 @@ public partial class SheetWindow : Window
 
     // phần tử trên trang
     private readonly Dictionary<SheetView, (DrawingHost Host, Shapes.Rectangle Outline)> _hosts = new();
-    private Shapes.Rectangle _paper, _selRect, _handle;
+    private Shapes.Rectangle _paper;
     private DrawingHost _tbHost;
     private static readonly Effect _glow = MakeGlow();
 
@@ -58,23 +63,21 @@ public partial class SheetWindow : Window
         return e;
     }
 
-    private enum DragMode { None, Move, Resize, Pan }
-    private DragMode _drag;
-    private Point _dragStart;
-    private double _ox, _oy, _ow, _oh, _opx, _opy;
-    private bool _dragMoved;
-
     public SheetWindow(Project p, AnalysisResults r, DesignSummary d, Action markDirty)
     {
         InitializeComponent();
         _p = p ?? throw new ArgumentNullException(nameof(p));
         _r = r; _d = d; _markDirty = markDirty;
         _p.Sheets ??= new List<Sheet>();
+        _p.TitleBlock ??= new TitleBlockInfo();
         _redrawTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
         _redrawTimer.Tick += (_, _) => { _redrawTimer.Stop(); RebuildPage(); };
 
         foreach (var k in SheetBuilder.PaletteKinds) cbKind.Items.Add(new ComboBoxItem { Content = SheetBuilder.KindName(k), Tag = k });
         cbKind.SelectedIndex = 0;
+        cbVScale.Items.Add(FitScaleText);
+        foreach (double sc in SheetLayoutMath.ScaleList) cbVScale.Items.Add(sc.ToString("0", Inv));
+        InitEditUi();
         if (_d == null)
         {
             txtHint.Text = "Chưa có kết quả \"Thiết kế BTCT\": chi tiết dầm, cột, móng và bảng thống kê thép sẽ trống. Chạy Phân tích + Thiết kế BTCT rồi mở lại cửa sổ này.";
@@ -86,7 +89,7 @@ public partial class SheetWindow : Window
             txtHint.Visibility = Visibility.Visible;
         }
         RefreshSheetList(_p.Sheets.Count > 0 ? 0 : -1);
-        SetStatus(_p.Sheets.Count == 0 ? "Chưa có tờ nào – bấm \"Tạo bộ bản vẽ mặc định\" hoặc \"Thêm\"." : $"{_p.Sheets.Count} tờ bản vẽ.");
+        SetStatus(_p.Sheets.Count == 0 ? "Chưa có tờ nào – bấm \"Tạo bộ bản vẽ mặc định\", \"Thêm\" hoặc \"Trang trắng\"." : $"{_p.Sheets.Count} tờ bản vẽ.");
     }
 
     // ==================================================================
@@ -115,7 +118,12 @@ public partial class SheetWindow : Window
     // ==================================================================
     // Danh sách tờ
     // ==================================================================
-    private static string SheetText(Sheet s) => $"{s.Number} – {s.Name}  [{s.Paper} {(s.Landscape ? "ngang" : "dọc")}, {s.Views.Count} hình]";
+    private static string SheetText(Sheet s)
+    {
+        string paper = s.Paper == Sheet.CustomPaper ? $"{F(s.PaperSize().W)}×{F(s.PaperSize().H)}" : $"{s.Paper} {(s.Landscape ? "ngang" : "dọc")}";
+        int n = s.Items?.Count ?? 0;
+        return $"{s.Number} – {s.Name}  [{paper}, {s.Views.Count} hình{(n > 0 ? $", {n} chú thích" : "")}]";
+    }
 
     private void RefreshSheetList(int select)
     {
@@ -124,7 +132,7 @@ public partial class SheetWindow : Window
         foreach (var s in _p.Sheets) lstSheets.Items.Add(SheetText(s));
         _loading = false;
         if (select >= 0 && select < _p.Sheets.Count) lstSheets.SelectedIndex = select;
-        else { _sheet = null; LoadSheetProps(); RebuildPage(); }
+        else { _sheet = null; ClearSelection(); LoadSheetProps(); RebuildPage(); }
     }
 
     private void UpdateSheetListText()
@@ -150,9 +158,12 @@ public partial class SheetWindow : Window
         int i = lstSheets.SelectedIndex;
         var s = i >= 0 && i < _p.Sheets.Count ? _p.Sheets[i] : null;
         if (ReferenceEquals(s, _sheet)) return;
+        if (_pending != null) FinishPending();
         _sheet = s;
-        _sel = null;
+        ClearSelection();
         LoadSheetProps();
+        if (_keepView) { RebuildPage(); return; }
+        _undoKey = null;
         _autoFit = true;
         RebuildPage();
         FitPage();
@@ -164,41 +175,131 @@ public partial class SheetWindow : Window
         var s = _sheet;
         txtNumber.Text = s?.Number ?? "";
         txtName.Text = s?.Name ?? "";
-        cbPaper.SelectedIndex = s == null ? -1 : Math.Max(0, Array.IndexOf(SheetBuilder.Papers, s.Paper));
+        cbPaper.SelectedIndex = s == null ? -1 : s.Paper == Sheet.CustomPaper ? SheetBuilder.Papers.Length : Math.Max(0, Array.IndexOf(SheetBuilder.Papers, s.Paper));
         cbOrient.SelectedIndex = s == null ? -1 : (s.Landscape ? 0 : 1);
+        bool custom = s != null && s.Paper == Sheet.CustomPaper;
+        rowPaperWH.IsEnabled = custom;
+        cbOrient.IsEnabled = !custom;
+        if (s != null) { var (pw, ph) = s.PaperSize(); txtPaperW.Text = F(pw); txtPaperH.Text = F(ph); }
+        else txtPaperW.Text = txtPaperH.Text = "";
+        txtMargins.Text = s == null ? "" : MarginText(s);
+        chkShowFrame.IsChecked = s?.ShowFrame ?? true;
+        chkShowTitle.IsChecked = s?.ShowTitleBlock ?? true;
         txtDesigner.Text = s?.Designer ?? "";
         txtChecker.Text = s?.Checker ?? "";
+        txtApprover.Text = s?.Approver ?? "";
         txtDate.Text = s?.Date ?? "";
+        txtRevision.Text = s?.Revision ?? "";
+        txtScaleNote.Text = s?.ScaleNote ?? "";
         _loading = false;
         RefreshViewList();
+    }
+
+    private static string MarginText(Sheet s)
+    {
+        if (s.MarginLeft < 0 && s.MarginRight < 0 && s.MarginTop < 0 && s.MarginBottom < 0) return "";
+        var (pw, ph) = s.PaperSize();
+        var (inner, _) = SheetBuilder.Frame(s);
+        return $"{F(inner.X1)}, {F(pw - inner.X2)}, {F(ph - inner.Y2)}, {F(inner.Y1)}";
     }
 
     private void SheetProp_Changed(object sender, RoutedEventArgs e)
     {
         if (_loading || _sheet == null) return;
+        Record("sheet:" + (sender as FrameworkElement)?.Name);
         var oldPaper = _sheet.PaperSize();
         _sheet.Number = txtNumber.Text;
         _sheet.Name = txtName.Text;
-        if (cbPaper.SelectedIndex >= 0) _sheet.Paper = SheetBuilder.Papers[cbPaper.SelectedIndex];
+        if (cbPaper.SelectedIndex >= 0)
+        {
+            if (cbPaper.SelectedIndex >= SheetBuilder.Papers.Length)
+            {
+                if (_sheet.Paper != Sheet.CustomPaper)
+                {
+                    var (cw, ch) = _sheet.PaperSize();
+                    if (_sheet.PaperW < 10 || _sheet.PaperH < 10) { _sheet.PaperW = cw; _sheet.PaperH = ch; }
+                    _sheet.Paper = Sheet.CustomPaper;
+                }
+            }
+            else _sheet.Paper = SheetBuilder.Papers[cbPaper.SelectedIndex];
+        }
         if (cbOrient.SelectedIndex >= 0) _sheet.Landscape = cbOrient.SelectedIndex == 0;
         _sheet.Designer = txtDesigner.Text;
         _sheet.Checker = txtChecker.Text;
+        _sheet.Approver = txtApprover.Text;
         _sheet.Date = txtDate.Text;
+        _sheet.Revision = txtRevision.Text;
+        _sheet.ScaleNote = txtScaleNote.Text;
         Dirty();
         UpdateSheetListText();
-        bool paperChanged = oldPaper != _sheet.PaperSize();
-        if (paperChanged)
-        {
-            // giữ khung nhìn trong giấy mới
-            var (pw, ph) = _sheet.PaperSize();
-            foreach (var v in _sheet.Views)
-            {
-                v.W = Math.Min(v.W, pw); v.H = Math.Min(v.H, ph);
-                v.X = Math.Clamp(v.X, 0, pw - v.W); v.Y = Math.Clamp(v.Y, 0, ph - v.H);
-            }
-            RebuildPage(); FitPage();
-        }
+        bool custom = _sheet.Paper == Sheet.CustomPaper;
+        rowPaperWH.IsEnabled = custom;
+        cbOrient.IsEnabled = !custom;
+        if (oldPaper != _sheet.PaperSize()) OnPaperChanged();
         else RebuildTitleBlock();
+    }
+
+    /// <summary>Khổ giấy đổi: giữ khung nhìn trong giấy mới, dựng lại trang.</summary>
+    private void OnPaperChanged()
+    {
+        var (pw, ph) = _sheet.PaperSize();
+        _loading = true;
+        txtPaperW.Text = F(pw); txtPaperH.Text = F(ph);
+        _loading = false;
+        foreach (var v in _sheet.Views)
+        {
+            v.W = Math.Min(v.W, pw); v.H = Math.Min(v.H, ph);
+            v.X = Math.Clamp(v.X, 0, Math.Max(0, pw - v.W)); v.Y = Math.Clamp(v.Y, 0, Math.Max(0, ph - v.H));
+        }
+        UpdateSheetListText();
+        RebuildPage(); FitPage();
+    }
+
+    /// <summary>Áp dụng khổ tự chọn W×H và lề (Enter hoặc rời ô).</summary>
+    private void ApplySheetDims()
+    {
+        if (_loading || _sheet == null) return;
+        bool changed = false;
+        var old = _sheet.PaperSize();
+        if (_sheet.Paper == Sheet.CustomPaper && TryNum(txtPaperW.Text, out double w) && TryNum(txtPaperH.Text, out double h) && w >= 20 && h >= 20
+            && (Math.Abs(w - _sheet.PaperW) > 1e-9 || Math.Abs(h - _sheet.PaperH) > 1e-9))
+        {
+            Record();
+            _sheet.PaperW = Math.Min(w, 5000); _sheet.PaperH = Math.Min(h, 5000);
+            changed = true;
+        }
+        var m = new[] { -1.0, -1.0, -1.0, -1.0 };
+        var parts = (txtMargins.Text ?? "").Split(new[] { ',', ';' }, StringSplitOptions.None);
+        if ((txtMargins.Text ?? "").Trim().Length > 0)
+            for (int i = 0; i < 4 && i < parts.Length; i++) if (TryNum(parts[i], out double mv) && mv >= 0) m[i] = mv;
+        if (m[0] != _sheet.MarginLeft || m[1] != _sheet.MarginRight || m[2] != _sheet.MarginTop || m[3] != _sheet.MarginBottom)
+        {
+            if (!changed) Record();
+            _sheet.MarginLeft = m[0]; _sheet.MarginRight = m[1]; _sheet.MarginTop = m[2]; _sheet.MarginBottom = m[3];
+            changed = true;
+        }
+        if (!changed) return;
+        Dirty();
+        if (old != _sheet.PaperSize()) OnPaperChanged();
+        else RebuildPage();
+        UpdateSheetListText();
+    }
+
+    private void SheetPropEnter_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) { ApplySheetDims(); e.Handled = true; }
+    }
+
+    private void SheetPropLost(object sender, RoutedEventArgs e) => ApplySheetDims();
+
+    private void SheetPropCheck_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loading || _sheet == null) return;
+        Record();
+        _sheet.ShowFrame = chkShowFrame.IsChecked == true;
+        _sheet.ShowTitleBlock = chkShowTitle.IsChecked == true;
+        Dirty();
+        RebuildPage();
     }
 
     private string NextNumber()
@@ -209,20 +310,39 @@ public partial class SheetWindow : Window
             var digits = new string((s.Number ?? "").SkipWhile(c => !char.IsDigit(c)).TakeWhile(char.IsDigit).ToArray());
             if (int.TryParse(digits, out int n)) max = Math.Max(max, n);
         }
-        return "KC-" + (max + 1).ToString("00", Inv);
+        string prefix = string.IsNullOrEmpty(_p.TitleBlock?.NumberPrefix) ? "KC-" : _p.TitleBlock.NumberPrefix;
+        return prefix + (max + 1).ToString("00", Inv);
     }
 
-    private void BtnAddSheet_Click(object sender, RoutedEventArgs e)
+    private void InsertSheet(Sheet s)
     {
-        var s = new Sheet
-        {
-            Number = NextNumber(), Name = "BẢN VẼ MỚI", Paper = _sheet?.Paper ?? "A3", Landscape = _sheet?.Landscape ?? true,
-            Designer = _p.Designer ?? "", Date = DateTime.Today.ToString("dd/MM/yyyy", Inv)
-        };
+        Record();
         int at = _sheet == null ? _p.Sheets.Count : _p.Sheets.IndexOf(_sheet) + 1;
         _p.Sheets.Insert(at, s);
         Dirty();
         RefreshSheetList(at);
+    }
+
+    private void BtnAddSheet_Click(object sender, RoutedEventArgs e)
+    {
+        InsertSheet(new Sheet
+        {
+            Number = NextNumber(), Name = "BẢN VẼ MỚI", Paper = _sheet?.Paper ?? "A3", Landscape = _sheet?.Landscape ?? true,
+            PaperW = _sheet?.PaperW ?? 0, PaperH = _sheet?.PaperH ?? 0,
+            Designer = _p.Designer ?? "", Date = DateTime.Today.ToString("dd/MM/yyyy", Inv)
+        });
+    }
+
+    private void BtnBlankSheet_Click(object sender, RoutedEventArgs e) => AddBlankSheet();
+
+    /// <summary>Thêm tờ trắng (không khung viền, không khung tên) sau tờ hiện tại và chọn nó.</summary>
+    internal Sheet AddBlankSheet()
+    {
+        var s = SheetBuilder.BlankSheet(_p, NextNumber(), _sheet?.Paper ?? "A3", _sheet?.Landscape ?? true);
+        if (_sheet != null) { s.PaperW = _sheet.PaperW; s.PaperH = _sheet.PaperH; }
+        InsertSheet(s);
+        SetStatus("Đã thêm trang trắng – dùng thanh công cụ để đặt chữ, đường, khung, ảnh, bảng, kích thước và khung nhìn.");
+        return s;
     }
 
     private void BtnDupSheet_Click(object sender, RoutedEventArgs e)
@@ -230,10 +350,7 @@ public partial class SheetWindow : Window
         if (_sheet == null) return;
         var s = SheetBuilder.Clone(_sheet);
         s.Number = NextNumber();
-        int at = _p.Sheets.IndexOf(_sheet) + 1;
-        _p.Sheets.Insert(at, s);
-        Dirty();
-        RefreshSheetList(at);
+        InsertSheet(s);
     }
 
     private void BtnDelSheet_Click(object sender, RoutedEventArgs e)
@@ -241,6 +358,7 @@ public partial class SheetWindow : Window
         var sel = SelectedSheets(true);
         if (sel.Count == 0) return;
         if (MessageBox.Show($"Xoá {sel.Count} tờ bản vẽ đã chọn?", Title, MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        Record();
         int i = _p.Sheets.IndexOf(sel[0]);
         foreach (var s in sel) _p.Sheets.Remove(s);
         _sheet = null;
@@ -253,16 +371,34 @@ public partial class SheetWindow : Window
         if (_sheet == null) return;
         int i = _p.Sheets.IndexOf(_sheet), j = i + d;
         if (i < 0 || j < 0 || j >= _p.Sheets.Count) return;
+        Record();
         (_p.Sheets[i], _p.Sheets[j]) = (_p.Sheets[j], _p.Sheets[i]);
         Dirty();
         var keep = _sheet;
         _sheet = null;
-        RefreshSheetList(j);
+        _keepView = true;
+        try { RefreshSheetList(j); }
+        finally { _keepView = false; }
         _sheet = keep;
     }
 
     private void BtnSheetUp_Click(object sender, RoutedEventArgs e) => MoveSheet(-1);
     private void BtnSheetDown_Click(object sender, RoutedEventArgs e) => MoveSheet(1);
+
+    private void BtnRenumber_Click(object sender, RoutedEventArgs e)
+    {
+        if (_p.Sheets.Count == 0) return;
+        Record();
+        string prefix = string.IsNullOrEmpty(_p.TitleBlock?.NumberPrefix) ? "KC-" : _p.TitleBlock.NumberPrefix;
+        SheetBuilder.Renumber(_p.Sheets, prefix);
+        Dirty();
+        int i = _sheet == null ? 0 : Math.Max(0, _p.Sheets.IndexOf(_sheet));
+        _sheet = null;
+        _keepView = true;
+        try { RefreshSheetList(i); }
+        finally { _keepView = false; }
+        SetStatus($"Đã đánh số lại {_p.Sheets.Count} tờ: {prefix}01 … {_p.Sheets[^1].Number}.");
+    }
 
     private void BtnDefaultSet_Click(object sender, RoutedEventArgs e)
     {
@@ -278,6 +414,7 @@ public partial class SheetWindow : Window
         {
             Mouse.OverrideCursor = Cursors.Wait;
             var set = SheetBuilder.DefaultSet(_p, _d, _r);
+            Record();
             if (replace) _p.Sheets.Clear();
             int first = _p.Sheets.Count;
             _p.Sheets.AddRange(set);
@@ -315,6 +452,7 @@ public partial class SheetWindow : Window
         double px = 1 / _zoom;
         foreach (var (_, o) in _hosts.Values) o.StrokeThickness = px;
         if (_paper != null) _paper.StrokeThickness = px;
+        if (_marginRect != null) _marginRect.StrokeThickness = px;
         UpdateSelection();
     }
 
@@ -356,12 +494,17 @@ public partial class SheetWindow : Window
         if (_autoFit) FitPage();
     }
 
+    private void PageHost_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        ZoomAt(e.GetPosition(pageHost), e.Delta > 0 ? 1.2 : 1 / 1.2);
+        e.Handled = true;
+    }
+
     private void RebuildTitleBlock()
     {
         if (_sheet == null || _tbHost == null) return;
         var lays = _sheet.Views.Select(v => (v, SheetBuilder.Layout(FiguresOf(v), v))).ToList();
-        var tb = SheetBuilder.TitleBlock(_p, _sheet, SheetBuilder.ScaleText(lays));
-        _tbHost.Drawing = SheetRender.Render(new[] { (tb, 1.0, 0.0, 0.0) }, 0, PH, MinStroke, w => w.GetPrimitives());
+        _tbHost.Drawing = SheetRender.RenderTitle(_p, _sheet, SheetBuilder.ScaleText(lays), PH, MinStroke);
         _tbHost.InvalidateVisual();
     }
 
@@ -369,7 +512,8 @@ public partial class SheetWindow : Window
     {
         pageCanvas.Children.Clear();
         _hosts.Clear();
-        _paper = null; _tbHost = null; _selRect = null; _handle = null;
+        _overlay.Clear();
+        _paper = null; _tbHost = null; _itemsHost = null; _gridHost = null; _marginRect = null;
         if (_sheet == null) { RefreshViewList(); return; }
         var (pw, ph) = _sheet.PaperSize();
         var shadow = new Shapes.Rectangle { Width = pw, Height = ph, Fill = new SolidColorBrush(Color.FromArgb(90, 0, 0, 0)), IsHitTestVisible = false };
@@ -380,19 +524,23 @@ public partial class SheetWindow : Window
             Width = pw, Height = ph, Fill = Brushes.White, Stroke = Brushes.Black, StrokeThickness = 1 / _zoom, IsHitTestVisible = false
         };
         pageCanvas.Children.Add(_paper);
+        _gridHost = new DrawingHost { Width = pw, Height = ph, IsHitTestVisible = false };
+        pageCanvas.Children.Add(_gridHost);
+        RebuildGrid();
+        _marginRect = new Shapes.Rectangle
+        {
+            Stroke = new SolidColorBrush(Color.FromRgb(240, 150, 40)), StrokeDashArray = new DoubleCollection { 6, 4 },
+            StrokeThickness = 1 / _zoom, IsHitTestVisible = false
+        };
+        pageCanvas.Children.Add(_marginRect);
+        UpdateMarginRect();
         _tbHost = new DrawingHost { Width = pw, Height = ph, IsHitTestVisible = false };
         pageCanvas.Children.Add(_tbHost);
         RebuildTitleBlock();
         foreach (var v in _sheet.Views) AddViewHost(v);
-
-        _selRect = new Shapes.Rectangle
-        {
-            Stroke = Brushes.Yellow, Fill = new SolidColorBrush(Color.FromArgb(28, 255, 230, 0)), IsHitTestVisible = false,
-            Visibility = Visibility.Collapsed
-        };
-        _handle = new Shapes.Rectangle { Fill = Brushes.Yellow, Stroke = Brushes.Black, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
-        pageCanvas.Children.Add(_selRect);
-        pageCanvas.Children.Add(_handle);
+        _itemsHost = new DrawingHost { Width = pw, Height = ph, IsHitTestVisible = false };
+        pageCanvas.Children.Add(_itemsHost);
+        RenderItemsHost();
         ApplyTransform();
     }
 
@@ -401,10 +549,11 @@ public partial class SheetWindow : Window
         var host = new DrawingHost { IsHitTestVisible = false };
         var outline = new Shapes.Rectangle
         {
-            Stroke = new SolidColorBrush(Color.FromRgb(120, 150, 190)), StrokeDashArray = new DoubleCollection { 4, 3 },
+            Stroke = new SolidColorBrush(v.Locked ? Color.FromRgb(200, 120, 120) : Color.FromRgb(120, 150, 190)), StrokeDashArray = new DoubleCollection { 4, 3 },
             StrokeThickness = 1 / _zoom, IsHitTestVisible = false
         };
-        int at = Math.Max(0, pageCanvas.Children.Count - (_selRect != null ? 2 : 0));
+        int at = _itemsHost != null ? pageCanvas.Children.IndexOf(_itemsHost) : pageCanvas.Children.Count;
+        if (at < 0) at = pageCanvas.Children.Count;
         pageCanvas.Children.Insert(at, outline);
         pageCanvas.Children.Insert(at + 1, host);
         _hosts[v] = (host, outline);
@@ -415,7 +564,9 @@ public partial class SheetWindow : Window
     {
         if (!_hosts.TryGetValue(v, out var h)) return;
         var lay = SheetBuilder.Layout(FiguresOf(v), v);
-        h.Host.Drawing = SheetRender.Render(SheetRender.ViewItems(lay), v.X, v.Y + v.H, MinStroke, PrimsOf);
+        var items = SheetRender.ViewItems(lay);
+        if (v.Border) items = items.Concat(new (DxfWriter W, double K, double Dx, double Dy)[] { (SheetBuilder.ViewBorder(v), 1, 0, 0) });
+        h.Host.Drawing = SheetRender.Render(items, v.X, v.Y + v.H, MinStroke, PrimsOf);
         h.Host.Width = Math.Max(1, v.W); h.Host.Height = Math.Max(1, v.H);
         h.Host.Clip = new RectangleGeometry(new Rect(0, 0, Math.Max(1, v.W), Math.Max(1, v.H)));
         h.Host.InvalidateVisual();
@@ -430,181 +581,9 @@ public partial class SheetWindow : Window
         Canvas.SetLeft(h.Host, v.X); Canvas.SetTop(h.Host, top);
         h.Outline.Width = Math.Max(0.1, v.W); h.Outline.Height = Math.Max(0.1, v.H);
         Canvas.SetLeft(h.Outline, v.X); Canvas.SetTop(h.Outline, top);
-        if (ReferenceEquals(v, _sel)) UpdateSelection();
-    }
-
-    private void UpdateSelection()
-    {
-        if (_selRect == null || _handle == null) return;
-        if (_sel == null || _sheet == null || !_sheet.Views.Contains(_sel))
-        {
-            _selRect.Visibility = _handle.Visibility = Visibility.Collapsed;
-            return;
-        }
-        var v = _sel;
-        double px = 1 / _zoom, top = PH - v.Y - v.H;
-        _selRect.StrokeThickness = 2 * px;
-        // hiệu ứng sáng vàng như phần còn lại của chương trình (bỏ khi phóng quá lớn để tránh ảnh đệm khổng lồ)
-        _selRect.Effect = Math.Max(v.W, v.H) * _zoom < 3000 ? _glow : null;
-        _selRect.Width = Math.Max(0.1, v.W); _selRect.Height = Math.Max(0.1, v.H);
-        Canvas.SetLeft(_selRect, v.X); Canvas.SetTop(_selRect, top);
-        double hs = 9 * px;
-        _handle.Width = _handle.Height = hs; _handle.StrokeThickness = px;
-        Canvas.SetLeft(_handle, v.X + v.W - hs / 2); Canvas.SetTop(_handle, top + v.H - hs / 2);
-        _selRect.Visibility = _handle.Visibility = Visibility.Visible;
-    }
-
-    // ==================================================================
-    // Chuột
-    // ==================================================================
-    private Point ToPage(Point s) => new((s.X - _panX) / _zoom, (s.Y - _panY) / _zoom);
-    private static double Snap(double x) => Math.Round(x / SheetBuilder.Snap) * SheetBuilder.Snap;
-
-    private SheetView HitView(Point pg)
-    {
-        if (_sheet == null) return null;
-        for (int i = _sheet.Views.Count - 1; i >= 0; i--)
-        {
-            var v = _sheet.Views[i];
-            double top = PH - v.Y - v.H;
-            if (pg.X >= v.X && pg.X <= v.X + v.W && pg.Y >= top && pg.Y <= top + v.H) return v;
-        }
-        return null;
-    }
-
-    private bool HitHandle(Point pg)
-    {
-        if (_sel == null) return false;
-        double tol = 8 / _zoom;
-        double hx = _sel.X + _sel.W, hy = PH - _sel.Y;
-        return Math.Abs(pg.X - hx) <= tol && Math.Abs(pg.Y - hy) <= tol;
-    }
-
-    private void PageHost_MouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        ZoomAt(e.GetPosition(pageHost), e.Delta > 0 ? 1.2 : 1 / 1.2);
-        e.Handled = true;
-    }
-
-    private void PageHost_MouseDown(object sender, MouseButtonEventArgs e)
-    {
-        pageHost.Focus();
-        var s = e.GetPosition(pageHost);
-        _dragStart = s;
-        _dragMoved = false;
-        if (e.ChangedButton == MouseButton.Right || e.ChangedButton == MouseButton.Middle)
-        {
-            _drag = DragMode.Pan; _opx = _panX; _opy = _panY;
-            pageHost.CaptureMouse();
-            return;
-        }
-        if (e.ChangedButton != MouseButton.Left || _sheet == null) return;
-        var pg = ToPage(s);
-        if (HitHandle(pg)) _drag = DragMode.Resize;
-        else
-        {
-            var v = HitView(pg);
-            SelectView(v);
-            _drag = v != null ? DragMode.Move : DragMode.None;
-        }
-        if (_drag != DragMode.None && _sel != null)
-        {
-            _ox = _sel.X; _oy = _sel.Y; _ow = _sel.W; _oh = _sel.H;
-            pageHost.CaptureMouse();
-        }
-    }
-
-    private void PageHost_MouseMove(object sender, MouseEventArgs e)
-    {
-        var s = e.GetPosition(pageHost);
-        if (_drag == DragMode.None)
-        {
-            if (_sheet != null)
-            {
-                var pg = ToPage(s);
-                pageHost.Cursor = HitHandle(pg) ? Cursors.SizeNWSE : HitView(pg) != null ? Cursors.SizeAll : Cursors.Arrow;
-            }
-            return;
-        }
-        double dxs = s.X - _dragStart.X, dys = s.Y - _dragStart.Y;
-        if (Math.Abs(dxs) + Math.Abs(dys) > 2) _dragMoved = true;
-        if (_drag == DragMode.Pan)
-        {
-            _panX = _opx + dxs; _panY = _opy + dys; _autoFit = false;
-            ApplyTransform();
-            return;
-        }
-        if (_sel == null) return;
-        double dx = dxs / _zoom, dy = -dys / _zoom;     // mm giấy, y lên
-        var (pw, ph) = _sheet.PaperSize();
-        if (_drag == DragMode.Move)
-        {
-            _sel.X = Math.Clamp(Snap(_ox + dx), 0, Math.Max(0, pw - _sel.W));
-            _sel.Y = Math.Clamp(Snap(_oy + dy), 0, Math.Max(0, ph - _sel.H));
-            PositionView(_sel);
-        }
-        else if (_drag == DragMode.Resize)
-        {
-            double top = _oy + _oh;
-            double nw = Math.Clamp(Snap(_ox + _ow + dx) - _ox, 20, pw - _ox);
-            double ny = Math.Clamp(Snap(_oy + dy), 0, top - 20);
-            _sel.W = nw; _sel.Y = ny; _sel.H = top - ny;
-            PositionView(_sel);
-            if (_hosts.TryGetValue(_sel, out var h))
-            {
-                h.Host.Clip = new RectangleGeometry(new Rect(0, 0, _sel.W, _sel.H));
-                // hình được dựng theo gốc trái trên: khi đổi cỡ thì xem trước hình cũ, dựng lại khi thả chuột
-            }
-        }
-        LoadViewProps(true);
-    }
-
-    private void PageHost_MouseUp(object sender, MouseButtonEventArgs e)
-    {
-        if (_drag == DragMode.None) return;
-        var mode = _drag;
-        _drag = DragMode.None;
-        pageHost.ReleaseMouseCapture();
-        if (mode == DragMode.Pan)
-        {
-            if (!_dragMoved && e.ChangedButton == MouseButton.Right) { /* nhấp phải không kéo: không làm gì */ }
-            _redrawTimer.Stop(); _redrawTimer.Start();
-            return;
-        }
-        if (_sel == null || !_dragMoved) return;
-        if (mode == DragMode.Resize || mode == DragMode.Move) RenderView(_sel);
-        RebuildTitleBlock();
-        Dirty();
-        RefreshViewListText();
-        UpdateSheetListText();
-        SetStatus($"Khung nhìn: X={F(_sel.X)}, Y={F(_sel.Y)}, W={F(_sel.W)}, H={F(_sel.H)} mm" +
-                  (SheetBuilder.InsidePaper(_sheet, _sel) ? "" : " – NẰM NGOÀI GIẤY"));
     }
 
     private static string F(double v) => v.ToString("0.#", Inv);
-
-    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is ComboBox) return;
-        if (_sel == null || _sheet == null) return;
-        double step = (Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? 1 : SheetBuilder.Snap;
-        switch (e.Key)
-        {
-            case Key.Delete: DeleteSelectedView(); e.Handled = true; return;
-            case Key.Left: _sel.X -= step; break;
-            case Key.Right: _sel.X += step; break;
-            case Key.Up: _sel.Y += step; break;
-            case Key.Down: _sel.Y -= step; break;
-            default: return;
-        }
-        e.Handled = true;
-        var (pw, ph) = _sheet.PaperSize();
-        _sel.X = Math.Clamp(_sel.X, 0, Math.Max(0, pw - _sel.W));
-        _sel.Y = Math.Clamp(_sel.Y, 0, Math.Max(0, ph - _sel.H));
-        RenderView(_sel);
-        LoadViewProps();
-        Dirty();
-    }
 
     // ==================================================================
     // Khung nhìn
@@ -613,36 +592,34 @@ public partial class SheetWindow : Window
     {
         _loading = true;
         lstViews.Items.Clear();
-        if (_sheet != null) foreach (var v in _sheet.Views) lstViews.Items.Add(SheetBuilder.Describe(v));
+        if (_sheet != null) foreach (var v in _sheet.Views) lstViews.Items.Add(ViewText(v));
         lstViews.SelectedIndex = _sel != null && _sheet != null ? _sheet.Views.IndexOf(_sel) : -1;
         _loading = false;
         LoadViewProps();
     }
 
+    private static string ViewText(SheetView v) => (v.Locked ? "[khoá] " : "") + SheetBuilder.Describe(v);
+
     private void RefreshViewListText()
     {
         if (_sheet == null) return;
         _loading = true;
-        for (int i = 0; i < _sheet.Views.Count && i < lstViews.Items.Count; i++) lstViews.Items[i] = SheetBuilder.Describe(_sheet.Views[i]);
+        if (lstViews.Items.Count != _sheet.Views.Count)
+        {
+            lstViews.Items.Clear();
+            foreach (var v in _sheet.Views) lstViews.Items.Add(ViewText(v));
+        }
+        else for (int i = 0; i < _sheet.Views.Count; i++) lstViews.Items[i] = ViewText(_sheet.Views[i]);
         lstViews.SelectedIndex = _sel != null ? _sheet.Views.IndexOf(_sel) : -1;
         _loading = false;
-    }
-
-    private void SelectView(SheetView v)
-    {
-        _sel = v;
-        _loading = true;
-        lstViews.SelectedIndex = v != null && _sheet != null ? _sheet.Views.IndexOf(v) : -1;
-        _loading = false;
-        LoadViewProps();
-        UpdateSelection();
     }
 
     private void LstViews_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loading || _sheet == null) return;
         int i = lstViews.SelectedIndex;
-        SelectView(i >= 0 && i < _sheet.Views.Count ? _sheet.Views[i] : null);
+        if (i >= 0 && i < _sheet.Views.Count) SetSelection(_sheet.Views[i]);
+        else ClearSelection();
     }
 
     private static string ShowParam(string p) => string.IsNullOrEmpty(p) ? AllText : p;
@@ -662,50 +639,82 @@ public partial class SheetWindow : Window
         if (positionOnly && v != null)
         {
             txtVX.Text = F(v.X); txtVY.Text = F(v.Y); txtVW.Text = F(v.W); txtVH.Text = F(v.H);
+            txtVPanX.Text = F(v.PanX); txtVPanY.Text = F(v.PanY);
             return;
         }
-        grpView.IsEnabled = v != null;
-        if (v == null)
+        _loading = true;
+        try
         {
-            txtVKind.Text = ""; txtVTitle.Text = ""; txtVScale.Text = ""; txtVX.Text = txtVY.Text = txtVW.Text = txtVH.Text = "";
-            txtVInfo.Text = ""; cbVParam.Items.Clear(); cbVParam.Text = "";
-            return;
+            grpView.IsEnabled = v != null;
+            if (v == null)
+            {
+                txtVKind.Text = ""; txtVTitle.Text = ""; cbVScale.Text = ""; txtVX.Text = txtVY.Text = txtVW.Text = txtVH.Text = "";
+                txtVPanX.Text = txtVPanY.Text = "";
+                chkVHideTitle.IsChecked = chkVBorder.IsChecked = chkVLock.IsChecked = false;
+                txtVInfo.Text = ""; cbVParam.Items.Clear(); cbVParam.Text = "";
+                return;
+            }
+            txtVKind.Text = SheetBuilder.KindName(v.Kind);
+            if (v.Kind == SheetViewKind.Notes) { cbVParam.Items.Clear(); cbVParam.Text = (v.Param ?? "").Replace("\r", "").Replace("\n", " | "); }
+            else FillParams(cbVParam, v.Kind, v.Param);
+            txtVTitle.Text = v.Title ?? "";
+            cbVScale.Text = v.Scale > 0 ? F(v.Scale) : FitScaleText;
+            txtVX.Text = F(v.X); txtVY.Text = F(v.Y); txtVW.Text = F(v.W); txtVH.Text = F(v.H);
+            txtVPanX.Text = F(v.PanX); txtVPanY.Text = F(v.PanY);
+            chkVHideTitle.IsChecked = v.HideTitle;
+            chkVBorder.IsChecked = v.Border;
+            chkVLock.IsChecked = v.Locked;
+            if (_drag == DragMode.None)
+            {
+                var lay = SheetBuilder.Layout(FiguresOf(v), v);
+                txtVInfo.Text = $"Tỷ lệ thực: 1/{Math.Round(lay.EffectiveScale).ToString("0", Inv)}" +
+                                (lay.Overflow ? " – hình lớn hơn khung (bị cắt), tăng kích thước khung hoặc giảm tỷ lệ" : "") +
+                                (SheetBuilder.NeedsClip(v, lay) ? "\nPhần hình ngoài khung bị cắt (cả khi in và xuất DXF)." : "") +
+                                (v.Kind == SheetViewKind.Notes ? "\nTham số = nội dung ghi chú, xuống dòng bằng \" | \" (để trống: ghi chú mặc định)." : "");
+            }
         }
-        txtVKind.Text = SheetBuilder.KindName(v.Kind);
-        if (v.Kind == SheetViewKind.Notes) { cbVParam.Items.Clear(); cbVParam.Text = (v.Param ?? "").Replace("\r", "").Replace("\n", " | "); }
-        else FillParams(cbVParam, v.Kind, v.Param);
-        txtVTitle.Text = v.Title ?? "";
-        txtVScale.Text = F(v.Scale);
-        txtVX.Text = F(v.X); txtVY.Text = F(v.Y); txtVW.Text = F(v.W); txtVH.Text = F(v.H);
-        if (_drag == DragMode.None)
-        {
-            var lay = SheetBuilder.Layout(FiguresOf(v), v);
-            txtVInfo.Text = $"Tỷ lệ thực: 1/{Math.Round(lay.EffectiveScale).ToString("0", Inv)}" +
-                            (lay.Overflow ? " – hình lớn hơn khung (bị cắt), tăng kích thước khung hoặc giảm tỷ lệ" : "") +
-                            (v.Kind == SheetViewKind.Notes ? "\nTham số = nội dung ghi chú, xuống dòng bằng \" | \" (để trống: ghi chú mặc định)." : "");
-        }
+        finally { _loading = false; }
     }
 
     private static bool TryNum(string s, out double v) =>
         double.TryParse((s ?? "").Trim().Replace(',', '.'), NumberStyles.Float, Inv, out v);
 
+    /// <summary>Đọc tỷ lệ từ ô chọn: "0 – vừa khung", "100", "1/100".</summary>
+    private static bool TryScale(string s, out double v)
+    {
+        string t = (s ?? "").Trim();
+        if (t.StartsWith("1/", StringComparison.Ordinal)) t = t.Substring(2);
+        int sp = t.IndexOfAny(new[] { ' ', '–', '-' });
+        if (sp > 0) t = t.Substring(0, sp);
+        return TryNum(t, out v);
+    }
+
     private void ApplyViewProps()
     {
         var v = _sel;
         if (v == null || _sheet == null) return;
+        Record();
         v.Title = txtVTitle.Text ?? "";
         string par = v.Kind == SheetViewKind.Notes ? (cbVParam.Text ?? "").Replace(" | ", "\n") : ReadParam(cbVParam.Text);
         v.Param = par;
-        if (TryNum(txtVScale.Text, out double sc) && sc >= 0) v.Scale = sc;
+        if (TryScale(cbVScale.Text, out double sc) && sc >= 0) v.Scale = sc;
         var (pw, ph) = _sheet.PaperSize();
         if (TryNum(txtVW.Text, out double w) && w >= 10) v.W = Math.Min(w, pw);
         if (TryNum(txtVH.Text, out double h) && h >= 10) v.H = Math.Min(h, ph);
-        if (TryNum(txtVX.Text, out double x)) v.X = Math.Clamp(x, 0, Math.Max(0, pw - v.W));
-        if (TryNum(txtVY.Text, out double y)) v.Y = Math.Clamp(y, 0, Math.Max(0, ph - v.H));
+        if (TryNum(txtVX.Text, out double x)) v.X = Math.Clamp(x, -pw, 2 * pw);
+        if (TryNum(txtVY.Text, out double y)) v.Y = Math.Clamp(y, -ph, 2 * ph);
+        if (TryNum(txtVPanX.Text, out double panx)) v.PanX = panx;
+        if (TryNum(txtVPanY.Text, out double pany)) v.PanY = pany;
+        v.HideTitle = chkVHideTitle.IsChecked == true;
+        v.Border = chkVBorder.IsChecked == true;
+        v.Locked = chkVLock.IsChecked == true;
+        if (_hosts.TryGetValue(v, out var hh))
+            hh.Outline.Stroke = new SolidColorBrush(v.Locked ? Color.FromRgb(200, 120, 120) : Color.FromRgb(120, 150, 190));
         RenderView(v);
         RebuildTitleBlock();
         RefreshViewListText();
         LoadViewProps();
+        UpdateSelection();
         Dirty();
     }
 
@@ -714,6 +723,20 @@ public partial class SheetWindow : Window
     private void ViewProp_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter) { ApplyViewProps(); e.Handled = true; }
+    }
+
+    private void ViewCheck_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_loading) ApplyViewProps();
+    }
+
+    private void CbVScale_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _sel == null || cbVScale.SelectedItem is not string t) return;
+        _loading = true;
+        cbVScale.Text = t;
+        _loading = false;
+        ApplyViewProps();
     }
 
     private void CbKind_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -726,36 +749,46 @@ public partial class SheetWindow : Window
 
     private void BtnAddView_Click(object sender, RoutedEventArgs e)
     {
-        if (_sheet == null)
-        {
-            BtnAddSheet_Click(sender, e);
-            if (_sheet == null) return;
-        }
         if (cbKind.SelectedItem is not ComboBoxItem it) return;
         var k = (SheetViewKind)it.Tag;
         string par = k == SheetViewKind.Notes ? (cbParam.Text ?? "").Replace(" | ", "\n") : ReadParam(cbParam.Text);
         try
         {
             Mouse.OverrideCursor = Cursors.Wait;
-            var v = SheetBuilder.NewView(_p, _r, _d, _sheet, k, par);
-            _sheet.Views.Add(v);
-            AddViewHost(v);
-            RefreshViewList();
-            SelectView(v);
-            RebuildTitleBlock();
-            UpdateSheetListText();
-            Dirty();
-            SetStatus($"Đã thêm {SheetBuilder.Describe(v)}.");
+            var v = AddView(k, par);
+            if (v != null) SetStatus($"Đã thêm {SheetBuilder.Describe(v)}.");
         }
         catch (Exception ex) { MessageBox.Show("Không thêm được khung nhìn: " + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); }
         finally { Mouse.OverrideCursor = null; }
     }
 
+    /// <summary>Thêm khung nhìn vào tờ hiện tại (tạo tờ nếu chưa có) và chọn nó.</summary>
+    internal SheetView AddView(SheetViewKind k, string par)
+    {
+        if (_sheet == null)
+        {
+            BtnAddSheet_Click(this, new RoutedEventArgs());
+            if (_sheet == null) return null;
+        }
+        var v = SheetBuilder.NewView(_p, _r, _d, _sheet, k, par);
+        Record();
+        _sheet.Views.Add(v);
+        AddViewHost(v);
+        RefreshViewList();
+        SetSelection(v);
+        RebuildTitleBlock();
+        UpdateSheetListText();
+        Dirty();
+        return v;
+    }
+
     private void DeleteSelectedView()
     {
         if (_sel == null || _sheet == null) return;
+        if (_sel.Locked) { SetStatus("Khung nhìn đang khoá – bỏ khoá trước khi xoá."); return; }
+        Record();
         _sheet.Views.Remove(_sel);
-        _sel = null;
+        ClearSelection();
         RebuildPage();
         RefreshViewList();
         UpdateSheetListText();
@@ -767,13 +800,15 @@ public partial class SheetWindow : Window
     private void BtnDupView_Click(object sender, RoutedEventArgs e)
     {
         if (_sel == null || _sheet == null) return;
+        Record();
         var v = SheetBuilder.Clone(_sel);
-        var (pw, ph) = _sheet.PaperSize();
+        var (pw, _) = _sheet.PaperSize();
         v.X = Math.Min(v.X + 10, Math.Max(0, pw - v.W)); v.Y = Math.Max(0, v.Y - 10);
+        v.Locked = false;
         _sheet.Views.Add(v);
         AddViewHost(v);
         RefreshViewList();
-        SelectView(v);
+        SetSelection(v);
         UpdateSheetListText();
         Dirty();
     }
@@ -781,7 +816,9 @@ public partial class SheetWindow : Window
     private void BtnFitView_Click(object sender, RoutedEventArgs e)
     {
         if (_sel == null) return;
+        Record();
         _sel.Scale = 0;
+        _sel.PanX = _sel.PanY = 0;
         RenderView(_sel);
         RebuildTitleBlock();
         RefreshViewListText();
@@ -835,8 +872,18 @@ public partial class SheetWindow : Window
         try
         {
             var first = sheets[0];
-            pd.PrintTicket.PageMediaSize = new PageMediaSize(MediaName(first.Paper));
-            pd.PrintTicket.PageOrientation = first.Landscape ? PageOrientation.Landscape : PageOrientation.Portrait;
+            if (first.Paper == Sheet.CustomPaper)
+            {
+                // khổ tự chọn: khai báo kích thước giấy theo DIP (1/96 inch)
+                var (fw, fh) = first.PaperSize();
+                pd.PrintTicket.PageMediaSize = new PageMediaSize(Math.Min(fw, fh) * SheetRender.DipPerMm, Math.Max(fw, fh) * SheetRender.DipPerMm);
+                pd.PrintTicket.PageOrientation = fw >= fh ? PageOrientation.Landscape : PageOrientation.Portrait;
+            }
+            else
+            {
+                pd.PrintTicket.PageMediaSize = new PageMediaSize(MediaName(first.Paper));
+                pd.PrintTicket.PageOrientation = first.Landscape ? PageOrientation.Landscape : PageOrientation.Portrait;
+            }
         }
         catch (Exception) { /* máy in không hỗ trợ khổ – giữ mặc định */ }
         if (pd.ShowDialog() != true) return;

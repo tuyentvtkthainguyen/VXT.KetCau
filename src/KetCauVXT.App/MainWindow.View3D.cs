@@ -169,7 +169,9 @@ public partial class MainWindow
             // dầm BTCT: đỉnh dầm ngang mặt sàn → dời trục xuống h/2
             double drop = f.Kind == FrameKind.Beam ? h / 2 : 0;
             pm.Begin(f);
-            AddMemberBox(pm.Mesh, ni.P, nj.P, f.Angle, b, h, drop);
+            var cpoly = CurvedPolyline(f);   // dầm cong: chuỗi hộp theo cung (MainWindow.CurvedBeam.cs)
+            if (cpoly != null) for (int k = 0; k + 1 < cpoly.Count; k++) AddMemberBox(pm.Mesh, cpoly[k], cpoly[k + 1], f.Angle, b, h, drop);
+            else AddMemberBox(pm.Mesh, ni.P, nj.P, f.Angle, b, h, drop);
         }
         foreach (var s in _p.Slabs)
         {

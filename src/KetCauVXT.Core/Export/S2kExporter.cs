@@ -12,7 +12,9 @@ namespace KetCauVXT.Export;
 /// – Sàn cứng thể hiện bằng ràng buộc Diaphragm cho các nút sàn mỗi cao trình.
 /// – Tải gió/động đất xuất dưới dạng tải nút đã sinh.
 /// Mở trong SAP2000: File > Import > SAP2000 .s2k Text File.
-/// Tên thanh trong SAP2000 = Id thanh của chương trình (đoạn vát: Id_1, Id_2...).</summary>
+/// Tên thanh trong SAP2000 = Id thanh của chương trình (đoạn vát: Id_1, Id_2...).
+/// – Dầm cong xuất thành các đoạn thẳng Id_1…Id_n với nút trung gian Id_k trên cung (giống mô hình tính);
+///   tải phân bố theo cung quy về đoạn với cường độ q·ΔS/c.</summary>
 public static class S2kExporter
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -93,10 +95,26 @@ public static class S2kExporter
             L($"   Joint={n.Id}   CoordSys=GLOBAL   CoordType=Cartesian   XorR={F(n.X)}   Y={F(n.Y)}   Z={F(n.Z)}   SpecialJt=No   GlobalX={F(n.X)}   GlobalY={F(n.Y)}   GlobalZ={F(n.Z)}");
         // nút trung gian của thanh vát
         var extraJoints = new Dictionary<(int, int), string>();
+        // dầm cong: đoạn thẳng + nút trung gian trên cung
+        var curved = new Dictionary<int, List<CurveSegment>>();
+        foreach (var f in p.Frames)
+        {
+            if (!f.IsCurved) continue;
+            var cs = CurvedBeam.Segments(p, f);
+            if (cs == null) continue;
+            curved[f.Id] = cs;
+            for (int k = 1; k < cs.Count; k++)
+            {
+                var q = cs[k].A;
+                string name = $"{f.Id}_{k}";
+                extraJoints[(f.Id, k)] = name;
+                L($"   Joint={name}   CoordSys=GLOBAL   CoordType=Cartesian   XorR={F(q.X)}   Y={F(q.Y)}   Z={F(q.Z)}   SpecialJt=No   GlobalX={F(q.X)}   GlobalY={F(q.Y)}   GlobalZ={F(q.Z)}");
+            }
+        }
         foreach (var f in p.Frames)
         {
             var s = p.Section(f.Section);
-            if (!s.IsTapered) continue;
+            if (!s.IsTapered || curved.ContainsKey(f.Id)) continue;
             int n = Math.Max(2, p.Steel.TaperSegments);
             var a = p.Node(f.NodeI).P; var b = p.Node(f.NodeJ).P;
             for (int k = 1; k < n; k++)
@@ -113,6 +131,18 @@ public static class S2kExporter
         foreach (var f in p.Frames)
         {
             var s = p.Section(f.Section);
+            if (curved.TryGetValue(f.Id, out var cseg))
+            {
+                int nc = cseg.Count;
+                for (int k = 0; k < nc; k++)
+                {
+                    string ji = k == 0 ? f.NodeI.ToString() : extraJoints[(f.Id, k)];
+                    string jj = k == nc - 1 ? f.NodeJ.ToString() : extraJoints[(f.Id, k + 1)];
+                    string sname = s.IsTapered && segSections.TryGetValue((f.Id, Math.Min(k * Math.Max(2, p.Steel.TaperSegments) / nc, Math.Max(2, p.Steel.TaperSegments) - 1)), out var tsn) ? tsn : s.Name;
+                    segs.Add((f, $"{f.Id}_{k + 1}", ji, jj, sname, k, nc));
+                }
+                continue;
+            }
             if (!s.IsTapered) { segs.Add((f, f.Id.ToString(), f.NodeI.ToString(), f.NodeJ.ToString(), s.Name, 0, 1)); continue; }
             int n = Math.Max(2, p.Steel.TaperSegments);
             for (int k = 0; k < n; k++)
@@ -208,6 +238,12 @@ public static class S2kExporter
                     var (cs, dir, sign) = SapDir(fl.Dir);
                     double r0 = (a - s0) / (s1 - s0), r1 = (b - s0) / (s1 - s0);
                     double lseg = Lp / sg.n;
+                    if (curved.TryGetValue(f.Id, out var cl))
+                    {
+                        // dầm cong: chiều dài đoạn = dây cung, cường độ quy theo ΔS/c
+                        lseg = cl[sg.k].Chord;
+                        va *= cl[sg.k].LoadScale; vb *= cl[sg.k].LoadScale;
+                    }
                     L($"   Frame={sg.name}   LoadPat={Q(fl.Pattern)}   CoordSys={cs}   Type=Force   Dir={dir}   DistType=RelDist   RelDistA={F(r0)}   RelDistB={F(r1)}   AbsDistA={F(r0 * lseg)}   AbsDistB={F(r1 * lseg)}   FOverLA={F(sign * va)}   FOverLB={F(sign * vb)}");
                 }
             }
@@ -224,7 +260,8 @@ public static class S2kExporter
                     double s0 = (double)sg.k / sg.n;
                     double r = (pl[0] - s0) * sg.n;
                     var (cs, dir, sign) = SapDir(fl.Dir);
-                    L($"   Frame={sg.name}   LoadPat={Q(fl.Pattern)}   CoordSys={cs}   Type=Force   Dir={dir}   DistType=RelDist   RelDist={F(r)}   AbsDist={F(r * p.Length(f) / sg.n)}   Force={F(sign * pl[1])}");
+                    double lsg = curved.TryGetValue(f.Id, out var cl) ? cl[sg.k].Chord : p.Length(f) / sg.n;
+                    L($"   Frame={sg.name}   LoadPat={Q(fl.Pattern)}   CoordSys={cs}   Type=Force   Dir={dir}   DistType=RelDist   RelDist={F(r)}   AbsDist={F(r * lsg)}   Force={F(sign * pl[1])}");
                 }
         }
         if (p.NodeLoads.Count > 0)

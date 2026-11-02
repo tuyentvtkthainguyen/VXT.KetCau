@@ -70,7 +70,7 @@ internal static class SheetRender
     /// <summary>Vẽ các mảnh hình đã đặt (K, Dx, Dy: mô hình → mm giấy) thành Drawing toạ độ (X − ox, oy − Y).
     /// minStroke: bề dày nét tối thiểu (mm giấy) – để nét mảnh vẫn thấy được khi thu nhỏ màn hình; in thì 0.</summary>
     public static DrawingGroup Render(IEnumerable<(DxfWriter W, double K, double Dx, double Dy)> items, double ox, double oy,
-        double minStroke, Func<DxfWriter, List<DrawPrim>> prims)
+        double minStroke, Func<DxfWriter, List<DrawPrim>> prims, Color? color = null, bool bold = false, double weightMm = 0)
     {
         var buckets = new Dictionary<string, Bucket>();
         var texts = new List<(DrawPrim P, double K, Point At)>();
@@ -78,6 +78,8 @@ internal static class SheetRender
         Bucket Stroke(string layer, string ltype, double widthMm)
         {
             var (c, mm) = Style(layer);
+            if (color.HasValue) c = color.Value;
+            if (weightMm > 0) mm = weightMm;
             double t = Math.Max(widthMm > 0 ? widthMm : mm, minStroke);
             string lt = !string.IsNullOrEmpty(ltype) ? ltype.ToUpperInvariant() : (layer == Lay.Truc ? "CENTER" : "");
             if (lt == "CONTINUOUS") lt = "";
@@ -102,6 +104,7 @@ internal static class SheetRender
         Bucket FillB(string layer)
         {
             var (c, _) = Style(layer);
+            if (color.HasValue) c = color.Value;
             string key = $"F|{c}";
             if (!buckets.TryGetValue(key, out var b))
             {
@@ -192,19 +195,22 @@ internal static class SheetRender
                 if (b.Fill != null) dc.DrawGeometry(b.Fill, null, b.G);
                 else dc.DrawGeometry(null, b.Pen, b.G);
             }
-            foreach (var (pr, k, at) in texts) DrawText(dc, pr, k, at);
+            foreach (var (pr, k, at) in texts) DrawText(dc, pr, k, at, color, bold);
         }
         dg.Freeze();
         return dg;
     }
 
-    private static void DrawText(DrawingContext dc, DrawPrim pr, double k, Point at)
+    private static readonly Typeface FaceBold = new(new FontFamily("Arial"), FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
+
+    private static void DrawText(DrawingContext dc, DrawPrim pr, double k, Point at, Color? color = null, bool bold = false)
     {
         double h = pr.H * k;                 // chiều cao chữ hoa (mm)
         const double up = 10;                // dựng chữ ở cỡ ×10 rồi thu lại (tránh làm tròn cỡ chữ nhỏ)
         double em = h / 0.716 * up;
         var (c, _) = Style(pr.Layer);
-        var ft = new FormattedText(pr.Text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Face, em, BrushOf(c), 1.0);
+        if (color.HasValue) c = color.Value;
+        var ft = new FormattedText(pr.Text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, bold ? FaceBold : Face, em, BrushOf(c), 1.0);
         double w = ft.WidthIncludingTrailingWhitespace, cap = h * up;
         double dx = pr.HA == 1 || pr.HA == 4 ? -w / 2 : pr.HA == 2 ? -w : 0;
         double dy = pr.VA switch
@@ -236,15 +242,100 @@ internal static class SheetRender
         using (var dc = dg.Open())
         {
             dc.DrawRectangle(System.Windows.Media.Brushes.White, null, new Rect(0, 0, pw, ph));
-            var tb = SheetBuilder.TitleBlock(p, s, SheetBuilder.ScaleText(lays.Select(t => (t.V, t.L))));
-            dc.DrawDrawing(Render(new[] { (tb, 1.0, 0.0, 0.0) }, 0, ph, minStroke, prims));
+            dc.DrawDrawing(RenderTitle(p, s, SheetBuilder.ScaleText(lays.Select(t => (t.V, t.L))), ph, minStroke));
             foreach (var (v, l) in lays)
             {
                 dc.PushClip(new RectangleGeometry(new Rect(v.X, ph - v.Y - v.H, Math.Max(0, v.W), Math.Max(0, v.H))));
                 dc.DrawDrawing(Render(ViewItems(l), 0, ph, minStroke, prims));
                 dc.Pop();
+                if (v.Border) dc.DrawDrawing(Render(new[] { (SheetBuilder.ViewBorder(v), 1.0, 0.0, 0.0) }, 0, ph, minStroke, prims));
+            }
+            // đối tượng chú thích tự do (dàn trang thủ công)
+            dc.DrawDrawing(RenderItems(s.Items, ph, minStroke));
+        }
+        dg.Freeze();
+        return dg;
+    }
+
+    // ==================================================================
+    // Dàn trang thủ công: khung tên + logo, đối tượng chú thích, ảnh nhúng
+    // ==================================================================
+    private static readonly Dictionary<string, BitmapSource> _images = new();
+
+    /// <summary>Giải mã ảnh base64 (PNG/JPG) – có bộ đệm; lỗi → null.</summary>
+    public static BitmapSource DecodeImage(string base64)
+    {
+        if (string.IsNullOrEmpty(base64)) return null;
+        if (_images.TryGetValue(base64, out var bmp)) return bmp;
+        try
+        {
+            var bytes = Convert.FromBase64String(base64);
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.StreamSource = new MemoryStream(bytes);
+            bi.EndInit();
+            bi.Freeze();
+            bmp = bi;
+        }
+        catch (Exception) { bmp = null; }
+        if (_images.Count > 64) _images.Clear();
+        _images[base64] = bmp;
+        return bmp;
+    }
+
+    public static Color? ItemColor(SheetItem it) =>
+        SheetBuilder.TryParseColor(it?.Color, out byte r, out byte g, out byte b) ? Color.FromRgb(r, g, b) : null;
+
+    /// <summary>Khung tên (và logo công ty nếu có) của tờ, toạ độ mm giấy y xuống.</summary>
+    public static DrawingGroup RenderTitle(Project p, Sheet s, string scaleText, double ph, double minStroke)
+    {
+        var tb = SheetBuilder.TitleBlock(p, s, scaleText);
+        var dg = new DrawingGroup();
+        using (var dc = dg.Open())
+        {
+            dc.DrawDrawing(Render(new[] { (tb, 1.0, 0.0, 0.0) }, 0, ph, minStroke, w => w.GetPrimitives()));
+            var lr = SheetBuilder.TitleLogoRect(p, s);
+            var img = lr.IsEmpty ? null : DecodeImage(p.TitleBlock.LogoData);
+            if (img != null) dc.DrawImage(img, Fit(img, new Rect(lr.X1, ph - lr.Y2, lr.W, lr.H)));
+        }
+        dg.Freeze();
+        return dg;
+    }
+
+    /// <summary>Hình chữ nhật giữ tỷ lệ ảnh, căn giữa trong r.</summary>
+    private static Rect Fit(BitmapSource img, Rect r)
+    {
+        double iw = Math.Max(1, img.PixelWidth), ih = Math.Max(1, img.PixelHeight);
+        double k = Math.Min(r.Width / iw, r.Height / ih);
+        double w = iw * k, h = ih * k;
+        return new Rect(r.X + (r.Width - w) / 2, r.Y + (r.Height - h) / 2, w, h);
+    }
+
+    /// <summary>Vẽ một đối tượng chú thích (mm giấy, y xuống, gốc góc trái trên giấy cao ph).</summary>
+    public static void DrawItem(DrawingContext dc, SheetItem it, double ph, double minStroke)
+    {
+        if (it == null) return;
+        if (it.Kind == SheetItemKind.Image)
+        {
+            var img = DecodeImage(it.ImageData);
+            if (img != null)
+            {
+                dc.DrawImage(img, new Rect(it.X, ph - it.Y - Math.Max(0.1, it.H), Math.Max(0.1, it.W), Math.Max(0.1, it.H)));
+                return;
             }
         }
+        var fig = SheetBuilder.ItemFigure(it);
+        if (fig.EntityCount == 0) return;
+        dc.DrawDrawing(Render(new[] { (fig, 1.0, 0.0, 0.0) }, 0, ph, minStroke, w => w.GetPrimitives(),
+            ItemColor(it), it.Bold, (it.Kind == SheetItemKind.Circle || it.Kind == SheetItemKind.Cloud) ? it.LineWeight : 0));
+    }
+
+    public static DrawingGroup RenderItems(IEnumerable<SheetItem> items, double ph, double minStroke)
+    {
+        var dg = new DrawingGroup();
+        using (var dc = dg.Open())
+            foreach (var it in items ?? Enumerable.Empty<SheetItem>()) DrawItem(dc, it, ph, minStroke);
         dg.Freeze();
         return dg;
     }

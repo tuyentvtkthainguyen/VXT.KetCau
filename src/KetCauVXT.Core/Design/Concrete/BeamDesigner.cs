@@ -4,7 +4,10 @@ using KetCauVXT.Model;
 namespace KetCauVXT.Design.Concrete;
 
 /// <summary>Thiết kế dầm BTCT liên tục theo TCVN 5574:2018: gom phần tử thành dải dầm, tính thép dọc, đai, độ võng,
-/// bố trí thép (BarMark) và vùng đai (StirrupZone) theo quy tắc thể hiện kiểu Kết cấu Soft.</summary>
+/// bố trí thép (BarMark) và vùng đai (StirrupZone) theo quy tắc thể hiện kiểu Kết cấu Soft.
+/// <para>Dầm cong (FrameElement.IsCurved): mỗi phần tử dầm cong là một dải dầm riêng, toạ độ dọc dải = chiều dài cung
+/// (nội lực của bộ phân tích đã theo cung, hệ trục tiếp tuyến). Ngoài uốn + cắt còn kiểm tra xoắn (RcTorsion – giản lược theo
+/// TCVN 5574:2018 mục 8.1.4): cốt dọc chịu xoắn cộng ½ vào thép trên, ½ vào thép dưới; đai kín bước theo xoắn + cắt.</para></summary>
 public static class BeamDesigner
 {
     private const double Tol = 1e-3;
@@ -50,6 +53,8 @@ public static class BeamDesigner
         public List<SpanInfo> Spans = new();
         public bool AlongX => Math.Abs(U.X) >= Math.Abs(U.Y);
         public double Perp => AlongX ? Origin.Y : Origin.X;
+        /// <summary>Dầm cong: hình học cung (dải gồm đúng một phần tử); null = dải dầm thẳng.</summary>
+        public ArcGeometry Arc;
     }
 
     // ------------------------------------------------------------------
@@ -153,6 +158,14 @@ public static class BeamDesigner
                     used.Add(f0.Id);
                     continue;
                 }
+                if (f0.IsCurved && CurvedBeam.Arc(p, f0) != null)
+                {
+                    // dầm cong: dải riêng một phần tử
+                    used.Add(f0.Id);
+                    var lc = MakeCurvedLine(p, f0, sec, byNode);
+                    if (lc != null) lines.Add(lc);
+                    continue;
+                }
                 var u = Dir(p, f0);
                 var chain = new List<FrameElement> { f0 };
                 var nodes = new HashSet<int> { f0.NodeI, f0.NodeJ };
@@ -164,6 +177,7 @@ public static class BeamDesigner
                     foreach (var f in pool)
                     {
                         if (used.Contains(f.Id)) continue;
+                        if (f.IsCurved) continue;   // dầm cong không gộp vào dải thẳng
                         if (!nodes.Contains(f.NodeI) && !nodes.Contains(f.NodeJ)) continue;
                         if (!Parallel(u, Dir(p, f))) continue;
                         chain.Add(f); used.Add(f.Id);
@@ -221,6 +235,46 @@ public static class BeamDesigner
             }
         }
         return li;
+    }
+
+    /// <summary>Dải dầm cong một phần tử: X dọc dải = chiều dài cung từ đầu I; bề rộng gối lấy theo tiếp tuyến cung tại mỗi đầu.</summary>
+    private static LineInfo MakeCurvedLine(Project p, FrameElement f, FrameSection sec, Dictionary<int, List<FrameElement>> byNode)
+    {
+        var arc = CurvedBeam.Arc(p, f);
+        if (arc == null) return null;
+        var ni = p.Node(f.NodeI); var nj = p.Node(f.NodeJ);
+        var u = (nj.P - ni.P).Normalize();
+        var li = new LineInfo { Story = f.Story ?? "", Group = f.DesignGroup ?? "", Sec = sec, U = u, Origin = ni.P, Z = Math.Max(ni.Z, nj.Z), Arc = arc };
+        li.Segs.Add(new Seg { F = f, Reversed = false, X0 = 0, Len = arc.Length });
+        var ids = new HashSet<int> { f.Id };
+        var sp = new SpanInfo { X0 = 0, L = arc.Length, NodeL = f.NodeI, NodeR = f.NodeJ };
+        sp.Segs.Add(li.Segs[0]);
+        sp.WL = SupportWidth(p, f.NodeI, arc.TangentAt(0), sec.H, ids, byNode, out sp.SupL);
+        sp.WR = SupportWidth(p, f.NodeJ, arc.TangentAt(1), sec.H, ids, byNode, out sp.SupR);
+        sp.NameL = SupportName(p, f.NodeI, li, byNode);
+        sp.NameR = SupportName(p, f.NodeJ, li, byNode);
+        li.Spans.Add(sp);
+        return li;
+    }
+
+    /// <summary>Mô men xoắn bao lớn nhất |T| trong đoạn giữa hai mép gối của nhịp (kể cả tại mép gối).</summary>
+    private static double SpanTorsion(CaseResult cr, SpanInfo sp)
+    {
+        double tm = 0;
+        foreach (var s in sp.Segs)
+        {
+            if (!cr.Frames.TryGetValue(s.F.Id, out var ff)) continue;
+            for (int i = 0; i < ff.Count; i++)
+            {
+                double st = Math.Clamp(ff.Stations[i], 0, s.Len);
+                double x = s.X0 - sp.X0 + (s.Reversed ? s.Len - st : st);
+                if (x >= sp.FaceL - 1e-9 && x <= sp.FaceR + 1e-9) tm = Math.Max(tm, Math.Abs(ff.T(i)));
+            }
+            double xl = sp.FaceL - (s.X0 - sp.X0), xr = sp.FaceR - (s.X0 - sp.X0);
+            if (xl >= 0 && xl <= s.Len) tm = Math.Max(tm, Math.Abs(ff.At(s.Reversed ? s.Len - xl : xl)[3]));
+            if (xr >= 0 && xr <= s.Len) tm = Math.Max(tm, Math.Abs(ff.At(s.Reversed ? s.Len - xr : xr)[3]));
+        }
+        return tm;
     }
 
     /// <summary>Bề rộng gối theo phương dầm tại nút: cột (H nếu trục 2 cột song song dầm, ngược lại B), hoặc bề rộng dầm giao
@@ -346,7 +400,18 @@ public static class BeamDesigner
                 if (mS > res.MSpan) { res.MSpan = mS; res.ComboMSpan = cn; }
                 double q = Math.Max(Math.Abs(Interp(ser, sp.FaceL + 1e-6, false)), Math.Abs(Interp(ser, sp.FaceR - 1e-6, false)));
                 if (q > res.QMax) { res.QMax = q; res.ComboQ = cn; }
+                if (li.Arc != null)
+                {
+                    double tq = SpanTorsion(cr, sp);
+                    if (tq > res.TMax) { res.TMax = tq; res.ComboT = cn; }
+                }
             }
+        }
+        if (li.Arc != null)
+        {
+            d.IsCurved = true;
+            d.CurveRadius = li.Arc.Radius; d.ArcLength = li.Arc.Length; d.Chord = li.Arc.Chord; d.Sagitta = Math.Abs(li.Arc.Sagitta);
+            d.TorsionMax = d.Spans.Max(x => x.TMax);
         }
 
         // ---- thép dọc yêu cầu ----
@@ -357,6 +422,13 @@ public static class BeamDesigner
             fl[k] = RcSection.DesignRect(res.MLeft, b, h0, a, conc, main, cs.MinRatioBeam);
             fs[k] = RcSection.DesignRect(res.MSpan, b, h0, a, conc, main, cs.MinRatioBeam);
             fr[k] = RcSection.DesignRect(res.MRight, b, h0, a, conc, main, cs.MinRatioBeam);
+            if (li.Arc != null && res.TMax > 1e-6)
+            {
+                // dầm cong: cốt dọc chịu xoắn Asl – ½ cộng vào thép trên, ½ vào thép dưới (RcTorsion)
+                double asl = RcTorsion.LongitudinalArea(res.TMax, b, h, c, main);
+                res.AsTorsion = asl;
+                fl[k].As += asl / 2; fs[k].As += asl / 2; fr[k].As += asl / 2;
+            }
             res.AsTopLeftReq = fl[k].As; res.AsBotReq = fs[k].As; res.AsTopRightReq = fr[k].As;
             foreach (var f in new[] { fl[k], fs[k], fr[k] })
                 if (!string.IsNullOrEmpty(f.Note)) d.Messages.Add("Nhịp " + (k + 1) + ": " + f.Note);
@@ -400,6 +472,25 @@ public static class BeamDesigner
             if (ok) break;
         }
         var shear = d.Spans.Select(res => RcSection.Shear(res.QMax, b, h0, conc, stl, sd)).ToArray();
+        TorsionResult[] tor = null;
+        if (li.Arc != null)
+        {
+            // dầm cong: đai kín chịu xoắn + cắt – tăng Ø đai nếu bước yêu cầu < 100 mm
+            foreach (int dd in sdias)
+            {
+                if (dd < sd) continue;
+                var sh2 = d.Spans.Select(res => RcSection.Shear(res.QMax, b, h0, conc, stl, dd)).ToArray();
+                var t2 = d.Spans.Select((res, k) => RcTorsion.Design(res.TMax, res.QMax, b, h, h0, c, conc, stl, dd, sh2[k].SSupport, main)).ToArray();
+                sd = dd; shear = sh2; tor = t2;
+                if (t2.All(t => t.Ok || !t.StrutOk)) break;
+            }
+            for (int k = 0; k < ns; k++)
+            {
+                shear[k].SSupport = Math.Min(shear[k].SSupport, tor[k].S);
+                shear[k].SMid = Math.Max(Math.Min(shear[k].SMid, tor[k].S), shear[k].SSupport);
+                tor[k] = RcTorsion.Design(d.Spans[k].TMax, d.Spans[k].QMax, b, h, h0, c, conc, stl, sd, shear[k].SSupport, main);
+            }
+        }
 
         // ---- kết quả từng nhịp + kiểm tra ----
         double I = b * h * h * h / 12.0;
@@ -459,6 +550,30 @@ public static class BeamDesigner
                 Note = "Ø" + sd + "a" + DesignUtil.F(shear[k].SSupport * 1000, "0") + " – " + res.ComboQ + (string.IsNullOrEmpty(shear[k].Note) ? "" : "; " + shear[k].Note)
             });
             if (!shear[k].Ok) d.Messages.Add("LỖI" + sk + ": " + shear[k].Note);
+            if (tor != null)
+            {
+                var tr = tor[k];
+                d.Checks.Add(new CheckItem
+                {
+                    Name = "Xoắn – dải bê tông chịu nén" + sk, Demand = tr.T, Capacity = tr.TStrutReduced, Unit = "kN.m",
+                    Note = "T ≤ 0,1·Rb·b²·h·(1 − Q/0,3Rb·b·h0) = " + DesignUtil.F(tr.TStrutReduced, "0.0") + " – " + res.ComboT
+                });
+                d.Checks.Add(new CheckItem
+                {
+                    Name = "Xoắn + cắt – cốt đai kín" + sk, Demand = tr.T, Capacity = tr.TswCapacity, Unit = "kN.m",
+                    Note = "Đai kín Ø" + sd + "a" + DesignUtil.F(tr.S * 1000, "0") + ": Tsw = 2·Ak·Rsw·(Asw1/s − qsw/2Rsw), Ak = " + DesignUtil.F(tr.Ak * 1e4, "0") + " cm²"
+                });
+                // phần thép dọc còn dư sau khi chịu uốn tại các tiết diện có yêu cầu (bỏ qua thép trên ở đầu tự do công xôn: T → 0)
+                double spare = res.AsBotProv - (res.AsBotReq - res.AsTorsion / 2);
+                if (k > 0 || sp.SupL) spare = Math.Min(spare, res.AsTopLeftProv - (res.AsTopLeftReq - res.AsTorsion / 2));
+                if (k < ns - 1 || sp.SupR) spare = Math.Min(spare, res.AsTopRightProv - (res.AsTopRightReq - res.AsTorsion / 2));
+                d.Checks.Add(new CheckItem
+                {
+                    Name = "Xoắn – cốt dọc" + sk, Demand = res.AsTorsion * 1e4, Capacity = Math.Max(0, spare * 2 * 1e4),
+                    Unit = "cm²", Note = "Asl = T·uk/(2·Ak·Rs), ½ ở thép trên + ½ ở thép dưới (cộng vào thép chịu uốn)"
+                });
+                if (!tr.Ok && !string.IsNullOrEmpty(tr.Note)) d.Messages.Add("LỖI" + sk + " (xoắn): " + tr.Note);
+            }
 
             // độ võng ước lượng
             bool cantilever = (k == 0 && !sp.SupL) || (k == ns - 1 && !sp.SupR);
@@ -483,6 +598,11 @@ public static class BeamDesigner
         }
         if (extraBot.Concat(extraTop).Any(e => !e.Ok))
             d.Messages.Add("LỖI không bố trí đủ thép dọc trong bề rộng dầm b = " + DesignUtil.F(b * 1000, "0") + " mm – cần tăng tiết diện");
+
+        if (li.Arc != null)
+            d.Messages.Add(CurvedBeam.Describe(li.Arc) + ". Mặt đứng dầm thể hiện trải theo chiều dài cung; chiều dài thép dọc tính theo cung. "
+                           + "Bắt buộc dùng ĐAI KÍN (móc 135°, đoạn móc ≥ 6d) suốt dầm; thép dọc chịu xoắn neo như thép chịu kéo vào gối"
+                           + (h > 0.45 ? "; đặt thêm thép giá cạnh ≥ Ø12 a ≤ 300 mm." : "."));
 
         // ---- bố trí thép ----
         Detail(d, li, cs, b, h, c, dB, dT, extraBot, extraTop, shear, sd, nodeX, nodeW, lcl, xEnd);
@@ -672,6 +792,7 @@ public static class BeamDesigner
     private static string Signature(BeamLineDesign d)
     {
         var sp = string.Join("/", d.Spans.Select(s => Math.Round(s.L * 100) + "," + Math.Round(s.SupportWidthLeft * 100) + "," + Math.Round(s.SupportWidthRight * 100)));
-        return d.Section + "|" + Math.Round(d.TopElevation * 100) + "|" + sp + "|" + RebarNumbering.Signature(d.Bars);
+        return d.Section + "|" + Math.Round(d.TopElevation * 100) + "|" + sp + "|" + RebarNumbering.Signature(d.Bars)
+               + (d.IsCurved ? "|C" + Math.Round(d.CurveRadius * 100) : "");
     }
 }

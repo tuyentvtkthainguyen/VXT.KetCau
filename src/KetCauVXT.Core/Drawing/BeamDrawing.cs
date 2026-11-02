@@ -225,6 +225,14 @@ public static class BeamDrawing
         double Lout = (xs[^1] - xs[0]) + sw[0] / 2 + sw[^1] / 2;
         string title = $"{d.Name} (SL={Math.Max(1, d.Quantity)}; L={DxfWriter.N0(Math.Round(Lout / 10) * 10)})";
         w.Title((xs[0] + xs[^1]) / 2, yChain + 6.5 * th, title, DrawUtil.ScaleText(S));
+        if (d.IsCurved)
+        {
+            // dầm cong: mặt đứng là hình trải theo cung; chiều dài thép đã tính theo cung
+            double yN = yBub - 3.2 * th;
+            w.Text(Lay.Chu, xs[0], yN, th, CurvedDraw.Note(d.CurveRadius, d.ArcLength), 0, 0, 0);
+            w.Text(Lay.Chu, xs[0], yN - 1.8 * th, 0.85 * th,
+                $"Dây cung {DxfWriter.N0(d.Chord * 1000)}, độ vồng {DxfWriter.N0(d.Sagitta * 1000)}; chiều dài thép dọc tính theo cung; dùng đai kín móc 135°; Tmax = {d.TorsionMax.ToString("0.0", DrawUtil.Inv)} kN.m", 0, 0, 0);
+        }
         figs.Add(new Figure(w, d.Name, true));
 
         // ---- mặt cắt ----

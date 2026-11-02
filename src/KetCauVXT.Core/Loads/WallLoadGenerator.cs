@@ -10,6 +10,8 @@ namespace KetCauVXT.Loads;
 ///   phần tường không có dầm đỡ → tải phân bố đều lên ô sàn chứa trung điểm đoạn đó (trường hợp HTHT).</item>
 /// <item>Chiều cao tường mặc định: chiều cao tầng phía trên − chiều cao dầm dưới tường (≥ 0,35 m); trên tầng mái: 0,9 m (tường chắn mái).</item>
 /// <item>Cấu tạo sàn: HTHT = Σ lớp hoàn thiện, HT = hoạt tải của cấu tạo.</item>
+/// <item>Dầm cong: tường khai báo theo dây cung của dầm (vd. "Gán tường" lên dầm cong) được coi là tường cong chạy theo dầm –
+///   tải q kN/m đặt theo chiều dài cung (vị trí tương đối trên dây cung = vị trí tương đối trên cung), tổng tải = q·L cung.</item>
 /// </list></summary>
 public static class WallLoadGenerator
 {

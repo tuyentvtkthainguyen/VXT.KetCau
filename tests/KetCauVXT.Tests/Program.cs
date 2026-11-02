@@ -479,6 +479,12 @@ GeoTests.Run(Check);
 Console.WriteLine("20. Phụ lục tính toán (công thức, hệ số, giải thích) + xuất Word");
 AppendixTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("21. Dầm cong: hình học cung, nội lực (so lời giải giải tích), xoắn, xuất e2k/DXF");
+CurvedBeamTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
+Console.WriteLine("22. Dàn trang thủ công: đối tượng tự do, bắt dính, căn chỉnh, khổ giấy tuỳ chỉnh, hoàn tác");
+ManualSheetTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

@@ -249,6 +249,7 @@ public static class ModelEdit
         var res = new List<FrameElement>();
         foreach (var f in StoryBeams(p, story))
         {
+            if (f.IsCurved) continue; // dầm cong không nằm trên biên chữ nhật
             var a = p.Node(f.NodeI); var b = p.Node(f.NodeJ);
             double mx = (a.X + b.X) / 2, my = (a.Y + b.Y) / 2;
             bool hx = Math.Abs(a.Y - b.Y) < 1e-6 && (Math.Abs(a.Y - r.Y0) < 0.02 || Math.Abs(a.Y - r.Y1) < 0.02) && mx > r.X0 - 0.01 && mx < r.X1 + 0.01;
@@ -389,6 +390,15 @@ public static class ModelEdit
         foreach (var f in StoryBeams(p, story))
         {
             var ni = p.Node(f.NodeI); var nj = p.Node(f.NodeJ);
+            if (f.IsCurved)
+            {
+                // dầm cong có sẵn: giao điểm đoạn thẳng mới với cung
+                var arc = CurvedBeam.Arc(p, f);
+                if (arc != null)
+                    foreach (var (qx, qy) in CurvedBeam.Intersections(arc, x1, y1, x2, y2))
+                        p.GetOrAddNode(Math.Round(qx, 4), Math.Round(qy, 4), z, story);
+                continue;
+            }
             if (ImportGeometry.Intersect(seg, new Seg2(ni.X, ni.Y, nj.X, nj.Y), out double ix, out double iy, 0.02))
                 p.GetOrAddNode(Math.Round(ix, 4), Math.Round(iy, 4), z, story);
         }
@@ -401,6 +411,81 @@ public static class ModelEdit
         r.Message = $"Đã thêm dầm {section} dài {L:0.00} m tại tầng {story}" + (ModelBuilder.SplitFramesAtNodes(p) > 0 ? " (đã chia tại các nút giao)." : ".");
         p.InvalidateIndex();
         return r;
+    }
+
+    // ------------------------------------------------------------------
+    // Dầm cong
+    // ------------------------------------------------------------------
+    /// <summary>Thêm dầm cong trên cao trình tầng: cung tròn từ p1 tới p2 đi qua điểm trung gian through (bắt nút/trục như AddBeam
+    /// cho hai đầu). Dầm thẳng có sẵn bị cung cắt qua được chia tại giao điểm (nút giao nằm trên cung).</summary>
+    public static EditResult AddCurvedBeam(Project p, string story, (double X, double Y) p1, (double X, double Y) p2, (double X, double Y) through, string section)
+    {
+        double z = StoryZ(p, story);
+        var (x1, y1) = Snap(p, story, p1.X, p1.Y); var (x2, y2) = Snap(p, story, p2.X, p2.Y);
+        double c = Math.Sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+        if (c < 0.3) return EditResult.Fail("Dầm quá ngắn (dây cung < 0,3 m).");
+        if (string.IsNullOrEmpty(section) || !p.FrameSections.Any(f => f.Name == section)) return EditResult.Fail("Chưa chọn tiết diện dầm.");
+        double s = Math.Round(CurvedBeam.SagittaThrough(x1, y1, x2, y2, through.X, through.Y), 4);
+        if (Math.Abs(s) < 0.01) return EditResult.Fail("Ba điểm gần thẳng hàng (độ vồng < 10 mm) – dùng công cụ ＋ Dầm để thêm dầm thẳng.");
+        if (Math.Abs(s) > c) return EditResult.Fail($"Độ vồng {Math.Abs(s):0.00} m lớn hơn dây cung {c:0.00} m – chọn điểm thứ ba gần dây cung hơn.");
+        var a = p.GetOrAddNode(x1, y1, z, story); var b = p.GetOrAddNode(x2, y2, z, story);
+        if (p.Frames.Any(f => (f.NodeI == a.Id && f.NodeJ == b.Id) || (f.NodeI == b.Id && f.NodeJ == a.Id)))
+            return EditResult.Fail("Đã có dầm nối đúng hai điểm này – chọn dầm đó rồi nhập độ vồng để uốn cong.");
+        var arc = CurvedBeam.Arc(a.P, b.P, s);
+        // nút giao với dầm thẳng có sẵn cùng cao trình (nằm trên cung)
+        foreach (var f in StoryBeams(p, story).Where(q => !q.IsCurved))
+        {
+            var ni = p.Node(f.NodeI); var nj = p.Node(f.NodeJ);
+            foreach (var (ix, iy) in CurvedBeam.Intersections(arc, ni.X, ni.Y, nj.X, nj.Y))
+                p.GetOrAddNode(Math.Round(ix, 4), Math.Round(iy, 4), z, story);
+        }
+        int k = 1;
+        while (p.Frames.Any(f => f.DesignGroup == $"D{story}-C{k}")) k++;
+        var fr = ImportGeometry.AddFrame(p, a, b, FrameKind.Beam, section, story, $"D{story}-C{k}", $"D{story}-C{k}");
+        if (fr == null) return EditResult.Fail("Không thêm được dầm cong.");
+        fr.CurveMidOffset = s;
+        var r = new EditResult { Ok = true };
+        r.NewFrames.Add(fr.Id);
+        bool split = ModelBuilder.SplitFramesAtNodes(p) > 0;
+        r.Message = $"Đã thêm dầm cong {section} R = {arc.Radius:0.00} m, chiều dài cung {arc.Length:0.00} m (dây cung {c:0.00} m, độ vồng {Math.Abs(s):0.00} m) tại tầng {story}"
+                    + (split ? " (đã chia tại các nút giao)." : ".");
+        p.InvalidateIndex();
+        return r;
+    }
+
+    /// <summary>Đặt độ vồng (m, có dấu: dương = vồng về bên trái hướng I→J) cho dầm nằm ngang; 0 = trả về dầm thẳng.</summary>
+    public static EditResult SetBeamCurvature(Project p, FrameElement f, double sagitta)
+    {
+        if (f == null || f.IsVerticalKind) return EditResult.Fail("Chọn một dầm trước.");
+        var a = p.Node(f.NodeI); var b = p.Node(f.NodeJ);
+        if (Math.Abs(a.Z - b.Z) > 1e-3) return EditResult.Fail("Chỉ dầm nằm ngang (hai đầu cùng cao độ) mới uốn cong được.");
+        double c = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+        if (double.IsNaN(sagitta) || double.IsInfinity(sagitta)) return EditResult.Fail("Độ vồng không hợp lệ.");
+        if (Math.Abs(sagitta) > c) return EditResult.Fail($"Độ vồng {Math.Abs(sagitta):0.00} m lớn hơn dây cung {c:0.00} m.");
+        if (Math.Abs(sagitta) < 1e-3) sagitta = 0;
+        f.CurveMidOffset = Math.Round(sagitta, 4);
+        f.CurveSegments = 0;
+        p.InvalidateIndex();
+        var r = new EditResult { Ok = true };
+        r.NewFrames.Add(f.Id);
+        var arc = CurvedBeam.Arc(p, f);
+        bool split = ModelBuilder.SplitFramesAtNodes(p) > 0;
+        r.Message = arc == null ? $"Dầm {f.Label}: đã trả về dầm thẳng (L = {c:0.00} m)."
+            : $"Dầm {f.Label}: dầm cong R = {arc.Radius:0.00} m, chiều dài cung {arc.Length:0.00} m, độ vồng {Math.Abs(f.CurveMidOffset):0.00} m"
+              + (split ? " (đã chia tại nút nằm trên cung)." : ".");
+        p.InvalidateIndex();
+        return r;
+    }
+
+    /// <summary>Uốn cong dầm theo bán kính R (cung nhỏ); side = +1 vồng trái, −1 vồng phải hướng I→J.</summary>
+    public static EditResult SetBeamRadius(Project p, FrameElement f, double radius, int side = 1)
+    {
+        if (f == null || f.IsVerticalKind) return EditResult.Fail("Chọn một dầm trước.");
+        var a = p.Node(f.NodeI); var b = p.Node(f.NodeJ);
+        double c = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+        double s = CurvedBeam.SagittaFromRadius(c, Math.Abs(radius), side);
+        if (double.IsNaN(s)) return EditResult.Fail($"Bán kính R = {Math.Abs(radius):0.00} m nhỏ hơn nửa dây cung {c / 2:0.00} m.");
+        return SetBeamCurvature(p, f, s);
     }
 
     /// <summary>Bắt điểm vào nút có sẵn của tầng, giao trục, hoặc lưới 50 mm.</summary>

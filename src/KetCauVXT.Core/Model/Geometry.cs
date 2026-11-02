@@ -89,6 +89,16 @@ public class FrameElement
     public string DesignGroup { get; set; } = "";
     /// <summary>Chiều dài tính toán ngoài mặt phẳng (thép) – khoảng cách giằng/xà gồ, m. 0 = lấy chiều dài thanh.</summary>
     public double UnbracedLength22 { get; set; }
+    /// <summary>Dầm cong trên mặt bằng: độ vồng (mũi tên cung) f tại giữa dây cung I–J, m. Dương = cung vồng về bên trái
+    /// hướng I→J nhìn từ trên xuống (+Z), âm = bên phải; 0 = thanh thẳng (mặc định, tương thích file cũ).
+    /// Chỉ áp dụng cho thanh nằm ngang (hai nút cùng cao độ) – xem <see cref="CurvedBeam"/>.</summary>
+    public double CurveMidOffset { get; set; }
+    /// <summary>Số đoạn thẳng chia dầm cong khi phân tích/xuất ETABS; 0 = tự động (mỗi đoạn ≤ 10°).</summary>
+    public int CurveSegments { get; set; }
+
+    /// <summary>Thanh có khai báo độ cong (|f| &gt; 0,1 mm). Hình học cung: <see cref="CurvedBeam.Arc(Project, FrameElement)"/>.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsCurved => Math.Abs(CurveMidOffset) > 1e-4;
 
     public bool IsVerticalKind => Kind is FrameKind.Column or FrameKind.SteelColumn;
     public bool IsConcrete => Kind is FrameKind.Column or FrameKind.Beam;

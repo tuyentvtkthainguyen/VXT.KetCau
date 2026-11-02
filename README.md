@@ -105,6 +105,8 @@ Giới hạn hiện tại: chưa hỗ trợ tường xiên/cong, tầng hầm, t
 | ＋ Giếng trời | Bấm vào ô sàn → bỏ sàn (ô thông tầng), lan can 0,5 kN/m quanh lỗ. |
 | Sàn vệ sinh | Bấm vào ô sàn → hoàn thiện 2,0 kN/m² (chống thấm, hạ cốt). Bấm lại để trả về phòng thường. |
 | Xoá | Xoá ô sàn hoặc lỗ sàn (xoá lỗ sẽ đặt lại sàn). |
+| ＋ Dầm cong | Bấm điểm đầu, điểm cuối rồi một điểm bất kỳ trên cung (dây chun hình cung, ghi R, chiều dài cung) → dầm cong trên mặt bằng (ban công cong, mặt tiền cong). Dầm thẳng bị cung cắt qua được chia tại giao điểm. |
+| Uốn cong | Chọn một dầm, nhập *độ vồng f* hoặc *bán kính R* (m; 0 = nắn thẳng, số âm = đổi phía vồng) rồi bấm **Uốn cong**. |
 | Hoàn tác | Ctrl+Z, tối đa 30 bước. Phím Delete xoá đối tượng đang chọn, Esc về chế độ Chọn. |
 
 **Tab Biểu đồ nội lực:** chọn đại lượng M3, M2, V2, V3, N, T và trường hợp/tổ hợp tải (BAO: vẽ cả max và min). Có 3 khung nhìn:
@@ -124,7 +126,7 @@ Giới hạn hiện tại: chưa hỗ trợ tường xiên/cong, tầng hầm, t
 | ETABS – kiểm tra cả bước dồn tải | `MoHinh.e2k` | Sàn xuất là phần tử Membrane kèm tải sàn, ETABS tự dồn tải. Mở: *File > Import > ETABS .e2k Text File*. |
 | So sánh tự động | `ForceComparer` | Xuất bảng *Element Forces – Frames* từ ETABS/SAP ra CSV, nạp vào chương trình → báo sai lệch từng thanh/trường hợp tải. |
 
-Tên thanh: `.e2k` dùng `C{Id}` (cột), `B{Id}` (dầm), `D{Id}` (thanh xiên); `.s2k` dùng `{Id}` (đoạn vát `{Id}_k`). Quy ước dấu nội lực giống ETABS (P kéo dương, M3 dương căng thớ dưới dầm), cột vẽ từ dưới lên.
+Tên thanh: `.e2k` dùng `C{Id}` (cột), `B{Id}` (dầm), `D{Id}` (thanh xiên); `.s2k` dùng `{Id}` (đoạn vát `{Id}_k`). Dầm cong xuất thành các đoạn thẳng `B{Id}_k` (`.e2k`) / `{Id}_k` (`.s2k`) qua các điểm trên cung – đúng như mô hình tính (mỗi đoạn ≤ 10°); tải phân bố theo cung được quy về từng đoạn (q·ΔS/c). Nội lực chương trình của dầm cong quy về hệ trục tiếp tuyến cung, ETABS/SAP báo theo trục từng đoạn → lệch nhỏ (cỡ sin 5°) giữa M3 và T ở đầu đoạn. Quy ước dấu nội lực giống ETABS (P kéo dương, M3 dương căng thớ dưới dầm), cột vẽ từ dưới lên.
 
 Nguyên nhân sai lệch thường gặp khi so với ETABS: ETABS mặc định có vùng cứng đầu thanh (*End length offsets*) và hệ số giảm độ cứng (*Property modifiers*) nếu người dùng gán; hãy tắt hoặc khai báo giống nhau ở hai bên.
 
@@ -136,6 +138,7 @@ Nguyên nhân sai lệch thường gặp khi so với ETABS: ETABS mặc định
 | Động đất | TCVN 9386:2012 | Phương pháp tĩnh lực ngang tương đương, T1 = Ct·H^¾, phổ loại 1. Chưa xét độ lệch tâm ngẫu nhiên. |
 | Phân tích | – | Tuyến tính bậc nhất (chưa P-Delta). Sàn tuyệt đối cứng trong mặt phẳng, không tham gia chịu uốn của khung; tải sàn dồn 45°. |
 | Dầm | TCVN 5574:2018 | Tiết diện chữ nhật (chưa kể cánh T – thiên về an toàn); cắt với c = 2h0; võng dài hạn với độ cứng B = Eb/(1+φb,cr)·Ieff (kể nứt theo thép thực bố trí, φb,cr = 2,5), dầm liên tục f = 5/48·[Mg − 0,1(Mt+Mp)]·L²/B. |
+| Dầm cong | TCVN 5574:2018 mục 8.1.4 (giản lược) | Chỉ dầm nằm ngang cong trên mặt bằng (cung tròn qua 2 nút, độ vồng `CurveMidOffset`). Phân tích: chia thành các đoạn thẳng ≤ 10° (nút trung gian nội bộ), tải theo chiều dài cung, nội lực quy về hệ trục tiếp tuyến. Thiết kế trên chiều dài cung: uốn + cắt + **xoắn** (T ≤ 0,1·Rb·b²·h tương tác tuyến tính với Q; đai kín Asw1/s = T/(2·Ak·Rsw) + qsw/(2·Rsw), bước ≤ min(uk/8; 300 mm); cốt dọc Asl = T·uk/(2·Ak·Rs) cộng ½ trên + ½ dưới). **Sàn kề dầm cong**: đa giác sàn lấy theo dây cung, tải dồn lên dây cung rải lại lên cung với hệ số c/L (bảo toàn tổng tải); cung vồng ra ngoài ô sàn (không thuộc ô sàn nào) được cộng tải viên phân R²/2·(φ − sin φ). Tường "gán lên dầm cong" coi là tường cong theo dầm (tải × chiều dài cung). Mặt đứng khung chỉ thể hiện hình chiếu của dầm cong. |
 | Cột | TCVN 5574:2018 | Cốt thép đối xứng, lệch tâm xiên bằng đường bao tải trọng (load contour), uốn dọc theo hệ số η. |
 | Sàn | – | Ô chữ nhật, phương pháp Marcus theo điều kiện biên, bỏ qua giảm mô men xoắn. Võng dài hạn kể nứt + từ biến, hệ số liên kết cạnh. |
 | Móng | TCVN 9362:2012, TCVN 5574:2018 | Móng đơn, móng băng trên nền thiên nhiên (R, áp lực đáy, chọc thủng, uốn, lún cộng lớp phân tố); móng cọc (TCVN 10304:2014, sức chịu tải theo SPT/chỉ tiêu cơ lý). Địa chất: hố khoan khảo sát hoặc nền mặc định “đất tốt”; chương trình gợi ý phương án móng. Xem Phụ lục tính toán (menu Trợ giúp). |

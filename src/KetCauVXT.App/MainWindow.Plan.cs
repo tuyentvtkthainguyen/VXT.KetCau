@@ -197,6 +197,8 @@ public partial class MainWindow
             if (ni == null || nj == null) continue;
             var a = W2S(ni.X, ni.Y); var b = W2S(nj.X, nj.Y);
             double width = BeamPlanWidth(f);
+            var arcB = SafeArc(f);
+            if (arcB != null) { DrawCurvedBeamPlan(f, arcB, f.IsConcrete ? BeamBrush : SteelBrush, width, labels); continue; } // dầm cong (MainWindow.CurvedBeam.cs)
             AddLine(a, b, f.IsConcrete ? BeamBrush : SteelBrush, width, false);
             if (labels)
             {
@@ -371,6 +373,15 @@ public partial class MainWindow
             {
                 var ni = _p.Nodes.FirstOrDefault(n => n.Id == f.NodeI); var nj = _p.Nodes.FirstOrDefault(n => n.Id == f.NodeJ);
                 if (ni == null || nj == null) return;
+                if (f.IsCurved && SafeArc(f) != null)
+                {
+                    target.Children.Add(new Shapes.Polyline
+                    {
+                        Points = BeamScreenPoints(f), Stroke = stroke, StrokeThickness = BeamPlanWidth(f) + (hover ? 3 : 5),
+                        StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round, Effect = fx, IsHitTestVisible = false
+                    });
+                    break;
+                }
                 var a = W2S(ni.X, ni.Y); var b = W2S(nj.X, nj.Y);
                 target.Children.Add(new Shapes.Line
                 {
@@ -589,7 +600,7 @@ public partial class MainWindow
         {
             var ni = _p.Nodes.FirstOrDefault(n => n.Id == f.NodeI); var nj = _p.Nodes.FirstOrDefault(n => n.Id == f.NodeJ);
             if (ni == null || nj == null) continue;
-            double d = DistToSeg(s, W2S(ni.X, ni.Y), W2S(nj.X, nj.Y));
+            double d = f.IsCurved && SafeArc(f) != null ? DistToPolyline(s, BeamScreenPoints(f)) : DistToSeg(s, W2S(ni.X, ni.Y), W2S(nj.X, nj.Y));
             if (d <= bd) { bd = d; best = f; }
         }
         return best;
@@ -640,7 +651,7 @@ public partial class MainWindow
         }
         var f = _sel;
         var ni = _p.Nodes.FirstOrDefault(n => n.Id == f.NodeI); var nj = _p.Nodes.FirstOrDefault(n => n.Id == f.NodeJ);
-        double L = ni != null && nj != null ? (nj.P - ni.P).Length : 0;
+        double L = ni != null && nj != null ? (f.IsCurved && SafeArc(f) != null ? SafeArc(f).Length : (nj.P - ni.P).Length) : 0;
         string kind = f.Kind switch
         {
             FrameKind.Column => "Cột BTCT", FrameKind.Beam => "Dầm BTCT", FrameKind.SteelColumn => "Cột thép",
@@ -653,6 +664,7 @@ public partial class MainWindow
         sb.AppendLine($"Nút I: {f.NodeI}  {ni?.P}");
         sb.AppendLine($"Nút J: {f.NodeJ}  {nj?.P}");
         sb.AppendLine($"Chiều dài: {L:0.000} m");
+        if (f.IsCurved) sb.Append(CurvedInfo(f));
         int nl = _p.FrameLoads.Count(l => l.Element == f.Id);
         if (nl > 0) sb.AppendLine($"Số tải gán trên thanh: {nl}");
         if (_res != null)
@@ -671,6 +683,12 @@ public partial class MainWindow
                 sb.AppendLine($"M3 max = {mmax:0.00}  min = {mmin:0.00} kN.m");
                 sb.AppendLine($"|V2| max = {vmax:0.00} kN");
                 sb.AppendLine($"P max = {pmax:0.00}  min = {pmin:0.00} kN");
+                if (f.IsCurved)
+                {
+                    double tmax = Enumerable.Range(0, ff.Count).Max(i => Math.Abs(ff.T(i)));
+                    if (mn != null) tmax = Math.Max(tmax, Enumerable.Range(0, mn.Count).Max(i => Math.Abs(mn.T(i))));
+                    sb.AppendLine($"|T| max = {tmax:0.00} kN.m (xoắn dầm cong)");
+                }
             }
         }
         txtInfo.Text = sb.ToString();

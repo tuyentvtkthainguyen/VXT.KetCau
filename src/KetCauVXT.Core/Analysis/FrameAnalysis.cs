@@ -6,6 +6,10 @@ namespace KetCauVXT.Analysis;
 /// <summary>Phân tích tĩnh tuyến tính khung không gian bằng phương pháp phần tử hữu hạn (phương pháp độ cứng trực tiếp).
 /// – Phần tử thanh Timoshenko 12 bậc tự do, giải phóng liên kết đầu thanh bằng khử tĩnh.
 /// – Thanh tiết diện thay đổi (kèo/cột khung tiền chế) được chia thành nhiều đoạn lăng trụ.
+/// – Dầm cong trên mặt bằng (FrameElement.CurveMidOffset ≠ 0) được chia thành các đoạn thẳng nối các điểm trên cung
+///   (nút trung gian nội bộ id âm, không lưu vào dự án). Vị trí S0, S1 của đoạn đo theo chiều dài cung; tải phân bố theo
+///   chiều dài cung được quy về dây cung của đoạn với cường độ q·ΔS/c (bảo toàn tổng tải). Nội lực tại mặt cắt được
+///   chuyển về hệ trục tiếp tuyến của cung (e1 theo tiếp tuyến) → M3 uốn đứng, T xoắn, liên tục qua các nút trung gian.
 /// – Sàn tuyệt đối cứng trong mặt phẳng (diaphragm) bằng ràng buộc nút chủ – nút phụ.
 /// – Tải sàn dồn về dầm theo đường phân giác 45°; tải gió/động đất sinh tự động theo tầng.</summary>
 public class FrameAnalysis
@@ -18,7 +22,8 @@ public class FrameAnalysis
     {
         public FrameElement Frame;
         public int NI, NJ;            // khoá nút (id nút dự án, nút trung gian có id âm)
-        public double S0, S1, L;      // vị trí đầu/cuối trên thanh gốc (m)
+        public double S0, S1, L;      // vị trí đầu/cuối trên thanh gốc (m), L = chiều dài đoạn (dây cung với dầm cong)
+        public double Scale = 1.0;    // chiều dài địa phương / chiều dài trên thanh gốc: L/(S1 − S0) (= 1 với thanh thẳng)
         public double[,] R, T, K0, K; // K0 chưa khử, K đã khử giải phóng
         public bool[] RelI, RelJ;
         public SectionProps Sp;
@@ -34,6 +39,7 @@ public class FrameAnalysis
     private readonly Dictionary<int, Vec3> _xyz = new();
     private readonly Dictionary<int, List<(int eq, double c)>[]> _map = new();
     private readonly Dictionary<int, List<Sub>> _framesSubs = new();
+    private readonly Dictionary<int, ArcGeometry> _arcs = new();   // dầm cong: hình học cung theo Id thanh
     private int _neq;
     private SkylineMatrix _K;
 
@@ -94,6 +100,13 @@ public class FrameAnalysis
             var pj = _p.Node(f.NodeJ).P;
             double Lp = (pj - pi).Length;
             int nseg = sec.IsTapered ? Math.Max(2, _p.Steel.TaperSegments) : 1;
+            var arc = CurvedBeam.Arc(_p, f);
+            if (arc != null)
+            {
+                _arcs[f.Id] = arc;
+                Lp = arc.Length;
+                nseg = Math.Max(nseg, CurvedBeam.SegmentCount(f, arc));
+            }
             var R = ElementMatrices.LocalAxes(pi, pj, f.Angle);
             var T = ElementMatrices.Transformation(R);
             var list = new List<Sub>();
@@ -111,7 +124,7 @@ public class FrameAnalysis
                 else
                 {
                     nj = nextInternal--;
-                    _xyz[nj] = pi + (pj - pi) * t1;
+                    _xyz[nj] = arc != null ? arc.PointAt(t1) : pi + (pj - pi) * t1;
                 }
                 var sp = sec.Props((t0 + t1) / 2);
                 var sub = new Sub
@@ -121,6 +134,15 @@ public class FrameAnalysis
                     RelI = s == 0 ? relI : new bool[6],
                     RelJ = s == nseg - 1 ? relJ : new bool[6]
                 };
+                if (arc != null)
+                {
+                    // đoạn thẳng nối hai điểm trên cung: hệ trục riêng theo dây cung của đoạn
+                    var qa = arc.PointAt(t0); var qb = arc.PointAt(t1);
+                    sub.L = (qb - qa).Length;
+                    sub.Scale = sub.L / Math.Max(sub.S1 - sub.S0, 1e-12);
+                    sub.R = ElementMatrices.LocalAxes(qa, qb, f.Angle);
+                    sub.T = ElementMatrices.Transformation(sub.R);
+                }
                 sub.K0 = ElementMatrices.LocalStiffness(sub.L, mat.E, mat.G,
                     sp.A * sec.ModA, sp.As2, sp.As3, sp.I33 * sec.ModI33, sp.I22 * sec.ModI22, sp.J * sec.ModJ);
                 sub.K = (double[,])sub.K0.Clone();
@@ -139,7 +161,7 @@ public class FrameAnalysis
             if (pat.SelfWeight != 0)
                 foreach (var sub in _subs)
                 {
-                    double q = pat.SelfWeight * sub.Mat.UnitWeight * sub.Sp.A;
+                    double q = pat.SelfWeight * sub.Mat.UnitWeight * sub.Sp.A / sub.Scale;   // dầm cong: theo chiều dài cung
                     var d = DirLocal(sub, LoadDir.Gravity);
                     sub.Segs[pat.Name].Add(new[] { 0, sub.L, q * d[0], q * d[1], q * d[2], q * d[0], q * d[1], q * d[2] });
                 }
@@ -149,8 +171,7 @@ public class FrameAnalysis
             if (!_framesSubs.TryGetValue(fl.Element, out var subs)) continue;
             if (_p.Pattern(fl.Pattern) == null) continue;
             double Lp = subs[^1].S1;
-            var dir = DirLocal(subs[0], fl.Dir);
-            // các đoạn tuyến tính của tải
+            // các đoạn tuyến tính của tải (vị trí theo chiều dài thanh gốc – theo cung với dầm cong)
             for (int i = 0; i + 1 < fl.Points.Count; i++)
             {
                 double xa = fl.Points[i][0] * Lp, xb = fl.Points[i + 1][0] * Lp;
@@ -160,11 +181,12 @@ public class FrameAnalysis
                 {
                     double a = Math.Max(xa, sub.S0), b = Math.Min(xb, sub.S1);
                     if (b - a <= 1e-9) continue;
-                    double va = qa + (qb - qa) * (a - xa) / (xb - xa);
-                    double vb = qa + (qb - qa) * (b - xa) / (xb - xa);
+                    double va = (qa + (qb - qa) * (a - xa) / (xb - xa)) / sub.Scale;
+                    double vb = (qa + (qb - qa) * (b - xa) / (xb - xa)) / sub.Scale;
+                    var dir = DirLocal(sub, fl.Dir);
                     sub.Segs[fl.Pattern].Add(new[]
                     {
-                        a - sub.S0, b - sub.S0,
+                        (a - sub.S0) * sub.Scale, (b - sub.S0) * sub.Scale,
                         va * dir[0], va * dir[1], va * dir[2],
                         vb * dir[0], vb * dir[1], vb * dir[2]
                     });
@@ -174,7 +196,8 @@ public class FrameAnalysis
             {
                 double x = pl[0] * Lp;
                 var sub = subs.FirstOrDefault(s => x >= s.S0 - 1e-9 && x <= s.S1 + 1e-9) ?? subs[^1];
-                sub.Pts[fl.Pattern].Add(new[] { x - sub.S0, pl[1] * dir[0], pl[1] * dir[1], pl[1] * dir[2] });
+                var dir = DirLocal(sub, fl.Dir);
+                sub.Pts[fl.Pattern].Add(new[] { (x - sub.S0) * sub.Scale, pl[1] * dir[0], pl[1] * dir[1], pl[1] * dir[2] });
             }
         }
         // tải nút tương đương đã khử giải phóng
@@ -410,18 +433,36 @@ public class FrameAnalysis
             int nseg = Math.Max(4, (int)Math.Ceiling(Lp / 0.5 - 1e-9));
             for (int i = 0; i <= nseg; i++) st.Add(Math.Round(Lp * i / nseg, 6));
             foreach (var s in subs) { st.Add(Math.Round(s.S0, 6)); st.Add(Math.Round(s.S1, 6)); }
-            foreach (var s in subs) foreach (var pt in s.Pts[pat.Name]) st.Add(Math.Round(s.S0 + pt[0], 6));
+            foreach (var s in subs) foreach (var pt in s.Pts[pat.Name]) st.Add(Math.Round(s.S0 + pt[0] / s.Scale, 6));
             var stations = st.ToArray();
             var ff = new FrameForces { Stations = stations, F = new double[stations.Length][] };
             for (int i = 0; i < stations.Length; i++)
             {
                 double x = stations[i];
                 var s = subs.FirstOrDefault(q => x <= q.S1 + 1e-9) ?? subs[^1];
-                ff.F[i] = SectionForce(s, endForces[s], x - s.S0, pat.Name);
+                ff.F[i] = SectionForce(s, endForces[s], (x - s.S0) * s.Scale, pat.Name);
+                if (_arcs.TryGetValue(f.Id, out var arc)) ff.F[i] = ToArcAxes(s, ff.F[i], arc, x / Math.Max(Lp, 1e-12));
             }
             res.Frames[f.Id] = ff;
         }
         return res;
+    }
+
+    /// <summary>Dầm cong: chuyển nội lực (P, V2, V3, T, M2, M3) từ hệ trục dây cung của đoạn sang hệ trục tiếp tuyến của cung
+    /// tại tham số t (cùng góc xoay tiết diện). Ở nút trung gian hai đoạn kề nhau cho cùng giá trị (cân bằng nút).</summary>
+    private static double[] ToArcAxes(Sub s, double[] f, ArcGeometry arc, double t)
+    {
+        var rt = CurvedBeam.AxesAt(arc, t, s.Frame.Angle);
+        var r = new double[6];
+        for (int blk = 0; blk < 2; blk++)
+        {
+            int o = 3 * blk;
+            // véc tơ tổng thể g = Rsubᵀ·f ; địa phương mới = Rt·g
+            var g = new double[3];
+            for (int j = 0; j < 3; j++) g[j] = s.R[0, j] * f[o] + s.R[1, j] * f[o + 1] + s.R[2, j] * f[o + 2];
+            for (int i = 0; i < 3; i++) r[o + i] = rt[i, 0] * g[0] + rt[i, 1] * g[1] + rt[i, 2] * g[2];
+        }
+        return r;
     }
 
     /// <summary>Nội lực trên mặt dương tại vị trí x (tính từ đầu đoạn): cân bằng phần thanh [0, x].</summary>

@@ -119,6 +119,8 @@ public class Project
     public FoundationSettings Foundation { get; set; } = new();
     /// <summary>Bộ bản vẽ in (dàn trang)</summary>
     public List<Sheet> Sheets { get; set; } = new();
+    /// <summary>Thông tin khung tên mặc định của công trình (đơn vị thiết kế, người duyệt, logo…)</summary>
+    public TitleBlockInfo TitleBlock { get; set; } = new();
 
     public List<LoadPattern> Patterns { get; set; } = new();
     public List<FrameLoad> FrameLoads { get; set; } = new();
@@ -174,7 +176,16 @@ public class Project
 
     public FrameElement Frame(int id) => Frames.First(f => f.Id == id);
 
-    public double Length(FrameElement f) => (Node(f.NodeJ).P - Node(f.NodeI).P).Length;
+    /// <summary>Chiều dài thanh, m. Dầm cong: chiều dài cung (mọi tải phân bố, vị trí tương đối trên thanh, chiều dài thép đều theo cung).</summary>
+    public double Length(FrameElement f)
+    {
+        if (f.IsCurved)
+        {
+            var arc = CurvedBeam.Arc(this, f);
+            if (arc != null) return arc.Length;
+        }
+        return (Node(f.NodeJ).P - Node(f.NodeI).P).Length;
+    }
 
     public LoadPattern Pattern(string name) => Patterns.FirstOrDefault(p => p.Name == name);
 
@@ -209,6 +220,11 @@ public class Project
             if (!ids.Contains(f.NodeI) || !ids.Contains(f.NodeJ)) err.Add($"Thanh {f.Id} tham chiếu nút không tồn tại");
             else if (Length(f) < 1e-4) err.Add($"Thanh {f.Id} có chiều dài bằng 0");
             if (FrameSections.All(s => s.Name != f.Section)) err.Add($"Thanh {f.Id} dùng tiết diện chưa khai báo '{f.Section}'");
+            if (f.IsCurved && ids.Contains(f.NodeI) && ids.Contains(f.NodeJ))
+            {
+                string ce = CurvedBeam.Validate(this, f);
+                if (ce != null) err.Add(ce);
+            }
         }
         if (!Nodes.Any(n => n.IsSupport)) err.Add("Mô hình chưa có liên kết gối (ngàm chân cột)");
         foreach (var s in Slabs)

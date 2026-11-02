@@ -11,7 +11,9 @@ namespace KetCauVXT.Export;
 /// – Sàn xuất là phần tử sàn kiểu Membrane kèm tải sàn (để ETABS tự dồn tải về dầm – kiểm tra chéo cả bước phân tải).
 ///   Đặt slabsAsAreas = false để xuất tải sàn đã dồn sẵn lên dầm (mô hình giống hệt chương trình).
 /// – Tên thanh: C{Id} (cột), B{Id} (dầm), D{Id} (thanh xiên) → so sánh nội lực theo Id.
-/// – Thanh tiết diện vát xuất bằng tiết diện trung bình; với khung thép tiền chế nên dùng file .s2k (SAP2000).</summary>
+/// – Thanh tiết diện vát xuất bằng tiết diện trung bình; với khung thép tiền chế nên dùng file .s2k (SAP2000).
+/// – Dầm cong xuất thành các đoạn thẳng B{Id}_1…B{Id}_n qua các điểm trung gian trên cung – đúng như mô hình tính
+///   (tải phân bố theo cung quy về từng đoạn với cường độ q·ΔS/c, giải phóng liên kết chỉ ở đầu I đoạn đầu và đầu J đoạn cuối).</summary>
 public static class E2kExporter
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -151,6 +153,17 @@ public static class E2kExporter
             return n;
         }
         foreach (var n in p.Nodes) PointName(n.X, n.Y);
+        // dầm cong: các đoạn thẳng và điểm trung gian
+        var curved = new Dictionary<int, List<CurveSegment>>();
+        foreach (var f in p.Frames)
+        {
+            if (!f.IsCurved) continue;
+            var segs = CurvedBeam.Segments(p, f);
+            if (segs == null || LineName(f, p)[0] != 'B') continue;
+            curved[f.Id] = segs;
+            foreach (var sg in segs) { PointName(sg.A.X, sg.A.Y); PointName(sg.B.X, sg.B.Y); }
+        }
+        string SegName(FrameElement f, CurveSegment sg) => LineName(f, p) + "_" + (sg.K + 1).ToString(Inv);
         L("$ POINT COORDINATES");
         foreach (var kv in plan) L($"  POINT \"{kv.Value}\"  {F(kv.Key.Item1 / 1000.0)} {F(kv.Key.Item2 / 1000.0)}");
         L("");
@@ -167,6 +180,9 @@ public static class E2kExporter
                 int span = levels.Count(l => l.Elevation > bot.Z + 1e-3 && l.Elevation <= top.Z + 1e-3);
                 L($"  LINE  \"{name}\"  COLUMN  \"{PointName(top.X, top.Y)}\"  \"{PointName(top.X, top.Y)}\"  {span}");
             }
+            else if (name[0] == 'B' && curved.TryGetValue(f.Id, out var csegs))
+                foreach (var sg in csegs)
+                    L($"  LINE  \"{SegName(f, sg)}\"  BEAM  \"{PointName(sg.A.X, sg.A.Y)}\"  \"{PointName(sg.B.X, sg.B.Y)}\"  0");
             else if (name[0] == 'B')
                 L($"  LINE  \"{name}\"  BEAM  \"{PointName(a.X, a.Y)}\"  \"{PointName(b.X, b.Y)}\"  0");
             else
@@ -221,6 +237,23 @@ public static class E2kExporter
             if (rel.Count > 0) sb2.Append($"  RELEASE \"{string.Join(" ", rel)}\"");
             if (f.Kind == FrameKind.Column || f.Kind == FrameKind.Beam) sb2.Append("  CARDINALPT 10");
             sb2.Append("  MAXSTASPC 0.5  AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
+            if (curved.TryGetValue(f.Id, out var csegs))
+            {
+                // dầm cong: gán cho từng đoạn, giải phóng đầu I ở đoạn đầu, đầu J ở đoạn cuối
+                foreach (var sg in csegs)
+                {
+                    var sb3 = new StringBuilder($"  LINEASSIGN  \"{SegName(f, sg)}\"  \"{story}\"  SECTION \"{f.Section}\"");
+                    if (Math.Abs(f.Angle) > 1e-9) sb3.Append($"  ANG {F(f.Angle)}");
+                    var relc = new List<string>();
+                    if (sg.K == 0) for (int i = 0; i < 6; i++) if (f.ReleaseI[i]) relc.Add(rn[i] + "I");
+                    if (sg.K == sg.Count - 1) for (int i = 0; i < 6; i++) if (f.ReleaseJ[i]) relc.Add(rn[i] + "J");
+                    if (relc.Count > 0) sb3.Append($"  RELEASE \"{string.Join(" ", relc)}\"");
+                    if (f.Kind == FrameKind.Beam) sb3.Append("  CARDINALPT 10");
+                    sb3.Append("  MAXSTASPC 0.5  AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
+                    L(sb3.ToString());
+                }
+                continue;
+            }
             L(sb2.ToString());
         }
         L("");
@@ -272,6 +305,20 @@ public static class E2kExporter
                 string story = StoryOf(Math.Max(a.Z, b.Z));
                 string dir = EtabsDir(fl.Dir);
                 bool flip = name[0] != 'B' && a.Z > b.Z; // ETABS định nghĩa đầu I của cột ở dưới
+                if (curved.TryGetValue(f.Id, out var csegs))
+                {
+                    // dầm cong: tách tải theo từng đoạn thẳng
+                    for (int i = 0; i + 1 < fl.Points.Count; i++)
+                        foreach (var (sg, ra, rb, qa, qb) in CurvedBeam.SplitLoad(csegs, fl.Points[i][0], fl.Points[i + 1][0], fl.Points[i][1], fl.Points[i + 1][1]))
+                            L($"  LINELOAD  \"{SegName(f, sg)}\"  \"{story}\"  TYPE \"TRAPF\"  DIR \"{dir}\"  LC \"{fl.Pattern}\"  FSTART {F(qa)}  FEND {F(qb)}  RDSTART {F(ra)}  RDEND {F(rb)}");
+                    foreach (var pl in fl.PointLoads)
+                    {
+                        var sg = csegs.FirstOrDefault(x => pl[0] <= x.T1 + 1e-9) ?? csegs[^1];
+                        double r = Math.Clamp((pl[0] - sg.T0) / (sg.T1 - sg.T0), 0, 1);
+                        L($"  LINELOAD  \"{SegName(f, sg)}\"  \"{story}\"  TYPE \"POINTF\"  DIR \"{dir}\"  LC \"{fl.Pattern}\"  FVAL {F(pl[1])}  RDIST {F(r)}");
+                    }
+                    continue;
+                }
                 for (int i = 0; i + 1 < fl.Points.Count; i++)
                 {
                     double r0 = fl.Points[i][0], r1 = fl.Points[i + 1][0];

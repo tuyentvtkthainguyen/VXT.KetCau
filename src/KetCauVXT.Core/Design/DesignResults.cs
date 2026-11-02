@@ -116,6 +116,12 @@ public class BeamSpanResult
     // võng
     public double Deflection { get; set; }          // m (TTGH II, đàn hồi × hệ số nứt)
     public double DeflectionLimit { get; set; }
+    // xoắn (dầm cong)
+    /// <summary>Mô men xoắn bao lớn nhất |T| trong nhịp (kN.m) – chỉ tính cho dầm cong</summary>
+    public double TMax { get; set; }
+    public string ComboT { get; set; } = "";
+    /// <summary>Diện tích cốt dọc chịu xoắn toàn chu vi Asl (m²) – đã cộng ½ vào thép trên, ½ vào thép dưới</summary>
+    public double AsTorsion { get; set; }
 }
 
 public class BeamLineDesign : MemberDesignBase
@@ -128,8 +134,21 @@ public class BeamLineDesign : MemberDesignBase
     public double TopElevation { get; set; }
     public List<BeamSpanResult> Spans { get; set; } = new();
     public List<StirrupZone> StirrupZones { get; set; } = new();
-    /// <summary>Tổng chiều dài dầm tim trục đầu – tim trục cuối (m)</summary>
+    /// <summary>Tổng chiều dài dầm tim trục đầu – tim trục cuối (m); dầm cong: theo chiều dài cung</summary>
     public double TotalLength => Spans.Sum(s => s.L);
+    // dầm cong (FrameElement.CurveMidOffset ≠ 0)
+    /// <summary>Dầm cong trên mặt bằng: thiết kế và thể hiện trên chiều dài cung (mặt đứng trải)</summary>
+    public bool IsCurved { get; set; }
+    /// <summary>Bán kính cong R (m)</summary>
+    public double CurveRadius { get; set; }
+    /// <summary>Chiều dài cung (m)</summary>
+    public double ArcLength { get; set; }
+    /// <summary>Dây cung (m)</summary>
+    public double Chord { get; set; }
+    /// <summary>Độ vồng (m, trị tuyệt đối)</summary>
+    public double Sagitta { get; set; }
+    /// <summary>Mô men xoắn bao lớn nhất |T| (kN.m)</summary>
+    public double TorsionMax { get; set; }
 }
 
 // ---------------------------------------------------------------------

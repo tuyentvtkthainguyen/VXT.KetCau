@@ -377,6 +377,7 @@
                                     <RadioButton Content="＋ Giếng trời" Tag="Void" Checked="PlanMode_Checked" ToolTip="Bấm vào ô để biến thành giếng trời / thông tầng"/>
                                     <RadioButton Content="Sàn vệ sinh" Tag="WC" Checked="PlanMode_Checked" ToolTip="Bấm vào ô sàn để đổi thành sàn vệ sinh (bấm lại để trả về phòng ở)"/>
                                     <RadioButton Content="＋ Dầm" Tag="AddBeam" Checked="PlanMode_Checked" ToolTip="Bấm 2 điểm để thêm dầm (bắt nút, giao trục, lưới 50 mm); Esc để dừng"/>
+                                    <RadioButton Content="＋ Dầm cong" Tag="AddCurvedBeam" Checked="PlanMode_Checked" ToolTip="Bấm điểm đầu, điểm cuối rồi một điểm trên cung để thêm dầm cong (bắt nút, giao trục, lưới 50 mm); Esc để dừng"/>
                                     <RadioButton Content="＋ Tường" Tag="AddWall" Checked="PlanMode_Checked" ToolTip="Bấm 2 điểm để khai báo tường (tải tường dồn vào dầm bên dưới)"/>
                                     <RadioButton Content="Gán tường" Tag="AssignWall" Checked="PlanMode_Checked" ToolTip="Bấm vào dầm để đặt tường suốt chiều dài dầm"/>
                                     <RadioButton Content="Gán cấu tạo" Tag="AssignBuildUp" Checked="PlanMode_Checked" ToolTip="Bấm vào ô sàn để gán cấu tạo sàn đang chọn"/>
@@ -398,6 +399,13 @@
                                     <!-- dầm / tường / cấu tạo sàn (MainWindow.Edit.cs) -->
                                     <TextBlock Text="Tiết diện dầm:" VerticalAlignment="Center" Margin="10,0,4,2"/>
                                     <ComboBox x:Name="cbEditBeamSec" Width="84" Margin="0,0,6,2" ToolTip="Tiết diện dầm thêm mới (chế độ ＋ Dầm)"/>
+                                    <!-- uốn cong dầm đang chọn (MainWindow.CurvedBeam.cs) -->
+                                    <ComboBox x:Name="cbCurveMode" Width="78" Margin="0,0,4,2" SelectedIndex="0" ToolTip="Nhập độ vồng f hoặc bán kính R cho dầm đang chọn">
+                                        <ComboBoxItem Content="Độ vồng f"/>
+                                        <ComboBoxItem Content="Bán kính R"/>
+                                    </ComboBox>
+                                    <TextBox x:Name="txtCurveValue" Text="1.00" Width="44" Margin="0,0,4,2" VerticalContentAlignment="Center" ToolTip="m; 0 = nắn thẳng; số âm = vồng về phía phải hướng I→J (đảo phía)"/>
+                                    <Button Content="Uốn cong" Click="BtnCurveBeam_Click" Padding="7,2,7,2" Margin="0,0,6,2" ToolTip="Đổi dầm đang chọn thành dầm cong theo độ vồng / bán kính đã nhập (hoàn tác bằng Ctrl+Z)"/>
                                     <TextBlock Text="Loại tường:" VerticalAlignment="Center" Margin="0,0,4,2"/>
                                     <ComboBox x:Name="cbEditWallType" Width="150" Margin="0,0,6,2" ToolTip="Loại tường (Mô hình → Loại tường…)"/>
                                     <TextBlock Text="Cao (m):" VerticalAlignment="Center" Margin="0,0,4,2"/>

@@ -97,7 +97,14 @@ public static class ForceComparer
             if (!cr.Frames.TryGetValue(id, out var ff)) { skipped++; continue; }
             double L = p.Length(f);
             double x = sta;
-            if (seg > 0)
+            var csegs = seg > 0 && f.IsCurved ? CurvedBeam.Segments(p, f) : null;
+            if (csegs != null && seg <= csegs.Count)
+            {
+                // dầm cong: đoạn thẳng thứ seg; trạm đo theo dây cung → quy về chiều dài cung
+                var cg = csegs[seg - 1];
+                x = cg.T0 * L + sta * cg.LoadScale;
+            }
+            else if (seg > 0)
             {
                 int n = Math.Max(2, p.Steel.TaperSegments);
                 x = (seg - 1) * L / n + sta;

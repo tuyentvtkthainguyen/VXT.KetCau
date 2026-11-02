@@ -93,6 +93,16 @@ public static class FramingPlan
 
     private static void BeamLabel(DxfWriter w, Project p, FrameElement f, string text, double bw)
     {
+        var arc = f.IsCurved ? CurvedBeam.Arc(p, f) : null;
+        if (arc != null)
+        {
+            // dầm cong: tên tại giữa cung, theo phương tiếp tuyến; dòng dưới ghi bán kính
+            var (lx, ly, la) = CurvedDraw.LabelAnchor(arc, bw * 500 + 0.4 * w.Th);
+            w.Text(Lay.Chu, lx, ly, w.Th, text, la, 1, 0);
+            var (rx, ry, _) = CurvedDraw.LabelAnchor(arc, -(bw * 500 + 0.4 * w.Th));
+            w.Text(Lay.Chu, rx, ry, 0.8 * w.Th, $"R={DxfWriter.N0(arc.Radius * 1000)}", la, 1, 3);
+            return;
+        }
         var a = p.Node(f.NodeI); var b = p.Node(f.NodeJ);
         double x1 = a.X * 1000, y1 = a.Y * 1000, x2 = b.X * 1000, y2 = b.Y * 1000;
         double ang = Math.Atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
@@ -140,6 +150,14 @@ public static class FramingPlan
 
         foreach (var f in beams)
         {
+            var arc = f.IsCurved ? CurvedBeam.Arc(p, f) : null;
+            if (arc != null)
+            {
+                // dầm cong: hai cung đồng tâm R ± b/2 (ARC)
+                var sic = DrawUtil.SectionOf(p, f.Section);
+                box = box.Union(CurvedDraw.PlanBeam(w, arc, sic.B * 500, Lay.BeTong, dashedBeams ? "DASHED" : null));
+                continue;
+            }
             var a = p.Node(f.NodeI); var b = p.Node(f.NodeJ);
             double x1 = a.X * 1000, y1 = a.Y * 1000, x2 = b.X * 1000, y2 = b.Y * 1000;
             double len = Math.Sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));

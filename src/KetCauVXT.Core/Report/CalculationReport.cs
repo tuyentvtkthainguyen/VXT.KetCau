@@ -456,6 +456,33 @@ public static class CalculationReport
         d.Table(new[] { "Dầm", "b×h", "Nhịp", "L (m)", "M trái", "M nhịp", "M phải", "Q (kN)", "Thép trên trái", "Thép dưới", "Thép trên phải", "Đai", "KL" },
             rows, new[] { 1.4, 1.4, 0.8, 1.0, 1.1, 1.1, 1.1, 1.0, 1.8, 1.8, 1.8, 1.6, 1.1 }, 9);
         d.Paragraph("Mô men đơn vị kN.m; mô men âm tại gối là căng thớ trên.", false, true);
+
+        // dầm cong: bán kính, chiều dài cung, mô men xoắn
+        var curved = s.Beams.Where(b => b.IsCurved).ToList();
+        if (curved.Count > 0)
+        {
+            d.Heading($"{n}.3. Dầm cong trên mặt bằng", 2);
+            d.Paragraph("Dầm cong được mô hình bằng các đoạn thẳng nối các điểm trên cung (mỗi đoạn ≤ 10°), tải phân bố tính theo chiều dài cung; "
+                        + "nội lực quy về hệ trục tiếp tuyến của cung. Dầm cong chịu uốn + cắt + XOẮN: kiểm tra dải bê tông chịu nén T ≤ 0,1·Rb·b²·h "
+                        + "(tương tác tuyến tính với lực cắt), cốt đai kín theo mô hình giàn không gian θ = 45° (Asw1/s = T/(2·Ak·Rsw) + qsw/(2·Rsw)), "
+                        + "cốt dọc chịu xoắn Asl = T·uk/(2·Ak·Rs) cộng ½ vào thép trên và ½ vào thép dưới (giản lược theo TCVN 5574:2018 mục 8.1.4). "
+                        + "Mặt đứng dầm thể hiện trải theo cung; chiều dài thép tính theo chiều dài cung. Bắt buộc dùng đai kín móc 135°.");
+            var crow = new List<string[]>();
+            foreach (var b in curved)
+            {
+                var tc = b.Checks.Where(c => c.Name.StartsWith("Xoắn")).ToList();
+                double ratio = tc.Count > 0 ? tc.Max(c => c.Ratio) : 0;
+                var sp = b.Spans.FirstOrDefault();
+                crow.Add(new[]
+                {
+                    b.Name, $"{Mm(b.B)}×{Mm(b.H)}", N(b.CurveRadius), N(b.ArcLength), N(b.Chord), N(b.Sagitta),
+                    N(b.TorsionMax, "0.0"), sp != null ? Cm2(sp.AsTorsion) : "", sp != null && sp.StirrupDia > 0 ? $"Ø{sp.StirrupDia}a{Mm(sp.StirrupSupport)}" : "",
+                    N(ratio, "0.00"), OkText(b.Ok)
+                });
+            }
+            d.Table(new[] { "Dầm", "b×h", "R (m)", "L cung (m)", "Dây cung (m)", "Độ vồng (m)", "T max (kN.m)", "Asl (cm²)", "Đai kín", "Hệ số xoắn", "KL" },
+                crow, new[] { 1.4, 1.4, 1.1, 1.2, 1.2, 1.2, 1.3, 1.1, 1.4, 1.2, 1.0 }, 9);
+        }
     }
 
     private static Material SafeMat(Project p, string name)

@@ -15,6 +15,34 @@
             <Setter Property="Margin" Value="0,0,4,4"/>
             <Setter Property="Padding" Value="8,3,8,3"/>
         </Style>
+        <Style TargetType="Button" x:Key="TB">
+            <Setter Property="Margin" Value="0,0,2,0"/>
+            <Setter Property="Padding" Value="5,2,5,2"/>
+            <Setter Property="MinWidth" Value="26"/>
+        </Style>
+        <Style TargetType="RadioButton" x:Key="Tool">
+            <Setter Property="Margin" Value="0,0,2,0"/>
+            <Setter Property="Padding" Value="6,2,6,2"/>
+            <Setter Property="GroupName" Value="SheetTool"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="bd" Background="#FFFFFF" BorderBrush="#A8AEB6" BorderThickness="1" CornerRadius="2" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#FFE680"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#B08A00"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#3A6EA5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid Margin="6">
         <Grid.RowDefinitions>
@@ -22,55 +50,119 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="270"/>
+            <ColumnDefinition Width="280"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="310"/>
         </Grid.ColumnDefinitions>
 
         <!-- ===== TRÁI: danh sách tờ + thuộc tính tờ ===== -->
-        <DockPanel Grid.Column="0" Margin="0,0,6,0">
-            <GroupBox Header="Thuộc tính tờ" DockPanel.Dock="Bottom" Padding="4">
-                <StackPanel>
-                    <DockPanel><TextBlock Text="Số hiệu" Style="{StaticResource Lbl}"/><TextBox x:Name="txtNumber" TextChanged="SheetProp_Changed"/></DockPanel>
-                    <DockPanel><TextBlock Text="Tên bản vẽ" Style="{StaticResource Lbl}"/><TextBox x:Name="txtName" TextChanged="SheetProp_Changed"/></DockPanel>
-                    <DockPanel><TextBlock Text="Khổ giấy" Style="{StaticResource Lbl}"/>
-                        <ComboBox x:Name="cbPaper" SelectionChanged="SheetProp_Changed">
-                            <ComboBoxItem Content="A0"/><ComboBoxItem Content="A1"/><ComboBoxItem Content="A2"/><ComboBoxItem Content="A3"/><ComboBoxItem Content="A4"/>
-                        </ComboBox>
-                    </DockPanel>
-                    <DockPanel><TextBlock Text="Hướng giấy" Style="{StaticResource Lbl}"/>
-                        <ComboBox x:Name="cbOrient" SelectionChanged="SheetProp_Changed">
-                            <ComboBoxItem Content="Ngang"/><ComboBoxItem Content="Dọc"/>
-                        </ComboBox>
-                    </DockPanel>
-                    <DockPanel><TextBlock Text="Người thiết kế" Style="{StaticResource Lbl}"/><TextBox x:Name="txtDesigner" TextChanged="SheetProp_Changed"/></DockPanel>
-                    <DockPanel><TextBlock Text="Người kiểm tra" Style="{StaticResource Lbl}"/><TextBox x:Name="txtChecker" TextChanged="SheetProp_Changed"/></DockPanel>
-                    <DockPanel><TextBlock Text="Ngày" Style="{StaticResource Lbl}"/><TextBox x:Name="txtDate" TextChanged="SheetProp_Changed"/></DockPanel>
-                </StackPanel>
-            </GroupBox>
+        <Grid Grid.Column="0" Margin="0,0,6,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="160"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
             <GroupBox Header="Tờ bản vẽ" Padding="4">
                 <DockPanel>
                     <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
                         <Button Content="Thêm" Click="BtnAddSheet_Click" Style="{StaticResource Btn}"/>
+                        <Button Content="Trang trắng" ToolTip="Tờ không khung viền, không khung tên – dàn trang tự do" Click="BtnBlankSheet_Click" Style="{StaticResource Btn}"/>
                         <Button Content="Nhân bản" Click="BtnDupSheet_Click" Style="{StaticResource Btn}"/>
                         <Button Content="Xoá" Click="BtnDelSheet_Click" Style="{StaticResource Btn}"/>
                         <Button Content="▲" ToolTip="Chuyển lên" Click="BtnSheetUp_Click" Style="{StaticResource Btn}"/>
                         <Button Content="▼" ToolTip="Chuyển xuống" Click="BtnSheetDown_Click" Style="{StaticResource Btn}"/>
+                        <Button Content="Đánh số lại" ToolTip="Đánh lại số hiệu các tờ theo thứ tự: KC-01, KC-02…" Click="BtnRenumber_Click" Style="{StaticResource Btn}"/>
                         <Button Content="Tạo bộ bản vẽ mặc định" Click="BtnDefaultSet_Click" Style="{StaticResource Btn}" FontWeight="Bold"/>
                     </WrapPanel>
                     <ListBox x:Name="lstSheets" SelectionChanged="LstSheets_SelectionChanged" SelectionMode="Extended"/>
                 </DockPanel>
             </GroupBox>
-        </DockPanel>
+            <GroupBox Grid.Row="1" Header="Thuộc tính tờ" Padding="4">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="440">
+                    <StackPanel>
+                        <DockPanel><TextBlock Text="Số hiệu" Style="{StaticResource Lbl}"/><TextBox x:Name="txtNumber" TextChanged="SheetProp_Changed"/></DockPanel>
+                        <DockPanel><TextBlock Text="Tên bản vẽ" Style="{StaticResource Lbl}"/><TextBox x:Name="txtName" TextChanged="SheetProp_Changed"/></DockPanel>
+                        <DockPanel><TextBlock Text="Khổ giấy" Style="{StaticResource Lbl}"/>
+                            <ComboBox x:Name="cbPaper" SelectionChanged="SheetProp_Changed">
+                                <ComboBoxItem Content="A0"/><ComboBoxItem Content="A1"/><ComboBoxItem Content="A2"/><ComboBoxItem Content="A3"/><ComboBoxItem Content="A4"/><ComboBoxItem Content="Tùy chỉnh"/>
+                            </ComboBox>
+                        </DockPanel>
+                        <DockPanel x:Name="rowPaperWH"><TextBlock Text="Rộng × cao (mm)" Style="{StaticResource Lbl}"/>
+                            <TextBox x:Name="txtPaperW" Width="62" KeyDown="SheetPropEnter_KeyDown" LostFocus="SheetPropLost"/>
+                            <TextBlock Text=" × " VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtPaperH" KeyDown="SheetPropEnter_KeyDown" LostFocus="SheetPropLost"/>
+                        </DockPanel>
+                        <DockPanel><TextBlock Text="Hướng giấy" Style="{StaticResource Lbl}"/>
+                            <ComboBox x:Name="cbOrient" SelectionChanged="SheetProp_Changed">
+                                <ComboBoxItem Content="Ngang"/><ComboBoxItem Content="Dọc"/>
+                            </ComboBox>
+                        </DockPanel>
+                        <DockPanel><TextBlock Text="Lề T, P, T, D" Style="{StaticResource Lbl}" ToolTip="Lề trái, phải, trên, dưới (mm), ngăn bằng dấu phẩy; để trống = mặc định 25, 10, 10, 10"/>
+                            <TextBox x:Name="txtMargins" KeyDown="SheetPropEnter_KeyDown" LostFocus="SheetPropLost" ToolTip="Ví dụ: 25, 10, 10, 10 – để trống = mặc định"/></DockPanel>
+                        <DockPanel>
+                            <CheckBox x:Name="chkShowFrame" Content="Khung viền" Margin="0,0,12,0" Click="SheetPropCheck_Click"/>
+                            <CheckBox x:Name="chkShowTitle" Content="Khung tên" Click="SheetPropCheck_Click"/>
+                        </DockPanel>
+                        <DockPanel><TextBlock Text="Người thiết kế" Style="{StaticResource Lbl}"/><TextBox x:Name="txtDesigner" TextChanged="SheetProp_Changed"/></DockPanel>
+                        <DockPanel><TextBlock Text="Người kiểm tra" Style="{StaticResource Lbl}"/><TextBox x:Name="txtChecker" TextChanged="SheetProp_Changed"/></DockPanel>
+                        <DockPanel><TextBlock Text="Người duyệt" Style="{StaticResource Lbl}"/><TextBox x:Name="txtApprover" TextChanged="SheetProp_Changed"/></DockPanel>
+                        <DockPanel><TextBlock Text="Ngày" Style="{StaticResource Lbl}"/><TextBox x:Name="txtDate" TextChanged="SheetProp_Changed"/></DockPanel>
+                        <DockPanel><TextBlock Text="Lần sửa" Style="{StaticResource Lbl}"/><TextBox x:Name="txtRevision" TextChanged="SheetProp_Changed"/></DockPanel>
+                        <DockPanel><TextBlock Text="Ghi chú tỷ lệ" Style="{StaticResource Lbl}" ToolTip="Để trống: tự lấy theo các khung nhìn"/><TextBox x:Name="txtScaleNote" TextChanged="SheetProp_Changed"/></DockPanel>
+                        <Button Content="Khung tên công trình…" ToolTip="Đơn vị thiết kế, công trình, người duyệt, logo… dùng chung cho mọi tờ" Click="BtnTitleBlock_Click" Style="{StaticResource Btn}" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </GroupBox>
+        </Grid>
 
-        <!-- ===== GIỮA: trang giấy ===== -->
+        <!-- ===== GIỮA: thanh công cụ + trang giấy ===== -->
         <DockPanel Grid.Column="1">
+            <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,3">
+                <RadioButton x:Name="toolSelect" Content="Chọn" Style="{StaticResource Tool}" IsChecked="True" Checked="Tool_Checked" ToolTip="Chọn, kéo di chuyển, kéo tay nắm đổi cỡ (Esc)"/>
+                <RadioButton x:Name="toolText" Content="Chữ" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Nhấp để đặt chữ"/>
+                <RadioButton x:Name="toolLine" Content="Đường" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Kéo: đoạn thẳng · Nhấp từng điểm: đa tuyến, nhấp đúp/Enter/chuột phải để kết thúc · Shift: thẳng góc"/>
+                <RadioButton x:Name="toolArrow" Content="Mũi tên" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Đường có mũi tên ở điểm cuối"/>
+                <RadioButton x:Name="toolRect" Content="Khung" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Kéo để vẽ khung chữ nhật"/>
+                <RadioButton x:Name="toolCircle" Content="Tròn" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Kéo từ tâm ra bán kính"/>
+                <RadioButton x:Name="toolCloud" Content="Mây" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Đám mây sửa đổi – kéo để vẽ"/>
+                <RadioButton x:Name="toolImage" Content="Ảnh" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Kéo vùng rồi chọn ảnh PNG/JPG (logo, sơ đồ vị trí) – ảnh được nhúng vào file dự án"/>
+                <RadioButton x:Name="toolTable" Content="Bảng" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Kéo để đặt bảng; sửa nội dung ở bảng thuộc tính (mỗi hàng một dòng, ô ngăn bằng |)"/>
+                <RadioButton x:Name="toolDim" Content="Kích thước" Style="{StaticResource Tool}" Checked="Tool_Checked" ToolTip="Kéo từ điểm đầu tới điểm cuối"/>
+                <Border Width="1" Height="20" Background="#B0B6BE" Margin="4,0,6,0" VerticalAlignment="Center"/>
+                <Button Content="↶" ToolTip="Hoàn tác (Ctrl+Z)" Click="BtnUndo_Click" Style="{StaticResource TB}"/>
+                <Button Content="↷" ToolTip="Làm lại (Ctrl+Y)" Click="BtnRedo_Click" Style="{StaticResource TB}"/>
+                <Button Content="Chép" ToolTip="Sao chép (Ctrl+C)" Click="BtnCopy_Click" Style="{StaticResource TB}"/>
+                <Button Content="Dán" ToolTip="Dán (Ctrl+V) – dán được sang tờ khác" Click="BtnPaste_Click" Style="{StaticResource TB}"/>
+                <Button Content="Nhân đôi" ToolTip="Nhân đôi (Ctrl+D)" Click="BtnDuplicate_Click" Style="{StaticResource TB}"/>
+                <Button Content="Xoá" ToolTip="Xoá đối tượng đang chọn (Delete)" Click="BtnDeleteSel_Click" Style="{StaticResource TB}"/>
+            </WrapPanel>
+            <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,3">
+                <CheckBox x:Name="chkSnapGrid" Content="Bắt lưới" IsChecked="True" VerticalAlignment="Center" Margin="0,0,4,0" Click="LayoutAid_Click"/>
+                <ComboBox x:Name="cbGrid" Width="58" SelectionChanged="CbGrid_SelectionChanged" ToolTip="Bước lưới (mm)"/>
+                <CheckBox x:Name="chkShowGrid" Content="Hiện lưới" VerticalAlignment="Center" Margin="6,0,4,0" Click="LayoutAid_Click"/>
+                <CheckBox x:Name="chkSnapObj" Content="Bắt đối tượng" IsChecked="True" VerticalAlignment="Center" Margin="6,0,4,0" Click="LayoutAid_Click" ToolTip="Bắt mép/tâm các khung nhìn, đối tượng khác, mép giấy – hiện đường gióng"/>
+                <CheckBox x:Name="chkShowMargins" Content="Hiện lề" IsChecked="True" VerticalAlignment="Center" Margin="6,0,8,0" Click="LayoutAid_Click" ToolTip="Hiện vùng vẽ (trong khung viền, chừa khoảng hở)"/>
+                <Border Width="1" Height="20" Background="#B0B6BE" Margin="4,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Căn:" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                <Button Content="⇤" ToolTip="Căn trái" Tag="Left" Click="BtnAlign_Click" Style="{StaticResource TB}"/>
+                <Button Content="⇔" ToolTip="Căn giữa theo phương ngang" Tag="CenterH" Click="BtnAlign_Click" Style="{StaticResource TB}"/>
+                <Button Content="⇥" ToolTip="Căn phải" Tag="Right" Click="BtnAlign_Click" Style="{StaticResource TB}"/>
+                <Button Content="⤒" ToolTip="Căn trên" Tag="Top" Click="BtnAlign_Click" Style="{StaticResource TB}"/>
+                <Button Content="⇕" ToolTip="Căn giữa theo phương đứng" Tag="CenterV" Click="BtnAlign_Click" Style="{StaticResource TB}"/>
+                <Button Content="⤓" ToolTip="Căn dưới" Tag="Bottom" Click="BtnAlign_Click" Style="{StaticResource TB}"/>
+                <Button Content="Đều ngang" ToolTip="Phân bố đều theo phương ngang (≥ 3 đối tượng)" Tag="H" Click="BtnDistribute_Click" Style="{StaticResource TB}"/>
+                <Button Content="Đều dọc" ToolTip="Phân bố đều theo phương đứng (≥ 3 đối tượng)" Tag="V" Click="BtnDistribute_Click" Style="{StaticResource TB}"/>
+                <Border Width="1" Height="20" Background="#B0B6BE" Margin="4,0,6,0" VerticalAlignment="Center"/>
+                <Button Content="Lên trên" ToolTip="Đưa lên trên cùng" Click="BtnFront_Click" Style="{StaticResource TB}"/>
+                <Button Content="Xuống dưới" ToolTip="Đưa xuống dưới cùng" Click="BtnBack_Click" Style="{StaticResource TB}"/>
+                <Button Content="Khoá" ToolTip="Khoá / mở khoá đối tượng đang chọn (Ctrl+L)" Click="BtnLock_Click" Style="{StaticResource TB}"/>
+            </WrapPanel>
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
                 <Button Content="Vừa trang" Click="BtnFit_Click" Style="{StaticResource Btn}" Margin="0,0,4,0"/>
                 <Button Content="1:1" ToolTip="Hiển thị đúng kích thước giấy" Click="BtnZoom100_Click" Style="{StaticResource Btn}" Margin="0,0,8,0"/>
-                <TextBlock x:Name="txtZoom" VerticalAlignment="Center" Width="70" Foreground="#444"/>
+                <TextBlock x:Name="txtZoom" VerticalAlignment="Center" Width="56" Foreground="#444"/>
+                <TextBlock x:Name="txtCursor" VerticalAlignment="Center" Width="120" Foreground="#444"/>
                 <TextBlock VerticalAlignment="Center" Foreground="#666" TextTrimming="CharacterEllipsis"
-                           Text="Lăn chuột: thu phóng · Giữ chuột phải/giữa: kéo trang · Kéo khung nhìn để di chuyển, kéo ô vàng góc phải dưới để đổi cỡ (bắt điểm 5 mm) · Delete: xoá khung"/>
+                           Text="Lăn chuột: thu phóng · Chuột phải/giữa: kéo trang · Shift+nhấp: chọn thêm · Kéo vùng trống: chọn bằng khung · Alt+kéo khung nhìn: dịch hình trong khung · Mũi tên: nhích 1 mm (Shift 10 mm)"/>
             </DockPanel>
             <Border x:Name="pageHost" Background="#6E747C" ClipToBounds="True" BorderBrush="#555" BorderThickness="1"
                     MouseWheel="PageHost_MouseWheel" MouseDown="PageHost_MouseDown" MouseMove="PageHost_MouseMove"
@@ -92,7 +184,7 @@
                 </GroupBox>
                 <GroupBox Header="Khung nhìn trên tờ" Padding="4" Margin="0,6,0,0">
                     <StackPanel>
-                        <ListBox x:Name="lstViews" Height="170" SelectionChanged="LstViews_SelectionChanged"/>
+                        <ListBox x:Name="lstViews" Height="130" SelectionChanged="LstViews_SelectionChanged"/>
                         <WrapPanel Margin="0,4,0,0">
                             <Button Content="Xoá khung" Click="BtnDelView_Click" Style="{StaticResource Btn}"/>
                             <Button Content="Nhân bản" Click="BtnDupView_Click" Style="{StaticResource Btn}"/>
@@ -105,13 +197,69 @@
                         <DockPanel><TextBlock Text="Loại" Style="{StaticResource Lbl}"/><TextBlock x:Name="txtVKind" VerticalAlignment="Center" TextWrapping="Wrap"/></DockPanel>
                         <DockPanel><TextBlock Text="Tham số" Style="{StaticResource Lbl}"/><ComboBox x:Name="cbVParam" IsEditable="True"/></DockPanel>
                         <DockPanel><TextBlock Text="Tiêu đề" Style="{StaticResource Lbl}"/><TextBox x:Name="txtVTitle" KeyDown="ViewProp_KeyDown"/></DockPanel>
-                        <DockPanel><TextBlock Text="Tỷ lệ 1/…" Style="{StaticResource Lbl}" ToolTip="0 = tự co vừa khung"/><TextBox x:Name="txtVScale" KeyDown="ViewProp_KeyDown"/></DockPanel>
+                        <DockPanel><TextBlock Text="Tỷ lệ 1/…" Style="{StaticResource Lbl}" ToolTip="0 = tự co vừa khung; chọn trong danh sách hoặc gõ tự do"/>
+                            <ComboBox x:Name="cbVScale" IsEditable="True" KeyDown="ViewProp_KeyDown" SelectionChanged="CbVScale_SelectionChanged"/></DockPanel>
                         <DockPanel><TextBlock Text="X (mm)" Style="{StaticResource Lbl}"/><TextBox x:Name="txtVX" KeyDown="ViewProp_KeyDown"/></DockPanel>
                         <DockPanel><TextBlock Text="Y (mm)" Style="{StaticResource Lbl}"/><TextBox x:Name="txtVY" KeyDown="ViewProp_KeyDown"/></DockPanel>
                         <DockPanel><TextBlock Text="Rộng W (mm)" Style="{StaticResource Lbl}"/><TextBox x:Name="txtVW" KeyDown="ViewProp_KeyDown"/></DockPanel>
                         <DockPanel><TextBlock Text="Cao H (mm)" Style="{StaticResource Lbl}"/><TextBox x:Name="txtVH" KeyDown="ViewProp_KeyDown"/></DockPanel>
+                        <DockPanel><TextBlock Text="Dịch hình X, Y" Style="{StaticResource Lbl}" ToolTip="Dịch nội dung hình trong khung (mm giấy) – cùng kích thước khung tạo vùng cắt. Alt+kéo trên trang để dịch bằng chuột."/>
+                            <TextBox x:Name="txtVPanX" Width="60" KeyDown="ViewProp_KeyDown"/>
+                            <TextBlock Text=" , " VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtVPanY" KeyDown="ViewProp_KeyDown"/></DockPanel>
+                        <WrapPanel Margin="0,2,0,2">
+                            <CheckBox x:Name="chkVHideTitle" Content="Ẩn tên hình" Margin="0,0,10,2" Click="ViewCheck_Click"/>
+                            <CheckBox x:Name="chkVBorder" Content="Viền khung" Margin="0,0,10,2" Click="ViewCheck_Click"/>
+                            <CheckBox x:Name="chkVLock" Content="Khoá" Margin="0,0,0,2" Click="ViewCheck_Click"/>
+                        </WrapPanel>
                         <TextBlock x:Name="txtVInfo" Foreground="#555" TextWrapping="Wrap" Margin="0,2,0,2"/>
                         <Button Content="Áp dụng" Click="BtnApplyView_Click" Style="{StaticResource Btn}" HorizontalAlignment="Right"/>
+                    </StackPanel>
+                </GroupBox>
+                <GroupBox Header="Thuộc tính đối tượng" Padding="4" Margin="0,6,0,0" x:Name="grpItem" Visibility="Collapsed">
+                    <StackPanel>
+                        <DockPanel><TextBlock Text="Loại" Style="{StaticResource Lbl}"/><TextBlock x:Name="txtIKind" VerticalAlignment="Center" FontWeight="Bold"/></DockPanel>
+                        <DockPanel x:Name="rowIText"><TextBlock x:Name="lblIText" Text="Nội dung" Style="{StaticResource Lbl}" VerticalAlignment="Top"/>
+                            <TextBox x:Name="txtIText" AcceptsReturn="True" TextWrapping="NoWrap" Height="78" VerticalScrollBarVisibility="Auto"
+                                     HorizontalScrollBarVisibility="Auto" KeyDown="ItemText_KeyDown" ToolTip="Ctrl+Enter: áp dụng"/></DockPanel>
+                        <DockPanel x:Name="rowIH"><TextBlock Text="Cao chữ (mm)" Style="{StaticResource Lbl}"/><TextBox x:Name="txtIH" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel x:Name="rowIRot"><TextBlock Text="Góc xoay (°)" Style="{StaticResource Lbl}"/><TextBox x:Name="txtIRot" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel x:Name="rowIAlign"><TextBlock Text="Căn chữ" Style="{StaticResource Lbl}"/>
+                            <CheckBox x:Name="chkIBold" Content="Đậm" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0,0,0" Click="ItemCheck_Click"/>
+                            <ComboBox x:Name="cbIAlign" SelectionChanged="ItemCombo_Changed">
+                                <ComboBoxItem Content="Trái"/><ComboBoxItem Content="Giữa"/><ComboBoxItem Content="Phải"/>
+                            </ComboBox></DockPanel>
+                        <DockPanel><TextBlock Text="Lớp (layer)" Style="{StaticResource Lbl}"/><ComboBox x:Name="cbILayer" IsEditable="True" SelectionChanged="ItemCombo_Changed" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel><TextBlock Text="Màu" Style="{StaticResource Lbl}"/><ComboBox x:Name="cbIColor" IsEditable="True" SelectionChanged="ItemCombo_Changed" KeyDown="ItemProp_KeyDown" ToolTip="Chọn màu hoặc gõ #RRGGBB"/></DockPanel>
+                        <DockPanel x:Name="rowIWeight"><TextBlock Text="Nét in (mm)" Style="{StaticResource Lbl}"/><ComboBox x:Name="cbIWeight" IsEditable="True" SelectionChanged="ItemCombo_Changed" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel x:Name="rowILType"><TextBlock Text="Kiểu nét" Style="{StaticResource Lbl}"/>
+                            <ComboBox x:Name="cbILType" SelectionChanged="ItemCombo_Changed">
+                                <ComboBoxItem Content="Liền"/><ComboBoxItem Content="Nét đứt"/><ComboBoxItem Content="Nét trục"/>
+                            </ComboBox></DockPanel>
+                        <WrapPanel x:Name="rowIArrows" Margin="0,2,0,2">
+                            <CheckBox x:Name="chkIArrowStart" Content="Mũi tên đầu" Margin="0,0,10,2" Click="ItemCheck_Click"/>
+                            <CheckBox x:Name="chkIArrowEnd" Content="Mũi tên cuối" Margin="0,0,10,2" Click="ItemCheck_Click"/>
+                            <CheckBox x:Name="chkIClosed" Content="Khép kín" Margin="0,0,0,2" Click="ItemCheck_Click"/>
+                        </WrapPanel>
+                        <DockPanel x:Name="rowIXY"><TextBlock Text="X, Y (mm)" Style="{StaticResource Lbl}"/>
+                            <TextBox x:Name="txtIX" Width="60" KeyDown="ItemProp_KeyDown"/><TextBlock Text=" , " VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtIY" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel x:Name="rowIWH"><TextBlock Text="Rộng × cao" Style="{StaticResource Lbl}"/>
+                            <TextBox x:Name="txtIW" Width="60" KeyDown="ItemProp_KeyDown"/><TextBlock Text=" × " VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtIHgt" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel x:Name="rowIR"><TextBlock Text="Bán kính (mm)" Style="{StaticResource Lbl}"/><TextBox x:Name="txtIR" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel x:Name="rowIArc"><TextBlock Text="Dài cung (mm)" Style="{StaticResource Lbl}"/><TextBox x:Name="txtIArc" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel x:Name="rowIDim"><TextBlock Text="Tỷ lệ 1/…, lệch" Style="{StaticResource Lbl}" ToolTip="Tỷ lệ: 0 = ghi chiều dài mm trên giấy; 100 = ghi chiều dài thực ở tỷ lệ 1/100. Lệch: khoảng cách đường kích thước (mm)"/>
+                            <TextBox x:Name="txtIDimScale" Width="60" KeyDown="ItemProp_KeyDown"/><TextBlock Text=" , " VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtIOffset" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <DockPanel x:Name="rowITable"><TextBlock Text="Bề rộng cột" Style="{StaticResource Lbl}" ToolTip="Tỷ lệ bề rộng các cột, ví dụ 1, 3, 1 (trống = đều)"/>
+                            <CheckBox x:Name="chkIHeader" Content="Hàng tiêu đề" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0,0,0" Click="ItemCheck_Click"/>
+                            <TextBox x:Name="txtIColW" KeyDown="ItemProp_KeyDown"/></DockPanel>
+                        <WrapPanel Margin="0,4,0,0">
+                            <CheckBox x:Name="chkILock" Content="Khoá" VerticalAlignment="Center" Margin="0,0,10,4" Click="ItemCheck_Click"/>
+                            <Button x:Name="btnIImage" Content="Chọn ảnh…" Click="BtnItemImage_Click" Style="{StaticResource Btn}"/>
+                            <Button Content="Áp dụng" Click="BtnApplyItem_Click" Style="{StaticResource Btn}" FontWeight="Bold"/>
+                        </WrapPanel>
                     </StackPanel>
                 </GroupBox>
             </StackPanel>

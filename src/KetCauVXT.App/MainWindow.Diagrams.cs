@@ -78,6 +78,8 @@ public partial class MainWindow
         public double[][] S;          // 1 đường (hoặc 2: max, min) giá trị theo phương U
         public double Sigma = 1;      // S·Sigma = giá trị hiển thị (đỏ/xanh)
         public double ColN = double.NaN;
+        public Vector[] Us;           // dầm cong: phương tung độ riêng tại từng mặt cắt (pháp tuyến cung); null = dùng U
+        public Point[] Poly;          // dầm cong: đường gấp khúc trục dầm (m); null = đoạn thẳng A–B
     }
 
     private sealed class DiaData
@@ -307,8 +309,21 @@ public partial class MainWindow
             var n = new Vector(dir.Y, -dir.X);
             if (n.Y > 1e-9 || (Math.Abs(n.Y) <= 1e-9 && n.X < 0)) n = -n;   // dầm theo X: dương vẽ về phía −Y (phía dưới màn hình)
             item.U = n;
+            var arc = SafeArc(f);
+            if (arc != null)
+            {
+                // dầm cong: trục theo cung, tung độ theo pháp tuyến cung (cùng phía quy ước với dây cung)
+                item.Poly = arc.Points(ArcDrawSegments(arc)).Select(q => new Point(q.X, q.Y)).ToArray();
+                lengths[^1] = arc.Length;
+            }
             if (!okF) continue;
-            item.Base = Enumerable.Range(0, mx.Count).Select(i => a + (b - a) * RelStation(mx, i)).ToArray();
+            if (arc != null)
+            {
+                double sgn = n.X * dir.Y - n.Y * dir.X >= 0 ? 1 : -1;   // (t.Y, −t.X)·n tại giữa cung (tiếp tuyến ∥ dây cung)
+                item.Base = Enumerable.Range(0, mx.Count).Select(i => { var q = arc.PointAt(RelStation(mx, i)); return new Point(q.X, q.Y); }).ToArray();
+                item.Us = Enumerable.Range(0, mx.Count).Select(i => { var t = arc.TangentAt(RelStation(mx, i)); return new Vector(t.Y, -t.X) * sgn; }).ToArray();
+            }
+            else item.Base = Enumerable.Range(0, mx.Count).Select(i => a + (b - a) * RelStation(mx, i)).ToArray();
             var curves = mn != null ? new[] { mx, mn } : new[] { mx };
             item.S = curves.Select(cf => Enumerable.Range(0, cf.Count).Select(i => Val(cf, i, comp)).ToArray()).ToArray();
         }
@@ -365,7 +380,10 @@ public partial class MainWindow
             if (!d.HasForces) continue;
             var mx = ForcesOf(f.Id, caseName, out var mn);
             if (mx == null || mx.Count < 2 || (mn != null && mn.Count != mx.Count)) continue;
-            item.Base = Enumerable.Range(0, mx.Count).Select(i => a + (b - a) * RelStation(mx, i)).ToArray();
+            var arcE = SafeArc(f);   // dầm cong: hình chiếu các điểm trên cung lên mặt phẳng khung
+            item.Base = arcE != null
+                ? Enumerable.Range(0, mx.Count).Select(i => To2D(arcE.PointAt(RelStation(mx, i)))).ToArray()
+                : Enumerable.Range(0, mx.Count).Select(i => a + (b - a) * RelStation(mx, i)).ToArray();
             var curves = mn != null ? new[] { mx, mn } : new[] { mx };
             item.S = curves.Select(cf => Enumerable.Range(0, cf.Count).Select(i =>
                 (comp == 4 || comp == 5) ? cf.M2(i) * c2 + cf.M3(i) * c3 :
@@ -400,7 +418,11 @@ public partial class MainWindow
         double w = diaHost.ActualWidth, h = diaHost.ActualHeight;
         if (w < 20 || h < 20) return;
         var xs = new List<double>(); var ys = new List<double>();
-        foreach (var it in d.Items) { xs.Add(it.A.X); xs.Add(it.B.X); ys.Add(it.A.Y); ys.Add(it.B.Y); }
+        foreach (var it in d.Items)
+        {
+            xs.Add(it.A.X); xs.Add(it.B.X); ys.Add(it.A.Y); ys.Add(it.B.Y);
+            if (it.Poly != null) foreach (var q in it.Poly) { xs.Add(q.X); ys.Add(q.Y); }
+        }
         if (d.Mode == 0)
             foreach (var g in _p.Grids) { if (g.Dir == GridDir.X) xs.Add(g.Coord); else ys.Add(g.Coord); }
         else
@@ -454,6 +476,18 @@ public partial class MainWindow
             }
             var a = DW2S(it.A); var b = DW2S(it.B);
             var br = sel ? DiaSelBrush : it.F.IsVerticalKind ? DiaColBrush : it.F.IsConcrete ? DiaBeamBrush : DiaSteelBrush;
+            if (it.Poly != null)
+            {
+                // dầm cong: đường gấp khúc theo cung
+                var pc = new PointCollection(it.Poly.Select(DW2S));
+                diaCanvas.Children.Add(new Shapes.Polyline
+                {
+                    Points = pc, Stroke = br, StrokeThickness = sel ? 4.5 : 2, StrokeLineJoin = PenLineJoin.Round,
+                    Effect = sel ? GlowEffect : null, IsHitTestVisible = false
+                });
+                for (int i = 0; i + 1 < pc.Count; i++) _diaHits.Add(new DiaHit(pc[i], pc[i + 1], 0, 0, false, it.F));
+                continue;
+            }
             var l = CLine(diaCanvas, a, b, br, sel ? 4.5 : (it.F.IsVerticalKind ? 2.6 : 2), false);
             if (sel) l.Effect = GlowEffect;
             _diaHits.Add(new DiaHit(a, b, 0, 0, false, it.F));
@@ -475,7 +509,8 @@ public partial class MainWindow
                     if (it.S == null || it.Base == null) continue;
                     var U = new Vector(it.U.X * k * _dScale, -it.U.Y * k * _dScale);   // px / đơn vị
                     var bs = it.Base.Select(DW2S).ToArray();
-                    foreach (var s in it.S) EmitStrip2D(cp, cn, bs, s, U, it.Sigma);
+                    var Uv = ScaledUs(it, U, k);
+                    foreach (var s in it.S) EmitStrip2D(cp, cn, bs, s, Uv, it.Sigma);
                 }
             }
             gPos.Freeze(); gNeg.Freeze();
@@ -491,7 +526,7 @@ public partial class MainWindow
                 if (!sel && (b - a).Length < 28) continue;
                 var U = new Vector(it.U.X * k * _dScale, -it.U.Y * k * _dScale);
                 var bs = it.Base.Select(DW2S).ToArray();
-                LabelCurves(diaCanvas, bs, it.S, U, it.Sigma, sel ? 11 : 9.5, sel);
+                LabelCurves(diaCanvas, bs, it.S, ScaledUs(it, U, k), it.Sigma, sel ? 11 : 9.5, sel);
             }
         }
         // lực dọc cột trên mặt bằng
@@ -525,23 +560,36 @@ public partial class MainWindow
 
     private static string Fmt(double v) => v.ToString(Math.Abs(v) >= 1000 ? "0" : "0.0", Inv);
 
-    /// <summary>Thêm các ô biểu đồ (giữa hai mặt cắt liên tiếp) vào hình dương/âm, tách tại điểm đổi dấu.</summary>
-    private static void EmitStrip2D(StreamGeometryContext cp, StreamGeometryContext cn, Point[] b, double[] s, Vector U, double sigma)
+    /// <summary>Phương tung độ (px / đơn vị) tại từng mặt cắt: dầm cong theo pháp tuyến cung, thanh thẳng dùng chung U.</summary>
+    private Vector[] ScaledUs(DiaItem it, Vector U, double k)
     {
-        int n = Math.Min(b.Length, s.Length);
+        int n = it.Base?.Length ?? 0;
+        if (it.Us == null || it.Us.Length != n) return Enumerable.Repeat(U, n).ToArray();
+        return it.Us.Select(u => new Vector(u.X * k * _dScale, -u.Y * k * _dScale)).ToArray();
+    }
+
+    /// <summary>Thêm các ô biểu đồ (giữa hai mặt cắt liên tiếp) vào hình dương/âm, tách tại điểm đổi dấu.</summary>
+    private static void EmitStrip2D(StreamGeometryContext cp, StreamGeometryContext cn, Point[] b, double[] s, Vector U, double sigma) =>
+        EmitStrip2D(cp, cn, b, s, Enumerable.Repeat(U, b.Length).ToArray(), sigma);
+
+    /// <summary>Như trên với phương tung độ riêng tại từng mặt cắt (dầm cong).</summary>
+    private static void EmitStrip2D(StreamGeometryContext cp, StreamGeometryContext cn, Point[] b, double[] s, Vector[] Uv, double sigma)
+    {
+        int n = Math.Min(Math.Min(b.Length, s.Length), Uv.Length);
         for (int i = 0; i + 1 < n; i++)
         {
             double s0 = s[i], s1 = s[i + 1];
             if (Math.Abs(s0) < 1e-12 && Math.Abs(s1) < 1e-12) continue;
             Point b0 = b[i], b1 = b[i + 1];
+            Vector u0 = Uv[i], u1 = Uv[i + 1];
             if (s0 * s1 < 0)
             {
                 double t = s0 / (s0 - s1);
                 var bm = b0 + (b1 - b0) * t;
-                Poly(s0 * sigma >= 0 ? cp : cn, b0, b0 + U * s0, bm);
-                Poly(s1 * sigma >= 0 ? cp : cn, bm, b1 + U * s1, b1);
+                Poly(s0 * sigma >= 0 ? cp : cn, b0, b0 + u0 * s0, bm);
+                Poly(s1 * sigma >= 0 ? cp : cn, bm, b1 + u1 * s1, b1);
             }
-            else Poly((s0 + s1) * sigma >= 0 ? cp : cn, b0, b0 + U * s0, b1 + U * s1, b1);
+            else Poly((s0 + s1) * sigma >= 0 ? cp : cn, b0, b0 + u0 * s0, b1 + u1 * s1, b1);
         }
     }
 
@@ -552,13 +600,16 @@ public partial class MainWindow
     }
 
     /// <summary>Ghi giá trị tại hai đầu và tại cực trị của mỗi đường biểu đồ.</summary>
-    private void LabelCurves(Canvas cv, Point[] b, double[][] curves, Vector U, double sigma, double size, bool bold)
+    private void LabelCurves(Canvas cv, Point[] b, double[][] curves, Vector U, double sigma, double size, bool bold) =>
+        LabelCurves(cv, b, curves, Enumerable.Repeat(U, b.Length).ToArray(), sigma, size, bold);
+
+    /// <summary>Như trên với phương tung độ riêng tại từng mặt cắt (dầm cong).</summary>
+    private void LabelCurves(Canvas cv, Point[] b, double[][] curves, Vector[] Uv, double sigma, double size, bool bold)
     {
         var done = new List<(int i, double v)>();
-        var dirU = U; if (dirU.Length > 1e-12) dirU.Normalize();
         foreach (var s in curves)
         {
-            int n = Math.Min(b.Length, s.Length);
+            int n = Math.Min(Math.Min(b.Length, s.Length), Uv.Length);
             if (n == 0) continue;
             int iExt = 0;
             for (int i = 1; i < n; i++) if (Math.Abs(s[i]) > Math.Abs(s[iExt])) iExt = i;
@@ -568,6 +619,8 @@ public partial class MainWindow
                 if (i != 0 && i != n - 1 && Math.Abs(s[i]) < 1e-3) continue;
                 if (done.Any(x => x.i == i && Math.Abs(x.v - v) < 1e-6)) continue;
                 done.Add((i, v));
+                var U = Uv[i];
+                var dirU = U; if (dirU.Length > 1e-12) dirU.Normalize();
                 var tip = b[i] + U * s[i] + dirU * (s[i] >= 0 ? 9 : -9);
                 var t = CText(cv, Fmt(v), tip, v >= 0 ? PosStroke : NegStroke, size, true, true, true);
                 if (bold) t.FontWeight = FontWeights.Bold;
@@ -704,11 +757,15 @@ public partial class MainWindow
             if ((nj.P - ni.P).Length < 1e-9) continue;
             var pm = _sel != null && _sel.Id == f.Id ? selMesh : memMesh;
             pm.Begin(f);
-            AddMemberBox(pm.Mesh, ni.P, nj.P, f.Angle, _sel != null && _sel.Id == f.Id ? 2.2 * t : t, _sel != null && _sel.Id == f.Id ? 2.2 * t : t, 0);
+            double tw = _sel != null && _sel.Id == f.Id ? 2.2 * t : t;
+            var cpoly = CurvedPolyline(f);   // dầm cong: chuỗi hộp theo cung
+            if (cpoly != null) for (int k2 = 0; k2 + 1 < cpoly.Count; k2++) AddMemberBox(pm.Mesh, cpoly[k2], cpoly[k2 + 1], f.Angle, tw, tw, 0);
+            else AddMemberBox(pm.Mesh, ni.P, nj.P, f.Angle, tw, tw, 0);
         }
 
         // dữ liệu biểu đồ
         var list = new List<(FrameElement f, Vec3 pi, Vec3 e1, double L, Vec3 u, FrameForces[] curves)>();
+        var arcs3 = new Dictionary<int, ArcGeometry>();   // dầm cong: điểm gốc và phương tung độ theo cung
         var lengths = new List<double>();
         double maxAbs = 0;
         if (hasF)
@@ -723,7 +780,9 @@ public partial class MainWindow
                 var curves = mn != null ? new[] { mx, mn } : new[] { mx };
                 foreach (var cf in curves) for (int i = 0; i < cf.Count; i++) maxAbs = Math.Max(maxAbs, Math.Abs(Val(cf, i, comp)));
                 list.Add((f, ni.P, e1, L, DiaDir3D(comp, e2, e3), curves));
-                lengths.Add(L);
+                var arc3 = SafeArc(f);
+                if (arc3 != null) arcs3[f.Id] = arc3;
+                lengths.Add(arc3?.Length ?? L);
             }
         double span = 3;
         if (lengths.Count > 0) { lengths.Sort(); span = Math.Max(lengths[lengths.Count / 2], 0.5); }
@@ -740,14 +799,24 @@ public partial class MainWindow
                         double s0 = Val(cf, i, comp), s1 = Val(cf, i + 1, comp);
                         if (Math.Abs(s0) < 1e-12 && Math.Abs(s1) < 1e-12) continue;
                         var b0 = pi + e1 * (RelStation(cf, i) * L); var b1 = pi + e1 * (RelStation(cf, i + 1) * L);
+                        Vec3 u0 = u, u1 = u;
+                        if (arcs3.TryGetValue(f.Id, out var ac))
+                        {
+                            // dầm cong: gốc trên cung, phương tung độ theo hệ trục tiếp tuyến tại mặt cắt
+                            double r0 = RelStation(cf, i), r1 = RelStation(cf, i + 1);
+                            b0 = ac.PointAt(r0); b1 = ac.PointAt(r1);
+                            var ra = CurvedBeam.AxesAt(ac, r0, f.Angle); var rb = CurvedBeam.AxesAt(ac, r1, f.Angle);
+                            u0 = DiaDir3D(comp, new Vec3(ra[1, 0], ra[1, 1], ra[1, 2]), new Vec3(ra[2, 0], ra[2, 1], ra[2, 2]));
+                            u1 = DiaDir3D(comp, new Vec3(rb[1, 0], rb[1, 1], rb[1, 2]), new Vec3(rb[2, 0], rb[2, 1], rb[2, 2]));
+                        }
                         if (s0 * s1 < 0)
                         {
                             double tt = s0 / (s0 - s1);
                             var bm = b0 + (b1 - b0) * tt;
-                            Poly3(s0 >= 0 ? pos : neg, b0, b0 + u * (s0 * k), bm);
-                            Poly3(s1 >= 0 ? pos : neg, bm, b1 + u * (s1 * k), b1);
+                            Poly3(s0 >= 0 ? pos : neg, b0, b0 + u0 * (s0 * k), bm);
+                            Poly3(s1 >= 0 ? pos : neg, bm, b1 + u1 * (s1 * k), b1);
                         }
-                        else Poly3(s0 + s1 >= 0 ? pos : neg, b0, b0 + u * (s0 * k), b1 + u * (s1 * k), b1);
+                        else Poly3(s0 + s1 >= 0 ? pos : neg, b0, b0 + u0 * (s0 * k), b1 + u1 * (s1 * k), b1);
                     }
             }
 

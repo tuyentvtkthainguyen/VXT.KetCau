@@ -31,7 +31,7 @@ public sealed class ViewLayout
 
 /// <summary>Dàn trang bản vẽ (paper space): dựng mảnh hình cho từng khung nhìn, xếp vào khung theo tỷ lệ,
 /// vẽ khung tên, xuất mỗi tờ thành một file DXF (đơn vị mm giấy, tỷ lệ 1/1) và tạo bộ tờ mặc định.</summary>
-public static class SheetBuilder
+public static partial class SheetBuilder
 {
     public const double MarginLeft = 25, MarginOther = 10;
     public const double TitleW = 180, TitleH = 40;
@@ -93,7 +93,10 @@ public static class SheetBuilder
     {
         var (pw, ph) = s.PaperSize();
         double mL = pw < 250 ? 20 : MarginLeft, mO = pw < 250 ? 5 : MarginOther;
-        var inner = new Rect2(mL, mO, pw - mO, ph - mO);
+        // lề tự chọn của tờ (< 0 = mặc định) – dàn trang thủ công
+        double mR = s.MarginRight >= 0 ? s.MarginRight : mO, mT = s.MarginTop >= 0 ? s.MarginTop : mO, mB = s.MarginBottom >= 0 ? s.MarginBottom : mO;
+        if (s.MarginLeft >= 0) mL = s.MarginLeft;
+        var inner = new Rect2(mL, mB, Math.Max(mL + 20, pw - mR), Math.Max(mB + 20, ph - mT));
         double tw = Math.Min(TitleW, inner.W);
         var tb = new Rect2(inner.X2 - tw, inner.Y1, inner.X2, inner.Y1 + TitleH);
         return (inner, tb);
@@ -337,7 +340,7 @@ public static class SheetBuilder
     {
         var lay = new ViewLayout();
         var list = (figs ?? new List<Figure>()).Where(f => f?.W != null && f.W.EntityCount > 0).ToList();
-        bool cap = !string.IsNullOrWhiteSpace(v.Title);
+        bool cap = !v.HideTitle && !string.IsNullOrWhiteSpace(v.Title);
         double ax1 = v.X + ViewPad, ax2 = v.X + v.W - ViewPad;
         double ay1 = v.Y + ViewPad + (cap ? CaptionH : 0), ay2 = v.Y + v.H - ViewPad;
         double aw = Math.Max(1, ax2 - ax1), ah = Math.Max(1, ay2 - ay1);
@@ -370,8 +373,8 @@ public static class SheetBuilder
         lay.EffectiveScale = refS / z;
         double cw = bw * z, ch = bh * z;
         lay.Overflow = cw > aw + 0.5 || ch > ah + 0.5;
-        double ox = ax1 + Math.Max(0, (aw - cw) / 2);
-        double top = ay2 - Math.Max(0, (ah - ch) / 2);
+        double ox = ax1 + Math.Max(0, (aw - cw) / 2) + v.PanX;      // PanX/PanY: dịch hình trong khung (crop thủ công)
+        double top = ay2 - Math.Max(0, (ah - ch) / 2) + v.PanY;
         lay.Content = new Rect2(ox, top - ch, ox + cw, top);
         foreach (var (f, nx, ny) in pl)
         {
@@ -407,7 +410,9 @@ public static class SheetBuilder
         w.Text(Lay.KhungTen, x, y, Math.Max(1.0, hh), text, 0, ha, va);
     }
 
-    /// <summary>Khung giấy + khung viền + khung tên của tờ (mm giấy, tỷ lệ 1/1).</summary>
+    /// <summary>Khung giấy + khung viền + khung tên của tờ (mm giấy, tỷ lệ 1/1).
+    /// Khung tên 6 hàng: đơn vị thiết kế, công trình, địa điểm, tên bản vẽ, thiết kế/phê duyệt, kiểm tra/lần sửa;
+    /// cột phải: logo (nếu có), tỷ lệ, ngày, số hiệu bản vẽ. Ô trống trên tờ lấy theo khung tên mặc định của công trình.</summary>
     public static DxfWriter TitleBlock(Project p, Sheet s, string scaleText = null)
     {
         var w = new DxfWriter(1);
@@ -415,35 +420,65 @@ public static class SheetBuilder
         var (pw, ph) = s.PaperSize();
         var (inner, tb) = Frame(s);
         w.Rect(L, 0, 0, pw, ph);
-        w.Polyline(L, new List<(double X, double Y)> { (inner.X1, inner.Y1), (inner.X2, inner.Y1), (inner.X2, inner.Y2), (inner.X1, inner.Y2) }, true, 0.5);
+        if (s.ShowFrame)
+            w.Polyline(L, new List<(double X, double Y)> { (inner.X1, inner.Y1), (inner.X2, inner.Y1), (inner.X2, inner.Y2), (inner.X1, inner.Y2) }, true, 0.5);
+        if (!s.ShowTitleBlock) return w;
+        var info = p?.TitleBlock ?? new TitleBlockInfo();
+        bool logo = !string.IsNullOrEmpty(info.LogoData);
+        if (!string.IsNullOrWhiteSpace(s.ScaleNote)) scaleText = s.ScaleNote.Trim();
 
-        double tx1 = tb.X1, tx2 = tb.X2, y1 = tb.Y1, tw = tb.W, rh = TitleH / 5;
+        double tx1 = tb.X1, tx2 = tb.X2, y1 = tb.Y1, tw = tb.W, rh = TitleH / 6;
         w.Polyline(L, new List<(double X, double Y)> { (tx1, y1), (tx2, y1), (tx2, tb.Y2), (tx1, tb.Y2) }, true, 0.35);
         double cL = tx1 + 0.17 * tw, cR = tx2 - 0.28 * tw;
+        double cM = cL + 0.27 * tw, cM2 = cM + 0.12 * tw;
+        double topR = logo ? cR : tx2;
         w.Line(L, tx1, y1 + rh, cR, y1 + rh);
-        for (int i = 2; i <= 4; i++) w.Line(L, tx1, y1 + i * rh, tx2, y1 + i * rh);
+        w.Line(L, tx1, y1 + 2 * rh, tx2, y1 + 2 * rh);
+        w.Line(L, tx1, y1 + 3 * rh, tx2, y1 + 3 * rh);
+        w.Line(L, tx1, y1 + 4 * rh, logo ? cR : tx2, y1 + 4 * rh);
+        w.Line(L, tx1, y1 + 5 * rh, topR, y1 + 5 * rh);
         w.Line(L, cL, y1, cL, tb.Y2);
-        w.Line(L, cR, y1, cR, y1 + 4 * rh);
+        w.Line(L, cR, y1, cR, logo ? tb.Y2 : y1 + 4 * rh);
+        w.Line(L, cM, y1, cM, y1 + 2 * rh);
+        w.Line(L, cM2, y1, cM2, y1 + 2 * rh);
 
+        string Eff(params string[] v) => v.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim() ?? "";
         double pad = 1.5, lw = cL - tx1 - 2 * pad, vw = cR - cL - 2 * pad, rw = tx2 - cR - 2 * pad;
+        double nw = cM - cL - 2 * pad, lw2 = cM2 - cM - 2 * pad, nw2 = cR - cM2 - 2 * pad;
         double Row(int i) => y1 + (i + 0.5) * rh;    // i = 0 dưới cùng
+        var cu = CultureInfo.CurrentCulture;
+        FitText(w, tx1 + pad, Row(5), lw, 2.0, "ĐƠN VỊ THIẾT KẾ");
+        FitText(w, cL + pad, Row(5), topR - cL - 2 * pad, 3.0, Eff(info.Company).ToUpper(cu));
         FitText(w, tx1 + pad, Row(4), lw, 2.2, "CÔNG TRÌNH");
-        FitText(w, cL + pad, Row(4), tx2 - cL - 2 * pad, 3.5, (p?.Name ?? "").ToUpper(CultureInfo.CurrentCulture));
+        FitText(w, cL + pad, Row(4), topR - cL - 2 * pad, 3.2, Eff(info.ProjectName, p?.Name).ToUpper(cu));
         FitText(w, tx1 + pad, Row(3), lw, 2.2, "ĐỊA ĐIỂM");
-        FitText(w, cL + pad, Row(3), vw, 2.5, p?.Location ?? "");
+        FitText(w, cL + pad, Row(3), vw, 2.5, Eff(info.Location, p?.Location));
         FitText(w, tx1 + pad, Row(2), lw, 2.2, "TÊN BẢN VẼ");
-        FitText(w, cL + pad, Row(2), vw, 3.2, (s.Name ?? "").ToUpper(CultureInfo.CurrentCulture));
+        FitText(w, cL + pad, Row(2), vw, 3.0, (s.Name ?? "").ToUpper(cu));
         FitText(w, tx1 + pad, Row(1), lw, 2.2, "THIẾT KẾ");
-        FitText(w, cL + pad, Row(1), vw, 2.5, s.Designer ?? "");
+        FitText(w, cL + pad, Row(1), nw, 2.5, Eff(s.Designer, info.Designer, p?.Designer));
         FitText(w, tx1 + pad, Row(0), lw, 2.2, "KIỂM TRA");
-        FitText(w, cL + pad, Row(0), vw, 2.5, s.Checker ?? "");
+        FitText(w, cL + pad, Row(0), nw, 2.5, Eff(s.Checker, info.Checker));
+        FitText(w, cM + pad, Row(1), lw2, 2.0, "PHÊ DUYỆT");
+        FitText(w, cM2 + pad, Row(1), nw2, 2.5, Eff(s.Approver, info.Approver));
+        FitText(w, cM + pad, Row(0), lw2, 2.0, "LẦN SỬA");
+        FitText(w, cM2 + pad, Row(0), nw2, 2.5, Eff(s.Revision));
 
         FitText(w, cR + pad, Row(3), rw, 2.2, "TỶ LỆ: " + (scaleText ?? ""));
         FitText(w, cR + pad, Row(2), rw, 2.2, "NGÀY: " + (s.Date ?? ""));
-        FitText(w, cR + pad, y1 + 1.6 * rh, rw, 1.8, "SỐ HIỆU BẢN VẼ");
-        FitText(w, (cR + tx2) / 2, y1 + 0.7 * rh, rw, 5, s.Number ?? "", 1, 2);
+        FitText(w, cR + pad, y1 + 1.65 * rh, rw, 1.8, "SỐ HIỆU BẢN VẼ");
+        FitText(w, (cR + tx2) / 2, y1 + 0.75 * rh, rw, 4.5, s.Number ?? "", 1, 2);
         w.Text(L, inner.X2, inner.Y1 - 1.2, 1.8, "Lập bằng Kết cấu VXT", 0, 2, 3);
         return w;
+    }
+
+    /// <summary>Ô đặt logo công ty trong khung tên (mm giấy); rỗng nếu không có logo hoặc tờ không có khung tên.</summary>
+    public static Rect2 TitleLogoRect(Project p, Sheet s)
+    {
+        if (s == null || !s.ShowTitleBlock || string.IsNullOrEmpty(p?.TitleBlock?.LogoData)) return Rect2.Empty;
+        var (_, tb) = Frame(s);
+        double rh = TitleH / 6, cR = tb.X2 - 0.28 * tb.W;
+        return new Rect2(cR, tb.Y1 + 4 * rh, tb.X2, tb.Y2).Inflate(-1);
     }
 
     /// <summary>Chuỗi tỷ lệ cho khung tên từ các khung nhìn đã xếp.</summary>
@@ -466,11 +501,9 @@ public static class SheetBuilder
         foreach (var v in s.Views) lays.Add((v, Layout(Figures(p, r, d, v), v)));
         var outW = new DxfWriter(1);
         outW.Append(TitleBlock(p, s, ScaleText(lays)), 0, 0);
-        foreach (var (_, lay) in lays)
-        {
-            foreach (var it in lay.Items) outW.AppendScaled(it.F.W, it.K, it.Dx, it.Dy);
-            if (lay.Caption != null) outW.Append(lay.Caption, 0, 0);
-        }
+        // ---- dàn trang thủ công: cắt khung nhìn, viền, đối tượng chú thích (SheetBuilder.Manual.cs) ----
+        foreach (var (v, lay) in lays) ComposeView(outW, v, lay);
+        ComposeItems(outW, s);
         return outW;
     }
 

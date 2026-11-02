@@ -280,6 +280,41 @@ public static class ModelBuilder
             changed = false;
             foreach (var f in p.Frames.ToList())
             {
+                if (f.IsCurved)
+                {
+                    // dầm cong: chia tại nút nằm trên cung → hai dầm cong cùng bán kính (độ vồng tính lại cho từng đoạn)
+                    var arc = CurvedBeam.Arc(p, f);
+                    if (arc == null) continue;
+                    var onArc = p.Nodes.Where(n => n.Id != f.NodeI && n.Id != f.NodeJ && Math.Abs(n.Z - arc.Z) < 0.005)
+                        .Select(n =>
+                        {
+                            double tt = arc.ParamOf(n.X, n.Y, out double dd);
+                            return (n, t: tt, dd);
+                        })
+                        .Where(x => !double.IsNaN(x.t) && x.dd < 0.005 && x.t * arc.Length > 0.01 && (1 - x.t) * arc.Length > 0.01)
+                        .OrderBy(x => x.t).FirstOrDefault();
+                    if (onArc.n == null) continue;
+                    var fc = new FrameElement
+                    {
+                        Id = p.NextFrameId(), NodeI = onArc.n.Id, NodeJ = f.NodeJ, Kind = f.Kind, Section = f.Section, Story = f.Story,
+                        Label = f.Label, DesignGroup = f.DesignGroup, Angle = f.Angle, ReleaseJ = f.ReleaseJ, UnbracedLength22 = f.UnbracedLength22,
+                        CurveMidOffset = CurvedBeam.SagittaOfPiece(arc, onArc.t, 1), CurveSegments = 0
+                    };
+                    foreach (var fl in p.FrameLoads.Where(l => l.Element == f.Id).ToList())
+                    {
+                        var right = SliceLoad(fl, onArc.t, 1); right.Element = fc.Id;
+                        var left = SliceLoad(fl, 0, onArc.t);
+                        fl.Points = left.Points; fl.PointLoads = left.PointLoads;
+                        p.FrameLoads.Add(right);
+                    }
+                    f.CurveMidOffset = CurvedBeam.SagittaOfPiece(arc, 0, onArc.t);
+                    f.CurveSegments = 0;
+                    f.NodeJ = onArc.n.Id; f.ReleaseJ = new bool[6];
+                    p.Frames.Add(fc);
+                    count++; changed = true;
+                    p.InvalidateIndex();
+                    break;
+                }
                 var a = p.Node(f.NodeI).P; var b = p.Node(f.NodeJ).P;
                 var u = (b - a); double L = u.Length; u = u.Normalize();
                 var mid = p.Nodes.Where(n => n.Id != f.NodeI && n.Id != f.NodeJ)
