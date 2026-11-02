@@ -33,7 +33,7 @@ public partial class MainWindow
             var applied = await dlg.ApplyAlternative(idx);
             var after = DesignByRebarKey(key);
             StLog($"chọn thép: áp dụng {applied?.Text ?? "(không có)"} → lựa chọn lưu {_p.RebarChoices.Count}, dầm {after?.Name} "
-                  + $"{(after == null ? "?" : after.Ok ? "ĐẠT" : "KHÔNG ĐẠT")}, thép dưới nhịp 1 = {after?.Spans.FirstOrDefault()?.BotText}"
+                  + $"{(after == null ? "?" : after.Ok ? "ĐẠT" : "KHÔNG ĐẠT")}, thép dưới nhịp 1 = {(after as KetCauVXT.Design.BeamLineDesign)?.Spans.FirstOrDefault()?.BotText}"
                   + $", vùng dùng thép chọn = {after?.UserRebarZones}");
             await Pause(1200);
             ShotWindow(dlg, $"{tag}_21_ChonThep_SauApDung");
