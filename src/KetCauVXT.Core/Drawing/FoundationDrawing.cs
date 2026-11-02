@@ -9,8 +9,11 @@ namespace KetCauVXT.Drawing;
 /// Mặt bằng: vẽ chung vào mặt bằng móng của FootingDrawing; chi tiết: mặt bằng + mặt cắt đài, mặt cắt dọc + mặt cắt ngang dải băng.</summary>
 public static class FoundationDrawing
 {
+    /// <summary>Tỷ lệ mặc định của chương trình (tỷ lệ dùng thật theo Thiết lập bản vẽ: chi tiết móng, mặt đứng dầm).</summary>
     public const double DetailScale = 25;
     public const double StripElevationScale = 50;
+
+    private static double Det => DrawingStyle.Current.ScaleOf(DrawingKind.FootingDetail);
 
     private static (double X, double Y) P(double x, double y) => (x, y);
 
@@ -130,7 +133,8 @@ public static class FoundationDrawing
     public static DxfWriter CapPlan(Project p, PileCapDesign c, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = S / DetailScale;
+        double det = Det;
+        double th = w.Th, k = S / det;
         double L = c.L * 1000 * k, B = c.B * 1000 * k, xc = L / 2, yc = B / 2;
         double cv = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
         w.Rect(Lay.BeTong, 0, 0, L, B);
@@ -165,7 +169,7 @@ public static class FoundationDrawing
         w.Dim(0, 0, L, 0, -9.0 * th, k);
         w.DimChainV(chainY, 0, -3 * th, k);
         w.Dim(0, 0, 0, B, 5.5 * th, k);
-        w.Title(L / 2, w.Extents.Y2 + 4 * th, $"{c.Name} (SL={Math.Max(1, c.Quantity)})", DrawUtil.ScaleText(DetailScale));
+        w.Title(L / 2, w.Extents.Y2 + 4 * th, $"{c.Name} (SL={Math.Max(1, c.Quantity)})", DrawUtil.ScaleText(det));
         return w;
     }
 
@@ -173,7 +177,8 @@ public static class FoundationDrawing
     public static DxfWriter CapSection(Project p, PileCapDesign c, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = S / DetailScale;
+        double det = Det;
+        double th = w.Th, k = S / det;
         double L = c.L * 1000 * k, H = Math.Max(0.3, c.H) * 1000 * k, xc = L / 2;
         double cv = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
         double lot = 100 * k, emb = Math.Max(0, p.Foundation?.PileEmbed ?? 0.1) * 1000 * k;
@@ -237,8 +242,9 @@ public static class FoundationDrawing
         double zTop = p.BaseElevation;
         w.ElevMark(L + 4 * th, H, DxfWriter.ElevText(zTop), 1);
         w.ElevMark(L + 4 * th, 0, DxfWriter.ElevText(zTop - c.H), 1);
-        w.Title(L / 2, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT {c.Name}", DrawUtil.ScaleText(DetailScale));
-        string info = $"{c.Piles.Count} cọc {(c.PileRound ? "D" : "")}{DxfWriter.N0(c.PileSize * 1000)}{(c.PileRound ? "" : "x" + DxfWriter.N0(c.PileSize * 1000))}, L = {c.PileLength.ToString("0.0", DrawUtil.Inv)} m, [P] = {DxfWriter.N0(c.PileCapacity)} kN";
+        w.Title(L / 2, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT {c.Name}", DrawUtil.ScaleText(det), true);
+        string info = $"{c.Piles.Count} cọc {(c.PileRound ? "D" : "")}{DxfWriter.N0(c.PileSize * 1000)}{(c.PileRound ? "" : "x" + DxfWriter.N0(c.PileSize * 1000))}, L = {c.PileLength.ToString("0.0", DrawUtil.Inv)} m" +
+                      (w.Style.ShowDesignValues ? $", [P] = {DxfWriter.N0(c.PileCapacity)} kN" : "");
         w.Text(Lay.Chu, L / 2, w.Extents.Y1 - 1.0 * th, th, info, 0, 1, 3);
         return w;
     }
@@ -248,7 +254,9 @@ public static class FoundationDrawing
     {
         var w = new DxfWriter(S);
         double th = w.Th;
-        double scale = st.Length > 18 ? 100 : StripElevationScale;
+        // mặt cắt dọc dải băng vẽ theo tỷ lệ mặt đứng dầm (Thiết lập bản vẽ); dải dài > 18 m tối thiểu 1/100
+        double baseSc = DrawingStyle.Current.ScaleOf(DrawingKind.BeamElevation);
+        double scale = st.Length > 18 ? Math.Max(100, baseSc) : baseSc;
         double k = S / scale;
         double L = st.Length * 1000 * k, h = st.RibH * 1000 * k, he = st.FlangeEdge * 1000 * k;
         double cv = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
@@ -309,7 +317,7 @@ public static class FoundationDrawing
         w.Dim(0, 0, 0, h, 2.5 * th, k);
         w.ElevMark(L + 3 * th, h, DxfWriter.ElevText(p.BaseElevation), 1);
         w.ElevMark(L + 3 * th, 0, DxfWriter.ElevText(p.BaseElevation - st.RibH), 1);
-        w.Title(L / 2, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT DỌC {st.Name} ({st.Grid})", DrawUtil.ScaleText(scale));
+        w.Title(L / 2, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT DỌC {st.Name} ({st.Grid})", DrawUtil.ScaleText(scale), true);
         return w;
     }
 
@@ -317,7 +325,8 @@ public static class FoundationDrawing
     public static DxfWriter StripSection(Project p, StripFootingDesign st, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = S / DetailScale;
+        double det = Det;
+        double th = w.Th, k = S / det;
         double B = st.Width * 1000 * k, b = st.RibB * 1000 * k, h = st.RibH * 1000 * k;
         double hr = Math.Min(st.FlangeRoot, st.RibH) * 1000 * k, he = Math.Min(st.FlangeEdge, st.FlangeRoot) * 1000 * k;
         double cv = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
@@ -408,7 +417,7 @@ public static class FoundationDrawing
         var hv = new List<double> { 0, h };
         if (B > b + 1) { hv.Add(he); hv.Add(hr); }
         w.DimChainV(hv.Distinct().ToList(), x0, x0 - 2.5 * th, k);
-        w.Title(0, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT NGANG {st.Name}", DrawUtil.ScaleText(DetailScale));
+        w.Title(0, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT NGANG {st.Name}", DrawUtil.ScaleText(det), true);
         return w;
     }
 }

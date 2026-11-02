@@ -50,6 +50,12 @@ public class PileCapDesign : MemberDesignBase
     /// <summary>Mô men uốn tại mép cột theo phương L, B (kN.m)</summary>
     public double MomentL { get; set; }
     public double MomentB { get; set; }
+    /// <summary>Mô men lớp trên do cọc chịu nhổ theo phương L, B (kN.m)</summary>
+    public double MomentTopL { get; set; }
+    public double MomentTopB { get; set; }
+    /// <summary>Thép lớp trên phương L / B (Ø–bước)</summary>
+    public string BarsTopL { get; set; } = "";
+    public string BarsTopB { get; set; } = "";
     /// <summary>Thép lớp trên đài (cấu tạo)</summary>
     public string BarsTop { get; set; } = "";
     public int DiaL { get; set; }
@@ -125,5 +131,8 @@ public class StripFootingDesign : MemberDesignBase
     public int StirrupDia { get; set; }
     public double StirrupSpacing { get; set; }
     public int StirrupLegs { get; set; } = 2;
+    /// <summary>Chiều cao làm việc sườn h0 và bản cánh h0f (m) – dùng khi lập phương án thép</summary>
+    public double RibH0 { get; set; }
+    public double FlangeH0 { get; set; }
     public double Length => End - Start;
 }

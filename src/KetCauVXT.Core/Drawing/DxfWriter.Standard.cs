@@ -102,7 +102,7 @@ public sealed partial class DxfWriter
         G(sb, 0, "ENDTAB");
 
         G(sb, 0, "TABLE"); G(sb, 2, "STYLE"); G(sb, 70, 1);
-        G(sb, 0, "STYLE"); G(sb, 2, "STANDARD"); G(sb, 70, 0); G(sb, 40, 0.0); G(sb, 41, 1.0); G(sb, 50, 0.0);
+        G(sb, 0, "STYLE"); G(sb, 2, "STANDARD"); G(sb, 70, 0); G(sb, 40, 0.0); G(sb, 41, WidthFactor); G(sb, 50, 0.0);
         G(sb, 71, 0); G(sb, 42, Th); G(sb, 3, CadStandard.FontFile(std.FontName)); G(sb, 4, "");
         G(sb, 0, "ENDTAB");
         G(sb, 0, "ENDSEC");

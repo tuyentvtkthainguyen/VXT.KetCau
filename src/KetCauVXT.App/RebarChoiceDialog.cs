@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using KetCauVXT.Design;
 using KetCauVXT.Design.Concrete;
+using KetCauVXT.Design.Foundation;
 using KetCauVXT.Model;
 
 namespace KetCauVXT.App;
@@ -39,6 +40,7 @@ internal sealed class RebarChoiceDialog : Window
     private readonly Func<RebarZoneInfo, RebarAlternative, Task> _apply;
     private readonly Func<RebarZoneInfo, Task> _clear;
 
+    private readonly ComboBox _cbMember = new() { MinWidth = 260, Margin = new Thickness(0, 0, 0, 4), Visibility = Visibility.Collapsed };
     private readonly TextBlock _title = new() { FontWeight = FontWeights.Bold, FontSize = 14, Margin = new Thickness(0, 0, 0, 2) };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 4) };
     private readonly ListBox _lstZones = new() { MinWidth = 230 };
@@ -114,6 +116,7 @@ internal sealed class RebarChoiceDialog : Window
 
         var root = new DockPanel { Margin = new Thickness(10) };
         var top = new StackPanel();
+        top.Children.Add(_cbMember);
         top.Children.Add(_title);
         top.Children.Add(_status);
         DockPanel.SetDock(top, Dock.Top);
@@ -131,6 +134,24 @@ internal sealed class RebarChoiceDialog : Window
         root.Children.Add(body);
         Content = root;
         Loaded += (s, e) => Refresh();
+    }
+
+    /// <summary>Danh sách cấu kiện chọn được (vd. móng đơn, đài cọc, móng băng); onPick nhận khoá cấu kiện được chọn.</summary>
+    public void SetMemberPicker(IList<(string Label, string Key)> items, string currentKey, Action<string> onPick)
+    {
+        if (items == null || items.Count < 2) return;
+        _cbMember.ItemsSource = items.Select(x => x.Label).ToList();
+        int i = items.ToList().FindIndex(x => x.Key == currentKey);
+        _cbMember.SelectedIndex = Math.Max(i, 0);
+        _cbMember.Visibility = Visibility.Visible;
+        _cbMember.SelectionChanged += (s, e) =>
+        {
+            int k = _cbMember.SelectedIndex;
+            if (k < 0 || k >= items.Count) return;
+            onPick(items[k].Key);
+            _lstZones.SelectedIndex = -1;
+            Refresh();
+        };
     }
 
     /// <summary>Số phương án của vùng đang chọn.</summary>
@@ -174,7 +195,11 @@ internal sealed class RebarChoiceDialog : Window
             _lstZones.ItemsSource = null; _grid.ItemsSource = null;
             return;
         }
-        string kind = m switch { BeamLineDesign => "Dầm", ColumnDesign => "Cột", SlabDesign => "Sàn", FootingDesign => "Móng", _ => "" };
+        string kind = m switch
+        {
+            BeamLineDesign => "Dầm", ColumnDesign => "Cột", SlabDesign => "Sàn", FootingDesign => "Móng đơn", PileCapDesign => "Đài cọc",
+            StripFootingDesign => "Móng băng", _ => ""
+        };
         _title.Text = $"{kind} {m.Name}" + (m.Quantity > 1 ? $" (×{m.Quantity})" : "") + (m is BeamLineDesign b ? $" – tiết diện {b.Section}" : "");
         Title = "Chọn bố trí thép – " + m.Name;
         var errs = m.Messages.Where(x => x.StartsWith("LỖI", StringComparison.Ordinal)).Take(3).ToList();

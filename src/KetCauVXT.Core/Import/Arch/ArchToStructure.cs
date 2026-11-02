@@ -9,7 +9,10 @@ namespace KetCauVXT.Import.Arch;
 /// (không mô hình hoá). Mái = cao trình đỉnh tầng trên cùng; tum (nếu có) đứng trên mái, có mái tum "MAITUM".</para>
 /// <para>Kích thước sơ bộ: dầm chính h = L/12, dầm phụ h = L/14, công xôn h = L/5 (làm tròn 50 mm, h ≥ 300 / 250 mm);
 /// sàn t = Lngắn/45 (bản kê) hoặc /35 (bản dầm), ≥ 100 mm; cột A = k·N/Rb, N = Σ q·Atruyền tải (q mặc định 12 kN/m²/sàn),
-/// k = 1,2 cột giữa, 1,35 cột biên/góc; tiết diện cột giữ nguyên 2 tầng một lần đổi.</para></summary>
+/// k = 1,2 cột giữa, 1,35 cột biên/góc; tiết diện cột giữ nguyên 2 tầng một lần đổi.</para>
+/// <para>Tường xiên / tường cong (không song song trục): lưới trục, dầm trục, ô sàn vẫn trực giao; dưới mỗi tường xiên đặt dầm xiên
+/// (dầm cong dưới tường cong) nối tới dầm/cột gần nhất ở hai đầu (kéo dài ≤ 1,0 m hoặc rút vào ≤ 0,6 m), chia đoạn tại giao với dầm trục
+/// (nút mới được thêm, dầm trục được chia khi ghi mô hình). Tải tường cong tính theo chiều dài cung. Cột xoay giữ góc xoay theo bản vẽ.</para></summary>
 public static class ArchToStructure
 {
     private const double Tol = 0.02;
@@ -87,6 +90,14 @@ public static class ArchToStructure
         foreach (var (x, y, note) in colPts)
         {
             var pc = new PropColumn { X = x, Y = y, Note = note };
+            // góc xoay / cột tròn theo cột kiến trúc tại vị trí này
+            var ac = ground.Columns.Where(c => Math.Abs(c.X - x) <= 0.3 && Math.Abs(c.Y - y) <= 0.3).OrderBy(c => Math.Abs(c.X - x) + Math.Abs(c.Y - y)).FirstOrDefault();
+            if (ac != null)
+            {
+                pc.Angle = ac.Angle; pc.Diameter = ac.Diameter;
+                if (Math.Abs(ac.Angle) > 1e-9) pc.Note = (pc.Note.Length > 0 ? pc.Note + ", " : "") + $"cột xoay {ac.Angle.ToString("0.#", CultureInfo.InvariantCulture)}°";
+                if (ac.Diameter > 0) pc.Note = (pc.Note.Length > 0 ? pc.Note + ", " : "") + $"cột tròn D{ac.Diameter * 1000:0} quy vuông tương đương";
+            }
             int top = -1;
             for (int i = 0; i < s.Levels.Count; i++)
             {
@@ -237,7 +248,7 @@ public static class ArchToStructure
         if (o.BeamsUnderWalls && !(drawn > 0 && o.DrawnBeamsReplaceAuto))
             foreach (var w in wallsOn.OrderByDescending(w => w.Length))
             {
-                if (w.Length < 1.0) continue;
+                if (w.Length < 1.0 || !w.IsOrthogonal) continue;   // tường xiên/cong: đặt dầm riêng sau khi chia đoạn dầm trục giao
                 bool ax = w.AlongX;
                 double c = ax ? w.Ay : w.Ax, a = ax ? Math.Min(w.Ax, w.Bx) : Math.Min(w.Ay, w.By), b = ax ? Math.Max(w.Ax, w.Bx) : Math.Max(w.Ay, w.By);
                 if (!Inside(ax ? (a + b) / 2 : c, ax ? c : (a + b) / 2, 0.05)) continue;
@@ -329,6 +340,11 @@ public static class ArchToStructure
             beams.Add(pb);
         }
 
+        // ---- dầm xiên / dầm cong đỡ tường xiên, tường cong ----
+        var specialCover = new Dictionary<ArchWall, List<(PropBeam pb, double ov)>>();
+        if (o.BeamsUnderWalls && !(drawn > 0 && o.DrawnBeamsReplaceAuto))
+            specialCover = AddSpecialWallBeams(s, lv, wallsOn, lines, beams, colAt, Inside);
+
         // ---- ô sàn ----
         panels = Panels(lines, bx0, by0, bx1, by1, Inside);
         var slabs = new List<PropSlab>();
@@ -359,11 +375,33 @@ public static class ArchToStructure
             double hw = Math.Max(hWall, 0.5);
             double open = Math.Min(0.7, w.OpeningLength * 2.0 / Math.Max(w.Length * hw, 1e-6));
             double q = unit * hw * (1 - open);                 // kN/m chiều dài tường
+            if (!w.IsOrthogonal)
+            {
+                // tường xiên / cong: tải lên các đoạn dầm xiên/cong đặt dưới tường, phần còn lại quy về ô sàn chứa điểm giữa tường
+                double cov = 0;
+                if (specialCover.TryGetValue(w, out var pieces))
+                    foreach (var (pb, ov) in pieces) { pb.WallLoad += q * ov / Math.Max(pb.AxisLength, 1e-6); cov += ov; }
+                double restS = w.Length - cov;
+                if (restS > 0.2)
+                {
+                    var (mx, my) = WallMid(w);
+                    var sl = slabs.FirstOrDefault(q2 => mx >= q2.X0 - 0.01 && mx <= q2.X1 + 0.01 && my >= q2.Y0 - 0.01 && my <= q2.Y1 + 0.01);
+                    if (sl != null)
+                    {
+                        double area = (sl.X1 - sl.X0) * (sl.Y1 - sl.Y0);
+                        sl.Finish += q * restS / area;
+                        sl.WallExtra += q * restS / area;
+                        sl.RoomName += $" (+tường {(w.IsCurved ? "cong" : "xiên")} {w.Thickness * 1000:0} dài {restS:0.0} m quy đổi {q * restS / area:0.00} kN/m²)";
+                    }
+                }
+                continue;
+            }
             bool ax = w.AlongX;
             double c = ax ? w.Ay : w.Ax, a = ax ? Math.Min(w.Ax, w.Bx) : Math.Min(w.Ay, w.By), b = ax ? Math.Max(w.Ax, w.Bx) : Math.Max(w.Ay, w.By);
             double covered = 0;
             foreach (var pb in beams)
             {
+                if (!IsOrthoBeam(pb)) continue;
                 bool bx = Math.Abs(pb.Ay - pb.By) < 1e-6;
                 if (bx != ax) continue;
                 double bc = bx ? pb.Ay : pb.Ax;
@@ -393,7 +431,7 @@ public static class ArchToStructure
             // tường chắn mái trên dầm biên mái (trừ đoạn có tường tum đứng trên)
             double unit = 0.11 * o.WallUnitWeight + 2 * o.PlasterThickness * 18.0;
             int np = 0;
-            foreach (var pb in beams.Where(pb => OnOutline(lv.Outline, pb)))
+            foreach (var pb in beams.Where(pb => IsOrthoBeam(pb) && OnOutline(lv.Outline, pb)))
             {
                 if (above != null && ArchPlanReader.PointInPoly(above.Outline, (pb.Ax + pb.Bx) / 2, (pb.Ay + pb.By) / 2, 0.05)) continue;
                 pb.WallLoad += unit * o.ParapetHeight; pb.Parapet = true; np++;
@@ -419,6 +457,189 @@ public static class ArchToStructure
         }
         lv.Beams = beams;
         return lines;
+    }
+
+    // ------------------------------------------------------------------
+    // Dầm xiên / dầm cong dưới tường xiên, tường cong
+    // ------------------------------------------------------------------
+    /// <summary>Dầm thẳng song song trục X hoặc Y.</summary>
+    private static bool IsOrthoBeam(PropBeam b) => Math.Abs(b.Sagitta) <= 1e-6 && (Math.Abs(b.Ay - b.By) < 1e-6 || Math.Abs(b.Ax - b.Bx) < 1e-6);
+
+    /// <summary>Điểm giữa tim tường (tường cong: điểm giữa cung).</summary>
+    private static (double X, double Y) WallMid(ArchWall w)
+    {
+        if (w.IsCurved)
+        {
+            var arc = CurvedBeam.Arc(new Vec3(w.Ax, w.Ay, 0), new Vec3(w.Bx, w.By, 0), w.Sagitta);
+            if (arc != null) { var m = arc.Mid; return (m.X, m.Y); }
+        }
+        return ((w.Ax + w.Bx) / 2, (w.Ay + w.By) / 2);
+    }
+
+    private static double R4(double v) => Math.Round(v, 4);
+
+    /// <summary>Chọn gối ở đầu dầm: giao tại đầu (≤ 0,05 m), hoặc kéo dài ra ngoài ≤ reachOut, hoặc rút vào ≤ reachIn (toạ độ dọc trục dầm).</summary>
+    private static double? PickSupport(List<double> cand, double end, int dir, double reachOut, double reachIn)
+    {
+        var at = cand.Where(c => Math.Abs(c - end) <= 0.05).OrderBy(c => Math.Abs(c - end)).ToList();
+        if (at.Count > 0) return at[0];
+        var outw = cand.Where(c => dir * (c - end) > 0 && Math.Abs(c - end) <= reachOut).OrderBy(c => Math.Abs(c - end)).ToList();
+        if (outw.Count > 0) return outw[0];
+        var inw = cand.Where(c => dir * (c - end) < 0 && Math.Abs(c - end) <= reachIn).OrderBy(c => Math.Abs(c - end)).ToList();
+        return inw.Count > 0 ? inw[0] : null;
+    }
+
+    /// <summary>Đặt dầm xiên dưới tường xiên, dầm cong dưới tường cong (tường đặt trên cao trình này).
+    /// Gối: dầm trục giao (Ln), cột, dầm xiên đã đặt; dầm chia đoạn tại giao với dầm trục giao.
+    /// Trả về: tường → các đoạn dầm đỡ và chiều dài tường nằm trên từng đoạn (để dồn tải tường).</summary>
+    private static Dictionary<ArchWall, List<(PropBeam pb, double ov)>> AddSpecialWallBeams(StructuralProposal s, ProposalLevel lv, List<ArchWall> walls, List<Ln> lines,
+                                                                                            List<PropBeam> beams, List<(double X, double Y)> colAt, Func<double, double, double, bool> inside)
+    {
+        var res = new Dictionary<ArchWall, List<(PropBeam pb, double ov)>>();
+        var placed = new List<PropBeam>();
+        int nDiag = 0, nCurved = 0;
+        const double reachOut = 1.0, reachIn = 0.6;
+        foreach (var w in walls.Where(w => !w.IsOrthogonal).OrderByDescending(w => w.Length))
+        {
+            if (w.Length < 1.0) continue;
+            var list = new List<(PropBeam pb, double ov)>();
+            if (!w.IsCurved)
+            {
+                // ---- dầm xiên ----
+                double L = w.Chord, ux = (w.Bx - w.Ax) / L, uy = (w.By - w.Ay) / L;
+                if (!inside((w.Ax + w.Bx) / 2, (w.Ay + w.By) / 2, 0.05)) continue;
+                var cand = new List<double>();
+                var cuts = new List<double>();
+                foreach (var ln in lines)
+                {
+                    double sp;
+                    if (ln.AlongX)
+                    {
+                        if (Math.Abs(uy) < 1e-9) continue;
+                        sp = (ln.C - w.Ay) / uy;
+                        double x = w.Ax + sp * ux;
+                        if (x < ln.A - 0.05 || x > ln.B + 0.05) continue;
+                    }
+                    else
+                    {
+                        if (Math.Abs(ux) < 1e-9) continue;
+                        sp = (ln.C - w.Ax) / ux;
+                        double y = w.Ay + sp * uy;
+                        if (y < ln.A - 0.05 || y > ln.B + 0.05) continue;
+                    }
+                    cand.Add(sp); cuts.Add(sp);
+                }
+                foreach (var (cx, cy) in colAt)
+                    if (Math.Abs((cx - w.Ax) * uy - (cy - w.Ay) * ux) < 0.05) cand.Add((cx - w.Ax) * ux + (cy - w.Ay) * uy);
+                foreach (var q in placed.Where(q => Math.Abs(q.Sagitta) <= 1e-6))
+                {
+                    // giao với dầm xiên đã đặt
+                    double vx = q.Bx - q.Ax, vy = q.By - q.Ay, den = ux * vy - uy * vx;
+                    if (Math.Abs(den) < 1e-9) continue;
+                    double sp = ((q.Ax - w.Ax) * vy - (q.Ay - w.Ay) * vx) / den;
+                    double tq = ((q.Ax - w.Ax) * uy - (q.Ay - w.Ay) * ux) / den;
+                    if (tq < -0.01 || tq > 1.01) continue;
+                    cand.Add(sp); cuts.Add(sp);
+                }
+                var sa = PickSupport(cand, 0, -1, reachOut, reachIn);
+                var sb = PickSupport(cand, L, 1, reachOut, reachIn);
+                if (sa == null || sb == null || sb.Value - sa.Value < 0.5)
+                {
+                    s.Warnings.Add($"{lv.Name}: tường xiên ({w.Ax:0.00};{w.Ay:0.00})–({w.Bx:0.00};{w.By:0.00}) không tìm được dầm/cột đỡ ở hai đầu – tải tường quy về sàn (thêm dầm thủ công nếu cần).");
+                    continue;
+                }
+                var pts = ImportGeometry.Cluster(cuts.Where(c => c > sa.Value + 0.05 && c < sb.Value - 0.05).Append(sa.Value).Append(sb.Value), 0.02);
+                for (int k = 0; k + 1 < pts.Count; k++)
+                {
+                    double s0 = pts[k], s1 = pts[k + 1];
+                    if (s1 - s0 < 0.05) continue;
+                    var pb = new PropBeam
+                    {
+                        Ax = R4(w.Ax + s0 * ux), Ay = R4(w.Ay + s0 * uy), Bx = R4(w.Ax + s1 * ux), By = R4(w.Ay + s1 * uy),
+                        Role = BeamRole.Secondary, Span = sb.Value - sa.Value,
+                        Note = $"Dầm xiên {w.AngleDeg.ToString("0.#", CultureInfo.InvariantCulture)}° đỡ tường {w.Thickness * 1000:0}."
+                    };
+                    beams.Add(pb); placed.Add(pb);
+                    double ov = Math.Max(0, Math.Min(s1, L) - Math.Max(s0, 0));
+                    if (ov > 1e-6) list.Add((pb, ov));
+                }
+                nDiag++;
+            }
+            else
+            {
+                // ---- dầm cong: giữ đường tròn của tim tường, đầu dầm trượt theo cung tới gối ----
+                var arc = CurvedBeam.Arc(new Vec3(w.Ax, w.Ay, 0), new Vec3(w.Bx, w.By, 0), w.Sagitta);
+                if (arc == null) continue;
+                double R = arc.Radius, sgn = Math.Sign(arc.Sweep), sw = Math.Abs(arc.Sweep), Lw = arc.Length;
+                double SOf(double x, double y)
+                {
+                    double d = (Math.Atan2(y - arc.Cy, x - arc.Cx) - arc.StartAngle) * sgn;
+                    double lo = -(2 * Math.PI - sw) / 2;
+                    d = (d - lo) % (2 * Math.PI);
+                    if (d < 0) d += 2 * Math.PI;
+                    return (d + lo) * R;
+                }
+                var cand = new List<double>();
+                var cuts = new List<double>();
+                foreach (var ln in lines)
+                {
+                    // giao đường tròn với đường thẳng y = C (hoặc x = C)
+                    double off = ln.AlongX ? ln.C - arc.Cy : ln.C - arc.Cx;
+                    if (Math.Abs(off) > R) continue;
+                    double h = Math.Sqrt(R * R - off * off);
+                    foreach (double sg2 in new[] { -1.0, 1.0 })
+                    {
+                        double x = ln.AlongX ? arc.Cx + sg2 * h : ln.C, y = ln.AlongX ? ln.C : arc.Cy + sg2 * h;
+                        double along = ln.AlongX ? x : y;
+                        if (along < ln.A - 0.05 || along > ln.B + 0.05) continue;
+                        double sp = SOf(x, y);
+                        cand.Add(sp); cuts.Add(sp);
+                    }
+                }
+                foreach (var (cx, cy) in colAt)
+                    if (Math.Abs(Math.Sqrt((cx - arc.Cx) * (cx - arc.Cx) + (cy - arc.Cy) * (cy - arc.Cy)) - R) < 0.05) cand.Add(SOf(cx, cy));
+                var sa = PickSupport(cand, 0, -1, reachOut, reachIn);
+                var sb = PickSupport(cand, Lw, 1, reachOut, reachIn);
+                if (sa == null || sb == null || sb.Value - sa.Value < 0.5)
+                {
+                    s.Warnings.Add($"{lv.Name}: tường cong R={R:0.00} m ({w.Ax:0.00};{w.Ay:0.00})–({w.Bx:0.00};{w.By:0.00}) không tìm được dầm/cột đỡ ở hai đầu – tải tường quy về sàn; "
+                                   + "thêm dầm cong thủ công (Dầm cong qua 3 điểm) nếu cần.");
+                    continue;
+                }
+                var pts = ImportGeometry.Cluster(cuts.Where(c => c > sa.Value + 0.05 && c < sb.Value - 0.05).Append(sa.Value).Append(sb.Value), 0.02);
+                // mỗi đoạn ≤ 180°
+                var all = new List<double>();
+                for (int k = 0; k + 1 < pts.Count; k++)
+                {
+                    int m = Math.Max(1, (int)Math.Ceiling((pts[k + 1] - pts[k]) / R / Math.PI - 1e-9));
+                    for (int j = 0; j < m; j++) all.Add(pts[k] + (pts[k + 1] - pts[k]) * j / m);
+                }
+                all.Add(pts[^1]);
+                (double X, double Y) At(double sp) { double a = arc.StartAngle + sgn * sp / R; return (arc.Cx + R * Math.Cos(a), arc.Cy + R * Math.Sin(a)); }
+                for (int k = 0; k + 1 < all.Count; k++)
+                {
+                    double s0 = all[k], s1 = all[k + 1];
+                    if (s1 - s0 < 0.05) continue;
+                    var p0 = At(s0); var p1 = At(s1); var pm = At((s0 + s1) / 2);
+                    double ax0 = R4(p0.X), ay0 = R4(p0.Y), bx0 = R4(p1.X), by0 = R4(p1.Y);
+                    double sag = CurvedBeam.SagittaThrough(ax0, ay0, bx0, by0, pm.X, pm.Y);
+                    var pb = new PropBeam
+                    {
+                        Ax = ax0, Ay = ay0, Bx = bx0, By = by0, Sagitta = Math.Round(sag, 4),
+                        Role = BeamRole.Secondary, Span = sb.Value - sa.Value,
+                        Note = $"Dầm cong R={R:0.00} m đỡ tường cong {w.Thickness * 1000:0}."
+                    };
+                    beams.Add(pb); placed.Add(pb);
+                    double ov = Math.Max(0, Math.Min(s1, Lw) - Math.Max(s0, 0));
+                    if (ov > 1e-6) list.Add((pb, ov));
+                }
+                nCurved++;
+            }
+            res[w] = list;
+        }
+        if (nDiag > 0) s.Notes.Add($"{lv.Name}: {nDiag} dầm xiên đỡ tường xiên (nút mới tại giao với dầm trục, dầm trục được chia khi ghi mô hình; ô sàn giữ dạng chữ nhật).");
+        if (nCurved > 0) s.Notes.Add($"{lv.Name}: {nCurved} dầm cong đỡ tường cong (dầm cong theo cung tim tường, tải tường theo chiều dài cung).");
+        return res;
     }
 
     private static IEnumerable<(double a, double b)> Runs(List<double> breaks, Func<double, bool> inside)
@@ -601,7 +822,7 @@ public static class ArchToStructure
             if (b.WallLoad > 6 && b.Role != BeamRole.Cantilever) b.H = Math.Max(b.H, Math.Max(0.30, Ceil50(L / 11)));
         }
         // đồng nhất theo đường dầm (cùng toạ độ, cùng phương, cùng loại chính/phụ)
-        foreach (var g in beams.GroupBy(b => (Math.Abs(b.Ay - b.By) < 1e-6, Math.Round(Math.Abs(b.Ay - b.By) < 1e-6 ? b.Ay : b.Ax, 2), b.Role == BeamRole.Main || b.Role == BeamRole.Edge)))
+        foreach (var g in beams.Where(IsOrthoBeam).GroupBy(b => (Math.Abs(b.Ay - b.By) < 1e-6, Math.Round(Math.Abs(b.Ay - b.By) < 1e-6 ? b.Ay : b.Ax, 2), b.Role == BeamRole.Main || b.Role == BeamRole.Edge)))
         {
             double h = g.Max(b => b.Role == BeamRole.Cantilever ? 0 : b.H);
             foreach (var b in g) if (b.Role != BeamRole.Cantilever) b.H = h;
@@ -743,12 +964,12 @@ public static class ArchToStructure
                 var (bb, hh) = ParseRect(secName);
                 string sec = ImportGeometry.EnsureRect(p, "C", bb, hh, o.Concrete);
                 // h (cạnh dài) theo phương X khi góc 0°
-                if (ImportGeometry.AddFrame(p, a, b, FrameKind.Column, sec, lv.Name, $"C{k + 1}", $"C{k + 1}", longX ? 0 : 90) != null) rep.Columns++;
+                if (ImportGeometry.AddFrame(p, a, b, FrameKind.Column, sec, lv.Name, $"C{k + 1}", $"C{k + 1}", (longX ? 0 : 90) + c.Angle) != null) rep.Columns++;
             }
         }
 
         // dầm, sàn
-        int bi = 1;
+        int bi = 1, nCurvedBeams = 0;
         foreach (var lv in s.Levels)
         {
             int pk = 1;
@@ -760,7 +981,14 @@ public static class ArchToStructure
                 string sec = ImportGeometry.EnsureRect(p, "D", bb > 0 ? bb : pb.B, hh > 0 ? hh : pb.H, o.Concrete);
                 string group = !string.IsNullOrEmpty(pb.Grid) && pb.Role == BeamRole.Main ? $"D{lv.Name}-{pb.Grid}" : $"D{lv.Name}-P{pk++}";
                 var f = ImportGeometry.AddFrame(p, a, b, FrameKind.Beam, sec, lv.Name, $"D{bi++}", group);
+                if (f == null && Math.Abs(pb.Sagitta) > 1e-6 && a.Id != b.Id)
+                {
+                    // dầm cong nối cùng 2 nút với một dầm thẳng (vd. ô văng cong giữa 2 cột) – vẫn là thanh riêng
+                    f = new FrameElement { Id = p.NextFrameId(), NodeI = a.Id, NodeJ = b.Id, Kind = FrameKind.Beam, Section = sec, Story = lv.Name, Label = $"D{bi - 1}", DesignGroup = group };
+                    p.Frames.Add(f);
+                }
                 if (f == null) continue;
+                if (Math.Abs(pb.Sagitta) > 1e-6) { f.CurveMidOffset = Math.Round(pb.Sagitta, 4); nCurvedBeams++; }
                 rep.Beams++;
                 double dead = pb.OtherDead;   // tải tường: khai báo thành WallLine bên dưới, sinh tải khi phân tích
                 if (dead > 1e-6)
@@ -823,11 +1051,16 @@ public static class ArchToStructure
             bool isTop = i == s.Levels.Count - 1;
             if (plan != null && !isTop)
                 foreach (var w in plan.Walls.Where(w => w.Thickness >= 0.08 && w.Length >= 0.5))
-                    p.Walls.Add(new WallLine { Id = wid++, Story = lv.Name, X1 = w.Ax, Y1 = w.Ay, X2 = w.Bx, Y2 = w.By, Type = TypeFor(w.Thickness), OpeningArea = Math.Round(w.OpeningLength * 2.0, 2), Note = "Từ bản vẽ kiến trúc" });
+                    p.Walls.Add(new WallLine { Id = wid++, Story = lv.Name, X1 = w.Ax, Y1 = w.Ay, X2 = w.Bx, Y2 = w.By, Sagitta = w.IsCurved ? Math.Round(w.Sagitta, 4) : 0, Type = TypeFor(w.Thickness), OpeningArea = Math.Round(w.OpeningLength * 2.0, 2),
+                                             Note = w.IsCurved ? $"Từ bản vẽ kiến trúc – tường cong R={w.Radius:0.00} m" : w.IsDiagonal ? $"Từ bản vẽ kiến trúc – tường xiên {w.AngleDeg:0.#}°" : "Từ bản vẽ kiến trúc" });
             foreach (var pb in lv.Beams.Where(b => b.Include && b.Parapet))
                 p.Walls.Add(new WallLine { Id = wid++, Story = lv.Name, X1 = pb.Ax, Y1 = pb.Ay, X2 = pb.Bx, Y2 = pb.By, Type = TypeFor(0.11), Height = o.ParapetHeight, OpeningArea = 0, Note = "Tường chắn mái" });
         }
-        rep.Info.Add($"Đã khai báo {p.Walls.Count} đoạn tường (sửa được trên mặt bằng: Xoá / Gán tường / Loại tường).");
+        rep.Info.Add($"Đã khai báo {p.Walls.Count} đoạn tường (sửa được trên mặt bằng: Xoá / Gán tường / Loại tường)"
+                     + (p.Walls.Any(w => w.IsCurved) ? $", gồm {p.Walls.Count(w => w.IsCurved)} tường cong (tải theo chiều dài cung)" : "") + ".");
+        if (nCurvedBeams > 0) rep.Info.Add($"Đã tạo {nCurvedBeams} dầm cong đỡ tường cong (độ vồng theo bản vẽ kiến trúc).");
+        int rotCols = cols.Count(c => Math.Abs(c.Angle) > 1e-9);
+        if (rotCols > 0) rep.Info.Add($"{rotCols} cột xoay theo bản vẽ kiến trúc – góc tiết diện = góc xoay của cột.");
 
         p.InvalidateIndex();
         rep.SplitCount = ModelBuilder.SplitFramesAtNodes(p);

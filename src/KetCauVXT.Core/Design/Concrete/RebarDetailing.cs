@@ -46,10 +46,11 @@ public static class RebarDetailing
     }
 
     /// <summary>Chiều dài nối chồng ll (m), làm tròn lên 10 mm.</summary>
-    public static double LapLength(Material conc, Material steel, int d, bool tension = true, double asRatio = 1.0)
+    /// <param name="alpha">hệ số α (0 = mặc định 1,2 vùng kéo / 0,9 vùng nén; RebarPreferences.LapAlphaTension/Compression)</param>
+    public static double LapLength(Material conc, Material steel, int d, bool tension = true, double asRatio = 1.0, double alpha = 0)
     {
         double l0 = BasicAnchorage(conc, steel, d);
-        double a = tension ? 1.2 : 0.9;
+        double a = alpha > 0 ? alpha : tension ? 1.2 : 0.9;
         double l = a * l0 * Math.Max(asRatio, 0);
         l = Math.Max(l, Math.Max(0.4 * a * l0, Math.Max(20 * d / 1000.0, 0.250)));
         return RcSection.CeilTo(l, 0.01);

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using KetCauVXT.Analysis;
+using KetCauVXT.Design.Foundation;
 using KetCauVXT.Model;
 
 namespace KetCauVXT.Design.Concrete;
@@ -305,6 +306,35 @@ public static class RebarOptions
                 z.Add(new RebarZoneInfo { Kind = "Móng", Zone = RebarZones.FootingB, Label = "Thép đáy phương B", AsReq = f.AsB, Current = f.BarsB, User = U(RebarZones.FootingB, -1, basis), B = 1.0, H = f.H, Cover = cs.CoverFooting, Basis = basis });
                 break;
             }
+            case PileCapDesign pc:
+            {
+                string basis = FootingDesigner.Basis(pc.L, pc.B, pc.H);
+                double cv = Math.Max(cs.CoverFooting, 0.03);
+                void Add(string zone, string label, string cur, bool top) => z.Add(new RebarZoneInfo
+                {
+                    Kind = "Móng", Zone = zone, Label = label, Current = cur, Top = top, User = U(zone, -1, basis), B = 1.0, H = pc.H, Cover = cv, Basis = basis
+                });
+                Add(RebarZones.FootingL, "Đài cọc – lớp dưới phương L", pc.BarsL, false);
+                Add(RebarZones.FootingB, "Đài cọc – lớp dưới phương B", pc.BarsB, false);
+                Add(RebarZones.CapTopL, "Đài cọc – lớp trên phương L", pc.BarsTopL, true);
+                Add(RebarZones.CapTopB, "Đài cọc – lớp trên phương B", pc.BarsTopB, true);
+                break;
+            }
+            case StripFootingDesign sf:
+            {
+                string basis = StripFootingDesigner.Basis(sf.RibB, sf.RibH, sf.Width);
+                double cv = Math.Max(cs.CoverFooting, 0.03);
+                z.Add(new RebarZoneInfo { Kind = "Dầm", Zone = RebarZones.StripRibBottom, Label = "Móng băng – thép dưới sườn", AsReq = sf.AsBottom, Current = sf.BottomBars, User = U(RebarZones.StripRibBottom, -1, basis), B = sf.RibB, H = sf.RibH, Cover = cv, Basis = basis });
+                z.Add(new RebarZoneInfo { Kind = "Dầm", Zone = RebarZones.StripRibTop, Label = "Móng băng – thép trên sườn", AsReq = sf.AsTop, Current = sf.TopBars, Top = true, User = U(RebarZones.StripRibTop, -1, basis), B = sf.RibB, H = sf.RibH, Cover = cv, Basis = basis });
+                z.Add(new RebarZoneInfo
+                {
+                    Kind = "Dầm", Zone = RebarZones.Stirrup, Label = "Móng băng – đai sườn", Current = sf.StirrupDia > 0 ? "Ø" + sf.StirrupDia + "a" + DesignUtil.Mm(sf.StirrupSpacing) + "/a" + DesignUtil.Mm(sf.StirrupSpacing) : "",
+                    User = U(RebarZones.Stirrup, -1, basis), B = sf.RibB, H = sf.RibH, Cover = cv, Basis = basis
+                });
+                if (!string.IsNullOrEmpty(sf.FlangeBars))
+                    z.Add(new RebarZoneInfo { Kind = "Móng", Zone = RebarZones.StripFlange, Label = "Móng băng – thép bản cánh", AsReq = sf.AsFlange, Current = sf.FlangeBars, User = U(RebarZones.StripFlange, -1, basis), B = 1.0, H = sf.FlangeRoot, Cover = cv, Basis = basis });
+                break;
+            }
         }
         return z;
     }
@@ -344,6 +374,12 @@ public static class RebarOptions
                 break;
             case FootingDesign f:
                 list.AddRange(FootingDesigner.Alternatives(p, f, z.Zone, max));
+                break;
+            case PileCapDesign pc:
+                list.AddRange(PileCapDesigner.Alternatives(p, pc, z.Zone, max));
+                break;
+            case StripFootingDesign sf:
+                list.AddRange(StripFootingDesigner.Alternatives(p, sf, z.Zone, max));
                 break;
         }
         foreach (var a in list)
@@ -472,6 +508,32 @@ public static class RebarOptions
                 double As = a.AsProv > 0 ? a.AsProv : (a.Spacing > 0 ? RcSection.BarArea(a.Dia) / a.Spacing : 0);
                 a.WeightKg = Math.Round(As * SteelDensity * za, 2);
                 a.WeightPerM2 = area > 0 ? Math.Round(a.WeightKg / area, 2) : 0;
+                break;
+            }
+            case PileCapDesign pc:
+            {
+                double area = pc.L * pc.B;
+                double As = a.AsProv > 0 ? a.AsProv : (a.Spacing > 0 ? RcSection.BarArea(a.Dia) / a.Spacing : 0);
+                a.WeightKg = Math.Round(As * SteelDensity * area, 2);
+                a.WeightPerM2 = area > 0 ? Math.Round(a.WeightKg / area, 2) : 0;
+                break;
+            }
+            case StripFootingDesign sf:
+            {
+                double UWs(int dd) => 0.00617 * dd * dd;
+                if (z.Zone == RebarZones.StripFlange)
+                {
+                    double As = a.AsProv > 0 ? a.AsProv : (a.Spacing > 0 ? RcSection.BarArea(a.Dia) / a.Spacing : 0);
+                    a.WeightKg = Math.Round(As * SteelDensity * sf.Length * sf.Width, 2);
+                    a.WeightPerM2 = sf.Length * sf.Width > 0 ? Math.Round(a.WeightKg / (sf.Length * sf.Width), 2) : 0;
+                }
+                else if (z.Zone == RebarZones.Stirrup)
+                {
+                    if (a.Dia <= 0 || a.Spacing <= 0) return;
+                    double len = 2 * (sf.RibB + sf.RibH - 0.12) + 2 * Math.Max(0.075, 10 * a.Dia / 1000.0);
+                    a.WeightKg = Math.Round((Math.Ceiling(sf.Length / a.Spacing) + 1) * len * UWs(a.Dia), 2);
+                }
+                else a.WeightKg = Math.Round(a.Bars.Sum(g => g.Count * UWs(g.Dia)) * sf.Length, 2);
                 break;
             }
             case FootingDesign f:

@@ -33,7 +33,34 @@ public class BarMark
     public bool IsTop { get; set; }
 
     public double WeightPerBar => 0.00617 * Dia * Dia * Length;
+    /// <summary>Vùng cho phép nối (m, cùng hệ toạ độ đoạn thẳng của thanh, gốc tại đầu thanh sau móc) dạng cặp [a0, b0, a1, b1…];
+    /// null = theo quy tắc của loại cấu kiện (RebarShop), rỗng = không được nối.</summary>
+    public List<double> SpliceAllowed { get; set; }
     public string Tag => Shape.StartsWith("Đai") || Spacing > 0 ? $"Ø{Dia}a{Spacing * 1000:0}" : $"{Count}Ø{Dia}";
+}
+
+/// <summary>Một mối nối thép: tâm (m), chiều dài nối (0 = ống nối ren), nhóm so le, vùng cho phép chứa nó, ghi chú vi phạm.</summary>
+public class SpliceInfo
+{
+    public string Member { get; set; } = "";
+    public int Mark { get; set; }
+    public int Dia { get; set; }
+    /// <summary>Nhịp / tầng chứa mối nối</summary>
+    public int Span { get; set; } = -1;
+    public double Center { get; set; }
+    public double Lap { get; set; }
+    public bool Coupler => Lap <= 1e-9;
+    /// <summary>"A" / "B" (nhóm so le)</summary>
+    public string Group { get; set; } = "A";
+    public int Count { get; set; }
+    /// <summary>Vùng cho phép chứa mối nối (m); ZoneA = ZoneB = NaN nếu không có</summary>
+    public double ZoneA { get; set; } = double.NaN;
+    public double ZoneB { get; set; } = double.NaN;
+    /// <summary>Mối nối nằm ngoài vùng cho phép (không tránh được) – phải xử lý</summary>
+    public bool Violation { get; set; }
+    public string Note { get; set; } = "";
+    public double From => Center - Lap / 2;
+    public double To => Center + Lap / 2;
 }
 
 /// <summary>Vùng bố trí đai trên một nhịp dầm hoặc một đoạn cột.</summary>
@@ -72,6 +99,8 @@ public abstract class MemberDesignBase
     public List<BarMark> Bars { get; set; } = new();
     /// <summary>Khoá các cấu kiện vật lý gộp vào thiết kế này (dùng cho lựa chọn thép Project.RebarChoices): "D:12", "C:5", "S:3", "M:7".</summary>
     public List<string> RebarKeys { get; set; } = new();
+    /// <summary>Mối nối thép đã bố trí trên bản vẽ chi tiết (vd. nối thép cột giữa tầng) – kiểm tra nguyên tắc nối.</summary>
+    public List<SpliceInfo> Splices { get; set; } = new();
     /// <summary>Số vùng thép đang dùng lựa chọn của người dùng (0 = tự chọn hoàn toàn).</summary>
     public int UserRebarZones { get; set; }
     public bool Ok => Checks.All(c => c.Ok) && !Messages.Any(m => m.StartsWith("LỖI"));
@@ -191,6 +220,8 @@ public class ColumnStoryResult
     public double StirrupSpacing { get; set; }
     public double StirrupSpacingEnd { get; set; }   // vùng đầu cột / nút khung
     public double Utilization { get; set; }          // tỷ số khả năng chịu lực
+    /// <summary>Chiều cao nút khung đỉnh tầng = chiều cao dầm lớn nhất tại nút trên (m)</summary>
+    public double JointDepth { get; set; }
 }
 
 public class ColumnDesign : MemberDesignBase
@@ -336,6 +367,10 @@ public class DesignSummary
     /// <summary>Móng băng (dải móng dưới dãy cột)</summary>
     public List<KetCauVXT.Design.Foundation.StripFootingDesign> StripFootings { get; set; } = new();
     public List<SteelMemberCheck> Steel { get; set; } = new();
+    // ---- [cầu thang – Design/StairResults.cs, Design/Concrete/StairDesigner.cs] ----
+    /// <summary>Cầu thang bộ (không nằm trong All: thép thống kê theo từng bộ phận StairDesign.Parts)</summary>
+    public List<StairDesign> Stairs { get; set; } = new();
+    // ---- [hết cầu thang] ----
     public List<string> Warnings { get; set; } = new();
 
     public IEnumerable<MemberDesignBase> All =>

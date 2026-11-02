@@ -154,7 +154,7 @@ public static class RebarSchedule
     private static DxfWriter Table(List<ScheduleRow> rows, double S, string title)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, u = S;
+        double th = w.ScheduleTh, u = S;   // cỡ chữ bảng thống kê (Thiết lập bản vẽ, mặc định 2,5 mm)
         double rowH = 14 * u, headH = 16 * u;
         double[] cx = new double[ColW.Length + 1];
         for (int i = 0; i < ColW.Length; i++) cx[i + 1] = cx[i] + ColW[i] * u;
@@ -256,7 +256,7 @@ public static class RebarSchedule
     /// <summary>Vẽ phác hình dạng thanh trong ô (x1..x2, y1..y2) và ghi chiều dài từng đoạn.</summary>
     private static void DrawShape(DxfWriter w, ScheduleRow r, double x1, double x2, double y1, double y2)
     {
-        double th = 0.85 * w.Th;
+        double th = 0.85 * w.ScheduleTh;
         var seg = r.Segments ?? new List<double>();
         string sh = r.Shape ?? "";
         double xm = (x1 + x2) / 2, ym = (y1 + y2) / 2, hh = y2 - y1;
@@ -321,7 +321,7 @@ public static class RebarSchedule
     private static DxfWriter Summary(List<ScheduleRow> rows, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, u = S;
+        double th = w.ScheduleTh, u = S;   // cỡ chữ bảng thống kê (Thiết lập bản vẽ, mặc định 2,5 mm)
         var byDia = ByDiameter(rows);
         var g = Groups(rows);
         double c0 = 40 * u, cw = 22 * u, rh = 10 * u;

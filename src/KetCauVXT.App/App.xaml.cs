@@ -19,6 +19,9 @@ public partial class App : Application
             new FrameworkPropertyMetadata(XmlLanguage.GetLanguage("en-US")));
         // Bộ đọc DWG tích hợp (KetCauVXT.Dwg – ACadSharp): nhập kiến trúc, quét layer, nhập mặt bằng kết cấu đọc thẳng file .dwg
         global::KetCauVXT.Dwg.DwgReader.Register();
+        // [mẫu định dạng + khung tên người dùng] DWG → DXF để đọc ATTDEF/căn lề chữ khi tải khung tên; áp dụng mẫu mặc định cho dự án mới
+        global::KetCauVXT.Import.CadFileReaders.DwgToDxf = global::KetCauVXT.Dwg.DwgReader.ConvertToDxf;
+        global::KetCauVXT.Model.TemplateService.AutoApplyDefault = true;
         base.OnStartup(e);
     }
 

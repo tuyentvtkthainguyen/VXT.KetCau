@@ -64,6 +64,7 @@ public class FrameAnalysis
 
         progress?.Report("Dồn tải sàn về dầm...");
         _res.Warnings.AddRange(WallLoadGenerator.Apply(_p));
+        _res.Warnings.AddRange(StairLoadGenerator.Apply(_p));   // cầu thang khai báo (Loads/StairLoadGenerator.cs)
         _res.Warnings.AddRange(SlabLoadDistributor.Apply(_p));
         progress?.Report("Sinh tải gió / động đất...");
         _res.Warnings.AddRange(LateralLoadGenerator.Apply(_p, _res.LateralForces));

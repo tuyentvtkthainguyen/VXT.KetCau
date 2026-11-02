@@ -148,7 +148,7 @@ public static class SlabSchemeTests
                 double lap = RebarDetailing.LapLength(p.Material(p.Concrete.ConcreteSlab), p.Material(bm.Dia < 10 ? p.Concrete.RebarStirrup : p.Concrete.RebarMain), bm.Dia);
                 check("Lưới 2 lớp: thanh lưới dài được tách nối chồng", B(parts.Count >= 2 && parts.All(b => b.Spliced)), 1, 0);
                 check("Lưới 2 lớp: mọi đoạn ≤ 11,7 m", B(parts.All(b => b.CutLengthMm <= 11700)), 1, 0);
-                double tot = parts.Sum(b => b.CutLengthMm * b.BarsPerMember) / 1000.0;
+                double tot = parts.Sum(b => b.OutsideLengthMm * b.BarsPerMember) / 1000.0;   // kích thước ngoài (chiều dài cắt trừ thêm độ dãn uốn)
                 int splices = (int)Math.Ceiling(bm.Length / 11.7 - 1e-9) - 1;
                 check("Lưới 2 lớp: tổng chiều dài cắt = số thanh × (L + số mối nối·ll)", tot, bm.Count * (bm.Length + splices * lap), 0.003);
             }

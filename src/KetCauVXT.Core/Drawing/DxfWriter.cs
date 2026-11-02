@@ -71,10 +71,10 @@ public sealed partial class DxfWriter
 
     /// <summary>Mẫu số tỷ lệ của tờ bản vẽ (50 ⇒ 1/50).</summary>
     public double Scale { get; set; }
-    /// <summary>Chiều cao chữ chuẩn trong mô hình (2,5 mm khi in).</summary>
-    public double Th => 2.5 * Scale;
-    /// <summary>Bán kính vòng tròn số hiệu.</summary>
-    public double MarkR => 1.1 * Th;
+    /// <summary>Chiều cao chữ ghi chú trong mô hình (mặc định 2,5 mm khi in – Style.NoteHeight); cũng là đơn vị khoảng cách bố trí.</summary>
+    public double Th => TextH(KetCauVXT.Model.TextRole.Note);
+    /// <summary>Bán kính vòng tròn số hiệu (mặc định Ø5,5 mm khi in – Style.MarkDiameter).</summary>
+    public double MarkR => Style.MarkDiameter / 2 * Scale;
     public Rect2 Extents => _ext;
     public int EntityCount => _ents.Count;
 
@@ -214,7 +214,7 @@ public sealed partial class DxfWriter
 
     public Rect2 TextBox(double x, double y, double h, string text, double rot = 0, int ha = 0, int va = 0)
     {
-        double w = TextWidth(text, h);
+        double w = TextWidth(text, h) * WidthFactor;
         double lx = ha == 1 ? -w / 2 : ha == 2 ? -w : 0;
         var (ly0, ly1) = va switch
         {
@@ -238,6 +238,8 @@ public sealed partial class DxfWriter
         var e = Add("TEXT", layer, box);
         e.Codes.Add((10, x)); e.Codes.Add((20, y)); e.Codes.Add((30, 0.0));
         e.Codes.Add((40, h));
+        double wf = WidthFactor;
+        if (Math.Abs(wf - 1) > 1e-9) e.Codes.Add((41, wf));   // hệ số rộng chữ (chỉ ghi khi khác 1)
         e.Codes.Add((1, Encode(text)));
         if (Math.Abs(rot) > 1e-9) e.Codes.Add((50, rot));
         e.Codes.Add((7, "STANDARD"));
@@ -280,7 +282,7 @@ public sealed partial class DxfWriter
     {
         double r = MarkR;
         Circle(Lay.KyHieu, cx, cy, r);
-        Text(Lay.Chu, cx, cy, 0.9 * Th, mark.ToString(Inv), rot, 1, 2);
+        Text(Lay.Chu, cx, cy, 0.9 * TagTh, mark.ToString(Inv), rot, 1, 2);
         return new Rect2(cx - r, cy - r, cx + r, cy + r);
     }
 
@@ -288,8 +290,8 @@ public sealed partial class DxfWriter
     /// dir = +1: vai kéo sang phải (hoặc lên trên nếu vertical), −1: ngược lại.</summary>
     public Rect2 TagBox(double kx, double ky, string text, int mark, int dir = 1, bool vertical = false)
     {
-        double th = Th, r = MarkR;
-        double sh = TextWidth(text, th) + 0.6 * th;
+        double th = TagTh, r = MarkR;
+        double sh = TextWidth(text, th) * WidthFactor + 0.6 * th;
         double total = sh + (mark > 0 ? 2 * r : 0);
         double lo = mark > 0 ? r : 0.2 * th;
         double hi = Math.Max(1.4 * th, mark > 0 ? r : 0);
@@ -302,8 +304,8 @@ public sealed partial class DxfWriter
     public Rect2 LeaderTag(double px, double py, double kx, double ky, string text, int mark, int dir = 1,
         bool vertical = false, bool dot = true)
     {
-        double th = Th, r = MarkR;
-        double sh = TextWidth(text, th) + 0.6 * th;
+        double th = TagTh, r = MarkR;
+        double sh = TextWidth(text, th) * WidthFactor + 0.6 * th;
         if (dot) Dot(Lay.KyHieu, px, py, 0.22 * th);
         if (Math.Abs(px - kx) > 1e-6 || Math.Abs(py - ky) > 1e-6) Line(Lay.KyHieu, px, py, kx, ky);
         if (!vertical)
@@ -330,18 +332,20 @@ public sealed partial class DxfWriter
     {
         double dx = x2 - x1, dy = y2 - y1, len = Math.Sqrt(dx * dx + dy * dy);
         if (len < 1e-6) return;
-        double th = Th;
+        var st = Style;
+        double th = st.DimTextHeight * Scale;                       // chữ số kích thước
         double ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
         double sg = offset >= 0 ? 1 : -1;
-        double gap = 0.25 * th, ext = 0.5 * th;
+        double gap = st.DimExtOffset * Scale, ext = st.DimExtBeyond * Scale;   // hở điểm đo, gióng vượt
+        double dle = st.DimLineExtend * Scale, tick = st.DimTickSize * Scale, tgap = st.DimTextGap * Scale;
         double ax = x1 + nx * offset, ay = y1 + ny * offset, bx = x2 + nx * offset, by = y2 + ny * offset;
         if (Math.Abs(offset) > gap)
         {
             Line(Lay.KichThuoc, x1 + nx * gap * sg, y1 + ny * gap * sg, ax + nx * ext * sg, ay + ny * ext * sg);
             Line(Lay.KichThuoc, x2 + nx * gap * sg, y2 + ny * gap * sg, bx + nx * ext * sg, by + ny * ext * sg);
         }
-        Line(Lay.KichThuoc, ax - ux * 0.4 * th, ay - uy * 0.4 * th, bx + ux * 0.4 * th, by + uy * 0.4 * th);
-        double tx = (ux + nx) * 0.3536 * th, ty = (uy + ny) * 0.3536 * th;
+        Line(Lay.KichThuoc, ax - ux * dle, ay - uy * dle, bx + ux * dle, by + uy * dle);
+        double tx = (ux + nx) * 0.3536 * tick, ty = (uy + ny) * 0.3536 * tick;
         Line(Lay.KichThuoc, ax - tx, ay - ty, ax + tx, ay + ty);
         Line(Lay.KichThuoc, bx - tx, by - ty, bx + tx, by + ty);
         string t = text ?? N0(len / (k <= 0 ? 1 : k));
@@ -349,7 +353,7 @@ public sealed partial class DxfWriter
         if (ang > 90.001) ang -= 180;
         else if (ang <= -89.999) ang += 180;
         double ar = ang * Math.PI / 180, upx = -Math.Sin(ar), upy = Math.Cos(ar);
-        double mx = (ax + bx) / 2 + upx * 0.3 * th, my = (ay + by) / 2 + upy * 0.3 * th;
+        double mx = (ax + bx) / 2 + upx * tgap, my = (ay + by) / 2 + upy * tgap;
         Text(Lay.KichThuoc, mx, my, th, t, ang, 1, 0);
     }
 
@@ -372,16 +376,17 @@ public sealed partial class DxfWriter
     /// <summary>Đầu trục định vị (vòng tròn + tên).</summary>
     public void GridBubble(double x, double y, string name)
     {
-        Circle(Lay.KyHieu, x, y, 1.5 * Th);
-        Text(Lay.Chu, x, y, 1.2 * Th, name, 0, 1, 2);
+        Circle(Lay.KyHieu, x, y, BubbleR);
+        Text(Lay.Chu, x, y, TextH(KetCauVXT.Model.TextRole.Axis), name, 0, 1, 2);
     }
 
     /// <summary>Ký hiệu cao độ ▽ với đỉnh tam giác tại (x,y); dir = −1 chữ về bên trái, +1 bên phải.</summary>
     public Rect2 ElevMark(double x, double y, string text, int dir = -1)
     {
+        if (!Style.ShowElevationMarks) return Rect2.Empty;   // tắt ký hiệu cao độ (Thiết lập bản vẽ)
         double th = Th;
         Polyline(Lay.KyHieu, new List<(double X, double Y)> { (x, y), (x - 0.5 * th, y + 0.8 * th), (x + 0.5 * th, y + 0.8 * th) }, true);
-        double tw = TextWidth(text, th);
+        double tw = TextWidth(text, th) * WidthFactor;
         double xe = x + dir * (tw + 1.0 * th);
         Line(Lay.KyHieu, x, y + 0.8 * th, xe, y + 0.8 * th);
         if (dir < 0) Text(Lay.Chu, x - 0.7 * th, y + 1.1 * th, th, text, 0, 2, 0);
@@ -411,11 +416,12 @@ public sealed partial class DxfWriter
         }, false);
     }
 
-    /// <summary>Tên hình gạch chân + dòng tỷ lệ bên dưới, căn giữa tại cx, đỉnh tại yTop. Trả về cao độ đáy.</summary>
-    public double Title(double cx, double yTop, string title, string scaleText)
+    /// <summary>Tên hình gạch chân + dòng tỷ lệ bên dưới, căn giữa tại cx, đỉnh tại yTop. Trả về cao độ đáy.
+    /// section = true: tên mặt cắt (cỡ chữ Style.SectionTitleHeight), ngược lại tên cấu kiện/mặt bằng (Style.MemberTitleHeight).</summary>
+    public double Title(double cx, double yTop, string title, string scaleText, bool section = false)
     {
-        double th = Th, h = 1.4 * th;
-        double tw = TextWidth(title, h);
+        double th = Th, h = section ? SectionTitleTh : TitleTh;
+        double tw = TextWidth(title, h) * WidthFactor;
         double yb = yTop - h;
         Text(Lay.Chu, cx, yb, h, title, 0, 1, 0);
         Line(Lay.Chu, cx - tw / 2, yb - 0.35 * th, cx + tw / 2, yb - 0.35 * th);
@@ -496,7 +502,7 @@ public sealed partial class DxfWriter
             G(sb, 0, "ENDTAB");
 
             G(sb, 0, "TABLE"); G(sb, 2, "STYLE"); G(sb, 70, 1);
-            G(sb, 0, "STYLE"); G(sb, 2, "STANDARD"); G(sb, 70, 0); G(sb, 40, 0.0); G(sb, 41, 1.0); G(sb, 50, 0.0);
+            G(sb, 0, "STYLE"); G(sb, 2, "STANDARD"); G(sb, 70, 0); G(sb, 40, 0.0); G(sb, 41, WidthFactor); G(sb, 50, 0.0);
             G(sb, 71, 0); G(sb, 42, Th); G(sb, 3, "arial.ttf"); G(sb, 4, "");
             G(sb, 0, "ENDTAB");
             G(sb, 0, "ENDSEC");

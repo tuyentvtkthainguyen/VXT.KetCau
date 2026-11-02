@@ -23,7 +23,7 @@ public static class DrawingSet
             ProjectName = p.Name, Title = title, SheetNo = no, Designer = p.Designer, Owner = p.Owner, Location = p.Location
         };
 
-        void Write(string file, List<Figure> figs, double scale, string title, string no, bool always = false)
+        void Write(string file, List<Figure> figs, double scale, string title, string no, bool always = false, NotesScope? notes = null)
         {
             if (figs.Count == 0 && !always) return;   // không xuất tờ trống (vd. nhà thép không có cột/sàn BTCT)
             if (figs.Count == 0)
@@ -32,6 +32,12 @@ public static class DrawingSet
                 empty.Text(Lay.Chu, 0, 0, empty.Th, "(Không có dữ liệu)");
                 figs.Add(new Figure(empty));
             }
+            else if (notes.HasValue)
+            {
+                // MỘT khối GHI CHÚ CHUNG cho cả bản vẽ (không lặp theo từng cấu kiện); tắt được trong Thiết lập bản vẽ
+                var nf = GeneralNotes.FigureFor(p, notes.Value, scale, s);
+                if (nf != null) figs.Add(nf);
+            }
             var w = SheetComposer.Compose(figs, scale, Info(title, no), Paper);
             string path = Path.Combine(folder, file);
             w.Save(path);
@@ -39,16 +45,16 @@ public static class DrawingSet
         }
 
         // KC-01 mặt bằng kết cấu các tầng
-        Write("KC-01_MatBangKetCau.dxf", FramingPlan.BuildAll(p, s), FramingPlan.SheetScale,
-            "MẶT BẰNG KẾT CẤU CÁC TẦNG", "KC-01", always: true);
+        Write("KC-01_MatBangKetCau.dxf", FramingPlan.BuildAll(p, s), FramingPlan.CurrentScale,
+            "MẶT BẰNG KẾT CẤU CÁC TẦNG", "KC-01", always: true, notes: NotesScope.Plan);
 
         // KC-02 móng
         Write("KC-02_Mong.dxf", FootingDrawing.BuildAll(p, s), FootingDrawing.SheetScale,
-            "MẶT BẰNG VÀ CHI TIẾT MÓNG", "KC-02");
+            "MẶT BẰNG VÀ CHI TIẾT MÓNG", "KC-02", notes: NotesScope.Foundation);
 
         // KC-03 cột
-        Write("KC-03_Cot.dxf", ColumnDrawing.BuildAll(p, s.Columns), ColumnDrawing.SheetScale,
-            "CHI TIẾT CỘT", "KC-03");
+        Write("KC-03_Cot.dxf", ColumnDrawing.BuildAll(p, s.Columns), ColumnDrawing.CurrentScale,
+            "CHI TIẾT CỘT", "KC-03", notes: NotesScope.Column);
 
         // KC-04 dầm theo tầng
         var storyOrder = p.Stories.OrderBy(x => x.Elevation).Select(x => x.Name).ToList();
@@ -60,17 +66,27 @@ public static class DrawingSet
         {
             k++;
             string nm = DrawUtil.SafeFile(g.Key);
-            Write($"KC-04_Dam_{nm}.dxf", BeamDrawing.BuildAll(p, g), BeamDrawing.SheetScale,
-                $"CHI TIẾT DẦM TẦNG {g.Key}", $"KC-04.{k}");
+            Write($"KC-04_Dam_{nm}.dxf", BeamDrawing.BuildAll(p, g), BeamDrawing.CurrentScale,
+                $"CHI TIẾT DẦM TẦNG {g.Key}", $"KC-04.{k}", notes: NotesScope.Beam);
         }
 
         // KC-05 sàn
         double ss = SlabDrawing.ChooseScale(p);
-        Write("KC-05_San.dxf", SlabDrawing.BuildAll(p, s, ss), ss, "MẶT BẰNG THÉP SÀN", "KC-05");
+        Write("KC-05_San.dxf", SlabDrawing.BuildAll(p, s, ss), ss, "MẶT BẰNG THÉP SÀN", "KC-05", notes: NotesScope.Slab);
 
         // KC-06 thống kê thép (vẽ theo mm giấy, tỷ lệ 1/1)
         if (s.All.Any(m => m.Bars.Count > 0))
-            Write("KC-06_ThongKeThep.dxf", RebarSchedule.BuildFigures(s, 1), 1, "THỐNG KÊ CỐT THÉP", "KC-06");
+            Write("KC-06_ThongKeThep.dxf", RebarSchedule.BuildFigures(s, 1), 1, "THỐNG KÊ CỐT THÉP", "KC-06", notes: NotesScope.Schedule);
+
+        // ---- KC-08 cầu thang: mặt bằng, mặt cắt vế, chi tiết thép, thống kê thép (StairDrawing.cs) ----
+        int kst = 0;
+        foreach (var sd in s.Stairs ?? new List<StairDesign>())
+        {
+            kst++;
+            Write($"KC-08.{kst}_CauThang_{DrawUtil.SafeFile(sd.Name)}.dxf", StairDrawing.Build(p, s, sd, StairDrawing.SheetScale), StairDrawing.SheetScale,
+                $"CẦU THANG {sd.Name} – MẶT BẰNG, MẶT CẮT, BỐ TRÍ THÉP", $"KC-08.{kst}");
+        }
+        // ---- hết cầu thang ----
         return paths;
     }
 

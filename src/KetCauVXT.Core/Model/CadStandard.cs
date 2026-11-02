@@ -206,6 +206,10 @@ public class CadStandard
     /// <summary>Hỏi "Xem/đổi tên layer trước khi xuất" mỗi lần xuất DXF (false = "Không hỏi lại")</summary>
     public bool AskLayersBeforeExport { get; set; } = true;
 
+    // ---- 4. thiết lập bản vẽ: tỷ lệ, cỡ chữ, chú thích tuỳ chọn (Model/DrawingStyle.cs) ----
+    /// <summary>Tỷ lệ theo loại bản vẽ, cỡ chữ kích thước/ghi chú/nhãn thép/tên hình…; file JSON cũ không có mục này → mặc định.</summary>
+    public DrawingStyle Drawing { get; set; } = new();
+
     // ==================================================================
     // Bản mặc định / mẫu có sẵn
     // ==================================================================
@@ -422,6 +426,8 @@ public class CadStandard
         OutputPreset ??= PresetUserName;
         FontName = NormalizeFont(FontName);
         ReportFont = string.IsNullOrWhiteSpace(ReportFont) ? FontTimes : NormalizeFont(ReportFont);
+        Drawing ??= new DrawingStyle();
+        Drawing.Normalize();
         return this;
     }
 

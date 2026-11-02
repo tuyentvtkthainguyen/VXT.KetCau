@@ -150,15 +150,8 @@ public static class AcadLinkReader
                     break;
                 case "circle":
                     if (pts.Count < 1 || it.Radius <= 0) { bad++; continue; }
-                    if (cat == AcadCategory.Cot)
-                    {
-                        // cột tròn: quy về hình vuông ngoại tiếp để bộ nhận diện đọc kích thước
-                        var (cx, cy) = P(pts[0]); double r = it.Radius * k;
-                        e.Type = DxfEntityType.Polyline; e.Closed = true;
-                        e.Points.AddRange(new[] { (cx - r, cy - r), (cx + r, cy - r), (cx + r, cy + r), (cx - r, cy + r) });
-                        break;
-                    }
-                    e.Type = DxfEntityType.Circle; e.Radius = it.Radius * k;
+                    // cột tròn (lớp cột): giữ là hình tròn – bộ nhận diện quy về cột vuông cùng diện tích (cạnh = D·√π/2), ghi đường kính
+                    e.Type = DxfEntityType.Circle; e.Radius = it.Radius * k; e.SourceType = "CIRCLE";
                     e.Points.Add(P(pts[0]));
                     break;
                 case "arc":
@@ -169,7 +162,8 @@ public static class AcadLinkReader
                     while (sweep <= 1e-9) sweep += 360;
                     while (sweep > 360 + 1e-9) sweep -= 360;
                     int n = Math.Max(2, (int)Math.Ceiling(sweep / ArcStepDeg));
-                    e.Type = DxfEntityType.Polyline;
+                    e.Type = DxfEntityType.Polyline; e.SourceType = "ARC";
+                    e.Arcs = new List<DxfArcSpan> { new DxfArcSpan { I0 = 0, I1 = n, Cx = cx, Cy = cy, R = r } };   // tường cong: tâm, bán kính đúng
                     for (int i = 0; i <= n; i++)
                     {
                         double a = (a0 + sweep * i / n) * Math.PI / 180;

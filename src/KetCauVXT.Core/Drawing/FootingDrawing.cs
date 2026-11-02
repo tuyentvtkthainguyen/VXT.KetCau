@@ -7,9 +7,16 @@ namespace KetCauVXT.Drawing;
 /// (mặt bằng thép + mặt cắt, tl 1/25 thể hiện trên tờ 1/50 bằng hệ số phóng k = 2).</summary>
 public static class FootingDrawing
 {
+    /// <summary>Tỷ lệ mặc định của chương trình (tỷ lệ dùng thật theo Thiết lập bản vẽ: <see cref="CurrentPlanScale"/>, <see cref="CurrentDetailScale"/>).</summary>
     public const double PlanScale = 100;
+    /// <summary>Mẫu số tỷ lệ cơ sở của tờ móng (chữ in theo tỷ lệ này; hình phóng/thu bằng hệ số k).</summary>
     public const double SheetScale = 50;
     public const double DetailScale = 25;
+
+    /// <summary>Mẫu số tỷ lệ mặt bằng móng theo Thiết lập bản vẽ (mặc định 100).</summary>
+    public static double CurrentPlanScale => DrawingStyle.Current.ScaleOf(DrawingKind.FoundationPlan);
+    /// <summary>Mẫu số tỷ lệ chi tiết móng theo Thiết lập bản vẽ (mặc định 25).</summary>
+    public static double CurrentDetailScale => DrawingStyle.Current.ScaleOf(DrawingKind.FootingDetail);
 
     public static List<Figure> BuildAll(Project p, DesignSummary s)
     {
@@ -18,7 +25,7 @@ public static class FootingDrawing
         try
         {
             // mặt bằng vẽ ở 1/100 rồi thu nhỏ hình học ×0.5 để ghép lên tờ 1/50: dựng trực tiếp với hệ số k
-            res.Add(new Figure(Layout(p, s, SheetScale, SheetScale / PlanScale), "MB móng", true));
+            res.Add(new Figure(Layout(p, s, SheetScale, SheetScale / CurrentPlanScale), "MB móng", true));
         }
         catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure("MB móng", ex, SheetScale), "MB", true)); }
         bool first = true;
@@ -67,7 +74,7 @@ public static class FootingDrawing
         var gx = p.GridsX.ToList(); var gy = p.GridsY.ToList();
         foreach (var g in gx) box = box.Union(g.Coord * 1000 * k, box.Cy);
         foreach (var g in gy) box = box.Union(box.Cx, g.Coord * 1000 * k);
-        double ext = 6 * th, r = 1.5 * th;
+        double ext = 6 * th, r = w.BubbleR;
         double xL = box.X1 - ext, xR = box.X2 + ext, yB = box.Y1 - ext, yT = box.Y2 + ext;
         foreach (var g in gx)
         {
@@ -83,14 +90,15 @@ public static class FootingDrawing
             w.GridBubble(xL - r, y, g.Name);
             w.GridBubble(xR + r, y, g.Name);
         }
+        bool gridDims = w.Style.ShowGridDims;
         double yd1 = yB - 2 * r - 2.5 * th, yd2 = yd1 - 2.5 * th;
-        if (gx.Count > 1)
+        if (gx.Count > 1 && gridDims)
         {
             w.DimChainH(gx.Select(g => g.Coord * 1000 * k).ToList(), yd1, yd1, k);
             if (gx.Count > 2) w.Dim(gx[0].Coord * 1000 * k, yd2, gx[^1].Coord * 1000 * k, yd2, 0, k);
         }
         double xd1 = xL - 2 * r - 2.5 * th, xd2 = xd1 - 2.5 * th;
-        if (gy.Count > 1)
+        if (gy.Count > 1 && gridDims)
         {
             w.DimChainV(gy.Select(g => g.Coord * 1000 * k).ToList(), xd1, xd1, k);
             if (gy.Count > 2) w.Dim(xd2, gy[0].Coord * 1000 * k, xd2, gy[^1].Coord * 1000 * k, 0, k);
@@ -120,7 +128,8 @@ public static class FootingDrawing
     public static DxfWriter DetailPlan(Project p, FootingDesign f, int qty, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = S / DetailScale;
+        double det = CurrentDetailScale;
+        double th = w.Th, k = S / det;
         double L = f.L * 1000 * k, B = f.B * 1000 * k;
         double c = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
         double cb = (f.ColumnH > 0 ? f.ColumnH : 0.22) * 1000 * k, ch = (f.ColumnB > 0 ? f.ColumnB : 0.22) * 1000 * k;
@@ -150,7 +159,7 @@ public static class FootingDrawing
         w.Dim(0, 0, L, 0, -6.5 * th, k);
         w.Dim(0, 0, 0, B, 3 * th, k);
         w.Dim(L / 2 - cb / 2, B, L / 2 + cb / 2, B, 2.5 * th, k);
-        w.Title(L / 2, w.Extents.Y2 + 4 * th, $"{f.Name} (SL={Math.Max(1, qty)})", DrawUtil.ScaleText(DetailScale));
+        w.Title(L / 2, w.Extents.Y2 + 4 * th, $"{f.Name} (SL={Math.Max(1, qty)})", DrawUtil.ScaleText(det));
         return w;
     }
 
@@ -158,7 +167,8 @@ public static class FootingDrawing
     public static DxfWriter DetailSection(Project p, FootingDesign f, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = S / DetailScale;
+        double det = CurrentDetailScale;
+        double th = w.Th, k = S / det;
         double L = f.L * 1000 * k, H = Math.Max(0.2, f.H) * 1000 * k;
         double Hb = (f.Hb > 0 && f.Hb < f.H ? f.Hb : f.H) * 1000 * k;
         double cb = (f.ColumnH > 0 ? f.ColumnH : 0.22) * 1000 * k;
@@ -214,7 +224,7 @@ public static class FootingDrawing
         double zBot = p.BaseElevation - (f.H > 0 ? f.H : 0.4);
         w.ElevMark(L + 3 * th, 0, DxfWriter.ElevText(zBot), 1);
         w.ElevMark(L + 3 * th, H, DxfWriter.ElevText(p.BaseElevation), 1);
-        w.Title(L / 2, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT {f.Name}", DrawUtil.ScaleText(DetailScale));
+        w.Title(L / 2, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT {f.Name}", DrawUtil.ScaleText(det), true);
         return w;
     }
 }

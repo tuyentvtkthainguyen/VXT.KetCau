@@ -9,7 +9,11 @@ namespace KetCauVXT.Drawing;
 /// Biểu đồ mô men vẽ về phía thớ chịu kéo (giống tab "Biểu đồ nội lực").</summary>
 public static class ElevationDrawing
 {
+    /// <summary>Tỷ lệ mặc định của chương trình (tỷ lệ dùng thật: <see cref="CurrentScale"/> theo Thiết lập bản vẽ).</summary>
     public const double SheetScale = 100;
+
+    /// <summary>Mẫu số tỷ lệ mặt đứng khung theo Thiết lập bản vẽ (mặc định 100).</summary>
+    public static double CurrentScale => DrawingStyle.Current.ScaleOf(DrawingKind.FrameElevation);
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
     /// <summary>Tìm trục theo tên (không phân biệt hoa thường); null → trục X ở giữa.</summary>
@@ -40,11 +44,14 @@ public static class ElevationDrawing
     /// <summary>Đại lượng: "M3" (mô men trong mặt phẳng), "V2" (lực cắt trong mặt phẳng), "N" (lực dọc).</summary>
     public static readonly string[] Quantities = { "M3", "V2", "N" };
 
-    /// <summary>Vẽ mặt đứng khung trục g. qty != null và r != null → vẽ biểu đồ nội lực đại lượng qty của tổ hợp caseName.</summary>
-    public static DxfWriter Build(Project p, AnalysisResults r, GridLine g, string qty = null, string caseName = null, double S = SheetScale)
+    /// <summary>Vẽ mặt đứng khung trục g. qty != null và r != null → vẽ biểu đồ nội lực đại lượng qty của tổ hợp caseName.
+    /// S ≤ 0: tỷ lệ theo Thiết lập bản vẽ.</summary>
+    public static DxfWriter Build(Project p, AnalysisResults r, GridLine g, string qty = null, string caseName = null, double S = 0)
     {
+        if (S <= 0) S = CurrentScale;
         var w = new DxfWriter(S);
         double th = w.Th;
+        var style = w.Style;
         if (g == null)
         {
             w.Text(Lay.Chu, 0, 0, th, "(Chưa có trục định vị để vẽ mặt đứng)");
@@ -126,14 +133,14 @@ public static class ElevationDrawing
         }
 
         // ---- trục cắt ngang + đầu trục + kích thước ----
-        double yB = box.Y1 - 5 * th, yT = box.Y2 + 3 * th, r0 = 1.5 * th;
+        double yB = box.Y1 - 5 * th, yT = box.Y2 + 3 * th, r0 = w.BubbleR;
         foreach (var cg in cross)
         {
             double x = cg.Coord * 1000;
             w.Line(Lay.Truc, x, yB, x, yT, "CENTER");
             w.GridBubble(x, yB - r0, cg.Name);
         }
-        if (cross.Count > 1)
+        if (cross.Count > 1 && style.ShowGridDims)
         {
             double yd = yB - 2 * r0 - 2.5 * th;
             w.DimChainH(cross.Select(c => c.Coord * 1000).ToList(), yd, yd);
@@ -148,6 +155,7 @@ public static class ElevationDrawing
         foreach (var (z, name) in levels)
         {
             double y = z * 1000;
+            if (!style.ShowElevationMarks) break;
             w.Line(Lay.KyHieu, xL - 0.5 * th, y, box.X1 - 0.8 * th, y);
             w.ElevMark(xL, y, DxfWriter.ElevText(z), -1);
             w.Text(Lay.Chu, xL - 0.7 * th, y - 0.4 * th, 0.8 * th, name, 0, 2, 3);
@@ -227,6 +235,7 @@ public static class ElevationDrawing
                         for (int i = 1; i < n; i++) if (Math.Abs(s[i]) > Math.Abs(s[iExt])) iExt = i;
                         foreach (int i in new[] { 0, n - 1, iExt }.Distinct())
                         {
+                            if (!style.ShowLoadValues) break;   // tắt giá trị nội lực (Thiết lập bản vẽ)
                             if (Math.Abs(s[i]) < 1e-3 * Math.Max(1, maxAbs) || Math.Abs(s[i]) < 0.05) continue;
                             double v = s[i] * it.Sigma;
                             double sg = s[i] >= 0 ? 1 : -1;
@@ -248,7 +257,7 @@ public static class ElevationDrawing
         else title = $"MẶT ĐỨNG KHUNG TRỤC {g.Name}";
         double cx = w.Extents.IsEmpty ? 0 : (box.X1 + box.X2) / 2;
         double yb = w.Title(cx, w.Extents.Y2 + 4 * th, title, DrawUtil.ScaleText(S));
-        if (diagram)
+        if (diagram && (style.ShowLoadValues || maxAbs <= 0))
         {
             string note = maxAbs > 0 ? $"Giá trị lớn nhất |{(comp == 5 ? "M" : comp == 1 ? "Q" : "N")}| = {Fmt(maxAbs)} {unit}" + (comp == 5 ? " – vẽ về phía thớ chịu kéo" : "")
                 : "(Chưa có kết quả nội lực – chạy phân tích)";

@@ -44,7 +44,8 @@ public partial class MainWindow
             case "Móng":
             {
                 string n = (dgFootings.SelectedItem as FootingDesignRow)?.Name;
-                return _design.Footings.FirstOrDefault(c => c.Name == n) ?? _design.Footings.FirstOrDefault();
+                return _design.Footings.FirstOrDefault(c => c.Name == n) ?? (MemberDesignBase)_design.Footings.FirstOrDefault()
+                       ?? _design.PileCaps.FirstOrDefault() ?? (MemberDesignBase)_design.StripFootings.FirstOrDefault();
             }
             default:
             {
@@ -59,17 +60,29 @@ public partial class MainWindow
         string.IsNullOrEmpty(key) || _design == null ? null : _design.All.FirstOrDefault(m => m.RebarKeys.Contains(key));
 
     /// <summary>Tạo hộp thoại chọn thép cho cấu kiện m (chưa hiển thị).</summary>
-    private RebarChoiceDialog CreateRebarDialog(MemberDesignBase m)
+    private RebarChoiceDialog CreateRebarDialog(MemberDesignBase m, IList<MemberDesignBase> pick = null)
     {
         string key = m.RebarKeys.FirstOrDefault() ?? "";
-        return new RebarChoiceDialog(
+        var dlg = new RebarChoiceDialog(
             () => DesignByRebarKey(key),
             mm => RebarOptions.Zones(_p, mm),
             (mm, z) => RebarOptions.Alternatives(_p, _res, mm, z),
             async (z, a) => await ApplyRebarChoice(key, z, a),
             async z => await ApplyRebarChoice(key, z, null, clearAll: z == null))
         { Owner = this };
+        // chọn cấu kiện khác cùng nhóm (móng đơn / đài cọc / móng băng) ngay trong hộp thoại
+        if (pick != null && pick.Count > 1)
+            dlg.SetMemberPicker(pick.Where(x => x.RebarKeys.Count > 0).Select(x => (FoundationLabel(x), x.RebarKeys[0])).ToList(), key, k => key = k);
+        return dlg;
     }
+
+    private static string FoundationLabel(MemberDesignBase x) => (x switch
+    {
+        KetCauVXT.Design.Foundation.PileCapDesign => "Đài cọc " + x.Name,
+        KetCauVXT.Design.Foundation.StripFootingDesign => "Móng băng " + x.Name,
+        FootingDesign => "Móng đơn " + x.Name,
+        _ => x.Name
+    }) + (x.Quantity > 1 ? " (×" + x.Quantity + ")" : "");
 
     private async void BtnRebarChoice_Click(object sender, RoutedEventArgs e)
     {
@@ -82,7 +95,10 @@ public partial class MainWindow
             MessageBox.Show($"Chưa có {kind.ToLowerInvariant()} BTCT đã thiết kế để chọn thép.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        try { CreateRebarDialog(m).ShowDialog(); }
+        var pick = kind == "Móng"
+            ? _design.Footings.Cast<MemberDesignBase>().Concat(_design.PileCaps).Concat(_design.StripFootings).Where(x => x.RebarKeys.Count > 0).ToList()
+            : null;
+        try { CreateRebarDialog(m, pick).ShowDialog(); }
         catch (Exception ex) { ShowError("Lỗi chọn bố trí thép", ex); }
     }
 

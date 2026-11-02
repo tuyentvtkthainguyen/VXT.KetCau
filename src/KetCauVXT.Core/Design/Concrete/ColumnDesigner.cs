@@ -107,6 +107,12 @@ public static class ColumnDesigner
             {
                 Frame = f.Id, Story = f.Story ?? "", B = sec.B, H = sec.H, Length = L, ZBottom = lo.Z, ZTop = up.Z
             };
+            // chiều cao nút khung đỉnh tầng = dầm BTCT cao nhất tại nút trên (vùng cấm nối thép cột)
+            foreach (var bf in p.Frames.Where(x => x.Kind == FrameKind.Beam && (x.NodeI == up.Id || x.NodeJ == up.Id)))
+            {
+                var bs = p.FrameSections.FirstOrDefault(x => x.Name == bf.Section);
+                if (bs != null && bs.Shape == SectionShape.RectConcrete) res.JointDepth = Math.Max(res.JointDepth, bs.H);
+            }
             var forces = CollectForces(r, f, combos);
             string basis = BeamDesigner.Basis(sec.B, sec.H);
             var uch = p.ValidRebarChoice(key, RebarZones.ColumnMain, si, basis);
@@ -396,63 +402,94 @@ public static class ColumnDesigner
     private static void Detail(Project p, ColumnDesign d, List<FrameElement> stack, ConcreteDesignSettings cs, double zBase)
     {
         int ns = d.Stories.Count;
+        var pref = p.RebarPrefs ?? new RebarPreferences();
+        var main = p.Material(cs.RebarMain);
+        // ---- mối nối thép dọc giữa tầng t−1 và t: nằm trong đoạn giữa chiều cao thông thuỷ tầng t (ngoài nút khung và lcr hai đầu),
+        //      2 nhóm so le ≥ 1,3·ll (≤ 50% số thanh nối tại một tiết diện); vùng ngắn → ống nối ren (SpliceRules) ----
+        var cA = new double[ns + 1]; var cB = new double[ns + 1]; var lapAt = new double[ns + 1];
+        bool anyStagger = false;
+        for (int t = 1; t < ns; t++)
+        {
+            var su = d.Stories[t]; var sl = d.Stories[t - 1];
+            int dmax = Math.Max(su.Dia, sl.Dia);
+            var concS = DesignUtil.ConcreteOf(p, p.Section(stack[t].Section).Material, cs.ConcreteColumn);
+            double lap = DesignUtil.R10(Math.Max(30 * dmax / 1000.0, RebarDetailing.LapLength(concS, main, dmax, true, 1.0, pref.LapAlphaTension)));
+            var (za, zb, lcr) = SpliceRules.ColumnAllowed(p, su, zBase);
+            double z0 = su.ZBottom - zBase, zc1 = su.ZTop - zBase - su.JointDepth;
+            double zm = (z0 + zc1) / 2;
+            double sd = RcSection.CeilTo(Math.Max(pref.StaggerFactor, 1.0) * lap, 0.01);
+            string where = "tầng " + su.Story;
+            int nTot = 2 * sl.BarsAlongB + 2 * Math.Max(0, sl.BarsAlongH - 2);
+            int nA = (nTot + 1) / 2, nB = nTot - nA;
+            bool coupler = false, viol = false;
+            if (zb - za >= lap + sd - 1e-9 && nB > 0)
+            {
+                cA[t] = Math.Clamp(zm - sd / 2, za + lap / 2, zb - lap / 2 - sd);
+                cB[t] = cA[t] + sd;
+                anyStagger = true;
+            }
+            else if (zb - za >= lap - 1e-9)
+            {
+                cA[t] = cB[t] = Math.Clamp(zm, za + lap / 2, zb - lap / 2);
+                if (nB > 0)
+                    d.Messages.Add("Nối thép cột " + where + ": đoạn cho phép " + DesignUtil.F(zb - za, "0.00") + " m không đủ so le (cần ll + 1,3ll = "
+                                   + DesignUtil.F(lap + sd, "0.00") + " m) – nối 100% thanh tại một tiết diện; đề xuất ống nối ren so le hoặc tăng chiều cao tầng");
+            }
+            else if (pref.AllowCoupler)
+            {
+                coupler = true;
+                double mid = za <= zb ? (za + zb) / 2 : zm;
+                cA[t] = mid; cB[t] = nB > 0 && za <= zb && zb - za >= 0.5 ? Math.Min(mid + 0.5, zb) : mid;
+                d.Messages.Add("Nối thép cột " + where + ": đoạn cho phép " + DesignUtil.F(Math.Max(zb - za, 0), "0.00") + " m < ll = " + DesignUtil.F(lap, "0.00")
+                               + " m – dùng ống nối ren (coupler) giữa chiều cao thông thuỷ (hoặc dùng cây thép liên tục qua tầng nếu ≤ chiều dài cây)");
+            }
+            else
+            {
+                viol = true;
+                cA[t] = cB[t] = zm;
+                d.Messages.Add("LỖI nguyên tắc nối thép cột " + where + ": không có đoạn ngoài vùng nguy hiểm đủ dài cho ll = " + DesignUtil.F(lap, "0.00")
+                               + " m – đề xuất: ống nối ren, hoặc thép liên tục qua tầng (cây dài hơn), hoặc tăng chiều cao tầng");
+            }
+            lapAt[t] = coupler ? 0 : lap;
+            foreach (var (g, cc, n) in new[] { ("A", cA[t], nA), ("B", cB[t], nB) })
+            {
+                if (n <= 0) continue;
+                d.Splices.Add(new SpliceInfo
+                {
+                    Member = "", Dia = dmax, Span = t, Center = cc, Lap = lapAt[t], Group = g, Count = n, ZoneA = za, ZoneB = zb, Violation = viol,
+                    Note = (coupler ? "ống nối ren" : "nối chồng ll = " + DesignUtil.F(lap * 1000, "0") + " mm") + ", vùng cho phép " + DesignUtil.F(za, "0.00") + "–"
+                           + DesignUtil.F(zb, "0.00") + " m (lcr = " + DesignUtil.F(lcr, "0.00") + " m)"
+                });
+            }
+        }
         for (int si = 0; si < ns; si++)
         {
             var s = d.Stories[si];
             double dm = s.Dia / 1000.0;
             double z0 = s.ZBottom - zBase, z1 = s.ZTop - zBase;
             bool bottom = si == 0, top = si == ns - 1;
-            double start = z0, end;
-            var segs = new List<double>();
-            string shape = "Thẳng";
-            double length;
-            // nối chồng thép cột: max(30d; ll vùng nén theo TCVN 5574:2018 10.3.6.2)
-            var concS = DesignUtil.ConcreteOf(p, p.Section(stack[si].Section).Material, cs.ConcreteColumn);
-            double lap = DesignUtil.R10(Math.Max(30 * dm, RebarDetailing.LapLength(concS, p.Material(cs.RebarMain), s.Dia, tension: false)));
-            if (top)
-            {
-                end = z1 - cs.CoverBeam;
-                double hook = DesignUtil.R10(20 * dm);
-                double vert = end - start;
-                if (bottom) { vert += FootingAnchor; start -= FootingAnchor; }
-                vert = DesignUtil.R10(vert);
-                if (bottom)
-                {
-                    double foot = DesignUtil.R10(Math.Max(0.20, 10 * dm));
-                    segs.Add(DesignUtil.Mm(foot)); segs.Add(DesignUtil.Mm(vert)); segs.Add(DesignUtil.Mm(hook));
-                    shape = "U"; length = foot + vert + hook;
-                }
-                else
-                {
-                    segs.Add(DesignUtil.Mm(vert)); segs.Add(DesignUtil.Mm(hook));
-                    shape = "L"; length = vert + hook;
-                }
-            }
-            else
-            {
-                end = z1 + lap;
-                double vert = end - start;
-                if (bottom)
-                {
-                    vert += FootingAnchor; start -= FootingAnchor;
-                    vert = DesignUtil.R10(vert);
-                    double foot = DesignUtil.R10(Math.Max(0.20, 10 * dm));
-                    segs.Add(DesignUtil.Mm(vert)); segs.Add(DesignUtil.Mm(foot));
-                    shape = "L"; length = foot + vert;
-                }
-                else
-                {
-                    vert = DesignUtil.R10(vert);
-                    segs.Add(DesignUtil.Mm(vert));
-                    length = vert;
-                }
-            }
             int total = 2 * s.BarsAlongB + 2 * Math.Max(0, s.BarsAlongH - 2);
-            d.Bars.Add(new BarMark
+            int nA = anyStagger ? (total + 1) / 2 : total;
+            foreach (var (grp, cnt0) in new[] { ("A", nA), ("B", total - nA) })
             {
-                Role = "Thép dọc", Dia = s.Dia, Count = total, Start = start, End = end, Span = si,
-                Length = DesignUtil.R10(length), Shape = shape, Segments = segs
-            });
+                if (cnt0 <= 0) continue;
+                double start = bottom ? z0 - FootingAnchor : (grp == "A" ? cA[si] : cB[si]) - lapAt[si] / 2;
+                double end = top ? z1 - cs.CoverBeam : (grp == "A" ? cA[si + 1] : cB[si + 1]) + lapAt[si + 1] / 2;
+                double vert = DesignUtil.R10(end - start);
+                var segs = new List<double>();
+                string shape = "Thẳng";
+                double length;
+                double hook = DesignUtil.R10(20 * dm), foot = DesignUtil.R10(Math.Max(0.20, 10 * dm));
+                if (top && bottom) { segs.Add(DesignUtil.Mm(foot)); segs.Add(DesignUtil.Mm(vert)); segs.Add(DesignUtil.Mm(hook)); shape = "U"; length = foot + vert + hook; }
+                else if (top) { segs.Add(DesignUtil.Mm(vert)); segs.Add(DesignUtil.Mm(hook)); shape = "L"; length = vert + hook; }
+                else if (bottom) { segs.Add(DesignUtil.Mm(vert)); segs.Add(DesignUtil.Mm(foot)); shape = "L"; length = foot + vert; }
+                else { segs.Add(DesignUtil.Mm(vert)); length = vert; }
+                d.Bars.Add(new BarMark
+                {
+                    Role = grp == "A" ? "Thép dọc" : "Thép dọc (so le)", Dia = s.Dia, Count = cnt0, Start = start, End = end, Span = si,
+                    Length = DesignUtil.R10(length), Shape = shape, Segments = segs
+                });
+            }
             if (s.Length > 11.7) d.Messages.Add("Thép dọc tầng " + s.Story + " dài hơn 11,7 m – cần nối thêm");
 
             // đai

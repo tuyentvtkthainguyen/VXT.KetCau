@@ -22,6 +22,8 @@ public sealed class DrawPrim
     public string Text;
     public double H, Rot;
     public int HA, VA;
+    /// <summary>Hệ số rộng chữ (TEXT mã 41; 1 = chuẩn).</summary>
+    public double WF = 1;
 }
 
 public sealed partial class DxfWriter
@@ -86,6 +88,7 @@ public sealed partial class DxfWriter
                     case 40: pr.R = d; pr.H = d; break;
                     case 50: pr.A1 = d; pr.Rot = d; break;
                     case 51: pr.A2 = d; break;
+                    case 41: if (e.Type == "TEXT" && d > 0) pr.WF = d; break;
                     case 72: pr.HA = (int)d; break;
                     case 73: pr.VA = (int)d; break;
                 }

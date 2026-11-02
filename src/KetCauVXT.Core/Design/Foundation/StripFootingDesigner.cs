@@ -470,6 +470,31 @@ public static class StripFootingDesigner
         int[] bdias = DesignUtil.Sorted(cs.BeamBars, new[] { 14, 16, 18, 20, 22, 25 });
         var bot = RcSection.ChooseBars(fPos.As, b, cover, bdias, 2, 2);
         var top = RcSection.ChooseBars(fNeg.As, b, cover, bdias, 2, 2);
+        // lựa chọn thép của người dùng (Project.RebarChoices): sườn dưới / trên, đai, bản cánh
+        string key = MemberKey(alongX, members), basis = Basis(b, h, B);
+        d.RebarKeys.Add(key);
+        d.RibH0 = h0;
+        int nUser = 0;
+        BarSet UserBars(string zone, BarSet auto, bool isTop)
+        {
+            var ch = p.ValidRebarChoice(key, zone, -1, basis);
+            var g = ch?.Bars?.Where(x => x != null && x.Dia > 0 && x.Count > 0).Select(x => (x.Dia, x.Count)).ToList();
+            if (g == null || g.Count == 0) return auto;
+            nUser++;
+            var fit = RebarOptions.CheckFit(g, b, cover, isTop);
+            if (!fit.Fits) d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + RcSection.BarText(g) + ": không lọt bề rộng sườn");
+            return new BarSet { Groups = g, Layers = fit.Layers, Ok = true };
+        }
+        bot = UserBars(RebarZones.StripRibBottom, bot, false);
+        top = UserBars(RebarZones.StripRibTop, top, true);
+        var sch = p.ValidRebarChoice(key, RebarZones.Stirrup, -1, basis);
+        if (sch != null && sch.Dia >= 6 && sch.Spacing > 0)
+        {
+            nUser++;
+            sh.Dia = sch.Dia; sh.Legs = 2; sh.SSupport = sch.Spacing;
+            sh.Capacity = RcSection.ShearCapacity(b, h0, conc, stirMat, sch.Dia, 2, sch.Spacing);
+            sh.Note = "đai do người dùng chọn";
+        }
         if (!bot.Ok || !top.Ok) d.Messages.Add("LỖI không bố trí đủ thép dọc sườn trong bề rộng b – tăng tiết diện sườn");
         double asBot = bot.Groups.Sum(g => g.Count * RcSection.BarArea(g.Dia)), asTop = top.Groups.Sum(g => g.Count * RcSection.BarArea(g.Dia));
         d.AsBottom = fPos.As; d.AsTop = fNeg.As;
@@ -502,6 +527,13 @@ public static class StripFootingDesigner
             var fl = RcSection.DesignRect(d.FlangeM, 1.0, h0fl, 0.03, conc, main, 0.05);
             int[] fd = DesignUtil.Sorted(cs.FootingBars, new[] { 10, 12, 14, 16 });
             var sc = RcSection.ChooseSpacing(dia => Math.Max(fl.As, 0.0005 * h0fl), fd, 0.20, 0.10, 0.15, 10);
+            d.FlangeH0 = h0fl;
+            var fch = p.ValidRebarChoice(key, RebarZones.StripFlange, -1, basis);
+            if (fch != null && fch.Dia > 0 && fch.Spacing > 0)
+            {
+                nUser++;
+                sc = new SpacingChoice { Dia = fch.Dia, Spacing = fch.Spacing, AsReqPerM = Math.Max(fl.As, 0.0005 * h0fl), Ok = true };
+            }
             d.AsFlange = sc.AsReqPerM;
             d.FlangeBars = sc.Text;
             if (!sc.Ok) d.Messages.Add("LỖI không bố trí đủ thép bản cánh với bước ≥ 100 mm");
@@ -518,6 +550,13 @@ public static class StripFootingDesigner
             AddFlangeBars(d, sc.Dia, sc.Spacing, cover);
         }
         AddRibBars(d, bot, top, cover);
+        d.UserRebarZones = nUser;
+        if (nUser > 0)
+        {
+            d.Messages.Add("Bố trí thép theo lựa chọn của người dùng tại " + nUser + " vùng (đã kiểm tra lại khả năng chịu lực)");
+            foreach (var ci in d.Checks.Where(ck => (ck.Name.StartsWith("Uốn") || ck.Name.StartsWith("Cắt sườn")) && !ck.Ok).ToList())
+                d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + ci.Name + ": " + ci.Note);
+        }
         if (geoBh != null)
         {
             // lún móng băng L × B, áp lực trung bình tiêu chuẩn ptb (GeotechCalc.Settlement)
@@ -540,6 +579,57 @@ public static class StripFootingDesigner
         int best = 0;
         for (int i = 1; i < xs.Count; i++) if (Math.Abs(xs[i] - v) < Math.Abs(xs[best] - v)) best = i;
         return best;
+    }
+
+    /// <summary>Khoá cấu kiện vật lý của dải móng băng (lựa chọn thép): "B:{X|Y}:{id nút nhỏ nhất}".</summary>
+    internal static string MemberKey(bool alongX, List<(Node Node, FrameElement Column)> members) =>
+        "B:" + (alongX ? "X" : "Y") + ":" + members.Min(m => m.Node.Id).ToString(DesignUtil.Inv);
+
+    internal static string Basis(double b, double h, double B) => BeamDesigner.Basis(b, h) + "|" + DesignUtil.Mm(B).ToString("0", DesignUtil.Inv);
+
+    /// <summary>Phương án thép móng băng đã thiết kế: sườn dưới / trên (tổ hợp thanh), đai sườn, bản cánh (Ø–bước).</summary>
+    internal static List<RebarAlternative> Alternatives(Project p, StripFootingDesign d, string zone, int max = 12)
+    {
+        var cs = p.Concrete;
+        var pref = p.RebarPrefs ?? new RebarPreferences();
+        double cover = Math.Max(cs.CoverFooting, 0.03);
+        if (zone == RebarZones.StripRibBottom || zone == RebarZones.StripRibTop)
+        {
+            int[] bd = pref.Filter(DesignUtil.Sorted(cs.BeamBars, new[] { 14, 16, 18, 20, 22, 25 }));
+            bool top = zone == RebarZones.StripRibTop;
+            var list = RebarOptions.BeamCombos(top ? d.AsTop : d.AsBottom, d.RibB, cover, top, bd, pref, 2, 0, max);
+            foreach (var a in list) a.IsCurrent = a.Text == (top ? d.TopBars : d.BottomBars);
+            return list;
+        }
+        if (zone == RebarZones.Stirrup)
+        {
+            var res = new List<RebarAlternative>();
+            var conc = DesignUtil.ConcreteOf(p, cs.ConcreteFooting, cs.ConcreteFooting);
+            var stl = p.Material(cs.RebarStirrup);
+            double h0 = d.RibH0 > 0 ? d.RibH0 : d.RibH - cover - 0.012;
+            foreach (int dd in DesignUtil.Sorted(cs.StirrupBars, new[] { 6, 8, 10 }).Where(x => x >= 6))
+            {
+                var sh = RcSection.Shear(d.VDesign, d.RibB, h0, conc, stl, dd, 2);
+                if (!sh.Ok || sh.SSupport <= 0) continue;
+                foreach (double ss in new[] { sh.SSupport, RcSection.FloorTo(sh.SSupport - 0.05 + 1e-9, 0.05) }.Distinct())
+                {
+                    if (ss < 0.05 - 1e-9) continue;
+                    double qu = RcSection.ShearCapacity(d.RibB, h0, conc, stl, dd, 2, ss);
+                    if (qu < d.VDesign - 1e-6) continue;
+                    res.Add(new RebarAlternative
+                    {
+                        Kind = "Dầm", Zone = RebarZones.Stirrup, Index = -1, Dia = dd, Spacing = ss, Spacing2 = ss,
+                        Text = "Ø" + dd + "a" + DesignUtil.Mm(ss), AsReq = d.VDesign, AsProv = qu, Fits = true,
+                        IsCurrent = dd == d.StirrupDia && Math.Abs(ss - d.StirrupSpacing) < 1e-4,
+                        Note = "Q = " + DesignUtil.F(d.VDesign, "0.0") + " kN ≤ Qu = " + DesignUtil.F(qu, "0.0") + " kN"
+                    });
+                }
+            }
+            return res;
+        }
+        int[] fd = DesignUtil.Sorted(cs.FootingBars, new[] { 10, 12, 14, 16 });
+        double req = d.AsFlange;
+        return RebarOptions.SpacingAlternatives("Móng", zone, _ => req, fd.Where(x => x >= 10).DefaultIfEmpty(fd.Max()).ToArray(), 0.10, 0.20, d.FlangeBars, max);
     }
 
     private static void AddRibBars(StripFootingDesign d, BarSet bot, BarSet top, double c)

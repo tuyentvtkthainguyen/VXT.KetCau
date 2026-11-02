@@ -7,8 +7,14 @@ namespace KetCauVXT.Drawing;
 /// Toạ độ mặt đứng: x = 0 tại tim trục gối đầu tiên, y = 0 tại đỉnh dầm (mm).</summary>
 public static class BeamDrawing
 {
+    /// <summary>Tỷ lệ mặc định của chương trình (tỷ lệ dùng thật: <see cref="CurrentScale"/> theo Thiết lập bản vẽ).</summary>
     public const double SheetScale = 50;
     public const double SectionScale = 25;
+
+    /// <summary>Mẫu số tỷ lệ mặt đứng dầm theo Thiết lập bản vẽ (mặc định 50).</summary>
+    public static double CurrentScale => DrawingStyle.Current.ScaleOf(DrawingKind.BeamElevation);
+    /// <summary>Mẫu số tỷ lệ mặt cắt theo Thiết lập bản vẽ (mặc định 25).</summary>
+    public static double CurrentSectionScale => DrawingStyle.Current.ScaleOf(DrawingKind.MemberSection);
 
     public static List<Figure> BuildAll(Project p, IEnumerable<BeamLineDesign> beams)
     {
@@ -16,7 +22,7 @@ public static class BeamDrawing
         foreach (var d in beams)
         {
             try { res.AddRange(Build(p, d)); }
-            catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(d.Name, ex, SheetScale), d.Name, true)); }
+            catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(d.Name, ex, CurrentScale), d.Name, true)); }
         }
         return res;
     }
@@ -31,9 +37,10 @@ public static class BeamDrawing
     /// <summary>Vẽ một dầm liên tục: hình đầu là mặt đứng (hàng mới), sau đó là các mặt cắt.</summary>
     public static List<Figure> Build(Project p, BeamLineDesign d)
     {
-        double S = SheetScale;
+        double S = CurrentScale;
         var w = new DxfWriter(S);
-        double th = w.Th;
+        double th = w.Th, tg = w.TagTh;
+        var style = w.Style;
         var figs = new List<Figure>();
 
         double b = d.B * 1000, h = d.H * 1000;
@@ -184,7 +191,7 @@ public static class BeamDrawing
         for (int i = 0; i < zt.Count; i++)
         {
             double cx = (zt[i].Z.From + zt[i].Z.To) * 500;
-            double tw = DxfWriter.TextWidth(zt[i].Text, th) + 2.6 * w.MarkR;
+            double tw = DxfWriter.TextWidth(zt[i].Text, tg) * w.WidthFactor + 2.6 * w.MarkR;
             double x1 = cx - tw / 2, x2 = cx + tw / 2;
             int r = 0;
             while (r < rowEnds.Count && rowEnds[r] > x1) r++;
@@ -199,12 +206,12 @@ public static class BeamDrawing
             double a = z.From * 1000, e = z.To * 1000;
             w.Dim(a, yChain, e, yChain, 0);
             double cx = (a + e) / 2;
-            double tw = DxfWriter.TextWidth(zt[i].Text, th);
+            double tw = DxfWriter.TextWidth(zt[i].Text, tg) * w.WidthFactor;
             double tot = tw + 2.6 * w.MarkR;
             double yt = yChain - (zRows[i] + 1) * 1.8 * th;
             double tx = cx - tot / 2;
-            w.Text(Lay.Chu, tx, yt, th, zt[i].Text, 0, 0, 0);
-            if (z.Mark > 0) w.MarkCircle(tx + tw + 1.3 * w.MarkR, yt + 0.4 * th, z.Mark);
+            w.Text(Lay.Chu, tx, yt, tg, zt[i].Text, 0, 0, 0);
+            if (z.Mark > 0) w.MarkCircle(tx + tw + 1.3 * w.MarkR, yt + 0.4 * tg, z.Mark);
         }
 
         // ---- kích thước nhịp + tổng ----
@@ -218,8 +225,11 @@ public static class BeamDrawing
         }
 
         // ---- cao độ đỉnh dầm bên trái ----
-        w.ElevMark(xL - 2.5 * th, 0, DxfWriter.ElevText(d.TopElevation), -1);
-        w.Line(Lay.KyHieu, xL - 2.5 * th, 0, xL - 0.3 * th, 0);
+        if (style.ShowElevationMarks)
+        {
+            w.ElevMark(xL - 2.5 * th, 0, DxfWriter.ElevText(d.TopElevation), -1);
+            w.Line(Lay.KyHieu, xL - 2.5 * th, 0, xL - 0.3 * th, 0);
+        }
 
         // ---- tên hình ----
         double Lout = (xs[^1] - xs[0]) + sw[0] / 2 + sw[^1] / 2;
@@ -227,11 +237,13 @@ public static class BeamDrawing
         w.Title((xs[0] + xs[^1]) / 2, yChain + 6.5 * th, title, DrawUtil.ScaleText(S));
         if (d.IsCurved)
         {
-            // dầm cong: mặt đứng là hình trải theo cung; chiều dài thép đã tính theo cung
+            // dầm cong: mặt đứng là hình trải theo cung; chiều dài thép đã tính theo cung.
+            // "chiều dài thép dọc tính theo cung; dùng đai kín móc 135°" chung cho mọi dầm cong → chuyển vào GHI CHÚ CHUNG (GeneralNotes)
             double yN = yBub - 3.2 * th;
             w.Text(Lay.Chu, xs[0], yN, th, CurvedDraw.Note(d.CurveRadius, d.ArcLength), 0, 0, 0);
             w.Text(Lay.Chu, xs[0], yN - 1.8 * th, 0.85 * th,
-                $"Dây cung {DxfWriter.N0(d.Chord * 1000)}, độ vồng {DxfWriter.N0(d.Sagitta * 1000)}; chiều dài thép dọc tính theo cung; dùng đai kín móc 135°; Tmax = {d.TorsionMax.ToString("0.0", DrawUtil.Inv)} kN.m", 0, 0, 0);
+                $"Dây cung {DxfWriter.N0(d.Chord * 1000)}, độ vồng {DxfWriter.N0(d.Sagitta * 1000)}" +
+                (style.ShowDesignValues ? $"; Tmax = {d.TorsionMax.ToString("0.0", DrawUtil.Inv)} kN.m" : ""), 0, 0, 0);
         }
         figs.Add(new Figure(w, d.Name, true));
 
@@ -367,7 +379,8 @@ public static class BeamDrawing
     private static DxfWriter Section(Cut c, double b, double h, double cover, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = S / SectionScale;
+        double secScale = CurrentSectionScale;
+        double th = w.Th, k = S / secScale;
         double B = b * k, H = h * k;
         w.Rect(Lay.BeTong, 0, 0, B, H);
         // đai
@@ -442,7 +455,7 @@ public static class BeamDrawing
         w.Dim(0, 0, B, 0, yMin - 2.0 * th, k);
         w.Dim(0, 0, 0, H, 2.6 * th, k);
         double yt = w.Extents.Y1 - 1.2 * th;
-        w.Title(B / 2, yt, $"{c.Num}-{c.Num}", DrawUtil.ScaleText(SectionScale));
+        w.Title(B / 2, yt, $"{c.Num}-{c.Num}", DrawUtil.ScaleText(secScale), true);
         return w;
     }
 }

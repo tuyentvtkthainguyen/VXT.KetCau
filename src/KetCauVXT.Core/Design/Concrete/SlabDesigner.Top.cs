@@ -156,6 +156,7 @@ public static partial class SlabDesigner
                 double c = owner.C, hook = DesignUtil.R10(Math.Max(owner.T - 2 * c, 0.05));
                 double len, width;
                 Vec3 e0a, e0b, e1a, e1b;
+                var allowed = new List<double>();   // vùng cho phép nối lưới trên: ⅓ giữa nhịp mỗi ô (toạ độ dọc thanh từ đầu đoạn thẳng)
                 if (owner.AxisAligned)
                 {
                     double a0 = alongX ? run[0].X1 : run[0].Y1, a1 = alongX ? run[^1].X2 : run[^1].Y2;
@@ -165,6 +166,12 @@ public static partial class SlabDesigner
                     e1a = alongX ? new Vec3(a1, w0, z) : new Vec3(w0, a1, z); e1b = alongX ? new Vec3(a1, w1, z) : new Vec3(w1, a1, z);
                     double b0 = EdgeBeamWidth(p, e0a, e0b), b1 = EdgeBeamWidth(p, e1a, e1b);
                     len = (a1 - a0) + Math.Max(b0 / 2 - c, 0) + Math.Max(b1 / 2 - c, 0);
+                    double off = Math.Max(b0 / 2 - c, 0);
+                    foreach (var x in run)
+                    {
+                        double pa = (alongX ? x.X1 : x.Y1) - a0 + off, pb = (alongX ? x.X2 : x.Y2) - a0 + off, lp = pb - pa;
+                        allowed.Add(pa + lp / 3); allowed.Add(pb - lp / 3);
+                    }
                     width = w1 - w0;
                     owner.D.TopMeshes.Add(new SlabTopMesh { AlongX = alongX, X1 = alongX ? a0 : w0, X2 = alongX ? a1 : w1, Y1 = alongX ? w0 : a0, Y2 = alongX ? w1 : a1 });
                 }
@@ -173,11 +180,13 @@ public static partial class SlabDesigner
                     int dir = owner.DirOfGlobal(alongX);
                     len = dir == 0 ? owner.Lx : owner.Ly;
                     width = dir == 0 ? owner.Ly : owner.Lx;
+                    allowed.Add(len / 3); allowed.Add(2 * len / 3);
                 }
                 len = DesignUtil.R10(len);
                 string names = string.Join(", ", run.Select(x => x.Label));
                 var bm = Spread("Lớp trên lưới phương " + (alongX ? "X" : "Y"), gov, len, width, true,
                     new List<double> { DesignUtil.Mm(hook), DesignUtil.Mm(len), DesignUtil.Mm(hook) }, hook * 2);
+                bm.SpliceAllowed = allowed;
                 owner.D.Bars.Add(bm);
                 if (owner.D.TopMeshes.Count > 0 && owner.D.TopMeshes[^1].Bar == null) owner.D.TopMeshes[^1].Bar = bm;
                 if (run.Count > 1)

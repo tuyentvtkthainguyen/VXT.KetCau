@@ -47,6 +47,7 @@ public static class PileCapDesigner
             var items = g.Select(x => x.d).ToList();
             var keep = items.OrderByDescending(x => x.PMax).First();
             keep.Quantity = items.Count;
+            keep.RebarKeys = items.SelectMany(x => x.RebarKeys).Distinct().ToList();
             keep.NodeIds = items.SelectMany(x => x.NodeIds).Distinct().ToList();
             keep.Locations = items.Select(x => (x.X, x.Y)).ToList();
             keep.PMin = items.Min(x => x.PMin);
@@ -212,6 +213,8 @@ public static class PileCapDesigner
             PileSize = d, PileRound = fs.PileRound, PileCapacity = P, PileLength = geo != null ? Math.Round(geo.Length, 2) : fs.PileLength, Spacing = s
         };
         dsn.Locations.Add((n.X, n.Y));
+        string key = MemberKey(n.Id);
+        dsn.RebarKeys.Add(key);
         if (geo != null)
             dsn.Messages.Add("[P] theo SPT hố khoan " + geo.Borehole + " (TCVN 10304:2014 G.3.2): mũi cọc " + DesignUtil.F(geo.TipDepth, "0.0#") + " m, L = "
                              + DesignUtil.F(geo.Length, "0.0#") + " m, Rc,u = " + DesignUtil.F(geo.Rcu, "0") + " kN, [P]đn = " + DesignUtil.F(geo.Pdn, "0")
@@ -288,9 +291,26 @@ public static class PileCapDesigner
         int[] dias = DesignUtil.Sorted(cs.FootingBars, new[] { 12, 14, 16 }).Union(new[] { 16, 18, 20, 22, 25 }).Distinct().OrderBy(x => x).ToArray();
         double cover = Math.Max(cs.CoverFooting, 0.03);
         dsn.MomentL = ev.ML; dsn.MomentB = ev.MB;
-        var sL = RcSection.ChooseSpacing(dia => AsPerM(ev.ML, B, h0, conc, main), dias, 0.20, 0.10, 0.15, 12);
+        dsn.MomentTopL = ev.MTopL; dsn.MomentTopB = ev.MTopB;
+        // lựa chọn thép của người dùng (Project.RebarChoices) – kiểm tra lại uốn bằng các CheckItem bên dưới
+        string basis = FootingDesigner.Basis(L, B, H);
+        int nUser = 0;
+        SpacingChoice Ovr(string zone, SpacingChoice auto, double req)
+        {
+            var ch = p.ValidRebarChoice(key, zone, -1, basis);
+            if (ch == null || ch.Dia <= 0 || ch.Spacing <= 0) return auto;
+            nUser++;
+            var sc = new SpacingChoice { Dia = ch.Dia, Spacing = ch.Spacing, AsReqPerM = req, Ok = true };
+            if (ch.Spacing < 0.10 - 1e-9 || ch.Spacing > 0.20 + 1e-9)
+                dsn.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + sc.Text + ": bước ngoài phạm vi 100…200 mm");
+            if (sc.AsPerM < req * (1 - 1e-6))
+                dsn.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + sc.Text + ": As = " + DesignUtil.F(sc.AsPerM * 1e4, "0.00")
+                                 + " < As yêu cầu " + DesignUtil.F(req * 1e4, "0.00") + " cm²/m");
+            return sc;
+        }
+        var sL = Ovr(RebarZones.FootingL, RcSection.ChooseSpacing(dia => AsPerM(ev.ML, B, h0, conc, main), dias, 0.20, 0.10, 0.15, 12), AsPerM(ev.ML, B, h0, conc, main));
         double h0B = h0 - sL.Dia / 1000.0;
-        var sB = RcSection.ChooseSpacing(dia => AsPerM(ev.MB, L, h0B, conc, main), dias, 0.20, 0.10, 0.15, 12);
+        var sB = Ovr(RebarZones.FootingB, RcSection.ChooseSpacing(dia => AsPerM(ev.MB, L, h0B, conc, main), dias, 0.20, 0.10, 0.15, 12), AsPerM(ev.MB, L, h0B, conc, main));
         dsn.AsL = sL.AsReqPerM * B; dsn.AsB = sB.AsReqPerM * L;
         dsn.DiaL = sL.Dia; dsn.DiaB = sB.Dia; dsn.SpacingL = sL.Spacing; dsn.SpacingB = sB.Spacing;
         dsn.BarsL = sL.Text; dsn.BarsB = sB.Text;
@@ -308,9 +328,14 @@ public static class PileCapDesigner
 
         // ---- thép lớp trên (cấu tạo Ø12a200, hoặc theo tính toán khi có cọc chịu nhổ) ----
         double h0t = H - cover - 0.01;
-        var tL = RcSection.ChooseSpacing(dia => Math.Max(AsPerM(ev.MTopL, B, h0t, conc, main), RcSection.BarArea(12) / 0.20), dias, 0.20, 0.10, 0.20, 12);
-        var tB = RcSection.ChooseSpacing(dia => Math.Max(AsPerM(ev.MTopB, L, h0t - tL.Dia / 1000.0, conc, main), RcSection.BarArea(12) / 0.20), dias, 0.20, 0.10, 0.20, 12);
+        double reqTL = Math.Max(AsPerM(ev.MTopL, B, h0t, conc, main), RcSection.BarArea(12) / 0.20);
+        var tL = Ovr(RebarZones.CapTopL, RcSection.ChooseSpacing(dia => reqTL, dias, 0.20, 0.10, 0.20, 12), reqTL);
+        double reqTB = Math.Max(AsPerM(ev.MTopB, L, h0t - tL.Dia / 1000.0, conc, main), RcSection.BarArea(12) / 0.20);
+        var tB = Ovr(RebarZones.CapTopB, RcSection.ChooseSpacing(dia => reqTB, dias, 0.20, 0.10, 0.20, 12), reqTB);
         dsn.BarsTop = tL.Text == tB.Text ? tL.Text : tL.Text + " / " + tB.Text;
+        dsn.BarsTopL = tL.Text; dsn.BarsTopB = tB.Text;
+        dsn.UserRebarZones = nUser;
+        if (nUser > 0) dsn.Messages.Add("Bố trí thép theo lựa chọn của người dùng tại " + nUser + " vùng (đã kiểm tra lại khả năng chịu lực)");
         if (ev.MTopL > 1e-9)
             dsn.Checks.Add(new CheckItem
             {
@@ -360,6 +385,25 @@ public static class PileCapDesigner
     }
 
     private static double BarArea(SpacingChoice sc) => sc.Spacing > 0 ? RcSection.BarArea(sc.Dia) / sc.Spacing : 0;
+
+    /// <summary>Khoá cấu kiện vật lý của đài cọc (lựa chọn thép): "P:{id nút chân cột}".</summary>
+    internal static string MemberKey(int nodeId) => "P:" + nodeId.ToString(DesignUtil.Inv);
+
+    /// <summary>Phương án Ø–bước cho thép đài cọc đã thiết kế: lớp dưới L/B (FootingL/FootingB), lớp trên L/B (CapTopL/CapTopB).</summary>
+    internal static List<RebarAlternative> Alternatives(Project p, PileCapDesign d, string zone, int max = 12)
+    {
+        var cs = p.Concrete;
+        var conc = DesignUtil.ConcreteOf(p, cs.ConcreteFooting, cs.ConcreteFooting);
+        var main = p.Material(cs.RebarMain);
+        int[] dias = DesignUtil.Sorted(cs.FootingBars, new[] { 12, 14, 16 }).Union(new[] { 16, 18, 20, 22, 25 }).Distinct().OrderBy(x => x).ToArray();
+        double cover = Math.Max(cs.CoverFooting, 0.03), h0 = d.H0 > 0 ? d.H0 : d.H - cover - 0.05, h0t = d.H - cover - 0.01;
+        double req; string cur;
+        if (zone == RebarZones.FootingL) { req = AsPerM(d.MomentL, d.B, h0, conc, main); cur = d.BarsL; }
+        else if (zone == RebarZones.FootingB) { req = AsPerM(d.MomentB, d.L, h0 - d.DiaL / 1000.0, conc, main); cur = d.BarsB; }
+        else if (zone == RebarZones.CapTopL) { req = Math.Max(AsPerM(d.MomentTopL, d.B, h0t, conc, main), RcSection.BarArea(12) / 0.20); cur = d.BarsTopL; }
+        else { req = Math.Max(AsPerM(d.MomentTopB, d.L, h0t, conc, main), RcSection.BarArea(12) / 0.20); cur = d.BarsTopB; }
+        return RebarOptions.SpacingAlternatives("Móng", zone, _ => req, dias.Where(x => x >= 12).ToArray(), 0.10, 0.20, cur, max);
+    }
 
     /// <summary>As yêu cầu trên 1 m bề rộng đài: As = DesignRect(M, b, h0)/b, tối thiểu 0,05%·h0.</summary>
     private static double AsPerM(double M, double b, double h0, Material conc, Material steel)

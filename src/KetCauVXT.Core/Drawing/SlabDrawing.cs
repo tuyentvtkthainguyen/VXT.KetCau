@@ -11,6 +11,10 @@ public static class SlabDrawing
     /// <summary>Tỷ lệ tự chọn: 1/50 nếu mặt bằng ≤ 25 m, ngược lại 1/100.</summary>
     public static double ChooseScale(Project p)
     {
+        // ---- Thiết lập bản vẽ (DrawingStyle.ScaleSlabPlan > 0: tỷ lệ cố định do người dùng chọn) ----
+        double fixedScale = DrawingStyle.Current.ScaleOf(DrawingKind.SlabPlan);
+        if (fixedScale > 0) return fixedScale;
+        // ---- hết Thiết lập bản vẽ ----
         if (p.Nodes.Count == 0) return 100;
         double dx = p.Nodes.Max(n => n.X) - p.Nodes.Min(n => n.X);
         double dy = p.Nodes.Max(n => n.Y) - p.Nodes.Min(n => n.Y);

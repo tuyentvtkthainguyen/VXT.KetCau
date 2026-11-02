@@ -30,6 +30,7 @@ public static class ModelBuilder
         p.Patterns.Add(new LoadPattern { Name = "HT", Type = LoadType.Live, Gamma = 1.3 });
         p.Patterns.Add(new LoadPattern { Name = "GX", Type = LoadType.Wind, Gamma = 1.2 });
         p.Patterns.Add(new LoadPattern { Name = "GY", Type = LoadType.Wind, Gamma = 1.2 });
+        TemplateService.OnNewProject(p);   // [mẫu định dạng mặc định của người dùng – Model/Template.cs; chỉ khi TemplateService.AutoApplyDefault bật]
         return p;
     }
 

@@ -267,7 +267,7 @@ public static class RebarShopTests
                 if (sb.Count == 0) { missing++; continue; }
                 if (sb.Count == 1 && !sb[0].Spliced)
                 {
-                    if (sb[0].Label != row.Mark.ToString() || sb[0].Dia != row.Dia || Math.Abs(sb[0].CutLengthMm - row.LengthMm) > 1e-6
+                    if (sb[0].Label != row.Mark.ToString() || sb[0].Dia != row.Dia || Math.Abs(sb[0].OutsideLengthMm - row.LengthMm) > 1e-6
                         || sb[0].BarsTotal != row.BarsTotal) mism++;
                 }
                 else if (sb.Any(b => !b.Label.StartsWith(row.Mark.ToString()) || b.Dia != row.Dia)) mism++;
@@ -275,10 +275,12 @@ public static class RebarShopTests
             check("Số hiệu gia công khớp bảng thống kê: mọi số hiệu có trong bảng gia công", missing, 0, 0);
             check("Số hiệu gia công khớp bảng thống kê: Ø, chiều dài, số thanh trùng (thanh không nối)", mism, 0, 0);
             // thanh tách nối: tổng chiều dài ≥ thống kê (cộng đoạn nối)
-            var spl = rows.FirstOrDefault(x => shop.Bars.Any(b => b.Member == x.Member && b.ParentMark == x.Mark && b.Spliced));
+            // thanh tách nối CHỒNG (mối nối ống ren không cộng chiều dài)
+            var spl = rows.FirstOrDefault(x => shop.Bars.Any(b => b.Member == x.Member && b.ParentMark == x.Mark && b.Spliced)
+                                               && shop.Splices.Any(sp => sp.Member == x.Member && sp.Mark == x.Mark && sp.Lap > 0));
             if (spl != null)
             {
-                double tot = shop.Bars.Where(b => b.Member == spl.Member && b.ParentMark == spl.Mark && b.Category == spl.Category).Sum(b => b.TotalLengthM);
+                double tot = shop.Bars.Where(b => b.Member == spl.Member && b.ParentMark == spl.Mark && b.Category == spl.Category).Sum(b => b.OutsideLengthMm * b.BarsTotal / 1000.0);
                 check("Thanh tách nối: tổng chiều dài gia công > thống kê (cộng chiều dài nối)", B(tot > spl.TotalLengthM + 0.1), 1, 0);
                 var parts = shop.Bars.Where(b => b.Member == spl.Member && b.ParentMark == spl.Mark && b.Category == spl.Category).ToList();
                 check("Thanh tách nối: số đoạn × thanh ≥ 2 × số thanh gốc", B(parts.Sum(b => b.BarsPerMember) >= 2 * spl.BarsPerMember), 1, 0);
@@ -291,13 +293,15 @@ public static class RebarShopTests
         {
             var fake = new DesignSummary();
             var sd = new SlabDesign { Name = "S-test", Story = "T1", SlabId = -1, Quantity = 1 };
-            sd.Bars.Add(new BarMark { Mark = 1, Role = "Lớp dưới phương X", Dia = 12, Count = 4, Length = 15.0, Shape = "Thẳng", Segments = new List<double> { 15000 } });
+            // SpliceAllowed = cả thanh: kiểm tra riêng thuật toán tách + so le (nguyên tắc vùng nối kiểm tra ở SpliceRuleTests)
+            sd.Bars.Add(new BarMark { Mark = 1, Role = "Lớp dưới phương X", Dia = 12, Count = 4, Length = 15.0, Shape = "Thẳng", Segments = new List<double> { 15000 },
+                                      SpliceAllowed = new List<double> { 0, 15.0 } });
             fake.Slabs.Add(sd);
             var sh = RebarShop.Build(p, fake, new ShopOptions { StockLength = 11.7, Stagger = true });
             var bars = sh.Bars.Where(x => x.ParentMark == 1).ToList();
             double lap = RebarDetailing.LapLength(DesignUtilProxy.Conc(p), Material.Rebar(p.Concrete.RebarMain), 12) * 1000;
             check("Thanh 15 m (4Ø12): mỗi thanh thành 2 đoạn", bars.Sum(x => x.BarsPerMember), 8, 0);
-            check("Thanh 15 m: tổng chiều dài = 4 × (15000 + ll)", bars.Sum(x => x.CutLengthMm * x.BarsPerMember), 4 * (15000 + lap), 0.002);
+            check("Thanh 15 m: tổng chiều dài = 4 × (15000 + ll)", bars.Sum(x => x.OutsideLengthMm * x.BarsPerMember), 4 * (15000 + lap), 0.002);
             check("Thanh 15 m: so le → 4 loại đoạn (1a…1d)", bars.Count, 4, 0);
             check("Thanh 15 m: mọi đoạn ≤ 11,7 m", B(bars.All(x => x.CutLengthMm <= 11700)), 1, 0);
         }

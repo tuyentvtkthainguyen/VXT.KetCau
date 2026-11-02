@@ -12,6 +12,12 @@ public static class CadFileReaders
     /// Ném ngoại lệ có thông báo tiếng Việt khi không đọc được. null = chưa đăng ký.</summary>
     public static Func<string, double, DxfReader> Dwg { get; set; }
 
+    // ---- [khung tên người dùng – Import/TitleBlockImporter.cs] ----
+    /// <summary>Chuyển DWG → DXF ASCII (đường dẫn DWG, đường dẫn DXF ra) → mô tả; null = chưa đăng ký.
+    /// Ứng dụng/kiểm thử đăng ký <c>CadFileReaders.DwgToDxf = KetCauVXT.Dwg.DwgReader.ConvertToDxf;</c> – dùng để đọc thêm ATTDEF, góc xoay/căn lề chữ.</summary>
+    public static Func<string, string, string> DwgToDxf { get; set; }
+    // ---- [hết] ----
+
     /// <summary>Đã có bộ đọc DWG tích hợp.</summary>
     public static bool HasDwgReader => Dwg != null;
 

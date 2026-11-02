@@ -155,6 +155,8 @@ public class QuantityResult
     public List<RebarCategoryRow> RebarByCategory { get; set; } = new();
     public List<MasonryItem> Masonry { get; set; } = new();
     public List<FinishItem> Finishes { get; set; } = new();
+    /// <summary>Cầu thang: xây bậc gạch, ốp bậc, trát (Report/StairQuantity.cs)</summary>
+    public List<StairWorkItem> StairWorks { get; set; } = new();
     public List<MaterialLine> MaterialLines { get; set; } = new();
     public List<MaterialTotal> Materials { get; set; } = new();
     public List<string> Notes { get; set; } = new();
@@ -309,7 +311,7 @@ public static class QuantityCalculator
         // ---------------- móng ----------------
         FoundationQty(p, q, s, qs, cs);
 
-        // ---------------- cầu thang (ước tính) ----------------
+        // ---------------- cầu thang (Report/StairQuantity.cs) ----------------
         if (qs.IncludeStairs) StairQty(p, q, qs, cs);
 
         // ---------------- tường + lanh tô ----------------
@@ -592,35 +594,10 @@ public static class QuantityCalculator
     }
 
     // ==================================================================
-    private static void StairQty(Project p, QuantityResult q, QuantitySettings qs, ConcreteDesignSettings cs)
-    {
-        var stories = p.Stories.OrderBy(t => t.Elevation).ToList();
-        foreach (var op in p.Openings.Where(o => o.Kind == OpeningKind.Stair))
-        {
-            var st = stories.FirstOrDefault(t => t.Name == op.Story);
-            if (st == null) continue;
-            int idx = stories.IndexOf(st);
-            double H = st.Height > 0 ? st.Height : st.Elevation - (idx > 0 ? stories[idx - 1].Elevation : p.BaseElevation);
-            double dx = Math.Abs(op.X1 - op.X0), dy = Math.Abs(op.Y1 - op.Y0);
-            double a = Math.Max(dx, dy), w = Math.Min(dx, dy);
-            if (H <= 0 || a <= 0 || w <= 0) continue;
-            double t = Math.Max(0.06, qs.StairSlabThickness);
-            double wf = w / 2, land = Math.Min(w / 2, a / 2), run = Math.Max(0.5, a - land), rise = H / 2;
-            double lf = Math.Sqrt(run * run + rise * rise);
-            // bậc xây/đổ trên bản thang: n bậc tam giác ½·b·h·rộng, tổng = ½·(chiều dài vế)·(chiều cao 1 bậc)·rộng
-            int nSteps = Math.Max(1, (int)Math.Round(rise / 0.165));
-            double riser = rise / nSteps;
-            double vFlights = 2 * (lf * wf * t + 0.5 * run * riser * wf);
-            double vLand = w * land * t;
-            q.Concrete.Add(new ConcreteItem
-            {
-                Category = QtyCat.Stair, Story = op.Story, Member = $"Thang ô {F2(dx)}×{F2(dy)}", Grade = Grade(cs.ConcreteSlab, "B20"),
-                Dims = $"2 vế {F2(wf)}×{F2(lf)}, {nSteps} bậc/vế cao {Mm(riser)}, bản {Mm(t)}, chiếu nghỉ {F2(w)}×{F2(land)}; H = {F2(H)}",
-                Volume = vFlights + vLand, Formwork = 2 * lf * wf + w * land,
-                FormworkNote = $"đáy 2 vế 2×{F2(lf)}×{F2(wf)} + chiếu nghỉ", Note = "Ước tính sơ bộ (thang 2 vế) – kiểm tra theo bản vẽ cầu thang"
-            });
-        }
-    }
+    /// <summary>Cầu thang: bê tông chỉ gồm bản thang, chiếu nghỉ, dầm cốn, dầm chiếu nghỉ (+ bậc nếu đổ BTCT); bậc xây gạch, ốp bậc,
+    /// trát tính thành công tác riêng (QuantityResult.StairWorks). Lỗ sàn chưa khai báo cầu thang → cầu thang mặc định.</summary>
+    private static void StairQty(Project p, QuantityResult q, QuantitySettings qs, ConcreteDesignSettings cs) =>
+        StairQuantity.Compute(p, q, qs, cs);
 
     // ==================================================================
     private static void WallQty(Project p, QuantityResult q, QuantitySettings qs, ConcreteDesignSettings cs,
@@ -745,6 +722,7 @@ public static class QuantityCalculator
     private static void RebarQty(QuantityResult q, DesignSummary s)
     {
         var rows = s != null ? RebarSchedule.BuildRows(s) : new List<ScheduleRow>();
+        if (s != null) StairSchedule.AppendTo(rows, s);   // thép cầu thang (Drawing/StairDrawing.cs) – không trùng nếu BuildRows đã có
         q.RebarRows = rows;
         q.RebarByDia = RebarSchedule.ByDiameter(rows);
         q.RebarGroups = RebarSchedule.Groups(rows);
@@ -821,6 +799,8 @@ public static class QuantityCalculator
             Add("Hoàn thiện sàn", g.Key, g.Sum(f => f.Area), "m²", g.Key, 1, "m²/m²", "m²");
         foreach (var g in q.Finishes.Where(f => f.Kind == "Bê tông").GroupBy(f => f.Layer))
             Add("Hoàn thiện sàn", g.Key, g.Sum(f => f.Volume), "m³", g.Key, 1, "m³/m³", "m³");
+        // cầu thang: xây bậc, ốp bậc, vữa lót, trát (Report/StairQuantity.cs)
+        StairQuantity.AddMaterials(q, qs, Add, Mortar);
         // cốt thép
         var gr = q.RebarGroups ?? new GroupSummary();
         Add("Cốt thép", "Cốt thép Ø≤10", gr.WeightLe10, "kg", "Thép Ø≤10", 1, "kg/kg", "kg");
@@ -847,7 +827,12 @@ public static class QuantityCalculator
         n.Add("Ván khuôn: cột = chu vi × chiều cao thông thuỷ (đến đáy dầm/đáy sàn); dầm = đáy + 2 thành (thành có sàn trừ chiều dày sàn); sàn = đáy sàn đã trừ dầm, cột; móng = thành bên; giằng móng = 2 thành (đáy trên bê tông lót).");
         n.Add($"Bê tông lót {qs.LeanGrade} dày {Mm(qs.LeanThickness)} mm, mở rộng {Mm(qs.LeanOffset)} mm mỗi phía so với đáy móng, đài, móng băng, giằng móng.");
         n.Add("Tường: chiều dài trừ cột, chiều cao tới đáy dầm (cùng quy ước tính tải tường), trừ diện tích cửa và lanh tô; trát = (diện tích tường − cửa) × số mặt trát.");
-        if (qs.IncludeStairs || qs.IncludeLintels) n.Add("Cầu thang (theo lỗ sàn loại cầu thang) và lanh tô (theo diện tích cửa của tường) là khối lượng ƯỚC TÍNH sơ bộ – kiểm tra theo bản vẽ chi tiết.");
+        if (qs.IncludeStairs)
+        {
+            n.Add("Cầu thang: bê tông chỉ tính bản thang (chiều dài nghiêng × bề rộng × chiều dày), chiếu nghỉ, dầm cốn (nếu có) và dầm chiếu nghỉ; bậc thang xây gạch tính khối xây Σ ½·b·h·bề rộng vế (bậc đổ BTCT liền khối mới tính vào bê tông).");
+            n.Add("Cầu thang: ốp bậc (đá granite / gỗ / gạch) = (số mặt bậc × b + số cổ bậc × h) × bề rộng vế + mặt chiếu nghỉ; trát mặt dưới bản thang và chiếu nghỉ. Lỗ sàn cầu thang chưa khai báo lấy cầu thang 2 vế mặc định – khai báo cầu thang để có số liệu đúng.");
+        }
+        if (qs.IncludeLintels) n.Add("Lanh tô (theo diện tích cửa của tường) là khối lượng ƯỚC TÍNH sơ bộ – kiểm tra theo bản vẽ chi tiết.");
         n.Add("Cốt thép lấy theo bảng thống kê cốt thép của chương trình (chưa kể hao hụt, thép chờ, thép cọc).");
         n.Add("Khối lượng chưa kể hao hụt thi công. " + (string.IsNullOrWhiteSpace(qs.NormSource) ? QuantitySettings.DefaultSource : qs.NormSource));
     }

@@ -64,6 +64,7 @@ public static partial class SheetBuilder
         SheetViewKind.Notes => "Ghi chú chung",
         SheetViewKind.View3D => "Phối cảnh 3D",
         SheetViewKind.RebarShop => "Gia công thép (shop drawing)",   // RebarShopDrawing.cs
+        SheetViewKind.StairDetail => "Chi tiết cầu thang",            // StairDrawing.cs
         _ => k.ToString()
     };
 
@@ -72,7 +73,8 @@ public static partial class SheetBuilder
     {
         SheetViewKind.PlanStory, SheetViewKind.SlabRebarPlan, SheetViewKind.Elevation, SheetViewKind.ForceDiagram,
         SheetViewKind.FoundationPlan, SheetViewKind.FoundationDetail, SheetViewKind.BeamDetail, SheetViewKind.ColumnDetail,
-        SheetViewKind.RebarSchedule, SheetViewKind.Notes, SheetViewKind.RebarShop
+        SheetViewKind.RebarSchedule, SheetViewKind.Notes, SheetViewKind.RebarShop,
+        SheetViewKind.StairDetail
     };
 
     public static string Describe(SheetView v)
@@ -146,11 +148,13 @@ public static partial class SheetBuilder
     public static DxfWriter NotesFigure(string text)
     {
         var w = new DxfWriter(1);
+        // cỡ chữ theo Thiết lập bản vẽ: tiêu đề = 2 × chữ ghi chú, nội dung = 1,2 × chữ ghi chú (mặc định 5 và 3 mm như trước)
+        double nh = w.Th, hh = 2 * nh, bh = 1.2 * nh;
         double y = 0;
-        double tw = DxfWriter.TextWidth("GHI CHÚ CHUNG", 5);
-        w.Text(Lay.Chu, 0, y, 5, "GHI CHÚ CHUNG");
-        w.Line(Lay.Chu, 0, y - 1.2, tw, y - 1.2);
-        y -= 9;
+        double tw = DxfWriter.TextWidth(GeneralNotes.Heading, hh) * w.WidthFactor;
+        w.Text(Lay.Chu, 0, y, hh, GeneralNotes.Heading);
+        w.Line(Lay.Chu, 0, y - 0.24 * hh, tw, y - 0.24 * hh);
+        y -= 1.8 * hh;
         foreach (var raw in (text ?? "").Replace("\r", "").Split('\n'))
         {
             string line = raw.TrimEnd();
@@ -164,12 +168,12 @@ public static partial class SheetBuilder
                     if (cut < 40) cut = 95;
                     part = line.Substring(0, cut);
                 }
-                w.Text(Lay.Chu, 0, y, 3, part);
-                y -= 5.5;
+                w.Text(Lay.Chu, 0, y, bh, part);
+                y -= bh * 5.5 / 3;
                 line = line.Substring(part.Length).TrimStart();
                 if (line.Length > 0) line = "   " + line;
             }
-            if (raw.Trim().Length == 0) y -= 3;
+            if (raw.Trim().Length == 0) y -= bh;
         }
         return w;
     }
@@ -187,7 +191,26 @@ public static partial class SheetBuilder
             "5. Neo, nối cốt thép theo TCVN 5574:2018; mối nối so le, không nối quá 50% số thanh tại một mặt cắt.",
             "6. Thi công và nghiệm thu theo TCVN 4453:1995, TCVN 9115:2019 và các tiêu chuẩn hiện hành.",
             "7. Khi có sai khác giữa bản vẽ và hiện trường phải báo cho đơn vị thiết kế để xử lý."
-        });
+        }.Concat(GeneralNotes.HasCurvedBeams(p)
+            ? new[] { "8. Dầm cong: mặt đứng thể hiện trải theo cung, chiều dài thép dọc tính theo cung; dùng đai kín móc 135°." }
+            : Array.Empty<string>()));
+    }
+
+    /// <summary>Tỷ lệ của loại khung nhìn theo Thiết lập bản vẽ (0 = không có tỷ lệ riêng: bảng, ghi chú, 3D, gia công).</summary>
+    public static double StyleScale(SheetViewKind k, Project p = null)
+    {
+        var st = DrawingStyle.Current;
+        return k switch
+        {
+            SheetViewKind.PlanStory => st.ScaleOf(DrawingKind.FramingPlan),
+            SheetViewKind.SlabRebarPlan => p != null ? SlabDrawing.ChooseScale(p) : st.ScaleOf(DrawingKind.SlabPlan),
+            SheetViewKind.Elevation or SheetViewKind.ForceDiagram => st.ScaleOf(DrawingKind.FrameElevation),
+            SheetViewKind.FoundationPlan => st.ScaleOf(DrawingKind.FoundationPlan),
+            SheetViewKind.FoundationDetail => st.ScaleOf(DrawingKind.FootingDetail),
+            SheetViewKind.BeamDetail => st.ScaleOf(DrawingKind.BeamElevation),
+            SheetViewKind.ColumnDetail => st.ScaleOf(DrawingKind.ColumnElevation),
+            _ => 0
+        };
     }
 
     /// <summary>Danh sách mảnh hình (từ các bộ vẽ sẵn có) cho một khung nhìn.</summary>
@@ -204,7 +227,7 @@ public static partial class SheetBuilder
                 case SheetViewKind.PlanStory:
                 {
                     var st = FindStory(p, par);
-                    if (st != null) res.Add(new Figure(FramingPlan.Build(p, d, st, FramingPlan.SheetScale), st.Name, true));
+                    if (st != null) res.Add(new Figure(FramingPlan.Build(p, d, st, FramingPlan.CurrentScale), st.Name, true));
                     break;
                 }
                 case SheetViewKind.SlabRebarPlan:
@@ -284,6 +307,13 @@ public static partial class SheetBuilder
                     if (d != null && d.All.Any(m => m.Bars.Count > 0)) res.AddRange(RebarShopDrawing.BuildFigures(p, d, par));
                     break;
                 // ---- hết gia công thép ----
+                // ---- cầu thang – StairDrawing.cs ----
+                case SheetViewKind.StairDetail:
+                    if (d?.Stairs != null)
+                        foreach (var sd in d.Stairs.Where(x => par.Length == 0 || x.Name == par))
+                            res.AddRange(StairDrawing.Build(p, d, sd, StairDrawing.SheetScale));
+                    break;
+                // ---- hết cầu thang ----
             }
         }
         catch (Exception ex)
@@ -295,7 +325,7 @@ public static partial class SheetBuilder
         if (res.Count == 0)
         {
             bool needDesign = v.Kind is SheetViewKind.FoundationPlan or SheetViewKind.FoundationDetail or SheetViewKind.BeamDetail
-                or SheetViewKind.ColumnDetail or SheetViewKind.RebarSchedule or SheetViewKind.RebarShop;
+                or SheetViewKind.ColumnDetail or SheetViewKind.RebarSchedule or SheetViewKind.RebarShop or SheetViewKind.StairDetail;
             res.Add(Placeholder(needDesign && d == null
                 ? $"{KindName(v.Kind)}: cần chạy \"Thiết kế BTCT\" trước"
                 : $"{KindName(v.Kind)} {par}: không có dữ liệu"));
@@ -395,7 +425,8 @@ public static partial class SheetBuilder
             string sc = "TL 1/" + Math.Round(lay.EffectiveScale).ToString("0", Inv);
             double cx = v.X + v.W / 2, y = v.Y + ViewPad + 2.5;
             string t = v.Title.Trim();
-            double h = Math.Min(3.5, Math.Max(1.8, (v.W - 2 * ViewPad) / Math.Max(1, (t.Length + sc.Length + 3) * 0.62)));
+            double hMax = c.TitleTh;   // cỡ tên hình theo Thiết lập bản vẽ (mặc định 3,5 mm)
+            double h = Math.Min(hMax, Math.Max(Math.Min(1.8, hMax), (v.W - 2 * ViewPad) / Math.Max(1, (t.Length + sc.Length + 3) * 0.62 * c.WidthFactor)));
             double tw = DxfWriter.TextWidth(t, h), sw = DxfWriter.TextWidth(sc, 0.75 * h);
             double x0 = cx - (tw + 1.5 * h + sw) / 2;
             c.Text(Lay.Chu, x0, y, h, t);
@@ -576,6 +607,10 @@ public static partial class SheetBuilder
                 res.Add("");
                 res.AddRange(RebarShopDrawing.Categories);
                 break;
+            case SheetViewKind.StairDetail:   // cầu thang theo tên
+                res.Add("");
+                if (d?.Stairs != null) res.AddRange(d.Stairs.Select(x => x.Name).Distinct());
+                break;
             default: res.Add(""); break;
         }
         return res;
@@ -731,6 +766,11 @@ public static partial class SheetBuilder
         foreach (var st in stories)
             if (p.Slabs.Any(x => x.Story == st.Name) || (d?.Slabs.Any(x => x.Story == st.Name) ?? false))
                 groups.Add(($"MẶT BẰNG THÉP SÀN TẦNG {st.Name}", L((SheetViewKind.SlabRebarPlan, st.Name))));
+        // ---- cầu thang (StairDrawing.cs) ----
+        if (d?.Stairs != null)
+            foreach (var sd in d.Stairs)
+                groups.Add(($"CHI TIẾT CẦU THANG {sd.Name}", L((SheetViewKind.StairDetail, sd.Name))));
+        // ---- hết cầu thang ----
         if (d != null && d.All.Any(m => m.Bars.Count > 0))
             groups.Add(("THỐNG KÊ CỐT THÉP", L((SheetViewKind.RebarSchedule, ""))));
 

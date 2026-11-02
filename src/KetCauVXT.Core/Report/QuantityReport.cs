@@ -162,6 +162,7 @@ public static class QuantityReport
         if (q.Masonry.Count > 0)
             wd.AddTotal("TỔNG", null, null, null, null, null, null, R(q.Masonry.Sum(m => m.GrossArea), 2), R(q.Masonry.Sum(m => m.OpeningArea), 2), R(q.Masonry.Sum(m => m.LintelArea), 2), R(q.Masonry.Sum(m => m.NetArea), 2), R(q.MasonryTotal), null, R(q.PlasterTotal, 2), (long)Math.Round(q.Masonry.Sum(m => m.Bricks)), R(q.Masonry.Sum(m => m.Mortar)), R(q.Masonry.Sum(m => m.PlasterMortar)));
         sheets[4].Tables.Add(wd);
+        if (q.StairWorks.Count > 0) sheets[4].Tables.Add(StairQuantity.Table(q));   // cầu thang (Report/StairQuantity.cs)
 
         // ---------------- HOÀN THIỆN SÀN ----------------
         sheets[5].Tables.Add(FinishSummary(q));
@@ -207,6 +208,7 @@ public static class QuantityReport
             t.Add(k++, $"Trát tường dày {g.Key * 1000:0} mm", "m²", R(g.Sum(m => m.PlasterArea), 2));
         foreach (var g in q.Finishes.GroupBy(f => f.Layer))
             t.Add(k++, $"Hoàn thiện sàn: {g.Key}", "m²", R(g.Sum(f => f.Area), 2));
+        foreach (var (name, unit, qty) in StairQuantity.SummaryLines(q)) t.Add(k++, name, unit, R(qty, 3));   // cầu thang
         t.AddTotal(null, "Tổng bê tông kết cấu (không kể bê tông lót)", "m³", R(q.ConcreteTotal));
         if (q.RebarTotal > 0) t.AddTotal(null, $"Tổng cốt thép ({q.RebarTotal / Math.Max(q.ConcreteTotal, 1e-9):0} kg/m³ bê tông)", "tấn", R(q.RebarTotal / 1000, 3));
         return t;
@@ -455,6 +457,11 @@ public static class QuantityReport
         {
             d.Heading($"{n}.{k++}. Hoàn thiện sàn", 2);
             WordTable(d, FinishSummary(q), 10);
+        }
+        if (q.StairWorks.Count > 0)
+        {
+            d.Heading($"{n}.{k++}. Cầu thang: xây bậc, ốp bậc, trát", 2);
+            WordTable(d, StairQuantity.Table(q), 9);
         }
         d.Heading($"{n}.{k++}. Tổng hợp vật tư", 2);
         d.Paragraph("Nhu cầu vật tư = khối lượng công tác × định mức. " + (string.IsNullOrWhiteSpace(qs.NormSource) ? QuantitySettings.DefaultSource : qs.NormSource), false, true);

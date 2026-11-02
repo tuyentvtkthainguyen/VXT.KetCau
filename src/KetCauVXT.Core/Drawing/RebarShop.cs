@@ -28,9 +28,16 @@ public sealed class ShopOptions
     public double Deduct90 { get; set; } = 2.0;
     public double Deduct135 { get; set; } = 3.0;
     public double Deduct180 { get; set; } = 4.0;
+    /// <summary>Nguyên tắc nối (RebarPreferences): hệ số α nối vùng kéo, hệ số so le, cho phép ống nối ren, không nối móng</summary>
+    public double LapAlphaTension { get; set; } = 1.2;
+    public double StaggerFactor { get; set; } = 1.3;
+    public bool AllowCoupler { get; set; } = true;
+    public bool NoLapInFootings { get; set; } = true;
 
     public static ShopOptions From(RebarPreferences p) => p == null ? new ShopOptions() : new ShopOptions
     {
+        LapAlphaTension = p.LapAlphaTension > 0 ? p.LapAlphaTension : 1.2, StaggerFactor = Math.Max(p.StaggerFactor, 1.0),
+        AllowCoupler = p.AllowCoupler, NoLapInFootings = p.NoLapInFootings,
         StockLength = p.StockLength > 1 ? p.StockLength : 11.7,
         MinReuseOffcut = p.MinReuseOffcut >= 0 ? p.MinReuseOffcut : 1.0,
         Stagger = p.StaggerSplices,
@@ -142,6 +149,11 @@ public class ShopResult
     public List<ShopBar> Bars { get; } = new();
     public List<DiaCutPlan> Plans { get; } = new();
     public List<string> Messages { get; } = new();
+    /// <summary>Mọi mối nối đã đặt (tâm, chiều dài nối, nhóm so le, vùng cho phép, vi phạm) – toạ độ theo cấu kiện (dầm: dọc dải; cột: cao độ từ chân;
+    /// sàn / thanh có SpliceAllowed: dọc thanh)</summary>
+    public List<SpliceInfo> Splices { get; } = new();
+    /// <summary>Số mối nối nằm trong vùng cấm (không tránh được – phải xử lý)</summary>
+    public int Violations => Splices.Count(x => x.Violation);
     public IEnumerable<string> Categories => Bars.Select(b => b.Category).Distinct();
     public double TotalWeightKg => Math.Round(Bars.Sum(b => b.WeightKg), 2);
 }
@@ -284,27 +296,8 @@ public static class RebarShop
         return null;
     }
 
-    /// <summary>Vùng cho phép đặt mối nối của thanh dầm (m, toạ độ dọc dải tính từ tim gối đầu):
-    /// thép dưới – trong ¼ nhịp thông thuỷ hai bên mỗi gối; thép trên – đoạn giữa nhịp (⅓ … ⅔ L); thép giá – mọi vị trí.</summary>
-    public static List<(double A, double B)> BeamSpliceZones(BeamLineDesign d, bool top, string role)
-    {
-        var z = new List<(double, double)>();
-        if (d?.Spans == null || d.Spans.Count == 0 || (role ?? "").StartsWith("Giá", StringComparison.Ordinal)) return z;
-        double x = 0;
-        for (int k = 0; k < d.Spans.Count; k++)
-        {
-            var sp = d.Spans[k];
-            double lc = sp.Lclear > 0 ? sp.Lclear : sp.L;
-            if (top) z.Add((x + sp.L / 3, x + 2 * sp.L / 3));
-            else
-            {
-                z.Add((x - (k > 0 ? 0 : sp.SupportWidthLeft / 2), x + sp.SupportWidthLeft / 2 + lc / 4));
-                z.Add((x + sp.L - sp.SupportWidthRight / 2 - lc / 4, x + sp.L + sp.SupportWidthRight / 2));
-            }
-            x += sp.L;
-        }
-        return z;
-    }
+    /// <summary>Vùng cho phép nối thép dầm (m, toạ độ dọc dải từ tim gối đầu) theo nguyên tắc nối (SpliceRules.BeamAllowed, dùng tham số của p).</summary>
+    public static List<(double A, double B)> BeamSpliceZones(Project p, BeamLineDesign d, bool top, string role) => SpliceRules.BeamAllowed(p, d, top, role);
 
     // ------------------------------------------------------------------
     // Lập bảng gia công
@@ -370,10 +363,12 @@ public static class RebarShop
                 int mark = Math.Max(g.Key, 0);
                 var rows = new List<ShopBar>();
                 bool splitAny = false;
+                string groupNote = "";
                 foreach (var bm in g)
                 {
                     var steel = bm.Dia < 10 ? small : main;
-                    var pieces = SplitBar(m, bm, conc, steel, stock, o.Stagger, res.Messages, out double lapM);
+                    var pieces = SplitBar(p, o, m, bm, conc, steel, stock, res.Messages, res.Splices, out double lapM, out string spNote);
+                    if (!string.IsNullOrEmpty(spNote)) groupNote = spNote;
                     if (pieces.Count > 1 || pieces.Any(x => x.Count != bm.Count)) splitAny = true;
                     foreach (var pc in pieces)
                     {
@@ -395,6 +390,7 @@ public static class RebarShop
                 if (!splitAny && merged.Count == 1)
                 {
                     merged[0].Label = mark.ToString(DrawUtil.Inv);
+                    if (!string.IsNullOrEmpty(groupNote)) merged[0].Note = groupNote;
                     res.Bars.Add(merged[0]);
                     continue;
                 }
@@ -402,7 +398,7 @@ public static class RebarShop
                 foreach (var r in merged.OrderBy(x => x.Segments.Count > 1 && x.Shape != "Thẳng" ? 0 : 1).ThenByDescending(x => x.CutLengthMm))
                 {
                     r.Label = merged.Count == 1 ? mark.ToString(DrawUtil.Inv) : mark.ToString(DrawUtil.Inv) + (char)('a' + Math.Min(k, 25));
-                    if (r.Spliced) r.Note = "nối chồng ll = " + DxfWriter.N0(r.LapMm) + " mm" + (o.Stagger ? ", so le ≥ 1,3·ll" : "");
+                    if (r.Spliced) r.Note = groupNote;
                     k++;
                     res.Bars.Add(r);
                 }
@@ -428,11 +424,177 @@ public static class RebarShop
         public int Count;
     }
 
-    /// <summary>Tách một BarMark (Count thanh trong 1 cấu kiện) thành các đoạn ≤ cây thương phẩm, nối chồng ll, so le 50%.</summary>
-    internal static List<Piece> SplitBar(MemberDesignBase m, BarMark bm, Material conc, Material steel, double stock, bool stagger,
-        List<string> msgs, out double lap)
+    /// <summary>Kế hoạch mối nối của một thanh dài.</summary>
+    public sealed class SplicePlan
     {
-        lap = 0;
+        /// <summary>Tâm các mối nối (m) theo thứ tự từ đầu thanh</summary>
+        public List<double> Centers { get; } = new();
+        /// <summary>Chiều dài nối tại từng mối (m); 0 = ống nối ren</summary>
+        public List<double> Laps { get; } = new();
+        /// <summary>Mối nối thứ i nằm ngoài vùng cho phép (không tránh được)</summary>
+        public List<bool> Bad { get; } = new();
+        public List<string> Issues { get; } = new();
+        public bool Violation => Bad.Any(x => x);
+        public int Couplers => Laps.Count(l => l <= 1e-9);
+    }
+
+    /// <summary>Lập mối nối cho đoạn thẳng [S; E] (móc đầu legS, cuối legE, m), mỗi đoạn cắt ≤ stock: toàn bộ chiều dài nối ll nằm TRONG một vùng cho phép
+    /// (allowed = null: mọi vị trí; rỗng: không được nối). Không đặt được → ống nối ren tại điểm trong vùng cho phép (allowCoupler),
+    /// cuối cùng mới đặt ngoài vùng và ghi vi phạm kèm đề xuất (dời sang vùng khác / cây dài hơn / ống nối ren).</summary>
+    public static SplicePlan PlanSplices(double S, double E, double legS, double legE, double lap, double stock,
+        IList<(double A, double B)> allowed, bool allowCoupler)
+    {
+        var plan = new SplicePlan();
+        var zones = allowed ?? new List<(double A, double B)> { (S, E) };
+        double a = S;
+        bool first = true;
+        for (int guard = 0; guard < 100; guard++)
+        {
+            double lead = first ? legS : 0;
+            if ((E - a) + lead + legE <= stock + Eps) break;
+            double maxEnd = a + stock - lead;
+            // 1) nối chồng: [c − ll/2; c + ll/2] ⊂ vùng cho phép, đoạn trước ≥ ll
+            double best = double.NaN;
+            foreach (var (za, zb) in zones)
+            {
+                double lo = Math.Max(za + lap / 2, a + 1.5 * lap), hi = Math.Min(Math.Min(zb - lap / 2, maxEnd - lap / 2), E - lap / 2 - 1e-3);
+                if (hi >= lo - Eps && (double.IsNaN(best) || hi > best)) best = hi;
+            }
+            if (!double.IsNaN(best))
+            {
+                best = Math.Round(best, 3);
+                plan.Centers.Add(best); plan.Laps.Add(lap); plan.Bad.Add(false);
+                a = best - lap / 2; first = false;
+                continue;
+            }
+            string sugg = Suggest(zones, a, lead, lap, stock);
+            // 2) ống nối ren tại một điểm trong vùng cho phép
+            if (allowCoupler)
+            {
+                double cb = double.NaN;
+                foreach (var (za, zb) in zones)
+                {
+                    double lo = Math.Max(za, a + lap), hi = Math.Min(Math.Min(zb, maxEnd), E - 1e-3);
+                    if (hi >= lo - Eps && (double.IsNaN(cb) || hi > cb)) cb = hi;
+                }
+                if (!double.IsNaN(cb))
+                {
+                    cb = Math.Round(cb, 3);
+                    plan.Centers.Add(cb); plan.Laps.Add(0); plan.Bad.Add(false);
+                    plan.Issues.Add("vùng cho phép ngắn hơn ll = " + DesignUtil.F(lap * 1000, "0") + " mm – dùng ống nối ren tại x = " + DesignUtil.F(cb, "0.00") + " m" + sugg);
+                    a = cb; first = false;
+                    continue;
+                }
+            }
+            // 3) không có vị trí hợp lệ trong tầm cây thép → vi phạm (ghi rõ, không đặt lặng lẽ)
+            double c = Math.Round(Math.Min(maxEnd - lap / 2, E - lap / 2 - 1e-3), 3);
+            plan.Centers.Add(c); plan.Laps.Add(lap); plan.Bad.Add(true);
+            plan.Issues.Add("VI PHẠM nguyên tắc nối: mối nối tại x = " + DesignUtil.F(c, "0.00") + " m nằm trong vùng cấm" + sugg);
+            a = c - lap / 2; first = false;
+        }
+        return plan;
+    }
+
+    /// <summary>Đề xuất khi không nối chồng được trong tầm cây thép: vùng cho phép kế tiếp đủ dài → cây dài hơn; không có vùng đủ dài → ống nối ren.</summary>
+    private static string Suggest(IList<(double A, double B)> zones, double a, double lead, double lap, double stock)
+    {
+        var ok = zones.Where(z => z.B - z.A >= lap - Eps && z.B - lap / 2 > a + 1.5 * lap).OrderBy(z => z.A).ToList();
+        if (ok.Count == 0) return "; đề xuất: ống nối ren (coupler) – không có vùng cho phép đủ dài cho ll";
+        var z0 = ok[0];
+        double c = Math.Max(z0.A + lap / 2, a + 1.5 * lap);
+        double need = c + lap / 2 - a + lead;
+        return "; đề xuất: dời mối nối sang vùng " + DesignUtil.F(z0.A, "0.00") + "–" + DesignUtil.F(z0.B, "0.00") + " m dùng cây dài ≥ "
+               + DesignUtil.F(RcSection.CeilTo(need, 0.1), "0.0") + " m (cây hiện tại " + DesignUtil.F(stock, "0.0#") + " m), hoặc ống nối ren";
+    }
+
+    /// <summary>Đoạn thẳng (m) của các đoạn cắt theo tâm nối và chiều dài nối từng mối (0 = ống nối ren).</summary>
+    public static List<(double A, double B)> PiecesFromCenters(double S, double E, IList<double> centers, IList<double> laps)
+    {
+        var r = new List<(double, double)>();
+        double a = S;
+        for (int i = 0; i < centers.Count; i++)
+        {
+            double l = i < laps.Count ? laps[i] : 0;
+            r.Add((a, centers[i] + l / 2));
+            a = centers[i] - l / 2;
+        }
+        r.Add((a, E));
+        return r;
+    }
+
+    private static bool InZone(IList<(double A, double B)> zones, double from, double to) =>
+        zones == null || zones.Any(z => from >= z.A - Eps && to <= z.B + Eps);
+
+    /// <summary>Nhóm so le: dời mọi tâm nối của nhóm A đi ±k·ll (vẫn trong vùng cho phép, mỗi đoạn ≤ cây). null nếu không được.</summary>
+    private static List<double> Stagger(SplicePlan pa, double S, double E, double legS, double legE, double lap, double stock, double k,
+        IList<(double A, double B)> zones)
+    {
+        double sd = RcSection.CeilTo(k * lap, 0.01);
+        foreach (double sg in new[] { -1.0, 1.0 })
+        {
+            var cb = pa.Centers.Select(c => Math.Round(c + sg * sd, 3)).ToList();
+            var ps = PiecesFromCenters(S, E, cb, pa.Laps);
+            bool ok = true;
+            for (int i = 0; i < ps.Count && ok; i++)
+            {
+                double len = ps[i].B - ps[i].A + (i == 0 ? legS : 0) + (i == ps.Count - 1 ? legE : 0);
+                if (len > stock + Eps || ps[i].B - ps[i].A < lap - Eps) ok = false;
+            }
+            for (int i = 0; i < cb.Count && ok; i++)
+                if (!InZone(zones, cb[i] - pa.Laps[i] / 2, cb[i] + pa.Laps[i] / 2)) ok = false;
+            if (ok) return cb;
+        }
+        return null;
+    }
+
+    /// <summary>Vùng cho phép nối của thanh theo nguyên tắc (SpliceRules): null = mọi vị trí, rỗng = không được nối.</summary>
+    internal static IList<(double A, double B)> AllowedZones(Project p, MemberDesignBase m, BarMark bm, double S, double E, ShopOptions o, out bool noLap, out string rule)
+    {
+        noLap = false; rule = "";
+        if (bm.SpliceAllowed != null)
+        {
+            var z = new List<(double, double)>();
+            for (int i = 0; i + 1 < bm.SpliceAllowed.Count; i += 2) z.Add((bm.SpliceAllowed[i], bm.SpliceAllowed[i + 1]));
+            rule = "theo bố trí cấu kiện";
+            return z;
+        }
+        switch (m)
+        {
+            case BeamLineDesign bd:
+                rule = bm.IsTop ? "thép trên dầm: ⅓ giữa nhịp" : "thép dưới dầm: từ lcr tới Lo/4 cạnh gối";
+                return SpliceRules.BeamAllowed(p, bd, bm.IsTop, bm.Role);
+            case ColumnDesign cd when cd.Stories.Count > 0:
+            {
+                double zb = cd.Stories[0].ZBottom;
+                rule = "cột: giữa chiều cao thông thuỷ, ngoài nút và lcr";
+                return cd.Stories.Select(st => SpliceRules.ColumnAllowed(p, st, zb)).Where(x => x.B - x.A > 1e-3).Select(x => (x.A, x.B)).ToList();
+            }
+            case KetCauVXT.Design.Foundation.StripFootingDesign sf:
+                rule = bm.IsTop ? "sườn móng băng – thép trên: lcr…L/4 cạnh cột" : "sườn móng băng – thép dưới: ⅓ giữa khoảng cột";
+                return SpliceRules.StripAllowed(sf, bm.IsTop);
+            case FootingDesign:
+            case KetCauVXT.Design.Foundation.PileCapDesign:
+                noLap = o.NoLapInFootings;
+                rule = "móng / đài cọc: không nối";
+                return noLap ? new List<(double, double)>() : null;
+            case SlabDesign:
+            {
+                string r = bm.Role ?? "";
+                if (r.Contains("mũ")) { rule = "thép mũ sàn: không nối trên gối"; return new List<(double, double)>(); }
+                double L = E - S;
+                rule = bm.IsTop ? "lưới trên sàn: ⅓ giữa nhịp" : "lưới dưới sàn: trong L/4 cạnh gối";
+                return bm.IsTop ? new List<(double, double)> { (S + L / 3, E - L / 3) } : new List<(double, double)> { (S, S + L / 4), (E - L / 4, E) };
+            }
+        }
+        return null;
+    }
+
+    /// <summary>Tách một BarMark (Count thanh trong 1 cấu kiện) thành các đoạn ≤ cây thương phẩm theo nguyên tắc nối:
+    /// nối chồng ll trong vùng cho phép, so le ≤ 50% số thanh tại một tiết diện, ống nối ren khi vùng ngắn, ghi vi phạm nếu không tránh được.</summary>
+    internal static List<Piece> SplitBar(Project p, ShopOptions o, MemberDesignBase m, BarMark bm, Material conc, Material steel, double stock,
+        List<string> msgs, List<SpliceInfo> rec, out double lap, out string note)
+    {
+        lap = 0; note = "";
         var segs = bm.Segments?.ToList() ?? new List<double>();
         string shape = bm.Shape ?? "Thẳng";
         var one = new Piece { Shape = shape, Segments = segs.Count > 0 ? segs : new List<double> { DesignUtil.Mm(bm.Length) }, LengthMm = bm.Length * 1000, Count = bm.Count };
@@ -440,33 +602,63 @@ public static class RebarShop
         bool stirrup = shape.StartsWith("Đai", StringComparison.Ordinal) || (bm.Role ?? "").StartsWith("Đai", StringComparison.Ordinal);
         if (bm.Length <= stock + Eps || stirrup) return new List<Piece> { one };
 
-        lap = RebarDetailing.LapLength(conc, steel, bm.Dia);
+        lap = RebarDetailing.LapLength(conc, steel, bm.Dia, true, 1.0, o.LapAlphaTension);
         var (hs, he) = DrawUtil.Hooks(bm);
         double legS = hs / 1000.0, legE = he / 1000.0;
         double straight = Math.Max(bm.Length - legS - legE, 0);
-        double S = m is BeamLineDesign ? Math.Min(bm.Start, bm.End) : 0;
+        bool memberCoords = bm.SpliceAllowed == null && (m is BeamLineDesign || m is ColumnDesign || m is KetCauVXT.Design.Foundation.StripFootingDesign);
+        double S = memberCoords ? Math.Min(bm.Start, bm.End) : 0;
         double E = S + straight;
-        IList<(double A, double B)> zones = m is BeamLineDesign bd ? BeamSpliceZones(bd, bm.IsTop, bm.Role) : new List<(double, double)>();
-        var ca = SpliceCenters(S, E, legS, legE, lap, stock, zones, out bool forced);
-        if (forced) msgs.Add(m.Name + " – số hiệu " + bm.Mark + " (" + bm.Count + "Ø" + bm.Dia + "): có mối nối nằm ngoài vùng khuyến nghị (thép dưới gần gối, thép trên giữa nhịp)");
+        string who = m.Name + " – số hiệu " + bm.Mark + " (" + bm.Count + "Ø" + bm.Dia + ", dài " + DesignUtil.F(bm.Length, "0.00") + " m)";
+        var zones = AllowedZones(p, m, bm, S, E, o, out bool noLap, out string rule);
+        if (noLap)
+        {
+            msgs.Add(who + ": " + rule + " – dài hơn cây " + DesignUtil.F(stock, "0.0#") + " m, đặt cây dài ≥ " + DesignUtil.F(RcSection.CeilTo(bm.Length, 0.1), "0.0") + " m (không nối)");
+            note = "không nối (" + rule + ")";
+            return new List<Piece> { one };
+        }
+        double lapL = lap;
+        var pa = PlanSplices(S, E, legS, legE, lapL, stock, zones, o.AllowCoupler);
+        foreach (var iss in pa.Issues) msgs.Add(who + ": " + iss);
         int nA = bm.Count, nB = 0;
         List<double> cb = null;
-        if (stagger && bm.Count >= 2)
+        if (o.Stagger && bm.Count >= 2 && pa.Centers.Count > 0)
         {
-            cb = StaggerCenters(ca, S, E, legS, legE, lap, stock, zones, out bool outside);
-            if (cb != null)
-            {
-                nA = (bm.Count + 1) / 2; nB = bm.Count - nA;
-                if (outside) msgs.Add(m.Name + " – số hiệu " + bm.Mark + ": mối nối so le nằm ngoài vùng khuyến nghị");
-            }
-            else msgs.Add(m.Name + " – số hiệu " + bm.Mark + " (" + bm.Count + "Ø" + bm.Dia + "): không so le được mối nối trong cây " + DesignUtil.F(stock, "0.0#") + " m – nối 100% tại một tiết diện, cần tăng ll hoặc dùng cây dài hơn");
+            cb = Stagger(pa, S, E, legS, legE, lapL, stock, o.StaggerFactor, zones);
+            if (cb != null) { nA = (bm.Count + 1) / 2; nB = bm.Count - nA; }
+            else msgs.Add(who + ": không so le được ≥ " + DesignUtil.F(o.StaggerFactor, "0.0#") + "·ll trong vùng cho phép – nối 100% thanh tại một tiết diện (thoả hiệp); đề xuất ống nối ren so le hoặc cây dài hơn");
         }
+        void Record(List<double> cs, int count, string grp)
+        {
+            for (int i = 0; i < cs.Count; i++)
+            {
+                double l = pa.Laps[i], c = cs[i];
+                (double, double) zz = (double.NaN, double.NaN);
+                if (zones != null)
+                    foreach (var z in zones)
+                        if (c - l / 2 >= z.A - Eps && c + l / 2 <= z.B + Eps) { zz = (z.A, z.B); break; }
+                rec.Add(new SpliceInfo
+                {
+                    Member = m.Name, Mark = bm.Mark, Dia = bm.Dia, Span = bm.Span, Center = c, Lap = l, Group = grp, Count = count,
+                    ZoneA = zones == null ? S : zz.Item1, ZoneB = zones == null ? E : zz.Item2,
+                    Violation = pa.Bad[i] || (zones != null && double.IsNaN(zz.Item1)),
+                    Note = l <= 1e-9 ? "ống nối ren" : "nối chồng ll = " + DesignUtil.F(l * 1000, "0") + " mm"
+                });
+            }
+        }
+        Record(pa.Centers, nA, "A");
+        if (cb != null) Record(cb, nB, "B");
+        note = (pa.Couplers > 0 ? pa.Couplers + " ống nối ren; " : "") + "nối chồng ll = " + DesignUtil.F(lapL * 1000, "0") + " mm"
+               + (cb != null ? ", so le ≥ " + DesignUtil.F(o.StaggerFactor, "0.0#") + "·ll" : ", không so le")
+               + " tại x = " + string.Join("/", pa.Centers.Select(c => DesignUtil.F(c, "0.00"))) + " m"
+               + (cb != null ? " & " + string.Join("/", cb.Select(c => DesignUtil.F(c, "0.00"))) + " m" : "")
+               + "; vùng cho phép (" + rule + "): " + (zones == null ? "mọi vị trí" : SpliceRules.Describe(zones))
+               + (pa.Violation ? "; VI PHẠM – xem ghi chú" : "");
         var list = new List<Piece>();
-        double lapL = lap; // tham số out không dùng được trong hàm cục bộ
         void AddPieces(List<double> centers, int count)
         {
             if (count <= 0) return;
-            var ps = PiecesFromCenters(S, E, lapL, centers);
+            var ps = PiecesFromCenters(S, E, centers, pa.Laps);
             for (int i = 0; i < ps.Count; i++)
             {
                 double str = ps[i].B - ps[i].A;
@@ -482,7 +674,7 @@ public static class RebarShop
                 list.Add(pc);
             }
         }
-        AddPieces(ca, nA);
+        AddPieces(pa.Centers, nA);
         if (cb != null) AddPieces(cb, nB);
         return list;
     }

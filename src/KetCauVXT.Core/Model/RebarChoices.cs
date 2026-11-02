@@ -60,6 +60,13 @@ public static class RebarZones
     // móng đơn
     public const string FootingL = "Phương L";
     public const string FootingB = "Phương B";
+    // đài cọc (lớp dưới: FootingL / FootingB)
+    public const string CapTopL = "Lớp trên phương L";
+    public const string CapTopB = "Lớp trên phương B";
+    // móng băng (đai sườn: Stirrup, Index = −1)
+    public const string StripRibBottom = "Sườn dưới";
+    public const string StripRibTop = "Sườn trên";
+    public const string StripFlange = "Bản cánh";
 }
 
 /// <summary>Một lựa chọn bố trí thép do người dùng chốt cho một vùng của một cấu kiện vật lý.
@@ -113,6 +120,23 @@ public class RebarPreferences
     public double MinReuseOffcut { get; set; } = 1.0;
     /// <summary>Nối so le: không nối quá 50% số thanh tại một tiết diện (TCVN 5574:2018 mục 10.3.6).</summary>
     public bool StaggerSplices { get; set; } = true;
+    // ---- nguyên tắc nối thép (không nối trong vùng nguy hiểm của cấu kiện) ----
+    /// <summary>Vùng tới hạn dầm lcr = k·h tính từ mép cột (khung không kháng chấn); không nối trong nút khung và vùng này.</summary>
+    public double BeamCriticalFactor { get; set; } = 1.0;
+    /// <summary>Vùng tới hạn dầm khi Project.Seismic.Enabled (khung kháng chấn, TCVN 9386:2012 5.4.3.1.2 kiểu cấp dẻo trung bình/cao): lcr = k·h.</summary>
+    public double BeamCriticalFactorSeismic { get; set; } = 2.0;
+    /// <summary>Vùng tới hạn cột lcr = max(hc; Hthông thuỷ / tỷ số; giá trị nhỏ nhất) ở hai đầu mỗi tầng (TCVN 9386:2012 5.4.3.2.2 / 5.5.3.2.2).</summary>
+    public double ColumnCriticalMin { get; set; } = 0.45;
+    public double ColumnCriticalRatio { get; set; } = 6.0;
+    /// <summary>Hệ số α chiều dài nối chồng (TCVN 5574:2018 10.3.6.2): vùng kéo 1,2 (khi ≤ 50% số thanh nối tại một tiết diện), vùng nén 0,9.</summary>
+    public double LapAlphaTension { get; set; } = 1.2;
+    public double LapAlphaCompression { get; set; } = 0.9;
+    /// <summary>Khoảng so le tối thiểu giữa tâm các mối nối = hệ số × ll (≥ 1,3 – các mối nối gần hơn coi là cùng tiết diện).</summary>
+    public double StaggerFactor { get; set; } = 1.3;
+    /// <summary>Cho phép dùng ống nối ren (coupler) khi vùng cho phép ngắn hơn chiều dài nối chồng.</summary>
+    public bool AllowCoupler { get; set; } = true;
+    /// <summary>Không nối thép móng đơn / đài cọc (dùng thanh nguyên; dài hơn cây thương phẩm → cảnh báo, đặt cây dài).</summary>
+    public bool NoLapInFootings { get; set; } = true;
     /// <summary>Trừ độ dãn dài khi uốn vào chiều dài cắt trên bản vẽ gia công (bản vẽ chi tiết vẫn ghi kích thước ngoài).</summary>
     public bool BendDeduction { get; set; } = true;
     /// <summary>Lượng trừ mỗi chỗ uốn theo góc, tính bằng bội số d (bảng thực hành gia công, xấp xỉ với bán kính uốn trong 2–2,5d):

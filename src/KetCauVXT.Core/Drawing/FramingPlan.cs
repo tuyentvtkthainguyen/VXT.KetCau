@@ -7,15 +7,19 @@ namespace KetCauVXT.Drawing;
 /// dầm (2 nét theo bề rộng tiết diện), tên cấu kiện, tên ô sàn. Toạ độ mặt bằng = toạ độ mô hình × 1000 (mm).</summary>
 public static class FramingPlan
 {
+    /// <summary>Tỷ lệ mặc định của chương trình (tỷ lệ dùng thật: <see cref="CurrentScale"/> theo Thiết lập bản vẽ).</summary>
     public const double SheetScale = 100;
+
+    /// <summary>Mẫu số tỷ lệ mặt bằng kết cấu theo Thiết lập bản vẽ (mặc định 100).</summary>
+    public static double CurrentScale => DrawingStyle.Current.ScaleOf(DrawingKind.FramingPlan);
 
     public static List<Figure> BuildAll(Project p, DesignSummary s)
     {
         var res = new List<Figure>();
         foreach (var st in p.Stories.OrderBy(x => x.Elevation))
         {
-            try { res.Add(new Figure(Build(p, s, st, SheetScale), st.Name, true)); }
-            catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(st.Name, ex, SheetScale), st.Name, true)); }
+            try { res.Add(new Figure(Build(p, s, st, CurrentScale), st.Name, true)); }
+            catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(st.Name, ex, CurrentScale), st.Name, true)); }
         }
         return res;
     }
@@ -24,6 +28,7 @@ public static class FramingPlan
     {
         var w = new DxfWriter(S);
         double th = w.Th;
+        bool ids = w.Style.ShowMemberIds;
         var extent = DrawBase(w, p, st, true);
 
         // nhãn cột
@@ -33,7 +38,9 @@ public static class FramingPlan
         {
             var n = p.Node(f.NodeJ);
             var si = DrawUtil.SectionOf(p, f.Section);
-            string nm = colName.TryGetValue(f.Id, out var cn) ? cn : f.Label;
+            // cột chưa có tên thiết kế: tên phần tử nội bộ chỉ ghi khi bật "Hiện số hiệu phần tử"
+            string nm = colName.TryGetValue(f.Id, out var cn) ? cn : ids ? f.Label : "";
+            if (string.IsNullOrEmpty(nm)) continue;
             double half = Math.Max(si.B, si.H) * 500;
             w.Text(Lay.Chu, n.X * 1000 + half + 0.4 * th, n.Y * 1000 + half + 0.4 * th, th, nm, 0, 0, 0);
         }
@@ -56,7 +63,8 @@ public static class FramingPlan
         foreach (var f in p.Frames.Where(fe => fe.Kind == FrameKind.Beam && fe.Story == st.Name && !labeled.Contains(fe.Id)))
         {
             var si = DrawUtil.SectionOf(p, f.Section);
-            BeamLabel(w, p, f, $"{f.Label} ({DxfWriter.N0(si.B * 1000)}x{DxfWriter.N0(si.H * 1000)})", si.B);
+            string sz = $"({DxfWriter.N0(si.B * 1000)}x{DxfWriter.N0(si.H * 1000)})";
+            BeamLabel(w, p, f, ids ? $"{f.Label} {sz}" : sz, si.B);
         }
 
         // tên ô sàn
@@ -198,7 +206,7 @@ public static class FramingPlan
         if (box.IsEmpty) return;
         double ext = 6 * th;
         double xL = box.X1 - ext, xR = box.X2 + ext, yB = box.Y1 - ext, yT = box.Y2 + ext;
-        double r = 1.5 * th;
+        double r = w.BubbleR;
         foreach (var g in gx)
         {
             double x = g.Coord * 1000;
@@ -213,6 +221,7 @@ public static class FramingPlan
             w.GridBubble(xL - r, y, g.Name);
             w.GridBubble(xR + r, y, g.Name);
         }
+        if (!w.Style.ShowGridDims) return;   // tắt kích thước lưới trục (Thiết lập bản vẽ)
         double yd1 = yB - 2 * r - 2.5 * th, yd2 = yd1 - 2.5 * th;
         if (gx.Count > 1)
         {

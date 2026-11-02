@@ -14,7 +14,8 @@ public enum SheetViewKind
     RebarSchedule,    // bảng thống kê thép
     Notes,            // ghi chú chung (Param = văn bản)
     View3D,           // ảnh phối cảnh 3D
-    RebarShop         // bản vẽ gia công thép – shop drawing (Param = "", "Dầm", "Cột", "Sàn", "Móng") – thêm cuối để giữ số thứ tự JSON cũ
+    RebarShop,        // bản vẽ gia công thép – shop drawing (Param = "", "Dầm", "Cột", "Sàn", "Móng") – thêm cuối để giữ số thứ tự JSON cũ
+    StairDetail       // chi tiết cầu thang: mặt bằng, mặt cắt vế, bố trí thép, thống kê (Param = tên cầu thang, "" = tất cả) – Drawing/StairDrawing.cs
 }
 
 /// <summary>Khung nhìn trên tờ in: vị trí/kích thước theo mm giấy, tỷ lệ 1/Scale.</summary>
@@ -130,6 +131,14 @@ public class TitleBlockInfo
     public string LogoData { get; set; } = "";
     /// <summary>Tiền tố đánh số tờ</summary>
     public string NumberPrefix { get; set; } = "KC-";
+    // ---- [Mẫu định dạng + khung tên người dùng – Model/TitleBlockDef.cs, Model/Template.cs] ----
+    /// <summary>Chủ trì thiết kế (trường {CHU_TRI} của khung tên người dùng)</summary>
+    public string Leader { get; set; } = "";
+    /// <summary>Trường tự đặt của khung tên người dùng: khoá (vd. SO_HOP_DONG) → giá trị, thay cho {SO_HOP_DONG}</summary>
+    public Dictionary<string, string> Extra { get; set; } = new();
+    /// <summary>Khung tên tải lên từ file DWG/DXF/ảnh của người dùng; null = khung tên mặc định của chương trình.</summary>
+    public TitleBlockDef Custom { get; set; }
+    // ---- [hết] ----
 }
 
 /// <summary>Tờ bản vẽ: khổ giấy, khung tên, danh sách khung nhìn.</summary>

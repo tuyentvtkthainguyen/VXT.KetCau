@@ -238,7 +238,8 @@ internal static class SheetRender
         dc.PushTransform(new TranslateTransform(at.X, at.Y));
         bool rot = Math.Abs(pr.Rot) > 1e-9;
         if (rot) dc.PushTransform(new RotateTransform(-pr.Rot));
-        dc.PushTransform(new ScaleTransform(1 / up, 1 / up));
+        double wf = pr.WF > 0 ? pr.WF : 1;   // hệ số rộng chữ (Thiết lập bản vẽ) – khớp DXF
+        dc.PushTransform(new ScaleTransform(wf / up, 1 / up));
         dc.DrawText(ft, new Point(dx, dy));
         dc.Pop();
         if (rot) dc.Pop();

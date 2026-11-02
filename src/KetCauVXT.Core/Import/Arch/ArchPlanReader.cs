@@ -956,7 +956,7 @@ public static class ArchPlanReader
         d.Info.Add($"Nhận diện {plans.Count} mặt bằng: " + string.Join("; ", plans.Select(p => $"[{(p.IsRoofPlan ? "Mái" : p.IsTum ? "Tum" : "T" + p.FloorNo)}] {p.Title}")));
         foreach (var p in plans)
             d.Info.Add($"  {p.Title}: {p.Walls.Count} đoạn tường ({p.Walls.Sum(w => w.Length):0.0} m), {p.Grids.Count} trục, {p.Columns.Count} cột KT, {p.Rooms.Count} phòng, {p.Openings.Count} cửa, {p.Zones.Count} vùng đặc biệt"
-                       + (p.Walls.Any(w => w.IsDiagonal) ? $" (gồm {p.Walls.Count(w => w.IsDiagonal)} tường xiên)" : "") + (p.Walls.Any(w => w.IsCurved) ? $" (gồm {p.Walls.Count(w => w.IsCurved)} tường cong)" : "")
+                       + (p.Walls.Any(w => w.IsDiagonal) ? $", {p.Walls.Count(w => w.IsDiagonal)} tường xiên" : "") + (p.Walls.Any(w => w.IsCurved) ? $", {p.Walls.Count(w => w.IsCurved)} tường cong" : "")
                        + (p.Columns.Any(c => Math.Abs(c.Angle) > 1e-9) ? $", {p.Columns.Count(c => Math.Abs(c.Angle) > 1e-9)} cột xoay" : "") + (p.Columns.Any(c => c.Diameter > 0) ? $", {p.Columns.Count(c => c.Diameter > 0)} cột tròn" : "")
                        + (p.Beams.Count > 0 ? $", {p.Beams.Count} dầm vẽ sẵn" : "") + (p.SlabRegions.Count > 0 ? $", {p.SlabRegions.Count(r => !r.IsOpening)} vùng sàn + {p.SlabRegions.Count(r => r.IsOpening)} lỗ sàn vẽ sẵn" : ""));
     }
@@ -1094,7 +1094,245 @@ public static class ArchPlanReader
         }
     }
 
-@@HELPERS@@
+    // ------------------------------------------------------------------
+    // Tường xiên, tường cong, cột xoay / cột tròn
+    // ------------------------------------------------------------------
+    /// <summary>Một cung tròn trên layer tường: tâm, bán kính, góc đầu A0 và góc quét Sw (rad, ngược chiều kim đồng hồ, &gt; 0).</summary>
+    private readonly record struct ArcPiece(double Cx, double Cy, double R, double A0, double Sw, string Layer);
+
+    /// <summary>Các đoạn thẳng của thực thể, bỏ các đoạn thuộc cung tròn (DxfEntity.Arcs) – cung được xử lý riêng thành tường cong.</summary>
+    private static IEnumerable<Seg2> StraightSegments(IEnumerable<DxfEntity> ents)
+    {
+        foreach (var e in ents)
+        {
+            if (e.Type == DxfEntityType.Text || e.Type == DxfEntityType.Circle) continue;
+            var pts = e.Points;
+            int n = pts.Count;
+            var spans = ArcSpansOf(e);
+            HashSet<int> onArc = null;
+            if (spans.Count > 0)
+            {
+                onArc = new HashSet<int>();
+                foreach (var sp in spans) for (int k = sp.I0; k < sp.I1 && k < n; k++) onArc.Add(k);
+            }
+            int segs = e.Type == DxfEntityType.Polyline && e.Closed && n > 2 ? n : n - 1;
+            for (int k = 0; k < segs; k++)
+            {
+                if (onArc != null && onArc.Contains(k)) continue;
+                var a = pts[k]; var b = pts[(k + 1) % n];
+                yield return new Seg2(a.X, a.Y, b.X, b.Y);
+            }
+        }
+    }
+
+    /// <summary>Cung tròn của thực thể: lấy từ DxfEntity.Arcs; thực thể ARC (vd. từ add-in AutoCAD) không có thông tin cung → dựng đường tròn qua các điểm chia.</summary>
+    private static List<DxfArcSpan> ArcSpansOf(DxfEntity e)
+    {
+        var res = new List<DxfArcSpan>();
+        if (e.Type != DxfEntityType.Polyline || e.Points.Count < 2) return res;
+        if (e.Arcs != null)
+        {
+            foreach (var a in e.Arcs) if (a != null && a.I0 >= 0 && a.I1 > a.I0 && a.I1 <= e.Points.Count && a.R > 1e-6) res.Add(a);
+            return res;
+        }
+        if (e.SourceType == "ARC" && e.Points.Count >= 3)
+        {
+            var p = e.Points;
+            if (CadCurves.CircleThrough(p[0], p[p.Count / 2], p[^1], out double cx, out double cy, out double r) && r > 1e-3
+                && p.All(q => Math.Abs(Math.Sqrt((q.X - cx) * (q.X - cx) + (q.Y - cy) * (q.Y - cy)) - r) <= Math.Max(1e-3, 1e-4 * r)))
+                res.Add(new DxfArcSpan { I0 = 0, I1 = p.Count - 1, Cx = cx, Cy = cy, R = r });
+        }
+        return res;
+    }
+
+    /// <summary>Cung tròn (góc đầu, góc quét dương ngược chiều kim đồng hồ) của từng đoạn cung trong thực thể.</summary>
+    private static List<ArcPiece> ArcPieces(DxfEntity e)
+    {
+        var res = new List<ArcPiece>();
+        var pts = e.Points;
+        int n = pts.Count;
+        foreach (var sp in ArcSpansOf(e))
+        {
+            double prev = Math.Atan2(pts[sp.I0].Y - sp.Cy, pts[sp.I0].X - sp.Cx), a0 = prev, sw = 0;
+            for (int k = sp.I0 + 1; k <= sp.I1; k++)
+            {
+                var q = pts[k % n];
+                double a = Math.Atan2(q.Y - sp.Cy, q.X - sp.Cx), d = a - prev;
+                while (d > Math.PI) d -= 2 * Math.PI;
+                while (d <= -Math.PI) d += 2 * Math.PI;
+                sw += d; prev = a;
+            }
+            if (Math.Abs(sw) < 1e-6) continue;
+            if (sw < 0) { a0 += sw; sw = -sw; }
+            res.Add(new ArcPiece(sp.Cx, sp.Cy, sp.R, a0, Math.Min(sw, 2 * Math.PI), e.Layer));
+        }
+        return res;
+    }
+
+    /// <summary>Tường cong tim bán kính R từ góc a0, quét sw (rad, &gt; 0): chia thành các đoạn ≤ 180° (để dầm cong có độ vồng ≤ dây cung).</summary>
+    private static List<ArchWall> CurvedWalls(double cx, double cy, double r, double a0, double sw, double t, double opening, string layer)
+    {
+        var res = new List<ArchWall>();
+        if (r <= 1e-6 || sw <= 1e-6) return res;
+        int k = Math.Max(1, (int)Math.Ceiling(sw / Math.PI - 1e-9));
+        for (int i = 0; i < k; i++)
+        {
+            double s0 = a0 + sw * i / k, s1 = a0 + sw * (i + 1) / k, sm = (s0 + s1) / 2;
+            double ax = cx + r * Math.Cos(s0), ay = cy + r * Math.Sin(s0), bx = cx + r * Math.Cos(s1), by = cy + r * Math.Sin(s1);
+            double sag = CurvedBeam.SagittaThrough(ax, ay, bx, by, cx + r * Math.Cos(sm), cy + r * Math.Sin(sm));
+            if (Math.Abs(sag) < 1e-6) continue;
+            res.Add(new ArchWall { Ax = ax, Ay = ay, Bx = bx, By = by, Sagitta = sag, Thickness = t, OpeningLength = opening / k, Layer = layer ?? "" });
+        }
+        return res;
+    }
+
+    /// <summary>Ghép cặp cung đồng tâm (tâm lệch ≤ 20 mm + 0,2 % R) có bán kính chênh minT…maxT → tường cong tim bán kính trung bình,
+    /// trên phần góc chung của hai cung; các đoạn cùng đường tròn cách nhau ≤ 1,6 m (theo cung) được nối, khe tính là lỗ cửa.</summary>
+    private static List<ArchWall> PairArcs(List<ArcPiece> arcs, double minT, double maxT, out List<ArcPiece> unpaired)
+    {
+        var pieces = new List<(double cx, double cy, double r, double lo, double hi, double t, string layer)>();
+        var usedArc = new bool[arcs.Count];
+        var usedPair = new HashSet<(int, int)>();
+        for (int i = 0; i < arcs.Count; i++)
+        {
+            var ai = arcs[i];
+            int best = -1; double bestScore = double.MaxValue, bLo = 0, bHi = 0;
+            for (int j = 0; j < arcs.Count; j++)
+            {
+                if (j == i) continue;
+                var aj = arcs[j];
+                double dc = Math.Sqrt((ai.Cx - aj.Cx) * (ai.Cx - aj.Cx) + (ai.Cy - aj.Cy) * (ai.Cy - aj.Cy));
+                if (dc > 0.02 + 0.002 * Math.Max(ai.R, aj.R)) continue;
+                double d = Math.Abs(ai.R - aj.R);
+                if (d < minT || d > maxT) continue;
+                // phần góc chung (thử dời góc ±2π)
+                double lo = 0, hi = 0, ov = -1;
+                for (int k = -1; k <= 1; k++)
+                {
+                    double s0 = aj.A0 + 2 * Math.PI * k;
+                    double l = Math.Max(ai.A0, s0), h = Math.Min(ai.A0 + ai.Sw, s0 + aj.Sw);
+                    if (h - l > ov) { ov = h - l; lo = l; hi = h; }
+                }
+                double rm = (ai.R + aj.R) / 2;
+                if (ov * rm < Math.Min(0.3, 0.5 * Math.Min(ai.Sw * ai.R, aj.Sw * aj.R))) continue;
+                double score = StdThick.Min(t => Math.Abs(t - d)) - 0.001 * d;
+                if (score < bestScore) { bestScore = score; best = j; bLo = lo; bHi = hi; }
+            }
+            if (best < 0) continue;
+            usedArc[i] = usedArc[best] = true;
+            if (!usedPair.Add((Math.Min(i, best), Math.Max(i, best)))) continue;
+            var ab = arcs[best];
+            pieces.Add(((ai.Cx + ab.Cx) / 2, (ai.Cy + ab.Cy) / 2, (ai.R + ab.R) / 2, bLo, bHi, Math.Round(Math.Abs(ai.R - ab.R), 3), ai.Layer));
+        }
+        unpaired = arcs.Where((a, k) => !usedArc[k]).ToList();
+
+        // nối các đoạn cùng đường tròn, cùng chiều dày
+        var res = new List<ArchWall>();
+        var groups = new List<List<(double cx, double cy, double r, double lo, double hi, double t, string layer)>>();
+        foreach (var pc in pieces)
+        {
+            var g = groups.FirstOrDefault(q => Math.Abs(q[0].cx - pc.cx) < 0.02 && Math.Abs(q[0].cy - pc.cy) < 0.02 && Math.Abs(q[0].r - pc.r) < 0.03 && Math.Abs(q[0].t - pc.t) < 0.03);
+            if (g == null) groups.Add(new List<(double cx, double cy, double r, double lo, double hi, double t, string layer)> { pc }); else g.Add(pc);
+        }
+        foreach (var g in groups)
+        {
+            var f = g[0];
+            // đưa góc về cùng vòng với đoạn đầu
+            var iv = g.Select(q =>
+            {
+                double sh = Math.Round((f.lo - q.lo) / (2 * Math.PI)) * 2 * Math.PI;
+                return (lo: q.lo + sh, hi: q.hi + sh);
+            }).OrderBy(q => q.lo).ToList();
+            double r = g.Average(q => q.r), cx = g.Average(q => q.cx), cy = g.Average(q => q.cy), t = g.Max(q => q.t);
+            double lo0 = iv[0].lo, hi0 = iv[0].hi, open = 0;
+            for (int k = 1; k <= iv.Count; k++)
+            {
+                if (k < iv.Count)
+                {
+                    double gap = iv[k].lo - hi0;
+                    if (gap <= 1e-6) { hi0 = Math.Max(hi0, iv[k].hi); continue; }
+                    if (gap * r <= 1.6) { open += gap * r; hi0 = Math.Max(hi0, iv[k].hi); continue; }
+                }
+                res.AddRange(CurvedWalls(cx, cy, r, lo0, Math.Min(hi0 - lo0, 2 * Math.PI), t, open, f.layer));
+                if (k < iv.Count) { lo0 = iv[k].lo; hi0 = iv[k].hi; open = 0; }
+            }
+        }
+        return res;
+    }
+
+    /// <summary>Nhóm nét xiên theo góc phương (độ, 1…179), các nét trong nhóm lệch nhau ≤ tol.</summary>
+    private static List<List<(double ang, Seg2 s)>> GroupByAngle(List<(double ang, Seg2 s)> segs, double tol)
+    {
+        var res = new List<List<(double ang, Seg2 s)>>();
+        foreach (var q in segs.OrderBy(q => q.ang))
+        {
+            if (res.Count > 0 && q.ang - res[^1][0].ang <= tol) res[^1].Add(q);
+            else res.Add(new List<(double ang, Seg2 s)> { q });
+        }
+        return res;
+    }
+
+    /// <summary>Đổi tường ghép trong hệ toạ độ quay (u = (ux, uy) dọc tường, n = (−uy, ux)) về hệ toạ độ bản vẽ (sửa tại chỗ).</summary>
+    private static ArchWall ToWorld(ArchWall w, double ux, double uy)
+    {
+        double a = w.Ax, b = w.Bx, c = w.Ay;
+        w.Ax = a * ux - c * uy; w.Ay = a * uy + c * ux;
+        w.Bx = b * ux - c * uy; w.By = b * uy + c * ux;
+        return w;
+    }
+
+    /// <summary>Đa tuyến kín là hình chữ nhật xoay (lệch trục &gt; 0,5°): tâm, kích thước theo trục riêng (b theo phương góc ang), góc ang ∈ (−45°, 45°].</summary>
+    internal static bool RotatedRect(List<(double X, double Y)> pts, out double cx, out double cy, out double b, out double h, out double ang)
+    {
+        cx = cy = b = h = ang = 0;
+        if (pts == null || pts.Count < 4) return false;
+        var q = ImportGeometry.RemoveCollinear(pts.ToList(), 0.002);
+        if (q.Count > 4)
+        {
+            // bỏ đỉnh trùng (đa tuyến khép bằng đỉnh lặp)
+            var r2 = new List<(double X, double Y)>();
+            foreach (var p in q) if (r2.Count == 0 || Math.Abs(r2[^1].X - p.X) > 1e-6 || Math.Abs(r2[^1].Y - p.Y) > 1e-6) r2.Add(p);
+            if (r2.Count > 4 && Math.Abs(r2[0].X - r2[^1].X) < 1e-6 && Math.Abs(r2[0].Y - r2[^1].Y) < 1e-6) r2.RemoveAt(r2.Count - 1);
+            q = r2;
+        }
+        if (q.Count != 4) return false;
+        for (int i = 0; i < 4; i++)
+        {
+            var p0 = q[i]; var p1 = q[(i + 1) % 4]; var p2 = q[(i + 2) % 4];
+            double ux = p1.X - p0.X, uy = p1.Y - p0.Y, vx = p2.X - p1.X, vy = p2.Y - p1.Y;
+            double lu = Math.Sqrt(ux * ux + uy * uy), lv = Math.Sqrt(vx * vx + vy * vy);
+            if (lu < 1e-6 || lv < 1e-6 || Math.Abs(ux * vx + uy * vy) > 0.01 * lu * lv) return false;   // không vuông góc
+        }
+        double e0x = q[1].X - q[0].X, e0y = q[1].Y - q[0].Y;
+        double a = Math.Atan2(e0y, e0x) * 180 / Math.PI;
+        double l0 = Math.Sqrt(e0x * e0x + e0y * e0y), l1 = Math.Sqrt((q[2].X - q[1].X) * (q[2].X - q[1].X) + (q[2].Y - q[1].Y) * (q[2].Y - q[1].Y));
+        // quy góc về (−45°, 45°]; quay 90° thì đổi cạnh
+        while (a > 45) { a -= 90; (l0, l1) = (l1, l0); }
+        while (a <= -45) { a += 90; (l0, l1) = (l1, l0); }
+        if (Math.Abs(a) <= 0.5) return false;   // gần như song song trục → xử lý như cột thường
+        cx = q.Average(p => p.X); cy = q.Average(p => p.Y);
+        b = l0; h = l1; ang = a;
+        return true;
+    }
+
+    /// <summary>Cạnh cột vuông cùng diện tích với cột tròn đường kính D: a = D·√π/2.</summary>
+    public static double RoundColumnSide(double diameter) => diameter * Math.Sqrt(Math.PI) / 2;
+
+    /// <summary>Tia ngang (alongX = true, từ (cx, cy) về phía sgn) hoặc tia đứng cắt tường xiên.</summary>
+    private static bool DiagRayHit(ArchWall w, double cx, double cy, int sgn, bool alongX)
+    {
+        if (!w.IsDiagonal) return false;
+        if (alongX)
+        {
+            if (Math.Abs(w.By - w.Ay) < 1e-9 || cy < Math.Min(w.Ay, w.By) - 0.02 || cy > Math.Max(w.Ay, w.By) + 0.02) return false;
+            double x = w.Ax + (cy - w.Ay) * (w.Bx - w.Ax) / (w.By - w.Ay);
+            return sgn > 0 ? x > cx : x < cx;
+        }
+        if (Math.Abs(w.Bx - w.Ax) < 1e-9 || cx < Math.Min(w.Ax, w.Bx) - 0.02 || cx > Math.Max(w.Ax, w.Bx) + 0.02) return false;
+        double y = w.Ay + (cx - w.Ax) * (w.By - w.Ay) / (w.Bx - w.Ax);
+        return sgn > 0 ? y > cy : y < cy;
+    }
+
     private static double SegDist(Seg2 a, Seg2 b)
     {
         if (ImportGeometry.Intersect(a, b, out _, out _, 0)) return 0;

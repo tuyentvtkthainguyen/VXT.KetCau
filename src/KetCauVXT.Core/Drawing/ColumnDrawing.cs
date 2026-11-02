@@ -7,8 +7,14 @@ namespace KetCauVXT.Drawing;
 /// Toạ độ mặt đứng: x = 0 tại mép trái cột, y = 0 tại chân cột (cao độ Stories[0].ZBottom), mm.</summary>
 public static class ColumnDrawing
 {
+    /// <summary>Tỷ lệ mặc định của chương trình (tỷ lệ dùng thật: <see cref="CurrentScale"/> theo Thiết lập bản vẽ).</summary>
     public const double SheetScale = 50;
     public const double SectionScale = 25;
+
+    /// <summary>Mẫu số tỷ lệ mặt đứng cột theo Thiết lập bản vẽ (mặc định 50).</summary>
+    public static double CurrentScale => DrawingStyle.Current.ScaleOf(DrawingKind.ColumnElevation);
+    /// <summary>Mẫu số tỷ lệ mặt cắt cột theo Thiết lập bản vẽ (mặc định 25).</summary>
+    public static double CurrentSectionScale => DrawingStyle.Current.ScaleOf(DrawingKind.MemberSection);
 
     public static List<Figure> BuildAll(Project p, IEnumerable<ColumnDesign> cols)
     {
@@ -16,7 +22,7 @@ public static class ColumnDrawing
         foreach (var c in cols)
         {
             try { res.AddRange(Build(p, c)); }
-            catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(c.Name, ex, SheetScale), c.Name, true)); }
+            catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(c.Name, ex, CurrentScale), c.Name, true)); }
         }
         return res;
     }
@@ -58,9 +64,9 @@ public static class ColumnDrawing
 
     public static List<Figure> Build(Project p, ColumnDesign c)
     {
-        double S = SheetScale;
+        double S = CurrentScale;
         var w = new DxfWriter(S);
-        double th = w.Th;
+        double th = w.Th, tg = w.TagTh;
         var figs = new List<Figure>();
         var stories = c.Stories.OrderBy(s => s.ZBottom).ToList();
         if (stories.Count == 0) return figs;
@@ -154,12 +160,12 @@ public static class ColumnDrawing
             double a = z.From * 1000, e = z.To * 1000;
             w.Dim(xChain, a, xChain, e, 0);
             string t = DrawUtil.StirrupTag(z.Dia, z.Spacing);
-            double tw = DxfWriter.TextWidth(t, th) + 2.4 * w.MarkR;
+            double tw = DxfWriter.TextWidth(t, tg) * w.WidthFactor + 2.4 * w.MarkR;
             double cy = (a + e) / 2 - tw / 2;
             if (e - a > tw * 0.6)
             {
-                w.Text(Lay.Chu, xChain + 1.8 * th, cy, th, t, 90, 0, 0);
-                if (z.Mark > 0) w.MarkCircle(xChain + 1.4 * th, cy + DxfWriter.TextWidth(t, th) + 1.3 * w.MarkR, z.Mark, 90);
+                w.Text(Lay.Chu, xChain + 1.8 * th, cy, tg, t, 90, 0, 0);
+                if (z.Mark > 0) w.MarkCircle(xChain + 1.4 * th, cy + DxfWriter.TextWidth(t, tg) * w.WidthFactor + 1.3 * w.MarkR, z.Mark, 90);
             }
         }
 
@@ -254,7 +260,8 @@ public static class ColumnDrawing
     private static DxfWriter Section(SecType t, double cover, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = S / SectionScale;
+        double secScale = CurrentSectionScale;
+        double th = w.Th, k = S / secScale;
         var s = t.Story;
         double b = s.B * 1000, h = s.H * 1000, B = b * k, H = h * k;
         w.Rect(Lay.BeTong, 0, 0, B, H);
@@ -329,11 +336,11 @@ public static class ColumnDrawing
         w.Polyline(Lay.Dai, new List<(double X, double Y)> { (ox, 0), (ox + sb, 0), (ox + sb, shh), (ox, shh) }, true, 0.25 * S);
         w.Line(Lay.Dai, ox, shh - 0.25 * hk, ox + 0.7 * hk, shh - 0.95 * hk);
         w.Line(Lay.Dai, ox + 0.25 * hk, shh, ox + 0.95 * hk, shh - 0.7 * hk);
-        w.Text(Lay.Chu, ox + sb / 2, -1.2 * th, th, DxfWriter.N0(b - 2 * cover + ds), 0, 1, 3);
-        w.Text(Lay.Chu, ox + sb + 0.8 * th, shh / 2, th, DxfWriter.N0(h - 2 * cover + ds), 90, 1, 3);
+        w.Text(Lay.Chu, ox + sb / 2, -1.2 * th, w.DimTh, DxfWriter.N0(b - 2 * cover + ds), 0, 1, 3);
+        w.Text(Lay.Chu, ox + sb + 0.8 * th, shh / 2, w.DimTh, DxfWriter.N0(h - 2 * cover + ds), 90, 1, 3);
         if (t.Zone != null && t.Zone.Mark > 0) w.MarkCircle(ox + sb / 2, shh / 2, t.Zone.Mark);
 
-        w.Title(B / 2, w.Extents.Y1 - 1.2 * th, $"{t.Num}-{t.Num}", DrawUtil.ScaleText(SectionScale));
+        w.Title(B / 2, w.Extents.Y1 - 1.2 * th, $"{t.Num}-{t.Num}", DrawUtil.ScaleText(secScale), true);
         return w;
     }
 }
