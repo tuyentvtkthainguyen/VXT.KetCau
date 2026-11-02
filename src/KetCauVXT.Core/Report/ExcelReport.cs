@@ -349,6 +349,8 @@ public static class ExcelReport
         public int Total => Members * PerMember;
         public double TotalLengthM => Total * LengthMm / 1000.0;
         public double WeightKg => 0.00617 * Dia * Dia * TotalLengthM;
+        /// <summary>Tên cấu kiện kèm số lượng "D2-1 (SL=2)".</summary>
+        public string MemberLabel => KetCauVXT.Drawing.RebarSchedule.MemberLabel(Member, Members);
     }
 
     /// <summary>Lập các dòng thống kê thép từ BarMark của mọi cấu kiện. KL = 0.00617·d²·L (kg, d mm, L m).</summary>
@@ -385,7 +387,7 @@ public static class ExcelReport
         sh.AddRow("Cấu kiện", "Loại", "Số hiệu", "Vai trò", "Hình dạng", "Ø (mm)", "Chiều dài 1 thanh (mm)", "Số cấu kiện",
             "Số thanh / 1 CK", "Tổng số thanh", "Tổng chiều dài (m)", "Khối lượng (kg)");
         foreach (var rw in rows)
-            sh.AddRow(rw.Member, rw.Type, rw.Mark, rw.Role, rw.Shape, rw.Dia, rw.LengthMm, rw.Members, rw.PerMember, rw.Total, rw.TotalLengthM, rw.WeightKg);
+            sh.AddRow(rw.MemberLabel, rw.Type, rw.Mark, rw.Role, rw.Shape, rw.Dia, rw.LengthMm, rw.Members, rw.PerMember, rw.Total, rw.TotalLengthM, rw.WeightKg);
         sh.SetColumnWidths(12, 8, 8, 16, 10, 8, 14, 10, 12, 12, 14, 14);
         if (rows.Count == 0) { sh.AddRow("Chưa có dữ liệu bố trí thép (chạy thiết kế trước)."); return; }
 

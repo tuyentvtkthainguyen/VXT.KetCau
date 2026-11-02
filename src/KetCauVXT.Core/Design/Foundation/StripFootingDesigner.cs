@@ -263,8 +263,19 @@ public static class StripFootingDesigner
 
         double overhang = Math.Max(fs.StripOverhang, cols.Max(c => c.Size) / 2 + 0.10);
         double start = cols[0].S - overhang, end = cols[^1].S + overhang;
-        double Ls = end - start;
         double cLine = cols.Average(c => alongX ? c.Node.Y : c.Node.X);
+        // [MóngLệchTâm] đầu dải không vượt ranh giới đất; dải nằm trên ranh giới → bản cánh một phía (móng băng lệch tâm)
+        var (fSide, fLim, fName) = EccentricFooting.StripSide(p, alongX, cLine, cols.Max(c => c.Width));
+        if (EccentricFooting.Active(p))
+        {
+            var l0 = EccentricFooting.Limits(p, cols[0].Node.X, cols[0].Node.Y, alongX ? cols[0].Size : cols[0].Width, alongX ? cols[0].Width : cols[0].Size);
+            var l1 = EccentricFooting.Limits(p, cols[^1].Node.X, cols[^1].Node.Y, alongX ? cols[^1].Size : cols[^1].Width, alongX ? cols[^1].Width : cols[^1].Size);
+            double lo = alongX ? l0.XMin : l0.YMin, hi = alongX ? l1.XMax : l1.YMax;
+            if (!double.IsInfinity(lo) && start < lo) start = Math.Min(lo, cols[0].S - cols[0].Size / 2);
+            if (!double.IsInfinity(hi) && end > hi) end = Math.Max(hi, cols[^1].S + cols[^1].Size / 2);
+        }
+        double Ls = end - start;
+        // ---- hết [MóngLệchTâm] ----
         var d = new StripFootingDesign
         {
             AlongX = alongX, C = cLine, Start = start, End = end, Depth = Df, Story = "Móng",
@@ -418,7 +429,7 @@ public static class StripFootingDesigner
             ribOk = fPos.Ok && fNeg.Ok && !fPos.Doubly && !fNeg.Doubly && sh.Ok;
 
             // --- bản cánh ---
-            double cf = Math.Max((B - b) / 2, 0);
+            double cf = fSide != 0 ? Math.Max(B - b, 0) : Math.Max((B - b) / 2, 0);   // [MóngLệchTâm] bản cánh một phía: công xôn B − b
             double pnetMax = Math.Max(0, govU.Pressure.Max() - q / B);
             hf = Math.Max(hEdge, 0.25);
             if (cf > 1e-6)
@@ -448,7 +459,7 @@ public static class StripFootingDesigner
         if (!ribOk) d.Messages.Add("LỖI tiết diện sườn móng băng không đủ chịu lực với h ≤ " + DesignUtil.F(MaxRibHeight * 1000, "0") + " mm");
         if (pmin < 0) d.Messages.Add("Có vùng đáy móng tách khỏi nền (áp lực âm) ở tổ hợp tiêu chuẩn");
 
-        double cfl = Math.Max((B - b) / 2, 0);
+        double cfl = fSide != 0 ? Math.Max(B - b, 0) : Math.Max((B - b) / 2, 0);   // [MóngLệchTâm]
         d.Width = B; d.RibB = b; d.RibH = h; d.FlangeRoot = cfl > 1e-6 ? hf : h; d.FlangeEdge = cfl > 1e-6 ? Math.Min(hEdge, hf) : h;
         d.R = R; d.K = k; d.PMax = pmax; d.PAvg = pavg;
         d.SumN = sumNgov; d.SelfWeight = q * Ls;
@@ -570,11 +581,38 @@ public static class StripFootingDesigner
             var weak = GeotechCalc.WeakLayerBelow(geoBh, Df, B);
             if (weak != null) d.Messages.Add("Cảnh báo: lớp đất yếu \"" + weak.Name + "\" ở độ sâu " + DesignUtil.F(weak.Top, "0.0") + " m nằm trong phạm vi 2B dưới đáy móng – xem xét móng cọc");
         }
+        if (fSide != 0) StripEccentric(d, fSide, fLim, fName, cLine, b, B, cols.Select(c => ulsLoads[cols.IndexOf(c)].Max(l => l.N) * c.Share).ToList(), conc);   // [MóngLệchTâm]
         // [FoundationChecks] phân loại dầm cứng / hữu hạn / mềm trên nền Winkler, lún lệch, giải thích sự làm việc → d.Safety
         try { FootingBehaviour.AnalyzeStrip(d, conc, fs); }
         catch (Exception ex) { d.Messages.Add("Cảnh báo: không phân tích được sự làm việc móng băng – " + ex.Message); }
         RebarNumbering.Renumber(d.Bars);
         return d;
+    }
+
+    /// <summary>[MóngLệchTâm] Móng băng trên ranh giới đất: sườn sát ranh giới, bản cánh chỉ vươn vào trong (công xôn B − b);
+    /// tim cột lệch so với tâm bản đáy e = |c_cột − C| → mô men xoắn phân bố t = q·e (q = ΣN/L, kN/m), sườn chịu xoắn lớn nhất T = t·l/2 giữa 2 giằng ngang;
+    /// kiểm tra sơ bộ T ≤ 0,1·Rb·b²·h (TCVN 5574:2018 mục 8.1.4 – độ bền dải nén) và khuyến nghị giằng ngang tại mỗi cột chịu M = N·e.</summary>
+    private static void StripEccentric(StripFootingDesign d, int side, double lim, string name, double cLine, double b, double B, List<double> colN, Material conc)
+    {
+        d.FlangeSide = side;
+        d.Boundary = name;
+        d.ColumnLine = cLine;
+        d.RibC = lim + side * b / 2;
+        d.C = lim + side * B / 2;
+        d.Eccentricity = Math.Abs(cLine - d.C);
+        double L = Math.Max(d.Length, 1e-6), q = colN.Sum() / L;
+        d.TorsionPerM = q * d.Eccentricity;
+        double span = 0;
+        for (int i = 0; i + 1 < d.ColumnPositions.Count; i++) span = Math.Max(span, d.ColumnPositions[i + 1] - d.ColumnPositions[i]);
+        if (span <= 0) span = L;
+        d.TorsionMax = d.TorsionPerM * span / 2;
+        d.ColumnTorsion = colN.Select(n => n * d.Eccentricity).ToList();
+        double tLim = 0.1 * conc.Rb * b * b * d.RibH;
+        d.Messages.Add($"Móng băng lệch tâm trên {name.ToLowerInvariant()}: sườn sát ranh giới, bản cánh một phía vươn {Math.Max(B - b, 0) * 1000:0} mm (công xôn B − b); "
+                       + $"tim cột lệch tâm bản đáy e = {d.Eccentricity * 1000:0} mm → xoắn phân bố t = q·e = {d.TorsionPerM:0.0} kN.m/m, xoắn sườn lớn nhất T = t·l/2 = {d.TorsionMax:0.0} kN.m");
+        d.Messages.Add($"Cảnh báo: bố trí giằng ngang (giằng móng vuông góc dải) tại mỗi chân cột nối sang móng bên trong để tiếp nhận mô men lệch tâm M = N·e "
+                       + $"(lớn nhất {(d.ColumnTorsion.Count > 0 ? d.ColumnTorsion.Max() : 0):0.0} kN.m) – nếu không, sườn phải chịu xoắn T = {d.TorsionMax:0.0} kN.m"
+                       + (d.TorsionMax > tLim ? $" > 0,1·Rb·b²·h = {tLim:0.0} kN.m (sườn KHÔNG đủ chịu xoắn – bắt buộc giằng ngang)" : $" ≤ 0,1·Rb·b²·h = {tLim:0.0} kN.m"));
     }
 
     private static int NearestIndex(List<double> xs, double v)

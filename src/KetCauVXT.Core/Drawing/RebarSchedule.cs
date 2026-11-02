@@ -24,6 +24,8 @@ public class ScheduleRow
     public int BarsTotal { get; set; }
     public double TotalLengthM { get; set; }
     public double WeightKg { get; set; }
+    /// <summary>Tên cấu kiện kèm số lượng, ghi ở cột TÊN CẤU KIỆN của bảng thống kê: "D2-1 (SL=2)" – cùng số lượng với tên hình trên bản vẽ chi tiết.</summary>
+    public string MemberLabel => RebarSchedule.MemberLabel(Member, MemberCount);
 }
 
 /// <summary>Tổng hợp theo đường kính.</summary>
@@ -48,6 +50,9 @@ public static class RebarSchedule
     public const double SheetScale = 1; // bảng vẽ ở tỷ lệ 1/1 trên tờ (mm giấy) → chữ cao 2,5
 
     public static double UnitWeight(int dia) => 0.00617 * dia * dia;
+
+    /// <summary>Tên cấu kiện kèm số lượng cấu kiện giống nhau: "C1 (SL=4)" (số lượng ≥ 1, như tên hình "D2-8 (SL=2; L=20300)").</summary>
+    public static string MemberLabel(string name, int count) => $"{name ?? ""} (SL={Math.Max(1, count)})";
 
     // ------------------------------------------------------------------
     // Dữ liệu
@@ -85,6 +90,7 @@ public static class RebarSchedule
         foreach (var m in s.Footings) AddMember(m, "Móng");
         foreach (var m in s.PileCaps) AddMember(m, "Đài cọc");
         foreach (var m in s.StripFootings) AddMember(m, "Móng băng");
+        foreach (var m in s.StrapBeams ?? new List<KetCauVXT.Design.Foundation.StrapBeamDesign>()) AddMember(m, "Giằng móng");   // [MóngLệchTâm] dầm móng cân bằng DM
         StairSchedule.AppendTo(rows, s);   // cầu thang (Drawing/StairDrawing.cs)
         return rows;
     }
@@ -193,7 +199,7 @@ public static class RebarSchedule
             string key = row.Category + "|" + row.Member + "|" + row.Story;
             if (key != curMember)
             {
-                if (curMember != null) memberSpans.Add((rows[start].Member, yr, memberTop));
+                if (curMember != null) memberSpans.Add((rows[start].MemberLabel, yr, memberTop));
                 curMember = key; start = r; memberTop = yr;
             }
             double y2 = yr - rowH;
@@ -211,7 +217,7 @@ public static class RebarSchedule
             w.Text(Lay.Chu, (cx[8] + cx[9]) / 2, ym, th, row.WeightKg.ToString("0.00", DrawUtil.Inv), 0, 1, 2);
             yr = y2;
         }
-        if (curMember != null) memberSpans.Add((rows[start].Member, yr, memberTop));
+        if (curMember != null) memberSpans.Add((rows[start].MemberLabel, yr, memberTop));
         foreach (var (name, y1, y2m) in memberSpans)
         {
             w.Line(Lay.KhungTen, 0, y1, cx[1], y1);

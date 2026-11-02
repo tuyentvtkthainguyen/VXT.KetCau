@@ -64,6 +64,13 @@ public class PileCapDesign : MemberDesignBase
     public double SpacingB { get; set; }
     /// <summary>[FoundationChecks] Bảng kiểm tra an toàn chi tiết (phản lực từng cọc, chọc thủng, nhóm cọc, lún…) – PileCapChecks.Attach</summary>
     public FoundationCheckReport Safety { get; set; }
+    // ---- [MóngLệchTâm] đài lệch tâm do ranh giới đất ----
+    /// <summary>Tâm đài − tim cột theo X, Y (m); Piles vẫn tính so với tim cột (nhóm cọc lệch tâm). 0 = đài đặt tâm tại tim cột.</summary>
+    public double OffsetX { get; set; }
+    public double OffsetY { get; set; }
+    /// <summary>Thông tin lệch tâm (null = đài đặt tâm tại tim cột)</summary>
+    public EccentricInfo Eccentric { get; set; }
+    // ---- hết [MóngLệchTâm] ----
 }
 
 /// <summary>Kết quả thiết kế một dải móng băng (dầm trên nền đàn hồi, tiết diện chữ T ngược).</summary>
@@ -139,4 +146,19 @@ public class StripFootingDesign : MemberDesignBase
     public double Length => End - Start;
     /// <summary>[FoundationChecks] Phân loại sự làm việc (dầm cứng / hữu hạn / mềm trên nền Winkler) và các kiểm tra bổ sung – FootingBehaviour.AnalyzeStrip</summary>
     public FoundationCheckReport Safety { get; set; }
+    // ---- [MóngLệchTâm] móng băng lệch tâm trên ranh giới đất (bản cánh một phía) ----
+    /// <summary>0 = bản cánh hai phía (đối xứng); +1 / −1 = bản cánh chỉ vươn về phía toạ độ tăng / giảm (sườn sát ranh giới)</summary>
+    public int FlangeSide { get; set; }
+    /// <summary>Toạ độ tim sườn (vuông góc phương dải, cùng hệ với C); C là tim bản đáy</summary>
+    public double RibC { get; set; }
+    /// <summary>Toạ độ tim cột (trục dải) vuông góc phương dải</summary>
+    public double ColumnLine { get; set; }
+    /// <summary>Độ lệch tâm tim cột – tâm bản đáy e = |ColumnLine − C| (m), mô men xoắn phân bố t = q·e (kN.m/m) và xoắn lớn nhất trong sườn T = t·l/2 (kN.m)</summary>
+    public double Eccentricity { get; set; }
+    public double TorsionPerM { get; set; }
+    public double TorsionMax { get; set; }
+    /// <summary>Mô men lệch tâm tại từng chân cột N·e (kN.m) – giằng ngang tiếp nhận</summary>
+    public List<double> ColumnTorsion { get; set; } = new();
+    public string Boundary { get; set; } = "";
+    // ---- hết [MóngLệchTâm] ----
 }

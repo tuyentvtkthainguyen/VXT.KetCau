@@ -29,12 +29,22 @@ public static class PileCapDesigner
         var fs = p.Foundation ?? new FoundationSettings();
         var combos = r.DesignCombos();
         var all = new List<(PileCapDesign d, string sig)>();
-        foreach (var (n, col) in FoundationUtil.BaseColumns(p))
+        // [MóngLệchTâm] đài lệch tâm do ranh giới đất: kế hoạch lệch tâm, đài biên có dầm cân bằng thiết kế trước (null = như cũ)
+        var bcols = FoundationUtil.BaseColumns(p).Where(x => FoundationUtil.TypeOf(p, x.Node.Id) == FoundationType.Pile).ToList();
+        var plan = EccentricFooting.Plan(p, r, combos, bcols);
+        var rank = bcols.Select((x, i) => (x.Node.Id, i)).ToDictionary(t => t.Id, t => t.i);
+        if (plan != null)
+        {
+            bcols = bcols.OrderBy(x => EccentricFooting.Order(plan, x.Node.Id)).ThenBy(x => rank[x.Node.Id]).ToList();
+            foreach (var w in plan.Notes) warnings.Add("Cảnh báo: " + w);
+        }
+        // ---- hết [MóngLệchTâm] ----
+        foreach (var (n, col) in bcols)
         {
             if (FoundationUtil.TypeOf(p, n.Id) != FoundationType.Pile) continue;
             try
             {
-                var d = DesignOne(p, r, n, col, combos, fs);
+                var d = DesignOne(p, r, n, col, combos, fs, plan);
                 all.Add((d, Signature(d)));
             }
             catch (Exception ex)
@@ -42,6 +52,7 @@ public static class PileCapDesigner
                 warnings.Add("LỖI thiết kế đài cọc tại " + DesignUtil.GridName(p, n.X, n.Y) + ": " + ex.Message);
             }
         }
+        if (plan != null) all = all.OrderBy(x => rank.TryGetValue(x.d.NodeIds[0], out int k) ? k : 0).ToList();   // [MóngLệchTâm] thứ tự đặt tên như cũ
         foreach (var g in all.GroupBy(x => x.sig))
         {
             var items = g.Select(x => x.d).ToList();
@@ -57,6 +68,7 @@ public static class PileCapDesigner
                 for (int i = 0; i < keep.Checks.Count && i < o.Checks.Count; i++)
                     if (o.Checks[i].Name == keep.Checks[i].Name && o.Checks[i].Ratio > keep.Checks[i].Ratio) keep.Checks[i] = o.Checks[i];
                 foreach (var m in o.Messages.Where(m => m.StartsWith("LỖI") && !keep.Messages.Contains(m))) keep.Messages.Add(m);
+                EccentricFooting.Merge(keep.Eccentric, o.Eccentric);   // [MóngLệchTâm]
                 keep.Messages.Add("Gộp đài giống hệt tại " + DesignUtil.GridName(p, o.X, o.Y));
             }
             res.Add(keep);
@@ -191,7 +203,7 @@ public static class PileCapDesigner
         return e;
     }
 
-    private static PileCapDesign DesignOne(Project p, AnalysisResults r, Node n, FrameElement col, List<string> combos, FoundationSettings fs)
+    private static PileCapDesign DesignOne(Project p, AnalysisResults r, Node n, FrameElement col, List<string> combos, FoundationSettings fs, EccPlan plan = null)
     {
         var cs = p.Concrete; var soil = p.Soil;
         var conc = DesignUtil.ConcreteOf(p, cs.ConcreteFooting, cs.ConcreteFooting);
@@ -270,20 +282,31 @@ public static class PileCapDesigner
         }
         else layouts.AddRange(cands.Select(np => Layout(np, s, longX)));
         double Hfix = user && ovr.H > 0 ? Math.Max(ovr.H, embed + 0.2) : Hgiven;
+        // [MóngLệchTâm] đài lệch tâm: dịch đài + nhóm cọc vào trong ranh giới (cox, coy = tâm đài − tim cột); tải quy đổi khi có dầm cân bằng
+        var ep = plan?.Get(n.Id);
+        if (ep != null && ep.Scheme == EccentricScheme.None) ep = null;
+        double cox = 0, coy = 0;
+        List<BaseLoad> EvLoads() => ep == null || piles == null || piles.Count == 0 ? loads
+            : EccentricFooting.CapLoads(plan, ep, loads, piles.Average(q => q.X), piles.Average(q => q.Y), G, H);   // e = trọng tâm nhóm cọc so với tim cột
         foreach (var lay in layouts)
         {
             piles = lay;
             (L, B) = PileLayout.CapSize(piles, d, edge, hc, bc);
             if (user && ovr.L > 0) L = ovr.L;
             if (user && ovr.B > 0) B = ovr.B;
+            if (ep != null)
+            {
+                (cox, coy) = EccentricFooting.OffsetFor(ep, L, B);
+                if (Math.Abs(cox) > 1e-9 || Math.Abs(coy) > 1e-9) piles = lay.Select(q => (Math.Round(q.X + cox, 6) + 0.0, Math.Round(q.Y + coy, 6) + 0.0)).ToList();
+            }
             H = Hfix > 0 ? Hfix : Hmin;
             for (int it = 0; it < 100; it++)
             {
                 h0 = H - embed - 0.05;
                 G = WeightFactor * gtb * L * B * Math.Max(Df, H);
-                ev = Evaluate(loads, piles, G, H, hc, bc, h0);
+                ev = Evaluate(EvLoads(), piles, G, H, hc, bc, h0);
                 if (Hfix > 0 || H >= MaxHeight - 1e-9) break;
-                if (PunchShearOk(ev, piles, L, B, hc, bc, h0, edge, d, rbt)) break;
+                if (PunchShearOk(ev, piles, L, B, hc, bc, h0, edge, d, rbt, cox, coy)) break;
                 H = Math.Round(H + 0.05, 3);
             }
             if (ev.PMax <= P + 1e-6 && ev.PMin >= -Pt - 1e-6) { found = true; break; }
@@ -299,6 +322,7 @@ public static class PileCapDesigner
             dsn.Messages.Add("Đài 1 cọc: mô men chân cột do hệ giằng móng tiếp nhận (không kể vào phản lực cọc)");
 
         dsn.Piles = piles; dsn.L = L; dsn.B = B; dsn.H = H; dsn.H0 = h0; dsn.Weight = G;
+        dsn.OffsetX = cox; dsn.OffsetY = coy;   // [MóngLệchTâm]
         dsn.PMax = ev.PMax; dsn.PMin = ev.PMin;
         var gv = ev.Gov;
         dsn.Combo = gv.Combo; dsn.N = gv.N; dsn.Mx = gv.Mx; dsn.My = gv.My; dsn.Qx = gv.Qx; dsn.Qy = gv.Qy;
@@ -315,7 +339,7 @@ public static class PileCapDesigner
         // ---- chọc thủng, cắt ----
         dsn.Checks.Add(new CheckItem
         {
-            Name = "Chọc thủng đài do cột F ≤ Rbt·u·h0", Demand = ev.FCol, Capacity = PileCapChecks.ColumnPunchCapacity(piles, hc, bc, h0, d, rbt), Unit = "kN",   // [FoundationChecks] kể k = h0/c
+            Name = "Chọc thủng đài do cột F ≤ Rbt·u·h0", Demand = ev.FCol, Capacity = PileCapChecks.ColumnPunchCapacityCut(piles, hc, bc, h0, d, rbt, L, B, cox, coy), Unit = "kN",   // [FoundationChecks] kể k = h0/c
             Note = "H = " + DesignUtil.F(H * 1000, "0") + " mm, h0 = " + DesignUtil.F(h0 * 1000, "0") + " mm"
         });
         if (piles.Count > 1)
@@ -419,9 +443,29 @@ public static class PileCapDesigner
         });
         RebarNumbering.Renumber(dsn.Bars);
         // [FoundationChecks] kiểm tra an toàn bổ sung (phản lực từng cọc, nhóm cọc, tải ngang, lún, bố trí, chọc thủng chi tiết) → dsn.Safety
-        try { PileCapChecks.Attach(p, dsn, loads, fs, geo, ovr, Hmin, Hfix > 0, conc); }
+        try { PileCapChecks.Attach(p, dsn, EvLoads(), fs, geo, ovr, Hmin, Hfix > 0, conc); }
         catch (Exception ex) { dsn.Messages.Add("Cảnh báo: không lập được bảng kiểm tra an toàn đài – " + ex.Message); }
+        if (ep != null) AttachEccentric(plan, ep, dsn, cox, coy);   // [MóngLệchTâm]
         return dsn;
+    }
+
+    /// <summary>[MóngLệchTâm] Ghi thông tin đài lệch tâm (ranh giới), liên kết dầm cân bằng và ΔR cho đài cột trong.</summary>
+    private static void AttachEccentric(EccPlan plan, EccNode ep, PileCapDesign dsn, double ox, double oy)
+    {
+        EccentricFooting.Record(plan, ep, ox, oy, dsn.L, dsn.B, "", true);
+        bool off = Math.Abs(ox) > 1e-6 || Math.Abs(oy) > 1e-6;
+        if (!off && !ep.StrapX && !ep.StrapY && ep.RelievedBy.Count == 0) return;
+        var info = EccentricFooting.Info(plan, ep, ox, oy, new PressureResult { Contact = 1 }, dsn.L, dsn.B);
+        info.PileCap = true;
+        if (ep.Scheme == EccentricScheme.Combined) { info.Scheme = EccentricScheme.SelfBalanced; info.Recommendation += " (đài cọc: móng kết hợp chưa hỗ trợ – dùng đài lệch tâm)"; }
+        info.Straps.AddRange(EccentricFooting.Links(plan, ep, dsn.L, dsn.B, "", true));
+        dsn.Eccentric = info;
+        if (off)
+            dsn.Messages.Add($"Đài lệch tâm do ranh giới đất ({info.Sides}): tâm đài lệch so với tim cột ex = {ox * 1000:0} mm, ey = {oy * 1000:0} mm, cọc bố trí trong ranh giới – "
+                             + (ep.StrapX || ep.StrapY ? $"có dầm móng cân bằng: lực quy đổi N' = R1 = {info.R1:0.0} kN tại trọng tâm nhóm cọc (đòn bẩy), phản lực cọc đều theo phương dầm"
+                                                       : "nhóm cọc lệch tâm tự cân bằng: N sinh thêm mô men N·e (đã kể trong phản lực cọc), mô men lệch tâm do hệ giằng móng / cột tiếp nhận một phần"));
+        if (ep.RelievedBy.Count > 0 && info.Relief > 1e-6)
+            dsn.Messages.Add($"Đài cột trong được giảm tải do dầm cân bằng từ nút {string.Join(", ", info.ReliefFrom)}: N' = N − β·ΔR = {info.N1 - info.Relief:0.0} kN (β = {plan.Fs.StrapReliefFactor:0.##})");
     }
 
     /// <summary>[FoundationChecks] Thiết kế thử đài cọc tại một nút chân cột với thông số fs (vd. bản sao có bố trí cọc thử) – dùng cho hộp thoại "Bố trí cọc…".
@@ -431,7 +475,8 @@ public static class PileCapDesigner
         if (p == null || r == null) throw new ArgumentNullException(p == null ? nameof(p) : nameof(r));
         var bc = FoundationUtil.BaseColumns(p).FirstOrDefault(x => x.Node.Id == nodeId);
         if (bc.Node == null) throw new InvalidOperationException("nút " + nodeId + " không phải chân cột BTCT");
-        var d = DesignOne(p, r, bc.Node, bc.Column, r.DesignCombos(), fs ?? p.Foundation ?? new FoundationSettings());
+        var plan = EccentricFooting.Plan(p, r, r.DesignCombos(), FoundationUtil.BaseColumns(p).Where(x => FoundationUtil.TypeOf(p, x.Node.Id) == FoundationType.Pile || x.Node.Id == nodeId));   // [MóngLệchTâm]
+        var d = DesignOne(p, r, bc.Node, bc.Column, r.DesignCombos(), fs ?? p.Foundation ?? new FoundationSettings(), plan);
         d.Name = "ĐC";
         return d;
     }
@@ -490,10 +535,11 @@ public static class PileCapDesigner
         return best == double.MaxValue ? 0 : best;
     }
 
-    private static bool PunchShearOk(Eval e, List<(double X, double Y)> piles, double L, double B, double hc, double bc, double h0, double edge, double d, double rbt)
+    private static bool PunchShearOk(Eval e, List<(double X, double Y)> piles, double L, double B, double hc, double bc, double h0, double edge, double d, double rbt,
+        double ox = 0, double oy = 0)
     {
         if (h0 <= 0.05) return false;
-        if (e.FCol > PileCapChecks.ColumnPunchCapacity(piles, hc, bc, h0, d, rbt) + 1e-6) return false;   // [FoundationChecks] kể k = h0/c
+        if (e.FCol > PileCapChecks.ColumnPunchCapacityCut(piles, hc, bc, h0, d, rbt, L, B, ox, oy) + 1e-6) return false;   // [FoundationChecks] kể k = h0/c; [MóngLệchTâm] cột sát mép đài
         if (piles.Count > 1 && e.FPile > PilePunchCap(edge, d, h0, rbt) + 1e-6) return false;
         if (e.QL > ShearCap(B, h0, MinClear(piles, true, hc, d), rbt) + 1e-6) return false;
         if (e.QB > ShearCap(L, h0, MinClear(piles, false, bc, d), rbt) + 1e-6) return false;
@@ -503,5 +549,7 @@ public static class PileCapDesigner
     private static string Signature(PileCapDesign d) =>
         Math.Round(d.L * 100) + "x" + Math.Round(d.B * 100) + "x" + Math.Round(d.H * 100) + "|" + Math.Round(d.ColumnB * 1000) + "x" + Math.Round(d.ColumnH * 1000)
         + "|" + string.Join(";", d.Piles.Select(q => Math.Round(q.X * 1000) + "," + Math.Round(q.Y * 1000)))
-        + "|" + d.BarsL + "|" + d.BarsB + "|" + d.BarsTop + "|" + RebarNumbering.Signature(d.Bars);
+        + "|" + d.BarsL + "|" + d.BarsB + "|" + d.BarsTop + "|" + RebarNumbering.Signature(d.Bars)
+        + (Math.Abs(d.OffsetX) > 1e-6 || Math.Abs(d.OffsetY) > 1e-6 ? "|O" + Math.Round(d.OffsetX * 1000) + "," + Math.Round(d.OffsetY * 1000) : "")   // [MóngLệchTâm]
+        + EccentricFooting.Sig(d.Eccentric);
 }

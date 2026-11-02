@@ -271,12 +271,14 @@
         <DockPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,6,0,0">
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                 <CheckBox x:Name="chkOnlySelected" Content="Chỉ các tờ đang chọn" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <Button Content="Hiệu chỉnh tờ…" Click="BtnEditDrawing_Click" Style="{StaticResource Btn}" Margin="0,0,4,0"
+                        ToolTip="Dời chữ/nhãn, sửa chữ, xoá nét, thêm ghi chú trên tờ (lưu trong dự án, áp lại sau mỗi lần xuất); nạp lại bản vẽ đã sửa trong CAD"/>
                 <Button Content="In…" Click="BtnPrint_Click" Style="{StaticResource Btn}" Margin="0,0,4,0" FontWeight="Bold"
                         ToolTip="In ra máy in; chọn máy in &quot;Microsoft Print to PDF&quot; để có PDF dạng nét (vector)"/>
                 <Button Content="Xuất PDF…" Click="BtnPdf_Click" Style="{StaticResource Btn}" Margin="0,0,4,0"
                         ToolTip="Ghi trực tiếp file PDF (ảnh 200 dpi, mỗi tờ một trang đúng khổ) hoặc XPS dạng nét"/>
                 <Button Content="Xuất DXF…" Click="BtnDxf_Click" Style="{StaticResource Btn}" Margin="0,0,4,0"
-                        ToolTip="Mỗi tờ một file DXF, đơn vị mm giấy, tỷ lệ 1/1"/>
+                        ToolTip="Gộp các tờ vào 1 file DXF (đặt cạnh nhau) hoặc mỗi tờ một file; đơn vị mm giấy, tỷ lệ 1/1"/>
                 <Button Content="Đóng" Click="BtnClose_Click" Style="{StaticResource Btn}" Margin="0" IsCancel="True"/>
             </StackPanel>
             <TextBlock x:Name="txtStatus" VerticalAlignment="Center" Foreground="#333" TextTrimming="CharacterEllipsis"/>

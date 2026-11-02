@@ -50,6 +50,23 @@ public class FoundationSettings
     public bool DrawStripMoment { get; set; }
     // ---- hết [FoundationChecks] ----
 
+    // ---- [MóngLệchTâm] ranh giới đất + móng lệch tâm (Model/PropertyBoundary.cs, Design/Foundation/EccentricFooting.cs) ----
+    /// <summary>Các cạnh ranh giới đất; rỗng = không giới hạn (móng đặt tâm tại tim cột như cũ). File cũ không có mục này vẫn mở được.</summary>
+    public List<PropertyBoundary> Boundaries { get; set; } = new();
+    /// <summary>Lựa chọn lệch tâm riêng từng chân cột (NodeId)</summary>
+    public List<EccentricOverride> Eccentric { get; set; } = new();
+    /// <summary>Khoảng hở từ mép móng tới ranh giới đất (m), mặc định 0 = móng sát ranh</summary>
+    public double BoundaryClearance { get; set; }
+    /// <summary>Dung sai nhận cột sát ranh: mép cột cách ranh giới ≤ giá trị này (m) thì móng phải lệch tâm</summary>
+    public double BoundaryTolerance { get; set; } = 0.15;
+    /// <summary>Phương án mặc định cho móng sát ranh</summary>
+    public EccentricScheme EccentricDefault { get; set; } = EccentricScheme.Auto;
+    /// <summary>Khoảng cách tim cột lớn nhất để nối dầm móng cân bằng tới cột trong (m)</summary>
+    public double StrapMaxSpan { get; set; } = 6.0;
+    /// <summary>Hệ số kể phần giảm tải cho móng cột trong do dầm cân bằng: N2' = N2 − β·(R1 − N1); thực hành β = 0,5 (không kể quá 50%)</summary>
+    public double StrapReliefFactor { get; set; } = 0.5;
+    // ---- hết [MóngLệchTâm] ----
+
     // ---- móng băng ----
     /// <summary>Phương dải móng băng: 0 = tự chọn (theo phương có nhiều cột thẳng hàng), 1 = dọc trục X, 2 = dọc trục Y, 3 = giao thoa 2 phương</summary>
     public int StripDirection { get; set; }

@@ -554,7 +554,7 @@ public static class StairDrawing
                 yr = y2;
             }
             w.Line(Lay.KhungTen, 0, yr, cx[1], yr);
-            Wrap(w, (cx[0] + cx[1]) / 2, (top + yr) / 2, ColW[0] * u, g.Key, 0.85 * th);
+            Wrap(w, (cx[0] + cx[1]) / 2, (top + yr) / 2, ColW[0] * u, g.First().MemberLabel, 0.85 * th);   // tên + (SL=n)
         }
         double yt = yr - rowH;
         w.Line(Lay.KhungTen, 0, yt, W, yt);

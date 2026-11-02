@@ -142,6 +142,7 @@ public partial class MainWindow
             await SelfTestDrawingStyle(tag); // tỷ lệ, cỡ chữ, kiểu kích thước – MainWindow.SelfTestDrawingStyle.cs // chuẩn layer CAD – MainWindow.SelfTestCad.cs
             await SelfTestAcadLink(tag);
             await SelfTestDwg(tag); // đọc DWG – MainWindow.SelfTestDwg.cs // nhận dữ liệu AutoCAD – MainWindow.SelfTestAcad.cs
+            await SelfTestDrawingEdit(tag); // hiệu chỉnh bản vẽ, xuất gộp – MainWindow.SelfTestDrawingEdit.cs
             await SelfTestManualSheet(tag);
             await SelfTestTemplate(tag); // template, khung tên người dùng – MainWindow.SelfTestTemplate.cs // dàn trang thủ công – MainWindow.SelfTestSheetEdit.cs
             StLog("XONG – không lỗi");

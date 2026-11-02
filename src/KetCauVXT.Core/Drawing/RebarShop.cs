@@ -83,6 +83,8 @@ public class ShopBar
     /// <summary>Chiều dài nối chồng dùng (mm)</summary>
     public double LapMm { get; set; }
     public string Note { get; set; } = "";
+    /// <summary>Tên cấu kiện kèm số lượng "D2-1 (SL=2)" – cột TÊN CẤU KIỆN của bảng gia công.</summary>
+    public string MemberLabel => RebarSchedule.MemberLabel(Member, MemberCount);
     public string ShapeText => ShapeCode + " " + ShapeName + ": " + string.Join("×", Segments.Select(DxfWriter.N0)) + (HookMm > 0 ? " + móc " + DxfWriter.N0(HookMm) : "");
 }
 

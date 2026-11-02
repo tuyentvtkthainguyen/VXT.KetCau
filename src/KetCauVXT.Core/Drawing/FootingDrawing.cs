@@ -34,6 +34,13 @@ public static class FootingDrawing
             try
             {
                 var f = g.First();
+                if (f.Eccentric?.Combined != null)   // [MóngLệchTâm] móng kết hợp
+                {
+                    res.Add(new Figure(EccentricDrawing.CombinedPlan(p, f, SheetScale), f.Name, first));
+                    res.Add(new Figure(EccentricDrawing.CombinedSection(p, f, SheetScale), f.Name + " mc"));
+                    first = false;
+                    continue;
+                }
                 res.Add(new Figure(DetailPlan(p, f, g.Count(), SheetScale), f.Name, first));
                 res.Add(new Figure(DetailSection(p, f, SheetScale), f.Name + " mc"));
             }
@@ -43,6 +50,9 @@ public static class FootingDrawing
         // đài cọc, móng băng
         try { res.AddRange(FoundationDrawing.BuildDetails(p, s, SheetScale)); }
         catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure("Đài cọc / móng băng", ex, SheetScale), "ĐC", true)); }
+        // [MóngLệchTâm] dầm móng cân bằng (mặt đứng + mặt cắt)
+        try { res.AddRange(EccentricDrawing.BuildDetails(p, s, SheetScale)); }
+        catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure("Dầm móng cân bằng", ex, SheetScale), "DM", true)); }
         return res;
     }
 
@@ -60,6 +70,7 @@ public static class FootingDrawing
         var box = Rect2.Empty;
         foreach (var f in s.Footings)
         {
+            if (f.Eccentric != null) { EccentricDrawing.FootingPlan(w, f, k, ref box); continue; }   // [MóngLệchTâm] móng lệch tâm / kết hợp
             double cx = f.X * 1000 * k, cy = f.Y * 1000 * k;
             double hl = f.L * 500 * k, hb = f.B * 500 * k;
             w.Rect(Lay.BeTong, cx - hl, cy - hb, cx + hl, cy + hb);
@@ -70,6 +81,7 @@ public static class FootingDrawing
             box = box.Union(new Rect2(cx - hl, cy - hb, cx + hl, cy + hb));
         }
         FoundationDrawing.AddToLayout(w, s, k, ref box);
+        EccentricDrawing.AddToLayout(w, p, s, k, ref box);   // [MóngLệchTâm] ranh giới đất + dầm cân bằng
         // trục
         var gx = p.GridsX.ToList(); var gy = p.GridsY.ToList();
         foreach (var g in gx) box = box.Union(g.Coord * 1000 * k, box.Cy);
@@ -133,10 +145,12 @@ public static class FootingDrawing
         double L = f.L * 1000 * k, B = f.B * 1000 * k;
         double c = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
         double cb = (f.ColumnH > 0 ? f.ColumnH : 0.22) * 1000 * k, ch = (f.ColumnB > 0 ? f.ColumnB : 0.22) * 1000 * k;
+        // [MóngLệchTâm] tim cột lệch so với tâm móng: xc = L/2 − ex, yc = B/2 − ey
+        double ex = (f.Eccentric?.OffsetX ?? 0) * 1000 * k, ey = (f.Eccentric?.OffsetY ?? 0) * 1000 * k, xc = L / 2 - ex, yc = B / 2 - ey;
         w.Rect(Lay.BeTong, 0, 0, L, B);
-        w.Rect(Lay.BeTong, L / 2 - cb / 2, B / 2 - ch / 2, L / 2 + cb / 2, B / 2 + ch / 2);
-        w.Line(Lay.Truc, L / 2, -3 * th, L / 2, B + 3 * th, "CENTER");
-        w.Line(Lay.Truc, -3 * th, B / 2, L + 3 * th, B / 2, "CENTER");
+        w.Rect(Lay.BeTong, xc - cb / 2, yc - ch / 2, xc + cb / 2, yc + ch / 2);
+        w.Line(Lay.Truc, xc, -3 * th, xc, B + 3 * th, "CENTER");
+        w.Line(Lay.Truc, -3 * th, yc, L + 3 * th, yc, "CENTER");
 
         var bl = BarsDir(f, true);
         var bb = BarsDir(f, false);
@@ -158,8 +172,24 @@ public static class FootingDrawing
 
         w.Dim(0, 0, L, 0, -6.5 * th, k);
         w.Dim(0, 0, 0, B, 3 * th, k);
-        w.Dim(L / 2 - cb / 2, B, L / 2 + cb / 2, B, 2.5 * th, k);
-        w.Title(L / 2, w.Extents.Y2 + 4 * th, $"{f.Name} (SL={Math.Max(1, qty)})", DrawUtil.ScaleText(det));
+        w.Dim(xc - cb / 2, B, xc + cb / 2, B, 2.5 * th, k);
+        if (Math.Abs(ex) > 1e-6) w.DimChainH(new List<double> { 0, xc, L }, 0, -9 * th, k);   // [MóngLệchTâm] tim cột – mép móng
+        if (Math.Abs(ey) > 1e-6) w.DimChainV(new List<double> { 0, yc, B }, 0, -6 * th, k);
+        if (f.Eccentric != null && (Math.Abs(ex) > 1e-6 || Math.Abs(ey) > 1e-6))
+        {
+            // mép móng sát ranh giới
+            if (f.Eccentric.Sides.Contains("trái")) w.Text(Lay.Chu, -0.6 * th, B + 1.2 * th, 0.8 * th, EccentricDrawing.BoundaryLabel, 90, 0, 0);
+            if (f.Eccentric.Sides.Contains("phải")) w.Text(Lay.Chu, L + 0.6 * th, B + 1.2 * th, 0.8 * th, EccentricDrawing.BoundaryLabel, 90, 0, 2);
+            if (f.Eccentric.Sides.Contains("trước")) w.Text(Lay.Chu, 0, -1.0 * th, 0.8 * th, EccentricDrawing.BoundaryLabel, 0, 0, 2);
+            if (f.Eccentric.Sides.Contains("sau")) w.Text(Lay.Chu, 0, B + 1.0 * th, 0.8 * th, EccentricDrawing.BoundaryLabel, 0, 0, 0);
+            foreach (var st in f.Eccentric.Straps.Where(x => x.NodeA == f.NodeId).Take(2))   // đầu dầm cân bằng
+            {
+                double hb = 150 * k, dir = st.AlongX ? Math.Sign(st.XB - st.XA) : Math.Sign(st.YB - st.YA);
+                if (st.AlongX) { double x0 = dir > 0 ? L : 0; w.Rect(Lay.BeTong, Math.Min(x0, x0 + dir * 3 * th), yc - hb, Math.Max(x0, x0 + dir * 3 * th), yc + hb, "DASHED"); w.Text(Lay.Chu, x0 + dir * 1.5 * th, yc + hb + 0.3 * th, 0.75 * th, "DẦM CÂN BẰNG", 0, 1, 0); }
+                else { double y0 = dir > 0 ? B : 0; w.Rect(Lay.BeTong, xc - hb, Math.Min(y0, y0 + dir * 3 * th), xc + hb, Math.Max(y0, y0 + dir * 3 * th), "DASHED"); w.Text(Lay.Chu, xc + hb + 0.3 * th, y0 + dir * 1.5 * th, 0.75 * th, "DẦM CÂN BẰNG", 90, 1, 0); }
+            }
+        }
+        w.Title(L / 2, w.Extents.Y2 + 4 * th, $"{f.Name}{(f.Eccentric != null && (Math.Abs(ex) > 1e-6 || Math.Abs(ey) > 1e-6) ? " – MÓNG LỆCH TÂM" : "")} (SL={Math.Max(1, qty)})", DrawUtil.ScaleText(det));
         return w;
     }
 
@@ -175,7 +205,8 @@ public static class FootingDrawing
         double c = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
         double lot = 100 * k;
         double neck = Math.Max(300, (f.Depth > 0 ? f.Depth - f.H : 0.5) * 1000) * k;
-        double xc1 = L / 2 - cb / 2, xc2 = L / 2 + cb / 2, ped = 50 * k;
+        double exS = (f.Eccentric?.OffsetX ?? 0) * 1000 * k;   // [MóngLệchTâm] tim cột tại L/2 − ex
+        double xc1 = L / 2 - exS - cb / 2, xc2 = L / 2 - exS + cb / 2, ped = Math.Abs(exS) > 1e-6 ? 0 : 50 * k;
         // lót
         w.Rect(Lay.BeTong, -lot, -lot, L + lot, 0);
         // đế
@@ -188,7 +219,19 @@ public static class FootingDrawing
             (xc1, H + neck), (xc1, H), (xc1 - ped, H), (0, Hb), (0, 0)
         }, false);
         w.BreakH(Lay.BeTong, xc1, xc2, H + neck);
-        w.Line(Lay.Truc, L / 2, -lot - 2 * th, L / 2, H + neck + 2 * th, "CENTER");
+        w.Line(Lay.Truc, (xc1 + xc2) / 2, -lot - 2 * th, (xc1 + xc2) / 2, H + neck + 2 * th, "CENTER");
+        if (Math.Abs(exS) > 1e-6)   // [MóngLệchTâm] kích thước tim cột – mép móng, đầu dầm cân bằng
+        {
+            w.DimChainH(new List<double> { 0, (xc1 + xc2) / 2, L }, H, H + neck + 3.5 * th, k);
+            var st = f.Eccentric.Straps.FirstOrDefault(x => x.AlongX && x.NodeA == f.NodeId);
+            if (st != null)
+            {
+                double hs = Math.Min(H, 600 * k);
+                double x0 = exS > 0 ? L : 0, dir = exS > 0 ? 1 : -1;
+                w.Rect(Lay.BeTong, Math.Min(x0, x0 + dir * 4 * th), H - hs, Math.Max(x0, x0 + dir * 4 * th), H, "DASHED");
+                w.Text(Lay.Chu, x0 + dir * 2 * th, H + 0.4 * th, 0.75 * th, "DẦM CÂN BẰNG", 0, 1, 0);
+            }
+        }
 
         var bl = BarsDir(f, true);
         var bb = BarsDir(f, false);

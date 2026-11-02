@@ -30,11 +30,15 @@ public static class FoundationDrawing
             var locs = c.Locations != null && c.Locations.Count > 0 ? c.Locations : new List<(double X, double Y)> { (c.X, c.Y) };
             foreach (var (x, y) in locs)
             {
-                double cx = x * 1000 * k, cy = y * 1000 * k, hl = c.L * 500 * k, hb = c.B * 500 * k;
+                // [MóngLệchTâm] (x, y) = tim cột; tâm đài = tim cột + (OffsetX, OffsetY); cọc tính so với tim cột
+                double px0 = x * 1000 * k, py0 = y * 1000 * k;
+                double cx = (x + c.OffsetX) * 1000 * k, cy = (y + c.OffsetY) * 1000 * k, hl = c.L * 500 * k, hb = c.B * 500 * k;
                 w.Rect(Lay.BeTong, cx - hl, cy - hb, cx + hl, cy + hb);
-                ColumnMark(w, cx, cy, c.ColumnH * 1000 * k, c.ColumnB * 1000 * k);
-                foreach (var (px, py) in c.Piles) PileMark(w, cx + px * 1000 * k, cy + py * 1000 * k, c.PileSize * 1000 * k, c.PileRound);
-                w.Text(Lay.Chu, cx - hl + 0.3 * th, cy + hb + 0.4 * th, th, c.Name, 0, 0, 0);
+                ColumnMark(w, px0, py0, c.ColumnH * 1000 * k, c.ColumnB * 1000 * k);
+                foreach (var (px, py) in c.Piles) PileMark(w, px0 + px * 1000 * k, py0 + py * 1000 * k, c.PileSize * 1000 * k, c.PileRound);
+                w.Text(Lay.Chu, cx - hl + 0.3 * th, cy + hb + 0.4 * th, th, c.Name + (Math.Abs(c.OffsetX) + Math.Abs(c.OffsetY) > 1e-6 ? " (LỆCH TÂM)" : ""), 0, 0, 0);
+                if (Math.Abs(c.OffsetX) > 1e-6) w.DimChainH(new List<double> { cx - hl, px0, cx + hl }, cy - hb, cy - hb - 1.6 * th, k);
+                if (Math.Abs(c.OffsetY) > 1e-6) w.DimChainV(new List<double> { cy - hb, py0, cy + hb }, cx - hl, cx - hl - 1.6 * th, k);
                 box = box.Union(new Rect2(cx - hl, cy - hb, cx + hl, cy + hb + 1.5 * th));
             }
         }
@@ -42,19 +46,21 @@ public static class FoundationDrawing
         {
             double a1 = st.Start * 1000 * k, a2 = st.End * 1000 * k, c0 = st.C * 1000 * k;
             double hw = st.Width * 500 * k, hr = st.RibB * 500 * k;
+            // [MóngLệchTâm] bản cánh một phía: sườn tại RibC, cột tại ColumnLine (c0 vẫn là tâm bản đáy)
+            double rc = (st.FlangeSide != 0 ? st.RibC : st.C) * 1000 * k, cc = (st.FlangeSide != 0 ? st.ColumnLine : st.C) * 1000 * k;
             Rect2 r;
             if (st.AlongX)
             {
                 w.Rect(Lay.BeTong, a1, c0 - hw, a2, c0 + hw);
-                w.Line(Lay.BeTong, a1, c0 - hr, a2, c0 - hr, "DASHED");
-                w.Line(Lay.BeTong, a1, c0 + hr, a2, c0 + hr, "DASHED");
+                w.Line(Lay.BeTong, a1, rc - hr, a2, rc - hr, "DASHED");
+                w.Line(Lay.BeTong, a1, rc + hr, a2, rc + hr, "DASHED");
                 r = new Rect2(a1, c0 - hw, a2, c0 + hw);
             }
             else
             {
                 w.Rect(Lay.BeTong, c0 - hw, a1, c0 + hw, a2);
-                w.Line(Lay.BeTong, c0 - hr, a1, c0 - hr, a2, "DASHED");
-                w.Line(Lay.BeTong, c0 + hr, a1, c0 + hr, a2, "DASHED");
+                w.Line(Lay.BeTong, rc - hr, a1, rc - hr, a2, "DASHED");
+                w.Line(Lay.BeTong, rc + hr, a1, rc + hr, a2, "DASHED");
                 r = new Rect2(c0 - hw, a1, c0 + hw, a2);
             }
             for (int i = 0; i < st.ColumnPositions.Count; i++)
@@ -62,10 +68,10 @@ public static class FoundationDrawing
                 double sp = st.ColumnPositions[i] * 1000 * k;
                 double along = (i < st.ColumnSizes.Count && st.ColumnSizes[i] > 0 ? st.ColumnSizes[i] : 0.22) * 1000 * k;
                 double across = (i < st.ColumnWidths.Count && st.ColumnWidths[i] > 0 ? st.ColumnWidths[i] : 0.22) * 1000 * k;
-                if (st.AlongX) ColumnMark(w, sp, c0, along, across);
-                else ColumnMark(w, c0, sp, across, along);
+                if (st.AlongX) ColumnMark(w, sp, cc, along, across);
+                else ColumnMark(w, cc, sp, across, along);
             }
-            string tag = st.Name + " (B=" + DxfWriter.N0(st.Width * 1000) + ")";
+            string tag = st.Name + " (B=" + DxfWriter.N0(st.Width * 1000) + ")" + (st.FlangeSide != 0 ? " – LỆCH TÂM" : "");
             if (st.AlongX) w.Text(Lay.Chu, a1 + 0.5 * th, c0 + hw + 0.4 * th, th, tag, 0, 0, 0);
             else w.Text(Lay.Chu, c0 - hw - 0.4 * th, a1 + 0.5 * th, th, tag, 90, 0, 0);
             box = box.Union(r.Inflate(1.5 * th));
@@ -135,7 +141,7 @@ public static class FoundationDrawing
         var w = new DxfWriter(S);
         double det = Det;
         double th = w.Th, k = S / det;
-        double L = c.L * 1000 * k, B = c.B * 1000 * k, xc = L / 2, yc = B / 2;
+        double L = c.L * 1000 * k, B = c.B * 1000 * k, xc = L / 2 - c.OffsetX * 1000 * k, yc = B / 2 - c.OffsetY * 1000 * k;   // [MóngLệchTâm] (xc, yc) = tim cột
         double cv = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
         w.Rect(Lay.BeTong, 0, 0, L, B);
         double hc = (c.ColumnH > 0 ? c.ColumnH : 0.22) * 1000 * k, bc = (c.ColumnB > 0 ? c.ColumnB : 0.22) * 1000 * k;
@@ -180,7 +186,7 @@ public static class FoundationDrawing
         var w = new DxfWriter(S);
         double det = Det;
         double th = w.Th, k = S / det;
-        double L = c.L * 1000 * k, H = Math.Max(0.3, c.H) * 1000 * k, xc = L / 2;
+        double L = c.L * 1000 * k, H = Math.Max(0.3, c.H) * 1000 * k, xc = L / 2 - c.OffsetX * 1000 * k;   // [MóngLệchTâm] tim cột
         double cv = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
         double lot = 100 * k, emb = Math.Max(0, p.Foundation?.PileEmbed ?? 0.1) * 1000 * k;
         double hc = (c.ColumnH > 0 ? c.ColumnH : 0.22) * 1000 * k;
@@ -393,14 +399,28 @@ public static class FoundationDrawing
         double hr = Math.Min(st.FlangeRoot, st.RibH) * 1000 * k, he = Math.Min(st.FlangeEdge, st.FlangeRoot) * 1000 * k;
         double cv = Math.Max(30, p.Concrete.CoverFooting * 1000) * k;
         double lot = 100 * k, x0 = -B / 2, x1 = B / 2, r0 = -b / 2, r1 = b / 2;
+        if (st.FlangeSide != 0)   // [MóngLệchTâm] bản cánh một phía: sườn sát ranh giới (vẽ ranh giới bên phía sườn)
+        {
+            double rcl = (st.RibC - st.C) * 1000 * k;
+            r0 = rcl - b / 2; r1 = rcl + b / 2;
+            double xb = st.FlangeSide > 0 ? x0 : x1;
+            w.Line(Lay.KyHieu, xb, -lot - 3 * th, xb, h + 3 * th, "DASHED");
+            w.Text(Lay.Chu, xb, h + 3.4 * th, 0.85 * th, EccentricDrawing.BoundaryLabel, 0, 1, 0);
+        }
         w.Rect(Lay.BeTong, x0 - lot, -lot, x1 + lot, 0);
-        if (B > b + 1)
+        if (B > b + 1 && st.FlangeSide != 0)   // [MóngLệchTâm] chữ L ngược (một cánh)
+            w.Polyline(Lay.BeTong, st.FlangeSide > 0
+                ? new List<(double X, double Y)> { P(x0, 0), P(x1, 0), P(x1, he), P(r1, hr), P(r1, h), P(x0, h) }
+                : new List<(double X, double Y)> { P(x0, 0), P(x1, 0), P(x1, h), P(r0, h), P(r0, hr), P(x0, he) }, true);
+        else if (B > b + 1)
             w.Polyline(Lay.BeTong, new List<(double X, double Y)>
             {
                 P(x0, 0), P(x1, 0), P(x1, he), P(r1, hr), P(r1, h), P(r0, h), P(r0, hr), P(x0, he)
             }, true);
         else w.Rect(Lay.BeTong, r0, 0, r1, h);
-        w.Line(Lay.Truc, 0, -lot - 2 * th, 0, h + 3 * th, "CENTER");
+        double axl = st.FlangeSide != 0 ? (st.ColumnLine - st.C) * 1000 * k : 0;   // [MóngLệchTâm] trục cột
+        w.Line(Lay.Truc, axl, -lot - 2 * th, axl, h + 3 * th, "CENTER");
+        if (st.FlangeSide != 0 && Math.Abs(axl) > 1) w.DimChainH(new List<double> { x0, axl, x1 }, h, h + 2 * th, k);
 
         // đai sườn
         var stir = Bar(st, "Đai");
@@ -438,7 +458,7 @@ public static class FoundationDrawing
             foreach (var q in set)
                 for (int i = 0; i < q.Count; i++, idx++)
                 {
-                    double x = total == 1 ? 0 : xa + (xb - xa) * idx / (total - 1);
+                    double x = total == 1 ? (r0 + r1) / 2 : xa + (xb - xa) * idx / (total - 1);
                     w.Dot(Lay.Thep, x, y, Math.Max(q.Dia * k / 2, 0.15 * th));
                 }
         }

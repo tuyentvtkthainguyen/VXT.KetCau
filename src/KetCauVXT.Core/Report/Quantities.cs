@@ -310,6 +310,8 @@ public static class QuantityCalculator
 
         // ---------------- móng ----------------
         FoundationQty(p, q, s, qs, cs);
+        try { EccentricQuantity.Compute(p, q, s, qs, cs); }   // [MóngLệchTâm] dầm móng cân bằng, móng kết hợp hình thang
+        catch (Exception ex) { q.Warnings.Add("Dầm móng cân bằng: " + ex.Message); }
 
         // ---------------- cầu thang (Report/StairQuantity.cs) ----------------
         if (qs.IncludeStairs) StairQty(p, q, qs, cs);

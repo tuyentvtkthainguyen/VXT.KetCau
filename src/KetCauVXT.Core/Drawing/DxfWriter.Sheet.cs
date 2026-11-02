@@ -136,6 +136,7 @@ public sealed partial class DxfWriter
                     if (!e.Box.IsEmpty && InsideR(clip, e.Box.Cx, e.Box.Cy)) { _ents.Add(e); _ext = _ext.Union(e.Box); start = _ents.Count; }
                     break;
             }
+            for (int ci = Math.Max(0, start); ci < _ents.Count; ci++) _ents[ci].CopyMetaFrom(e);   // đoạn bị cắt giữ khoá/nhóm của thực thể gốc
             StyleFrom(start, aci, lt);
         }
     }

@@ -91,7 +91,7 @@ public static class RebarShopDrawing
             string key = row.Category + "|" + row.Member;
             if (key != cur)
             {
-                if (cur != null) spans.Add((rows[start].Member, yr, top));
+                if (cur != null) spans.Add((rows[start].MemberLabel, yr, top));
                 cur = key; start = r; top = yr;
             }
             double y2 = yr - rowH, ym = (yr + y2) / 2;
@@ -113,7 +113,7 @@ public static class RebarShopDrawing
             Wrap(w, (cx[11] + cx[12]) / 2, ym, ColW[11] * u, note, 0.75 * th);
             yr = y2;
         }
-        if (cur != null) spans.Add((rows[start].Member, yr, top));
+        if (cur != null) spans.Add((rows[start].MemberLabel, yr, top));
         foreach (var (name, y1, y2m) in spans)
         {
             w.Line(Lay.KhungTen, 0, y1, cx[1], y1);
@@ -396,15 +396,46 @@ public static class RebarShopDrawing
 
     /// <summary>Ghi các bản vẽ gia công KC-07.x theo loại cấu kiện (bảng gia công + sơ đồ cắt riêng loại đó) và KC-07 tổng hợp
     /// (sơ đồ cắt chung). Trả về danh sách file đã ghi.</summary>
-    public static List<string> ExportAll(Project p, DesignSummary s, string folder)
+    public static List<string> ExportAll(Project p, DesignSummary s, string folder) => Export(p, s, folder, null).Files;
+
+    /// <summary>Xuất bản vẽ gia công theo tuỳ chọn (tách rời KC-07.x / gộp 1 file); áp lớp chỉnh sửa, dùng bản đã khoá.</summary>
+    public static DrawingExportResult Export(Project p, DesignSummary s, string folder, DrawingExportOptions o)
     {
-        var paths = new List<string>();
-        if (p == null || s == null) return paths;
-        Directory.CreateDirectory(folder);
+        var res = new DrawingExportResult();
+        if (p == null || s == null) return res;
+        List<DrawingItem> items;
+        using (DrawingOverlay.Collect(res.Report)) items = BuildDrawings(p, s);
+        if (o != null && o.Mode == DrawingExportMode.Single && (string.IsNullOrWhiteSpace(o.SingleFileName) || o.SingleFileName == "{duan}_BoBanVe"))
+            o = DrawingExportOptions.SingleFile("{duan}_GiaCongThep");   // tên mặc định riêng cho bản vẽ gia công
+        DrawingExport.Write(items, folder, o, p.Name, res);
+        foreach (var m in res.Report.Messages()) if (!res.Messages.Contains(m)) res.Messages.Add(m);
+        return res;
+    }
+
+    /// <summary>Dựng các bản vẽ gia công KC-07.x (theo loại cấu kiện) + KC-07 (phương án cắt, tổng hợp). want: chỉ dựng bản cần (null = tất cả).</summary>
+    public static List<DrawingItem> BuildDrawings(Project p, DesignSummary s, Func<string, bool> want = null)
+    {
+        var items = new List<DrawingItem>();
+        if (p == null || s == null) return items;
         SheetComposer.SheetInfo Info(string title, string no) => new SheetComposer.SheetInfo
         {
             ProjectName = p.Name, Title = title, SheetNo = no, Designer = p.Designer, Owner = p.Owner, Location = p.Location
         };
+        void Add(string file, string no, string title, Func<List<Figure>> build)
+        {
+            var it = new DrawingItem { Key = DrawingOverlay.ShopKey(file), FileName = file, Number = no, Title = title, Scale = SheetScale };
+            if (want != null && !want(it.Key)) { items.Add(it); return; }
+            var figs = build();
+            DrawingOverlay.AssignOwners(figs, "SHOP");
+            var w = SheetComposer.Compose(figs, SheetScale, Info(title, no), DrawingSet.Paper);
+            it.W = w;
+            if (!DrawingOverlay.Bypassed)
+            {
+                DrawingOverlay.Apply(p, w, it.Key, true);
+                DrawingExport.UseFrozen(p, it);
+            }
+            items.Add(it);
+        }
         int k = 0;
         foreach (var c in Categories)
         {
@@ -413,23 +444,19 @@ public static class RebarShopDrawing
             var shop = RebarShop.Build(p, s, o);
             if (shop.Bars.Count == 0) continue;
             k++;
-            var figs = BuildFigures(p, s, c, shop);
-            var w = SheetComposer.Compose(figs, SheetScale, Info("GIA CÔNG CỐT THÉP " + c.ToUpperInvariant(), "KC-07." + k), DrawingSet.Paper);
-            string path = Path.Combine(folder, "KC-07." + k + "_GiaCongThep_" + DrawUtil.SafeFile(Ascii(c)) + ".dxf");
-            w.Save(path);
-            paths.Add(path);
+            var cc = c;
+            Add("KC-07." + k + "_GiaCongThep_" + DrawUtil.SafeFile(Ascii(c)) + ".dxf", "KC-07." + k, "GIA CÔNG CỐT THÉP " + c.ToUpperInvariant(),
+                () => BuildFigures(p, s, cc, shop));
         }
         var all = RebarShop.Build(p, s, ShopOptions.From(p.RebarPrefs));
         if (all.Bars.Count > 0)
-        {
-            var figs = PlanFigures(all);
-            figs.Add(new Figure(Summary(all), "THGC", false));
-            var w = SheetComposer.Compose(figs, SheetScale, Info("PHƯƠNG ÁN CẮT VÀ TỔNG HỢP GIA CÔNG THÉP", "KC-07"), DrawingSet.Paper);
-            string path = Path.Combine(folder, "KC-07_PhuongAnCatThep.dxf");
-            w.Save(path);
-            paths.Add(path);
-        }
-        return paths;
+            Add("KC-07_PhuongAnCatThep.dxf", "KC-07", "PHƯƠNG ÁN CẮT VÀ TỔNG HỢP GIA CÔNG THÉP", () =>
+            {
+                var figs = PlanFigures(all);
+                figs.Add(new Figure(Summary(all), "THGC", false));
+                return figs;
+            });
+        return items;
     }
 
     private static string Ascii(string c) => c switch { "Dầm" => "Dam", "Cột" => "Cot", "Sàn" => "San", "Móng" => "Mong", _ => c };

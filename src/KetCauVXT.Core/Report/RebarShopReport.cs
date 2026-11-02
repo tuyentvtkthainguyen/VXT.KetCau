@@ -34,7 +34,7 @@ public static class RebarShopReport
             "Trừ dãn khi uốn (mm)", "Chiều dài cắt (mm)", "Số CK", "Thanh / 1 CK", "Tổng số thanh", "Tổng chiều dài cắt (m)", "Khối lượng (kg)", "Ghi chú");
         if (shop.Bars.Count == 0) { sh.AddRow("Chưa có dữ liệu bố trí thép (chạy thiết kế trước)."); return; }
         foreach (var b in shop.Bars)
-            sh.AddRow(b.Category, b.Member, b.ParentMark, b.Label, b.ShapeCode + " " + b.ShapeName,
+            sh.AddRow(b.Category, b.MemberLabel, b.ParentMark, b.Label, b.ShapeCode + " " + b.ShapeName,
                 string.Join(" × ", b.Segments.Select(DxfWriter.N0)) + (b.HookMm > 0 ? " + 2 móc " + DxfWriter.N0(b.HookMm) : ""),
                 b.Dia, b.OutsideLengthMm, b.BendDeductionMm, b.CutLengthMm, b.MemberCount, b.BarsPerMember, b.BarsTotal, b.TotalLengthM, b.WeightKg,
                 string.IsNullOrEmpty(b.Note) ? b.Role : b.Role + "; " + b.Note);

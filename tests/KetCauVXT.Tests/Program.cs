@@ -524,6 +524,9 @@ FoundationCheckTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppCont
 Console.WriteLine("35. Nhập mô hình/kết quả từ ETABS, SAP2000, SAFE và phần mềm khác");
 ResultImportTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("36. Bảng thống kê (SL=n), xuất gộp/tách file, hiệu chỉnh bản vẽ sau khi xuất, khoá bản vẽ sửa trong CAD");
+DrawingExportTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

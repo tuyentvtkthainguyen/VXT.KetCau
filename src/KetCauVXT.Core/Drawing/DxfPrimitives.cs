@@ -24,6 +24,8 @@ public sealed class DrawPrim
     public int HA, VA;
     /// <summary>Hệ số rộng chữ (TEXT mã 41; 1 = chuẩn).</summary>
     public double WF = 1;
+    /// <summary>Chỉ số thực thể trong bộ ghi (để chọn/hiệu chỉnh trên màn hình); −1 = không rõ.</summary>
+    public int Ent = -1;
 }
 
 public sealed partial class DxfWriter
@@ -50,9 +52,11 @@ public sealed partial class DxfWriter
     public List<DrawPrim> GetPrimitives()
     {
         var res = new List<DrawPrim>(_ents.Count);
+        int entIndex = -1;
         foreach (var e in _ents)
         {
-            var pr = new DrawPrim();
+            entIndex++;
+            var pr = new DrawPrim { Ent = entIndex };
             double x0 = 0, y0 = 0, x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0;
             bool layerSet = false, inVertex = false;
             var vx = new List<double>();
@@ -120,10 +124,12 @@ public sealed partial class DxfWriter
         if (other == null) return;
         if (Math.Abs(k - 1) < 1e-12) { Append(other, dx, dy); return; }
         MergeDimStyles(other);
+        other.EnsureKeys();   // DxfWriter.Keys.cs
         foreach (var e in other._ents)
         {
             var b = e.Box;
             var n = new DxfEnt { Type = e.Type, Box = b.IsEmpty ? b : new Rect2(b.X1 * k + dx, b.Y1 * k + dy, b.X2 * k + dx, b.Y2 * k + dy) };
+            n.CopyMetaFrom(e, other.OwnerKey, k);
             foreach (var (code, val) in e.Codes)
             {
                 object v = val;

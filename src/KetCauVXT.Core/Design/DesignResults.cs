@@ -338,6 +338,8 @@ public class FootingDesign : MemberDesignBase
     public double MB { get; set; }
     /// <summary>[FoundationChecks] Sự làm việc (móng cứng, lệch tâm, trượt, chọc thủng có mô men, cắt) – FootingBehaviour.AnalyzeIsolated</summary>
     public KetCauVXT.Design.Foundation.FoundationCheckReport Safety { get; set; }
+    /// <summary>[MóngLệchTâm] Móng lệch tâm (ranh giới đất): phương án, độ lệch tâm, dầm cân bằng, móng kết hợp; null = móng đặt tâm tại tim cột</summary>
+    public KetCauVXT.Design.Foundation.EccentricInfo Eccentric { get; set; }
 }
 
 // ---------------------------------------------------------------------
@@ -373,8 +375,12 @@ public class DesignSummary
     /// <summary>Cầu thang bộ (không nằm trong All: thép thống kê theo từng bộ phận StairDesign.Parts)</summary>
     public List<StairDesign> Stairs { get; set; } = new();
     // ---- [hết cầu thang] ----
+    // ---- [MóngLệchTâm] dầm móng cân bằng (Design/Foundation/EccentricFooting.cs) ----
+    /// <summary>Dầm móng cân bằng DM nối móng lệch tâm (sát ranh giới đất) với móng cột trong</summary>
+    public List<KetCauVXT.Design.Foundation.StrapBeamDesign> StrapBeams { get; set; } = new();
+    // ---- hết [MóngLệchTâm] ----
     public List<string> Warnings { get; set; } = new();
 
     public IEnumerable<MemberDesignBase> All =>
-        Beams.Cast<MemberDesignBase>().Concat(Columns).Concat(Slabs).Concat(Footings).Concat(PileCaps).Concat(StripFootings).Concat(Steel);
+        Beams.Cast<MemberDesignBase>().Concat(Columns).Concat(Slabs).Concat(Footings).Concat(PileCaps).Concat(StripFootings).Concat(StrapBeams ?? new List<KetCauVXT.Design.Foundation.StrapBeamDesign>()).Concat(Steel);   // [MóngLệchTâm] StrapBeams
 }

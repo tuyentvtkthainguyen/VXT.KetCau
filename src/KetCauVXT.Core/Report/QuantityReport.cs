@@ -144,7 +144,7 @@ public static class QuantityReport
                 Widths = new double[] { 10, 14, 9, 8, 24, 7, 12, 9, 9, 9, 11, 13 }
             };
             foreach (var r in q.RebarRows)
-                det.Add(r.Category, r.Member, r.Story, r.Mark, r.ShapeText, r.Dia, r.LengthMm, r.MemberCount, r.BarsPerMember, r.BarsTotal, R(r.TotalLengthM, 2), R(r.WeightKg, 2));
+                det.Add(r.Category, r.MemberLabel, r.Story, r.Mark, r.ShapeText, r.Dia, r.LengthMm, r.MemberCount, r.BarsPerMember, r.BarsTotal, R(r.TotalLengthM, 2), R(r.WeightKg, 2));
             det.AddTotal("TỔNG", null, null, null, null, null, null, null, null, null, null, R(q.RebarTotal, 2));
             sheets[3].Tables.Add(det);
         }

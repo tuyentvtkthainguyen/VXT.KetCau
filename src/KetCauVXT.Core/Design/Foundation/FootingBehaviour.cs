@@ -59,6 +59,8 @@ public static class FootingBehaviour
 
         // ---- móng cứng ----
         double cMax = Math.Max((L - hc) / 2, (B - bc) / 2);
+        var ecc = d.Eccentric;   // [MóngLệchTâm] độ vươn lớn nhất của móng lệch tâm (phía xa cột)
+        if (ecc != null && ecc.Combined == null) cMax = Math.Max(EccentricFooting.Cantilever(L, hc, ecc.OffsetX), EccentricFooting.Cantilever(B, bc, ecc.OffsetY));
         bool rigid = cMax <= RigidRatio * H + 1e-9;
         rep.Items.Add(SafetyItem.Make("Sự làm việc", "Móng cứng: độ vươn bản móng c ≤ 2,5H", cMax * 1000, RigidRatio * H * 1000, "mm",
             $"c = max((L − hc)/2; (B − bc)/2) = {cMax * 1000:0} mm; H = {H * 1000:0} mm; c/H = {cMax / H:0.00}",
@@ -69,6 +71,20 @@ public static class FootingBehaviour
         // ---- lệch tâm (tiêu chuẩn) ----
         double ntot = d.Ntc + gtb * Df * A;
         double mL = (Math.Abs(d.My) + Math.Abs(d.Qx) * Df) / kt, mB = (Math.Abs(d.Mx) + Math.Abs(d.Qy) * Df) / kt;
+        if (ecc != null && ecc.Combined == null)   // [MóngLệchTâm] tự cân bằng: + N·e0; dầm cân bằng: lực quy đổi R1 tại trọng tâm, mô men trong mặt phẳng dầm = 0
+        {
+            if (ecc.Scheme == KetCauVXT.Model.EccentricScheme.Strap)
+            {
+                ntot = (d.Ntc + Math.Max(ecc.DeltaR, 0) / kt) + gtb * Df * A;
+                if (ecc.PartnerX != 0) mL = 0;
+                if (ecc.PartnerY != 0) mB = 0;
+            }
+            else
+            {
+                mL += Math.Abs(d.Ntc * ecc.OffsetX);
+                mB += Math.Abs(d.Ntc * ecc.OffsetY);
+            }
+        }
         double eL = ntot > 1e-9 ? mL / ntot : 0, eB = ntot > 1e-9 ? mB / ntot : 0;
         double kern = eL / L + eB / B;
         rep.Items.Add(SafetyItem.Make("Nền", "Lệch tâm trong lõi: eL/L + eB/B ≤ 1/6", kern, 1.0 / 6, "",
@@ -114,6 +130,11 @@ public static class FootingBehaviour
             double F = Math.Max(d.N - pnet * apz, 0);
             double lx = hc + h0, ly = bc + h0, u = 2 * (lx + ly);
             double fbu = rbt * u * h0;
+            if (ecc != null && ecc.Combined == null)   // [MóngLệchTâm] cột sát mép móng: tháp / chu vi bị cắt bởi mép móng
+            {
+                EccentricFooting.Punching(d.N, L, B, hc, bc, ecc.OffsetX, ecc.OffsetY, h0, rbt, out double fE, out double fuE, out double uE);
+                F = fE; fbu = fuE; u = uE;
+            }
             double mbx = rbt * (lx * lx / 3 + lx * ly) * h0, mby = rbt * (ly * ly / 3 + lx * ly) * h0;
             double fr = fbu > 0 ? F / fbu : 99;
             double mr = (mbx > 0 ? 0.5 * Math.Abs(d.My) / mbx : 0) + (mby > 0 ? 0.5 * Math.Abs(d.Mx) / mby : 0);
@@ -130,6 +151,7 @@ public static class FootingBehaviour
         {
             double len = alongL ? L : B, wid = alongL ? B : L, col = alongL ? hc : bc;
             double cl = (len - col) / 2;
+            if (ecc != null && ecc.Combined == null) cl = EccentricFooting.Cantilever(len, col, alongL ? ecc.OffsetX : ecc.OffsetY);   // [MóngLệchTâm]
             double hh = alongL ? h0 : h0 - Math.Max(d.DiaB, 10) / 1000.0;
             if (cl <= 1e-6 || hh <= 0.05 || d.N <= 0) return;
             double m = alongL ? Math.Abs(d.My) + Math.Abs(d.Qx) * H : Math.Abs(d.Mx) + Math.Abs(d.Qy) * H;
@@ -267,14 +289,14 @@ public static class FootingBehaviour
             });
         }
 
-        double cf = Math.Max((d.Width - d.RibB) / 2, 0);
+        double cf = d.FlangeSide != 0 ? Math.Max(d.Width - d.RibB, 0) : Math.Max((d.Width - d.RibB) / 2, 0);   // [MóngLệchTâm] bản cánh một phía
         rep.Behaviour = $"Móng băng {d.Name} ({d.Grid}) làm việc như dầm trên nền đàn hồi Winkler (k = {d.K:0} kN/m³, {kSrc}): "
                         + $"EI = {EI:0} kN.m², λ = {lam:0.000} 1/m, chiều dài đặc trưng 1/λ = {(lam > 0 ? 1 / lam : 0):0.00} m, λL = {lamL:0.00} → {StripClassName(cls).ToLowerInvariant()}. "
                         + (cls == 0 ? "Dải rất cứng so với nền: lún gần đều, áp lực phân bố gần tuyến tính. "
                            : cls == 1 ? "Độ cứng dải và nền cùng quyết định phân bố áp lực: áp lực lớn hơn dưới chân cột. "
                            : "Dải mềm so với nền: áp lực tập trung dưới các chân cột, nội lực sườn phụ thuộc mạnh vào k. ")
                         + "Sườn chịu mô men, lực cắt theo phương dải (thép dọc trên/dưới, cốt đai); "
-                        + (cf > 1e-6 ? $"bản cánh vươn {cf * 1000:0} mm mỗi bên làm việc như công xôn ngàm vào sườn (thép ngang đáy bản)." : "không có bản cánh (đáy bằng bề rộng sườn).");
+                        + (cf > 1e-6 ? $"bản cánh vươn {cf * 1000:0} mm {(d.FlangeSide != 0 ? "về một phía (sườn sát ranh giới – móng băng lệch tâm)" : "mỗi bên")} làm việc như công xôn ngàm vào sườn (thép ngang đáy bản)." : "không có bản cánh (đáy bằng bề rộng sườn).");
         d.Safety = rep;
         string msg = $"Sự làm việc: dầm trên nền đàn hồi, λL = {lamL:0.00} – {StripClassName(cls).ToLowerInvariant()}";
         if (!d.Messages.Contains(msg)) d.Messages.Add(msg);

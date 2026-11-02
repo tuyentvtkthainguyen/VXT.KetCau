@@ -39,6 +39,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         if (s.Footings.Count > 0 || (s.PileCaps.Count == 0 && s.StripFootings.Count == 0)) FootingsSection(p, s, d, sec++);
         if (s.PileCaps.Count > 0) PileCapsSection(p, s, d, sec++);
         if (s.StripFootings.Count > 0) StripFootingsSection(p, s, d, sec++);
+        if (HasEccentric(s)) EccentricSection(p, s, d, sec++);   // [MóngLệchTâm] CalculationReport.Eccentric.cs
         if (s.Steel.Count > 0) SteelSection(p, s, d, sec++);
         Conclusion(s, d, sec++);
         Appendix(r, s, d);

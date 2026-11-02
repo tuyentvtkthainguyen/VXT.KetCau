@@ -1,4 +1,5 @@
 using KetCauVXT.Analysis;
+using KetCauVXT.Design.Foundation;
 using KetCauVXT.Model;
 
 namespace KetCauVXT.Design.Concrete;
@@ -36,12 +37,23 @@ public static class FootingDesigner
                 && baseCols.All(x => x.n.Id != lo.Id)) baseCols.Add((lo, f));
         }
         baseCols = baseCols.OrderBy(x => Math.Round(x.n.Y, 2)).ThenBy(x => Math.Round(x.n.X, 2)).ToList();
+        // [MóngLệchTâm] ranh giới đất: kế hoạch lệch tâm (null = không có ranh giới → thiết kế như cũ); móng biên có dầm cân bằng thiết kế trước
+        var plan = EccentricFooting.Plan(p, r, combos, baseCols.Select(x => (x.n, x.f)));
+        var rank = baseCols.Select((x, i) => (x.n.Id, i)).ToDictionary(t => t.Id, t => t.i);
+        var order = plan == null ? baseCols : baseCols.OrderBy(x => EccentricFooting.Order(plan, x.n.Id)).ThenBy(x => rank[x.n.Id]).ToList();
+        if (plan != null) foreach (var w in plan.Notes) warnings.Add("Cảnh báo: " + w);
+        // ---- hết [MóngLệchTâm] ----
 
-        foreach (var (n, f) in baseCols)
+        foreach (var (n, f) in order)
         {
             try
             {
-                var d = DesignOne(p, r, n, f, combos);
+                // [MóngLệchTâm] móng kết hợp: nút phụ thiết kế chung với nút chính
+                var epn = plan?.Get(n.Id);
+                if (epn != null && epn.Secondary) continue;
+                var d = epn != null && epn.CombinedWith != 0 && epn.Scheme == EccentricScheme.Combined
+                    ? CombinedFootingDesigner.Design(p, r, plan, epn, combos)
+                    : DesignOne(p, r, n, f, combos, plan);
                 string sig = Signature(d);
                 int k = list.FindIndex(x => x.sig == sig);
                 if (k >= 0)
@@ -52,6 +64,7 @@ public static class FootingDesigner
                     for (int i = 0; i < keep.Checks.Count && i < d.Checks.Count; i++)
                         if (d.Checks[i].Ratio > keep.Checks[i].Ratio) keep.Checks[i] = d.Checks[i];
                     keep.Messages.Add("Gộp móng giống hệt tại " + DesignUtil.GridName(p, d.X, d.Y));
+                    EccentricFooting.Merge(keep.Eccentric, d.Eccentric);   // [MóngLệchTâm]
                 }
                 else list.Add((d, sig));
             }
@@ -60,6 +73,7 @@ public static class FootingDesigner
                 warnings.Add("LỖI thiết kế móng tại " + DesignUtil.GridName(p, n.X, n.Y) + ": " + ex.Message);
             }
         }
+        if (plan != null) list = list.OrderBy(x => rank.TryGetValue(x.d.NodeId, out int k) ? k : 0).ToList();   // [MóngLệchTâm] giữ thứ tự đặt tên như cũ
         int no = 1;
         foreach (var (d, _) in list) d.Name = "M" + no++;
         return list.Select(x => x.d).ToList();
@@ -78,7 +92,7 @@ public static class FootingDesigner
         return s.M1 * s.M2 / Math.Max(s.Ktc, 1e-6) * (A * b * s.Gamma + B * s.Depth * s.GammaAbove + D * s.C);
     }
 
-    private static FootingDesign DesignOne(Project p, AnalysisResults r, Node n, FrameElement col, List<string> combos)
+    private static FootingDesign DesignOne(Project p, AnalysisResults r, Node n, FrameElement col, List<string> combos, EccPlan plan = null)
     {
         var cs = p.Concrete;
         // nền: hố khoan gần nhất khi Soil.UseBorehole, ngược lại p.Soil (GeotechCalc.SoilFor)
@@ -121,6 +135,18 @@ public static class FootingDesigner
         // cạnh dài theo phương có mô men lớn hơn: L theo X chịu My
         double myMax = loads.Max(l => Math.Abs(l.My) + Math.Abs(l.Qx) * Df), mxMax = loads.Max(l => Math.Abs(l.Mx) + Math.Abs(l.Qy) * Df);
         bool longX = myMax >= mxMax;
+        // [MóngLệchTâm] móng lệch tâm: tải dạng BaseLoad, móng biên kéo dài dọc ranh giới (giảm độ lệch tâm)
+        var ep = plan?.Get(n.Id);
+        if (ep != null && ep.Scheme == EccentricScheme.None) ep = null;
+        List<BaseLoad> bl = ep == null ? null : loads.Select(l => new BaseLoad { Combo = l.Combo, N = l.N, Mx = l.Mx, My = l.My, Qx = l.Qx, Qy = l.Qy }).ToList();
+        double eox = 0, eoy = 0;
+        PressureResult epr = default;
+        if (ep != null)
+        {
+            if (ep.Limits.EdgeX && !ep.Limits.EdgeY) { longX = false; asp = Math.Max(asp, EccentricFooting.EdgeAspect); }
+            else if (ep.Limits.EdgeY && !ep.Limits.EdgeX) { longX = true; asp = Math.Max(asp, EccentricFooting.EdgeAspect); }
+        }
+        // ---- hết [MóngLệchTâm] ----
 
         // ---- kích thước đáy (TCVN 9362:2012 mục 4.6) ----
         double Nmax = loads.Max(l => l.N) / kt;
@@ -131,11 +157,20 @@ public static class FootingDesigner
         double pmax = 0, pmin = 0, ptb = 0;
         string gov = "";
         bool sized = false;
+        double bs0 = bs;
+        // [MóngLệchTâm] áp lực đáy móng: đối xứng (cũ) hoặc lệch tâm (EccentricFooting.Evaluate)
+        void Eval(double LL, double BB)
+        {
+            if (ep == null) { EvalPressure(loads, LL, BB, kt, gtb, Df, out ptb, out pmax, out pmin, out gov); return; }
+            epr = EccentricFooting.Evaluate(plan, ep, bl, LL, BB, kt, gtb, Df, out eox, out eoy);
+            ptb = epr.Ptb; pmax = epr.Pmax; pmin = epr.Pmin; gov = epr.Combo;
+        }
+
         if (given != null && given.L > 0 && given.B > 0)
         {
             L = given.L; B = given.B;
             Rv = BearingR(soil, Math.Min(L, B));
-            EvalPressure(loads, L, B, kt, gtb, Df, out ptb, out pmax, out pmin, out gov);
+            Eval(L, B);   // [MóngLệchTâm]
             sized = true;
             d.Messages.Add("Kích thước đáy móng do người dùng chọn");
         }
@@ -146,12 +181,32 @@ public static class FootingDesigner
                 double sl = RcSection.CeilTo(bs * asp, 0.1);
                 L = longX ? sl : bs; B = longX ? bs : sl;
                 Rv = BearingR(soil, Math.Min(L, B));
-                EvalPressure(loads, L, B, kt, gtb, Df, out ptb, out pmax, out pmin, out gov);
-                if (ptb <= Rv + 1e-6 && pmax <= 1.2 * Rv + 1e-6 && pmin >= -1e-6) { sized = true; break; }
+                Eval(L, B);   // [MóngLệchTâm]
+                if (ep == null ? ptb <= Rv + 1e-6 && pmax <= 1.2 * Rv + 1e-6 && pmin >= -1e-6 : EccentricFooting.PressureOk(epr, Rv)) { sized = true; break; }
+                if (ep != null && (Math.Abs(eox) > 1e-6 || Math.Abs(eoy) > 1e-6) && Math.Min(L, B) >= EccentricFooting.MaxSelfSize - 1e-9) break;   // [MóngLệchTâm] không tăng quá 4 m
                 bs = Math.Round(bs + 0.1, 3);
             }
+            // [MóngLệchTâm] lệch tâm tự cân bằng không thoả: lấy kích thước theo ptb ≤ R, báo lỗi + đề xuất dầm cân bằng / móng kết hợp
+            if (!sized && ep != null && Math.Abs(eox) < 1e-6 && Math.Abs(eoy) < 1e-6)
+                d.Messages.Add("LỖI không chọn được kích thước đáy móng thoả điều kiện áp lực nền – xem xét móng băng/móng cọc");
+            else if (!sized && ep != null)
+            {
+                bs = bs0;
+                for (int it = 0; it < 200; it++)
+                {
+                    double sl = RcSection.CeilTo(bs * asp, 0.1);
+                    L = longX ? sl : bs; B = longX ? bs : sl;
+                    Rv = BearingR(soil, Math.Min(L, B));
+                    Eval(L, B);
+                    if (ptb <= Rv + 1e-6) break;
+                    bs = Math.Round(bs + 0.1, 3);
+                }
+                d.Messages.Add($"LỖI móng lệch tâm {(ep.Scheme == EccentricScheme.Strap ? "có dầm cân bằng" : "tự cân bằng")} không thoả áp lực nền với kích thước ≤ {EccentricFooting.MaxSelfSize:0.0} m "
+                               + $"(pmax = {DesignUtil.F(pmax >= 1e8 ? 99999 : pmax, "0")} kN/m², tiếp xúc {epr.Contact * 100:0}%) – "
+                               + (ep.Scheme == EccentricScheme.Strap ? "tăng kích thước / dùng móng cọc" : "dùng phương án (a) dầm móng cân bằng hoặc (c) móng kết hợp"));
+            }
         }
-        if (!sized) d.Messages.Add("LỖI không chọn được kích thước đáy móng thoả điều kiện áp lực nền – xem xét móng băng/móng cọc");
+        if (!sized && ep == null) d.Messages.Add("LỖI không chọn được kích thước đáy móng thoả điều kiện áp lực nền – xem xét móng băng/móng cọc");
         d.L = L; d.B = B; d.R = Rv; d.Ptb = ptb; d.Pmax = pmax; d.Pmin = pmin;
 
         // tổ hợp tính toán bất lợi (theo N lớn nhất và độ lệch tâm)
@@ -160,6 +215,13 @@ public static class FootingDesigner
 
         d.Checks.Add(new CheckItem { Name = "Áp lực trung bình đáy móng ptb ≤ R", Demand = ptb, Capacity = Rv, Unit = "kN/m²", Note = gov });
         d.Checks.Add(new CheckItem { Name = "Áp lực lớn nhất pmax ≤ 1,2R", Demand = pmax, Capacity = 1.2 * Rv, Unit = "kN/m²", Note = gov });
+        if (ep != null && pmin < -1e-6)   // [MóngLệchTâm] tách nền một phần: điều kiện vùng tiếp xúc ≥ 75%
+            d.Checks.Add(new CheckItem
+            {
+                Name = "Áp lực nhỏ nhất pmin ≥ 0 hoặc tiếp xúc ≥ 75% (lệch tâm)", Demand = 0.75, Capacity = Math.Max(epr.Contact, 0), Unit = "",
+                Note = "pmin = " + DesignUtil.F(pmin, "0.0") + " kN/m², vùng tiếp xúc 3c0/L = " + DesignUtil.F(epr.Contact * 100, "0") + "%"
+            });
+        else
         d.Checks.Add(new CheckItem
         {
             Name = "Áp lực nhỏ nhất pmin ≥ 0", Demand = pmin < 0 ? -pmin : 0, Capacity = pmin < 0 ? 0 : 1, Unit = "kN/m²",
@@ -175,12 +237,22 @@ public static class FootingDesigner
         {
             double h0 = H - cover - dGuess / 1000.0;
             Punching(loads, L, B, hc, bc, h0, conc, out F, out Fu);
+            if (ep != null)   // [MóngLệchTâm] chọc thủng cột sát mép móng: tháp và chu vi bị cắt bởi mép móng
+            {
+                F = 0;
+                foreach (var l in bl)
+                {
+                    EccentricFooting.Punching(l.N, L, B, hc, bc, eox, eoy, h0, conc.Rbt, out double f1, out double fu1, out _);
+                    F = Math.Max(F, f1); Fu = fu1;
+                }
+            }
             if (F <= Fu + 1e-6) break;
             if (given != null && given.Height > 0) break;
             H = Math.Round(H + 0.05, 3);
         }
         d.H = H; d.Hb = Math.Max(0.2, Math.Min(H, RcSection.CeilTo(H / 2, 0.05)));
         if (d.Hb > H) d.Hb = H;
+        if (ep != null && (Math.Abs(eox) > 1e-6 || Math.Abs(eoy) > 1e-6)) d.Hb = H;   // [MóngLệchTâm] móng lệch tâm: đế phẳng (không vát)
         d.Checks.Add(new CheckItem { Name = "Chọc thủng F ≤ Rbt·u·h0", Demand = F, Capacity = Fu, Unit = "kN", Note = "H = " + DesignUtil.F(H * 1000, "0") + " mm" });
 
         // ---- cốt thép đáy (uốn tại mép cột, áp lực tính toán phía pmax) ----
@@ -200,6 +272,7 @@ public static class FootingDesigner
             double pmB = p0 + exB, pIB = p0 + exB * (bc / B);
             mB = Math.Max(mB, L * cb * cb * (2 * pmB + pIB) / 6);
         }
+        if (ep != null) (mL, mB) = EccentricFooting.Bending(plan, ep, bl, L, B, hc, bc, eox, eoy, H);   // [MóngLệchTâm] công xôn lệch tâm, áp lực tuyến tính / tam giác
         Material SteelOf(int dia) => dia < 10 ? stlSmall : main;
         d.ML = mL; d.MB = mB;
         string basis = Basis(L, B, H);
@@ -259,11 +332,38 @@ public static class FootingDesigner
             Segments = new List<double> { DesignUtil.Mm(hookB), DesignUtil.Mm(lenB), DesignUtil.Mm(hookB) }
         });
         if (geoBh != null) AddSettlementCheck(d, geoBh, soil, L, B, ptb);
+        if (ep != null) AttachEccentric(p, plan, ep, d, eox, eoy, epr, L, B, kt, gtb, Df, Rv);   // [MóngLệchTâm]
         // [FoundationChecks] sự làm việc móng đơn: móng cứng, lệch tâm / tách nền, trượt, chọc thủng có mô men, cắt (không thêm CheckItem)
         try { KetCauVXT.Design.Foundation.FootingBehaviour.AnalyzeIsolated(d, soil, conc, cover); }
         catch (Exception ex) { d.Messages.Add("Cảnh báo: không phân tích được sự làm việc móng – " + ex.Message); }
         RebarNumbering.Renumber(d.Bars);
         return d;
+    }
+
+    /// <summary>[MóngLệchTâm] Ghi kết quả lệch tâm vào móng: EccentricInfo, liên kết dầm cân bằng, ΔR cho móng cột trong, thông báo.</summary>
+    private static void AttachEccentric(Project p, EccPlan plan, EccNode ep, FootingDesign d, double ox, double oy, PressureResult pr, double L, double B,
+        double kt, double gtb, double Df, double R)
+    {
+        EccentricFooting.Record(plan, ep, ox, oy, L, B, "", false);
+        bool off = Math.Abs(ox) > 1e-6 || Math.Abs(oy) > 1e-6;
+        if (!off && !ep.StrapX && !ep.StrapY && ep.RelievedBy.Count == 0) return;
+        var info = EccentricFooting.Info(plan, ep, ox, oy, pr, L, B);
+        info.Straps.AddRange(EccentricFooting.Links(plan, ep, L, B, "", false));
+        if (ep.Limits.EdgeX || ep.Limits.EdgeY) info.Options = EccentricFooting.CompareOptions(plan, ep, L, B, kt, gtb, Df, R);
+        d.Eccentric = info;
+        string where = DesignUtil.GridName(p, d.X, d.Y);
+        if (off)
+            d.Messages.Add($"Móng lệch tâm ({(info.Boundary ? "ranh giới " + info.Sides : "nhập tay")}): tâm đáy móng lệch so với tim cột ex = {ox * 1000:0} mm, ey = {oy * 1000:0} mm – "
+                           + EccentricOverride.SchemeName(ep.Scheme) + (ep.Scheme != ep.Recommended ? " (đề xuất: " + EccentricOverride.SchemeName(ep.Recommended) + ")" : ""));
+        if (ep.StrapX || ep.StrapY)
+            d.Messages.Add($"Dầm móng cân bằng: R1 = N1 + ΔR = {info.N1:0.0} + {info.DeltaR:0.0} = {info.R1:0.0} kN tại trọng tâm đáy móng (đòn bẩy R1 = N1·L/(L − e)) – áp lực đáy móng gần đều");
+        if (ep.RelievedBy.Count > 0 && info.Relief > 1e-6)
+            d.Messages.Add($"Móng cột trong được giảm tải do dầm cân bằng từ nút {string.Join(", ", info.ReliefFrom)}: N2' = N2 − β·ΔR, β = {plan.Fs.StrapReliefFactor:0.##} → giảm {info.Relief:0.0} kN (tổ hợp N lớn nhất)");
+        if (ep.Scheme == EccentricScheme.SelfBalanced && off && (info.ColumnMomentX > 1e-3 || info.ColumnMomentY > 1e-3))
+            d.Messages.Add($"Cảnh báo: móng lệch tâm tự cân bằng tại {where} – mô men lệch tâm ΔM = N·e0 = {info.ColumnMomentX:0.0} / {info.ColumnMomentY:0.0} kN.m (theo X / Y) "
+                           + "truyền vào chân cột và hệ giằng móng; cần kiểm tra cột tầng 1 + giằng móng với mô men này (chưa kể vào thiết kế cột).");
+        if (pr.Partial && off)
+            d.Messages.Add($"Cảnh báo: hợp lực ra ngoài lõi tiết diện (tách nền một phần) – pmax = 2N/(3B·c0) = {(pr.Pmax >= 1e8 ? 99999 : pr.Pmax):0} kN/m², vùng tiếp xúc {pr.Contact * 100:0}%");
     }
 
     /// <summary>Kiểm tra lún khi nền lấy theo hố khoan: S = GeotechCalc.Settlement(hố khoan, L, B, Df, ptb) ≤ Sgh = 8 cm
@@ -352,5 +452,5 @@ public static class FootingDesigner
 
     private static string Signature(FootingDesign d) =>
         Math.Round(d.L * 100) + "x" + Math.Round(d.B * 100) + "x" + Math.Round(d.H * 100) + "|" + Math.Round(d.ColumnB * 1000) + "x" + Math.Round(d.ColumnH * 1000)
-        + "|" + d.BarsL + "|" + d.BarsB + "|" + RebarNumbering.Signature(d.Bars);
+        + "|" + d.BarsL + "|" + d.BarsB + "|" + RebarNumbering.Signature(d.Bars) + EccentricFooting.Sig(d.Eccentric);   // [MóngLệchTâm]
 }

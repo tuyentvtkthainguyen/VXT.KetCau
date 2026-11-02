@@ -331,6 +331,10 @@ public static partial class SheetBuilder
                 ? $"{KindName(v.Kind)}: cần chạy \"Thiết kế BTCT\" trước"
                 : $"{KindName(v.Kind)} {par}: không có dữ liệu"));
         }
+        // ---- hiệu chỉnh bản vẽ: khoá hình (dùng chung với bộ KC-xx) + áp chỉnh sửa của từng hình (DrawingOverlay.cs) ----
+        DrawingOverlay.AssignOwners(res, DrawingOverlay.KindOf(v.Kind));
+        DrawingOverlay.ApplyFigures(p, res);
+        // ---- hết ----
         return res;
     }
 
@@ -537,6 +541,13 @@ public static partial class SheetBuilder
     /// <summary>Ghép toàn bộ tờ (khung tên + các khung nhìn) thành một bản vẽ mm giấy tỷ lệ 1/1.</summary>
     public static DxfWriter Compose(Project p, AnalysisResults r, DesignSummary d, Sheet s)
     {
+        // ---- tờ đã khoá (sửa trong CAD rồi nạp lại) → dùng bản đã nạp (DrawingOverlay.cs) ----
+        if (!DrawingOverlay.Bypassed && !DrawingOverlay.FrozenIgnored && DrawingOverlay.FrozenOf(p, DrawingOverlay.SheetKey(s)) is { } fz)
+        {
+            var fw = DrawingOverlay.FrozenWriter(fz);
+            if (fw != null && fw.EntityCount > 0) { DrawingOverlay.Current?.Warn(FrozenSheetWarning(p, r, d, s, fz)); return fw; }
+        }
+        // ---- hết ----
         var lays = new List<(SheetView, ViewLayout)>();
         foreach (var v in s.Views) lays.Add((v, Layout(Figures(p, r, d, v), v)));
         var outW = new DxfWriter(1);
@@ -548,6 +559,8 @@ public static partial class SheetBuilder
             if (v.Kind is not (SheetViewKind.Notes or SheetViewKind.RebarSchedule or SheetViewKind.View3D or SheetViewKind.RebarShop) && lay.EffectiveScale > 0)
                 outW.RegisterDimStyle(lay.EffectiveScale);
         ComposeItems(outW, s);
+        // chỉnh sửa của chính tờ (khung tên, tên khung nhìn…); chỉnh sửa của từng hình đã áp trong Figures()
+        if (!DrawingOverlay.Bypassed) DrawingOverlay.Apply(p, outW, DrawingOverlay.SheetKey(s), false);
         return outW;
     }
 
@@ -555,7 +568,50 @@ public static partial class SheetBuilder
     {
         if (p == null) throw new ArgumentNullException(nameof(p));
         if (s == null) throw new ArgumentNullException(nameof(s));
+        // tờ đã khoá: ghi nguyên văn file đã nạp
+        if (!DrawingOverlay.Bypassed && !DrawingOverlay.FrozenIgnored && DrawingOverlay.FrozenOf(p, DrawingOverlay.SheetKey(s)) is { } fz && DrawingOverlay.RawBytes(fz).Length > 0)
+        {
+            DrawingOverlay.Current?.Warn(FrozenSheetWarning(p, r, d, s, fz));
+            DrawingOverlay.WriteFrozen(fz, path);
+            return;
+        }
         Compose(p, r, d, s).Save(path);
+    }
+
+    /// <summary>Mã băm tờ tự sinh (đã áp chỉnh sửa, không dùng bản khoá) – so với lúc khoá.</summary>
+    public static string GeneratedHash(Project p, AnalysisResults r, DesignSummary d, Sheet s)
+    {
+        try { using (DrawingOverlay.IgnoreFrozen()) return Compose(p, r, d, s).ContentHash(); }
+        catch (Exception) { return null; }
+    }
+
+    /// <summary>Cảnh báo tờ đã khoá (kèm "mô hình thay đổi sau ngày …" nếu tờ tự sinh khác lúc khoá).</summary>
+    public static string FrozenSheetWarning(Project p, AnalysisResults r, DesignSummary d, Sheet s, FrozenDrawing fz) =>
+        DrawingOverlay.FrozenWarning(fz, GeneratedHash(p, r, d, s));
+
+    /// <summary>Xuất các tờ (mặc định p.Sheets) theo tuỳ chọn: tách rời (mỗi tờ một file, như ExportAllDxf) hoặc gộp 1 file
+    /// (các tờ đặt cạnh nhau theo trục X: tờ i ở X = Σ(W + khoảng hở), mm giấy, mỗi tờ có tên "số – tên" phía trên).</summary>
+    public static DrawingExportResult ExportDxf(Project p, AnalysisResults r, DesignSummary d, string folder, IEnumerable<Sheet> sheets, DrawingExportOptions o)
+    {
+        if (p == null) throw new ArgumentNullException(nameof(p));
+        var res = new DrawingExportResult();
+        var list = (sheets ?? p.Sheets).ToList();
+        using (DrawingOverlay.Collect(res.Report))
+        {
+            if (o == null || (o.Mode == DrawingExportMode.Split && string.IsNullOrWhiteSpace(o.FilePattern)))
+                res.Files.AddRange(ExportAllDxf(p, r, d, folder, list));
+            else
+            {
+                var items = list.Select(s => new DrawingItem
+                {
+                    Key = DrawingOverlay.SheetKey(s), FileName = FileName(s), Number = s.Number, Title = s.Name, Scale = 1,
+                    W = Compose(p, r, d, s), Frozen = DrawingOverlay.Bypassed ? null : DrawingOverlay.FrozenOf(p, DrawingOverlay.SheetKey(s))
+                }).ToList();
+                DrawingExport.Write(items, folder, o, p.Name, res);
+            }
+        }
+        foreach (var m in res.Report.Messages()) if (!res.Messages.Contains(m)) res.Messages.Add(m);
+        return res;
     }
 
     /// <summary>Xuất mỗi tờ (mặc định: p.Sheets) thành một file DXF trong thư mục; trả về danh sách file.</summary>

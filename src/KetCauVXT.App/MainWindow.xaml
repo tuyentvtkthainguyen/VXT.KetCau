@@ -75,6 +75,8 @@
             </MenuItem>
             <MenuItem Header="_Xuất">
                 <MenuItem Header="Bản vẽ DXF..." Click="MnuExpDxf_Click"/>
+                <MenuItem Header="Hiệu chỉnh bản vẽ…" Click="MnuDrawingEdit_Click" ToolTip="Dời chữ/nhãn, sửa chữ, xoá nét, thêm ghi chú trên bản vẽ tự sinh – chỉnh sửa được lưu và áp lại sau mỗi lần xuất"/>
+                <MenuItem Header="Nạp lại bản vẽ đã chỉnh sửa (DXF/DWG)…" Click="MnuDrawingAttach_Click" ToolTip="Khoá bản vẽ bằng file đã sửa trong AutoCAD: các lần xuất/in sau dùng file này tới khi Bỏ khoá"/>
                 <MenuItem Header="Thuyết minh Word..." Click="MnuExpWord_Click"/>
                 <MenuItem Header="Bảng tính Excel..." Click="MnuExpExcel_Click"/>
                 <MenuItem Header="Bảng khối lượng vật tư…" Click="MnuQuantities_Click"/>

@@ -156,10 +156,10 @@ public partial class MainWindow
     // ------------------------------------------------------------------
 
     /// <summary>Ghi bộ gia công thép vào thư mục: KC-07.x DXF theo loại cấu kiện, KC-07 phương án cắt, GiaCongThep.xlsx. Trả về số file.</summary>
-    private int ExportRebarShop(DesignSummary ds, string folder)
+    private int ExportRebarShop(DesignSummary ds, string folder, KetCauVXT.Drawing.DrawingExportOptions expOpt = null)
     {
         Directory.CreateDirectory(folder);
-        var files = RebarShopDrawing.ExportAll(_p, ds, folder);
+        var files = RebarShopDrawing.Export(_p, ds, folder, expOpt).Files;   // gộp 1 file / tách rời (DrawingExport.cs)
         var shop = RebarShopReport.Export(_p, ds, Path.Combine(folder, "GiaCongThep.xlsx"));
         _lastShopSummary = $"{shop.Bars.Count} dòng gia công, {shop.Plans.Sum(x => x.StockCount)} cây thép, {shop.TotalWeightKg:0.0} kg"
                            + (shop.Plans.Count > 0 ? $", hao hụt {shop.Plans.Sum(x => x.WasteM):0.00} m" : "");
@@ -176,11 +176,13 @@ public partial class MainWindow
             MessageBox.Show("Chưa có cấu kiện BTCT có bố trí thép.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+        var expOpt = ExportOptionsDialog.Ask(this, "bản vẽ gia công thép");
+        if (expOpt == null) return;
         string folder = AskFolder("Chọn thư mục lưu bản vẽ gia công thép (shop drawing)");
         if (folder == null) return;
         var ds = _design;
         int n = 0;
-        if (await RunBusy("Lỗi xuất shop drawing thép", prog => { prog.Report("Đang triển khai thép gia công..."); n = ExportRebarShop(ds, folder); }))
+        if (await RunBusy("Lỗi xuất shop drawing thép", prog => { prog.Report("Đang triển khai thép gia công..."); n = ExportRebarShop(ds, folder, expOpt); }))
             Done($"Đã xuất {n} file gia công thép (DXF + Excel \"Gia công thép\") vào\n{folder}\n{_lastShopSummary}");
     }
 }

@@ -10,21 +10,41 @@ public static class DrawingSet
     public static string Paper { get; set; } = "A1";
 
     /// <summary>Ghi các file KC-01..KC-06 vào thư mục, trả về danh sách đường dẫn đã ghi.</summary>
-    public static List<string> ExportAll(Project p, DesignSummary s, string folder)
+    public static List<string> ExportAll(Project p, DesignSummary s, string folder) => Export(p, s, folder, null).Files;
+
+    /// <summary>Xuất bộ bản vẽ theo tuỳ chọn (tách rời từng bản / gộp 1 file). Lớp chỉnh sửa (Project.DrawingEdits) được áp lại,
+    /// bản vẽ đã khoá dùng file đã nạp; result.Messages liệt kê cảnh báo khoá và "chỉnh sửa không còn áp dụng được".</summary>
+    public static DrawingExportResult Export(Project p, DesignSummary s, string folder, DrawingExportOptions o)
+    {
+        if (p == null) throw new ArgumentNullException(nameof(p));
+        var res = new DrawingExportResult();
+        List<DrawingItem> items;
+        using (DrawingOverlay.Collect(res.Report)) items = BuildDrawings(p, s);
+        DrawingExport.Write(items, folder, o, p.Name, res);
+        foreach (var m in res.Report.Messages()) if (!res.Messages.Contains(m)) res.Messages.Add(m);
+        return res;
+    }
+
+    /// <summary>Dựng các bản vẽ KC-01…KC-08 (chưa ghi file). want(khoá): chỉ dựng bản vẽ cần (null = tất cả); bản không dựng có W = null.
+    /// Ngoài phạm vi DrawingOverlay.Bypass: đã áp lớp chỉnh sửa và thay bản đã khoá.</summary>
+    public static List<DrawingItem> BuildDrawings(Project p, DesignSummary s, Func<string, bool> want = null)
     {
         if (p == null) throw new ArgumentNullException(nameof(p));
         s ??= new DesignSummary();
-        Directory.CreateDirectory(folder);
         p.InvalidateIndex();
-        var paths = new List<string>();
+        var items = new List<DrawingItem>();
 
         SheetComposer.SheetInfo Info(string title, string no) => new SheetComposer.SheetInfo
         {
             ProjectName = p.Name, Title = title, SheetNo = no, Designer = p.Designer, Owner = p.Owner, Location = p.Location
         };
 
-        void Write(string file, List<Figure> figs, double scale, string title, string no, bool always = false, NotesScope? notes = null)
+        void Write(string file, Func<List<Figure>> build, double scale, string title, string no, string kind, bool always = false, NotesScope? notes = null)
         {
+            string key = DrawingOverlay.DrawingSetKey(file);
+            var it = new DrawingItem { Key = key, FileName = file, Number = no, Title = title, Scale = scale };
+            if (want != null && !want(key)) { items.Add(it); return; }
+            var figs = build() ?? new List<Figure>();
             if (figs.Count == 0 && !always) return;   // không xuất tờ trống (vd. nhà thép không có cột/sàn BTCT)
             if (figs.Count == 0)
             {
@@ -36,25 +56,31 @@ public static class DrawingSet
             {
                 // MỘT khối GHI CHÚ CHUNG cho cả bản vẽ (không lặp theo từng cấu kiện); tắt được trong Thiết lập bản vẽ
                 var nf = GeneralNotes.FigureFor(p, notes.Value, scale, s);
-                if (nf != null) figs.Add(nf);
+                if (nf != null) { nf.W.OwnerKey ??= "NOTE:" + notes.Value; figs.Add(nf); }
             }
+            DrawingOverlay.AssignOwners(figs, kind);   // khoá hình: chỉnh sửa dùng chung với tờ dàn trang (DrawingOverlay.cs)
             var w = SheetComposer.Compose(figs, scale, Info(title, no), Paper);
-            string path = Path.Combine(folder, file);
-            w.Save(path);
-            paths.Add(path);
+            if (!DrawingOverlay.Bypassed)
+            {
+                DrawingOverlay.Apply(p, w, key, true);
+                it.W = w;
+                DrawingExport.UseFrozen(p, it);
+            }
+            else it.W = w;
+            items.Add(it);
         }
 
         // KC-01 mặt bằng kết cấu các tầng
-        Write("KC-01_MatBangKetCau.dxf", FramingPlan.BuildAll(p, s), FramingPlan.CurrentScale,
-            "MẶT BẰNG KẾT CẤU CÁC TẦNG", "KC-01", always: true, notes: NotesScope.Plan);
+        Write("KC-01_MatBangKetCau.dxf", () => FramingPlan.BuildAll(p, s), FramingPlan.CurrentScale,
+            "MẶT BẰNG KẾT CẤU CÁC TẦNG", "KC-01", "PLAN", always: true, notes: NotesScope.Plan);
 
         // KC-02 móng
-        Write("KC-02_Mong.dxf", FootingDrawing.BuildAll(p, s), FootingDrawing.SheetScale,
-            "MẶT BẰNG VÀ CHI TIẾT MÓNG", "KC-02", notes: NotesScope.Foundation);
+        Write("KC-02_Mong.dxf", () => FootingDrawing.BuildAll(p, s), FootingDrawing.SheetScale,
+            "MẶT BẰNG VÀ CHI TIẾT MÓNG", "KC-02", "FOOT", notes: NotesScope.Foundation);
 
         // KC-03 cột
-        Write("KC-03_Cot.dxf", ColumnDrawing.BuildAll(p, s.Columns), ColumnDrawing.CurrentScale,
-            "CHI TIẾT CỘT", "KC-03", notes: NotesScope.Column);
+        Write("KC-03_Cot.dxf", () => ColumnDrawing.BuildAll(p, s.Columns), ColumnDrawing.CurrentScale,
+            "CHI TIẾT CỘT", "KC-03", "COL", notes: NotesScope.Column);
 
         // KC-04 dầm theo tầng
         var storyOrder = p.Stories.OrderBy(x => x.Elevation).Select(x => x.Name).ToList();
@@ -66,28 +92,29 @@ public static class DrawingSet
         {
             k++;
             string nm = DrawUtil.SafeFile(g.Key);
-            Write($"KC-04_Dam_{nm}.dxf", BeamDrawing.BuildAll(p, g), BeamDrawing.CurrentScale,
-                $"CHI TIẾT DẦM TẦNG {g.Key}", $"KC-04.{k}", notes: NotesScope.Beam);
+            Write($"KC-04_Dam_{nm}.dxf", () => BeamDrawing.BuildAll(p, g), BeamDrawing.CurrentScale,
+                $"CHI TIẾT DẦM TẦNG {g.Key}", $"KC-04.{k}", "BEAM", notes: NotesScope.Beam);
         }
 
         // KC-05 sàn
         double ss = SlabDrawing.ChooseScale(p);
-        Write("KC-05_San.dxf", SlabDrawing.BuildAll(p, s, ss), ss, "MẶT BẰNG THÉP SÀN", "KC-05", notes: NotesScope.Slab);
+        Write("KC-05_San.dxf", () => SlabDrawing.BuildAll(p, s, ss), ss, "MẶT BẰNG THÉP SÀN", "KC-05", "SLAB", notes: NotesScope.Slab);
 
         // KC-06 thống kê thép (vẽ theo mm giấy, tỷ lệ 1/1)
         if (s.All.Any(m => m.Bars.Count > 0))
-            Write("KC-06_ThongKeThep.dxf", RebarSchedule.BuildFigures(s, 1), 1, "THỐNG KÊ CỐT THÉP", "KC-06", notes: NotesScope.Schedule);
+            Write("KC-06_ThongKeThep.dxf", () => RebarSchedule.BuildFigures(s, 1), 1, "THỐNG KÊ CỐT THÉP", "KC-06", "BTK", notes: NotesScope.Schedule);
 
         // ---- KC-08 cầu thang: mặt bằng, mặt cắt vế, chi tiết thép, thống kê thép (StairDrawing.cs) ----
         int kst = 0;
         foreach (var sd in s.Stairs ?? new List<StairDesign>())
         {
             kst++;
-            Write($"KC-08.{kst}_CauThang_{DrawUtil.SafeFile(sd.Name)}.dxf", StairDrawing.Build(p, s, sd, StairDrawing.CurrentScale), StairDrawing.CurrentScale,
-                $"CẦU THANG {sd.Name} – MẶT BẰNG, MẶT CẮT, BỐ TRÍ THÉP", $"KC-08.{kst}");
+            var sdc = sd;
+            Write($"KC-08.{kst}_CauThang_{DrawUtil.SafeFile(sd.Name)}.dxf", () => StairDrawing.Build(p, s, sdc, StairDrawing.CurrentScale), StairDrawing.CurrentScale,
+                $"CẦU THANG {sd.Name} – MẶT BẰNG, MẶT CẮT, BỐ TRÍ THÉP", $"KC-08.{kst}", "STAIR");
         }
         // ---- hết cầu thang ----
-        return paths;
+        return items;
     }
 
     private static string StoryOfElevation(Project p, double z)

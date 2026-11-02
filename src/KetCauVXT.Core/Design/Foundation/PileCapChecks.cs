@@ -44,6 +44,13 @@ public sealed class PileCapInput
     public double Df { get; set; } = 1.5;
     public double PileLength { get; set; } = 15;
     public double LoadFactor { get; set; } = 1.15;
+    // ---- [MóngLệchTâm] ----
+    /// <summary>Tâm đài − tim cột (m): đài lệch tâm (Piles vẫn tính so với tim cột)</summary>
+    public double OffsetX { get; set; }
+    public double OffsetY { get; set; }
+    /// <summary>true = lệch tâm nhóm cọc là chủ ý do ranh giới đất (không cảnh báo, ghi "Lệch tâm do ranh giới")</summary>
+    public bool BoundaryEccentric { get; set; }
+    // ---- hết [MóngLệchTâm] ----
 }
 
 /// <summary>Kiểm tra an toàn đài cọc – phản lực từng cọc, sức chịu tải, cọc chịu nhổ, hiệu ứng nhóm, tải ngang, lún nhóm cọc,
@@ -97,6 +104,17 @@ public static class PileCapChecks
     public static double ColumnPunchCapacity(IList<(double X, double Y)> piles, double hc, double bc, double h0, double d, double rbt) =>
         ColumnPunchCapacity(piles, hc, bc, h0, d, rbt, out _, out _, out _, out _);
 
+    /// <summary>[MóngLệchTâm] Fb,u khi cột sát mép đài (đài lệch tâm L × B, tâm đài − tim cột = ox, oy): mặt tháp phía mép đài
+    /// (khoảng cách mép cột – mép đài &lt; h0/2) không hình thành → bỏ số hạng tương ứng: Fb,u = Rbt·h0·[(2 − nX)·k1(bc + c2) + (2 − nY)·k2(hc + c1)].</summary>
+    public static double ColumnPunchCapacityCut(IList<(double X, double Y)> piles, double hc, double bc, double h0, double d, double rbt, double L, double B, double ox, double oy)
+    {
+        double fbu = ColumnPunchCapacity(piles, hc, bc, h0, d, rbt, out double c1, out double c2, out double k1, out double k2);
+        if (Math.Abs(ox) < 1e-9 && Math.Abs(oy) < 1e-9) return fbu;
+        int nx = (L / 2 - Math.Abs(ox) - hc / 2 < h0 / 2 - 1e-9 && Math.Abs(ox) > 1e-9) ? 1 : 0;
+        int ny = (B / 2 - Math.Abs(oy) - bc / 2 < h0 / 2 - 1e-9 && Math.Abs(oy) > 1e-9) ? 1 : 0;
+        return Math.Max(fbu - rbt * h0 * (nx * k1 * (bc + c2) + ny * k2 * (hc + c1)), 0);
+    }
+
     /// <summary>Chu vi chọc thủng của cọc ui (m): đường bao vuông cách mép cọc h0/2, bỏ các cạnh nằm ngoài mép đài L × B (đài tâm tại gốc).
     /// Trả về 0 khi đường bao vượt cả hai mép đối diện (đài hẹp, vd. đài 2 cọc) – khi đó kiểm tra theo cắt trên tiết diện nghiêng.</summary>
     public static double PilePerimeter(double px, double py, double d, double h0, double L, double B)
@@ -131,7 +149,7 @@ public static class PileCapChecks
         double d = Math.Max(inp.D, 0.05), h0 = inp.H0, hc = inp.Hc, bc = inp.Bc, rbt = inp.Rbt;
         if (np == 0 || inp.Loads == null || inp.Loads.Count == 0)
         {
-            rep.Items.AddRange(PileLayout.CheckRules(piles, d, inp.L, inp.B));
+            rep.Items.AddRange(PileLayout.CheckRules(piles, d, inp.L, inp.B, inp.OffsetX, inp.OffsetY, inp.BoundaryEccentric));
             rep.Warnings.Add("Chưa đủ dữ liệu (cọc / nội lực chân cột) để kiểm tra đài.");
             return rep;
         }
@@ -241,7 +259,7 @@ public static class PileCapChecks
         rep.Items.Add(hi);
 
         // ---- quy định bố trí ----
-        rep.Items.AddRange(PileLayout.CheckRules(piles, d, inp.L, inp.B));
+        rep.Items.AddRange(PileLayout.CheckRules(piles, d, inp.L, inp.B, inp.OffsetX, inp.OffsetY, inp.BoundaryEccentric));   // [MóngLệchTâm] mép đài lệch tâm
 
         // ---- chọc thủng do cột ----
         var pd = new PunchingDetail { H0 = h0, U = 2 * (hc + bc + 2 * h0) };
@@ -260,6 +278,8 @@ public static class PileCapChecks
             pd.F = fCol;
             pd.Fbu = ColumnPunchCapacity(piles, hc, bc, h0, d, rbt, out double c1, out double c2, out double k1, out double k2);
             pd.C1 = c1; pd.C2 = c2; pd.K1 = k1; pd.K2 = k2;
+            if (Math.Abs(inp.OffsetX) > 1e-9 || Math.Abs(inp.OffsetY) > 1e-9)   // [MóngLệchTâm] cột sát mép đài: bỏ mặt tháp phía mép đài
+                pd.Fbu = ColumnPunchCapacityCut(piles, hc, bc, h0, d, rbt, inp.L, inp.B, inp.OffsetX, inp.OffsetY);
             string formula = $"F = Σ(Pi − G/n) cọc ngoài tháp 45° ≤ Fb,u = 2·Rbt·h0·[k1(bc + c2) + k2(hc + c1)];  c1 = {c1 * 1000:0}, c2 = {c2 * 1000:0} mm, k1 = h0/c1 = {k1:0.00}, k2 = {k2:0.00} (TCVN 5574:2018 mục 8.1.6.2)";
             if (pd.AllInside)
                 rep.Items.Add(new SafetyItem
@@ -313,7 +333,7 @@ public static class PileCapChecks
             for (int i = 0; i < np; i++)
             {
                 if (rows[i].InsidePyramid) continue;
-                double u = PilePerimeter(piles[i].X, piles[i].Y, d, h0, inp.L, inp.B);
+                double u = PilePerimeter(piles[i].X - inp.OffsetX, piles[i].Y - inp.OffsetY, d, h0, inp.L, inp.B);   // [MóngLệchTâm] toạ độ so với tâm đài
                 if (u <= 1e-9) continue;
                 double cap = rbt * Math.Min(u, 4 * (d + h0)) * h0;
                 double ratio = cap > 1e-9 ? pileNetMax[i] / cap : 99;
@@ -432,6 +452,7 @@ public static class PileCapChecks
     private static PileCapInput Copy(PileCapInput a) => new()
     {
         Piles = a.Piles.ToList(), Loads = a.Loads.ToList(), G = a.G, H = a.H, H0 = a.H0, Hc = a.Hc, Bc = a.Bc, D = a.D, Round = a.Round, L = a.L, B = a.B,
+        OffsetX = a.OffsetX, OffsetY = a.OffsetY, BoundaryEccentric = a.BoundaryEccentric,   // [MóngLệchTâm]
         P = a.P, Pt = a.Pt, Pvl = a.Pvl, HAllow = a.HAllow, HAllowEstimated = a.HAllowEstimated, Rbt = a.Rbt, Rsw = a.Rsw, FixedHeight = a.FixedHeight,
         UserLayout = a.UserLayout, HStart = a.HStart, PatternName = a.PatternName, Borehole = a.Borehole, Df = a.Df, PileLength = a.PileLength, LoadFactor = a.LoadFactor
     };
@@ -465,7 +486,8 @@ public static class PileCapChecks
             Piles = d.Piles.ToList(), Loads = loads, G = d.Weight, H = d.H, H0 = d.H0, Hc = d.ColumnH, Bc = d.ColumnB, D = d.PileSize, Round = d.PileRound,
             L = d.L, B = d.B, P = d.PileCapacity, Pt = Math.Max(fs.PileTension, 0), Pvl = pvl, HAllow = fs.PileLateralCapacity, HAllowEstimated = fs.PileLateralCapacity <= 0,
             Rbt = conc.Rbt, Rsw = stir?.Rsw > 0 ? stir.Rsw : 170000, FixedHeight = fixedHeight, UserLayout = user, HStart = hStart, PatternName = pat,
-            Borehole = bh, Df = d.Depth, PileLength = d.PileLength, LoadFactor = Math.Max(p?.Soil?.LoadFactorAvg ?? 1.15, 1.0)
+            Borehole = bh, Df = d.Depth, PileLength = d.PileLength, LoadFactor = Math.Max(p?.Soil?.LoadFactorAvg ?? 1.15, 1.0),
+            OffsetX = d.OffsetX, OffsetY = d.OffsetY, BoundaryEccentric = Math.Abs(d.OffsetX) > 1e-9 || Math.Abs(d.OffsetY) > 1e-9   // [MóngLệchTâm]
         };
         var rep = Evaluate(inp);
         d.Safety = rep;

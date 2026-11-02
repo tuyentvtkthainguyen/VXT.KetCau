@@ -23,6 +23,7 @@ public static class ConcreteDesigner
         s.Footings = Run(s, "móng", () => FootingDesigner.Design(p, r, s.Warnings));
         s.PileCaps = Run(s, "đài cọc", () => PileCapDesigner.Design(p, r, s.Warnings));
         s.StripFootings = Run(s, "móng băng", () => StripFootingDesigner.Design(p, r, s.Warnings));
+        s.StrapBeams = Run(s, "dầm móng cân bằng", () => EccentricFooting.DesignStraps(p, s, s.Warnings));   // [MóngLệchTâm]
         // ---- cầu thang (Design/Concrete/StairDesigner.cs) ----
         s.Stairs = Run(s, "cầu thang", () => StairDesigner.Design(p, s.Warnings));
         // ---- hết cầu thang ----

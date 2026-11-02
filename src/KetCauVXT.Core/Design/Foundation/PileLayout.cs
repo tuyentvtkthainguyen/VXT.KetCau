@@ -174,7 +174,9 @@ public static class PileLayout
     }
 
     /// <summary>Kiểm tra quy định cấu tạo bố trí cọc: khoảng cách tim cọc, khoảng cách tới mép đài, lệch tâm nhóm cọc so với tim cột.</summary>
-    public static List<SafetyItem> CheckRules(IList<(double X, double Y)> piles, double d, double L, double B)
+    /// <param name="ox">[MóngLệchTâm] tâm đài − tim cột theo X (m); cọc vẫn tính so với tim cột</param>
+    /// <param name="boundary">[MóngLệchTâm] true = nhóm cọc lệch tâm do ranh giới đất (trạng thái chủ ý: "Lệch tâm do ranh giới", không cảnh báo)</param>
+    public static List<SafetyItem> CheckRules(IList<(double X, double Y)> piles, double d, double L, double B, double ox = 0, double oy = 0, bool boundary = false)
     {
         var res = new List<SafetyItem>();
         if (piles == null || piles.Count == 0)
@@ -205,7 +207,7 @@ public static class PileLayout
         double clear = double.MaxValue, centre = double.MaxValue;
         foreach (var q in piles)
         {
-            double e = Math.Min(L / 2 - Math.Abs(q.X), B / 2 - Math.Abs(q.Y));
+            double e = Math.Min(L / 2 - Math.Abs(q.X - ox), B / 2 - Math.Abs(q.Y - oy));   // [MóngLệchTâm] so với tâm đài
             centre = Math.Min(centre, e);
             clear = Math.Min(clear, e - d / 2);
         }
@@ -223,6 +225,17 @@ public static class PileLayout
         double cx = piles.Average(q => q.X), cy = piles.Average(q => q.Y);
         double ecc = Math.Sqrt(cx * cx + cy * cy);
         double tol = Math.Max(0.05, 0.1 * Math.Max(MinSpacing(piles), d));
+        if (boundary && ecc > tol + 1e-9)   // [MóngLệchTâm] lệch tâm chủ ý do ranh giới đất
+        {
+            res.Add(new SafetyItem
+            {
+                Group = "Bố trí cọc", Name = "Lệch tâm nhóm cọc so với tim cột – Lệch tâm do ranh giới", Value = ecc * 1000, Limit = tol * 1000, Unit = "mm",
+                Status = CheckStatus.Info, Formula = $"e = √(x̄² + ȳ²) = {ecc * 1000:0} mm, x̄ = {cx * 1000:0}, ȳ = {cy * 1000:0} mm",
+                Explanation = "Lệch tâm do ranh giới: đài và cọc phải nằm trong ranh giới đất nên trọng tâm nhóm cọc lệch khỏi tim cột (trạng thái chủ ý). "
+                              + "Mô men N·e đã kể vào phản lực cọc (hoặc do dầm móng cân bằng tiếp nhận khi có dầm DM)."
+            });
+            return res;
+        }
         res.Add(new SafetyItem
         {
             Group = "Bố trí cọc", Name = "Lệch tâm nhóm cọc so với tim cột", Value = ecc * 1000, Limit = tol * 1000, Unit = "mm",

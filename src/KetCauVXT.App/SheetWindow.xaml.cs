@@ -542,6 +542,7 @@ public partial class SheetWindow : Window
         _itemsHost = new DrawingHost { Width = pw, Height = ph, IsHitTestVisible = false };
         pageCanvas.Children.Add(_itemsHost);
         RenderItemsHost();
+        ShowFrozenOverlay(pw, ph);   // tờ đã khoá (SheetWindow.DrawingEdit.cs)
         ApplyTransform();
     }
 
@@ -832,7 +833,7 @@ public partial class SheetWindow : Window
     // ==================================================================
     // In, PDF, XPS, DXF
     // ==================================================================
-    private DrawingGroup SheetDrawing(Sheet s) => SheetRender.RenderSheet(_p, s, FiguresOf, PrimsOf, 0);
+    private DrawingGroup SheetDrawing(Sheet s) => FrozenSheetDrawing(s) ?? SheetRender.RenderSheet(_p, s, FiguresOf, PrimsOf, 0);   // tờ đã khoá: SheetWindow.DrawingEdit.cs
 
     private static PageMediaSizeName MediaName(string paper) => paper switch
     {
@@ -950,6 +951,9 @@ public partial class SheetWindow : Window
     {
         var sheets = OutputSheets();
         if (sheets.Count == 0) { SetStatus("Chưa có tờ để xuất."); return; }
+        var expOpt = ExportOptionsDialog.Ask(this, "tờ in PDF", true);   // Gộp 1 file / Tách rời từng tờ
+        if (expOpt == null) return;
+        if (expOpt.Mode == DrawingExportMode.Split) { ExportPdfSplit(sheets, expOpt); return; }   // SheetWindow.DrawingEdit.cs
         var dlg = new SaveFileDialog
         {
             Filter = "PDF – ảnh 200 dpi (*.pdf)|*.pdf|XPS – dạng nét (*.xps)|*.xps",
@@ -978,7 +982,9 @@ public partial class SheetWindow : Window
     {
         var sheets = OutputSheets();
         if (sheets.Count == 0) { SetStatus("Chưa có tờ để xuất."); return; }
-        var dlg = new OpenFolderDialog { Title = "Chọn thư mục lưu các file DXF (mỗi tờ một file)" };
+        var expOpt = ExportOptionsDialog.Ask(this, "tờ in DXF");   // Gộp 1 file / Tách rời từng tờ
+        if (expOpt == null) return;
+        var dlg = new OpenFolderDialog { Title = expOpt.Mode == DrawingExportMode.Single ? "Chọn thư mục lưu file DXF gộp các tờ" : "Chọn thư mục lưu các file DXF (mỗi tờ một file)" };
         if (dlg.ShowDialog(this) != true) return;
         IDisposable layerScope = Owner is MainWindow mw ? mw.BeginDxfExport(ExportLayerProbe.ForSheets(_p, _r, _d, sheets), "Xuất tờ in DXF", this) : null;
         if (Owner is MainWindow && layerScope == null) return;
@@ -986,8 +992,8 @@ public partial class SheetWindow : Window
         try
         {
             Mouse.OverrideCursor = Cursors.Wait;
-            var files = SheetBuilder.ExportAllDxf(_p, _r, _d, dlg.FolderName, sheets);
-            SetStatus($"Đã xuất {files.Count} file DXF vào {dlg.FolderName}");
+            var er = SheetBuilder.ExportDxf(_p, _r, _d, dlg.FolderName, sheets, expOpt);
+            SetStatus($"Đã xuất {er.Count} file DXF ({sheets.Count} tờ) vào {dlg.FolderName}" + (er.Messages.Count > 0 ? " – " + string.Join(" · ", er.Messages.Take(3)) : ""));
         }
         catch (Exception ex) { MessageBox.Show("Lỗi xuất DXF: " + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); }
         finally { Mouse.OverrideCursor = null; }

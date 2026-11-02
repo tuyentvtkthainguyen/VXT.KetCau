@@ -56,6 +56,27 @@ internal sealed class DxfEnt
     public string Type = "";
     public List<(int Code, object Val)> Codes = new();
     public Rect2 Box = Rect2.Empty;
+    // ---- hiệu chỉnh bản vẽ sau khi xuất (DxfWriter.Keys.cs, DrawingEdits.cs) ----
+    /// <summary>Khoá ổn định của thực thể trong hình chứa nó (gán khi EnsureKeys; không đổi khi dựng lại cùng hình học).</summary>
+    public string Key;
+    /// <summary>Nhóm thực thể (nhãn thép, tên hình, kích thước…) – chọn/dời cả nhóm.</summary>
+    public string Group;
+    /// <summary>Vai trò trong nhóm: "leader" (đường dẫn: dời nhóm chỉ dời điểm cuối), "anchor" (chấm tại thanh: giữ nguyên).</summary>
+    public string Role;
+    /// <summary>Khoá hình (Figure) gốc khi thực thể được ghép từ hình có OwnerKey; null = thực thể của chính bộ ghi.</summary>
+    public string Owner;
+    /// <summary>Hệ số phóng từ toạ độ hình gốc sang bộ ghi này.</summary>
+    public double OwnerK = 1;
+
+    public void CopyMetaFrom(DxfEnt src, string ownerKey = null, double k = 1)
+    {
+        if (src == null) return;
+        Key = src.Key; Group = src.Group; Role = src.Role;
+        if (src.Owner != null) { Owner = src.Owner; OwnerK = src.OwnerK * k; }
+        else if (ownerKey != null) { Owner = ownerKey; OwnerK = k; }
+        else { Owner = null; OwnerK = 1; }
+    }
+    // ---- hết ----
 }
 
 /// <summary>
@@ -128,7 +149,8 @@ public sealed partial class DxfWriter
     // ------------------------------------------------------------------
     private DxfEnt Add(string type, string layer, Rect2 box, string ltype = null)
     {
-        var e = new DxfEnt { Type = type, Box = box };
+        var e = new DxfEnt { Type = type, Box = box, Group = _group, Role = _role, Key = _nextKey };   // nhóm/khoá: DxfWriter.Keys.cs
+        _nextKey = null;
         e.Codes.Add((8, layer));
         if (!string.IsNullOrEmpty(ltype)) e.Codes.Add((6, ltype));
         _ents.Add(e);
@@ -257,9 +279,11 @@ public sealed partial class DxfWriter
     {
         if (other == null) return;
         MergeDimStyles(other);
+        other.EnsureKeys();   // khoá thực thể theo toạ độ của hình gốc (DxfWriter.Keys.cs)
         foreach (var e in other._ents)
         {
             var n = new DxfEnt { Type = e.Type, Box = e.Box.Offset(dx, dy) };
+            n.CopyMetaFrom(e, other.OwnerKey);
             foreach (var (code, val) in e.Codes)
             {
                 object v = val;
@@ -282,8 +306,10 @@ public sealed partial class DxfWriter
     public Rect2 MarkCircle(double cx, double cy, int mark, double rot = 0)
     {
         double r = MarkR;
+        var g0 = BeginGroup("MARK|" + mark.ToString(Inv) + "|" + KeyNum(cx) + "|" + KeyNum(cy));
         Circle(Lay.KyHieu, cx, cy, r);
         Text(Lay.Chu, cx, cy, 0.9 * TagTh, mark.ToString(Inv), rot, 1, 2);
+        EndGroup(g0);
         return new Rect2(cx - r, cy - r, cx + r, cy + r);
     }
 
@@ -307,8 +333,13 @@ public sealed partial class DxfWriter
     {
         double th = TagTh, r = MarkR;
         double sh = TextWidth(text, th) * WidthFactor + 0.6 * th;
+        // nhóm "nhãn thép": chọn/dời cả nhãn; chấm giữ tại thanh, đường dẫn chỉ dời điểm cuối (DxfWriter.Keys.cs)
+        var g0 = BeginGroup("TAG|" + text + "|" + mark.ToString(Inv) + "|" + KeyNum(px) + "|" + KeyNum(py));
+        _role = "anchor";
         if (dot) Dot(Lay.KyHieu, px, py, 0.22 * th);
+        _role = "leader";
         if (Math.Abs(px - kx) > 1e-6 || Math.Abs(py - ky) > 1e-6) Line(Lay.KyHieu, px, py, kx, ky);
+        _role = null;
         if (!vertical)
         {
             Line(Lay.KyHieu, kx, ky, kx + dir * sh, ky);
@@ -323,6 +354,7 @@ public sealed partial class DxfWriter
             else Text(Lay.Chu, kx - 0.3 * th, ky - 0.3 * th, th, text, 90, 2, 0);
             if (mark > 0) MarkCircle(kx, ky + dir * (sh + r), mark, 90);
         }
+        EndGroup(g0);
         return TagBox(kx, ky, text, mark, dir, vertical);
     }
 
@@ -335,6 +367,14 @@ public sealed partial class DxfWriter
     {
         double dx = x2 - x1, dy = y2 - y1, len = Math.Sqrt(dx * dx + dy * dy);
         if (len < 1e-6) return;
+        var g0 = BeginGroup("DIM|" + KeyNum(x1) + "|" + KeyNum(y1) + "|" + KeyNum(x2) + "|" + KeyNum(y2) + "|" + KeyNum(offset));
+        try { DimCore(x1, y1, x2, y2, offset, k, text, dimStyle, dx, dy, len); }
+        finally { EndGroup(g0); }
+    }
+
+    private void DimCore(double x1, double y1, double x2, double y2, double offset, double k, string text,
+        KetCauVXT.Model.DimParams dimStyle, double dx, double dy, double len)
+    {
         var st = dimStyle ?? Style.DimFor(Scale / (k <= 0 ? 1 : k));
         UseDimStyle(st.Scale);
         double th = st.TextHeight * Scale;                       // chữ số kích thước
@@ -392,14 +432,23 @@ public sealed partial class DxfWriter
     /// <summary>Đầu trục định vị (vòng tròn + tên).</summary>
     public void GridBubble(double x, double y, string name)
     {
+        var g0 = BeginGroup("AXIS|" + name + "|" + KeyNum(x) + "|" + KeyNum(y));
         Circle(Lay.KyHieu, x, y, BubbleR);
         Text(Lay.Chu, x, y, TextH(KetCauVXT.Model.TextRole.Axis), name, 0, 1, 2);
+        EndGroup(g0);
     }
 
     /// <summary>Ký hiệu cao độ ▽ với đỉnh tam giác tại (x,y); dir = −1 chữ về bên trái, +1 bên phải.</summary>
     public Rect2 ElevMark(double x, double y, string text, int dir = -1)
     {
         if (!Style.ShowElevationMarks) return Rect2.Empty;   // tắt ký hiệu cao độ (Thiết lập bản vẽ)
+        var g0 = BeginGroup("ELEV|" + text + "|" + KeyNum(x) + "|" + KeyNum(y));
+        try { return ElevMarkCore(x, y, text, dir); }
+        finally { EndGroup(g0); }
+    }
+
+    private Rect2 ElevMarkCore(double x, double y, string text, int dir)
+    {
         double th = Th;
         Polyline(Lay.KyHieu, new List<(double X, double Y)> { (x, y), (x - 0.5 * th, y + 0.8 * th), (x + 0.5 * th, y + 0.8 * th) }, true);
         double tw = TextWidth(text, th) * WidthFactor;
@@ -439,18 +488,22 @@ public sealed partial class DxfWriter
         double th = Th, h = section ? SectionTitleTh : TitleTh;
         double tw = TextWidth(title, h) * WidthFactor;
         double yb = yTop - h;
+        var g0 = BeginGroup("TITLE|" + title);   // tên hình + gạch chân + tỷ lệ: một nhóm
         Text(Lay.Chu, cx, yb, h, title, 0, 1, 0);
         Line(Lay.Chu, cx - tw / 2, yb - 0.35 * th, cx + tw / 2, yb - 0.35 * th);
         double y2 = yb - 0.35 * th - 0.5 * th - th;
         if (!string.IsNullOrEmpty(scaleText)) Text(Lay.Chu, cx, y2, th, scaleText, 0, 1, 0);
+        EndGroup(g0);
         return y2 - 0.4 * th;
     }
 
     /// <summary>Vạch cắt "n|" – nét đậm ngắn từ (x,y1) tới (x,y2), số đặt cạnh.</summary>
     public void CutMark(double x1, double y1, double x2, double y2, string num, double tx, double ty)
     {
+        var g0 = BeginGroup("CUT|" + num + "|" + KeyNum(tx) + "|" + KeyNum(ty));
         Polyline(Lay.KyHieu, new List<(double X, double Y)> { (x1, y1), (x2, y2) }, false, 0.2 * Th);
         Text(Lay.Chu, tx, ty, 1.2 * Th, num, 0, 1, 2);
+        EndGroup(g0);
     }
 
     // ------------------------------------------------------------------

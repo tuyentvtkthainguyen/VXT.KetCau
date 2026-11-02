@@ -83,7 +83,7 @@ public class SteelDesignSettings
 }
 
 /// <summary>Toàn bộ dữ liệu công trình. Lưu/mở bằng JSON (*.kcvxt).</summary>
-public class Project
+public partial class Project
 {
     public string Name { get; set; } = "Công trình mới";
     public string Location { get; set; } = "";

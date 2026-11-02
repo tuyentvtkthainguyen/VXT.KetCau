@@ -640,14 +640,16 @@ public partial class MainWindow : Window
     private async void MnuExpDxf_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || !await EnsureDesign()) return;
+        var expOpt = ExportOptionsDialog.Ask(this, "bộ bản vẽ DXF");   // Gộp 1 file / Tách rời (ExportOptionsDialog.cs)
+        if (expOpt == null) return;
         string folder = AskFolder("Chọn thư mục lưu bộ bản vẽ DXF");
         if (folder == null) return;
         using var layerScope = BeginDxfExport(KetCauVXT.Drawing.ExportLayerProbe.ForDrawingSet()); // xem/đổi tên layer trước khi xuất
         if (layerScope == null) return;
-        List<string> files = null;
+        KetCauVXT.Drawing.DrawingExportResult er = null;
         var ds = _design;
-        if (await RunBusy("Lỗi xuất bản vẽ", prog => { prog.Report("Đang vẽ..."); files = DrawingSet.ExportAll(_p, ds, folder); }))
-            Done($"Đã xuất {files?.Count ?? 0} bản vẽ DXF vào\n{folder}");
+        if (await RunBusy("Lỗi xuất bản vẽ", prog => { prog.Report("Đang vẽ..."); er = DrawingSet.Export(_p, ds, folder, expOpt); }))
+            DoneExport($"Đã xuất {er?.Count ?? 0} file bản vẽ DXF" + (expOpt.Mode == KetCauVXT.Drawing.DrawingExportMode.Single ? " (gộp 1 file)" : "") + $" vào\n{folder}", er);   // MainWindow.DrawingEdit.cs
     }
 
     private async void MnuExpWord_Click(object sender, RoutedEventArgs e)
@@ -704,8 +706,11 @@ public partial class MainWindow : Window
         string root = AskFolder("Chọn thư mục để xuất toàn bộ hồ sơ");
         if (root == null) return;
         if (!await EnsureDesign()) return;
+        var expOpt = ExportOptionsDialog.Ask(this, "bản vẽ trong hồ sơ");   // Gộp 1 file / Tách rời bản vẽ DXF
+        if (expOpt == null) return;
         using var layerScope = BeginDxfExport(KetCauVXT.Drawing.ExportLayerProbe.ForDrawingSet(), "Xuất toàn bộ hồ sơ"); // xem/đổi tên layer trước khi xuất
         if (layerScope == null) return;
+        var exportNotes = new List<string>();
         string folder = Path.Combine(root, SafeName(_p.Name) + "_" + DateTime.Now.ToString("yyyyMMdd_HHmm", CultureInfo.InvariantCulture));
         var res = _res; var ds = _design;
         var errors = new List<string>();
@@ -724,9 +729,9 @@ public partial class MainWindow : Window
             {
                 string d = Path.Combine(folder, "BanVe");
                 Directory.CreateDirectory(d);
-                DrawingSet.ExportAll(_p, ds, d);
+                exportNotes.AddRange(DrawingSet.Export(_p, ds, d, expOpt).Messages);
             });
-            Step("gia công thép (shop drawing)", () => ExportRebarShop(ds, Path.Combine(folder, "GiaCongThep")));   // MainWindow.Rebar.cs
+            Step("gia công thép (shop drawing)", () => ExportRebarShop(ds, Path.Combine(folder, "GiaCongThep"), expOpt));   // MainWindow.Rebar.cs
             Step("thuyết minh Word", () => CalculationReport.Export(_p, res, ds, Path.Combine(folder, "ThuyetMinh.docx")));
             Step("bảng tính Excel", () => ExcelReport.Export(_p, res, ds, Path.Combine(folder, "BangTinh.xlsx")));
             Step("bảng khối lượng vật tư", () => ExportQuantitiesTo(_p, ds, folder));   // MainWindow.Quantity.cs
@@ -741,6 +746,7 @@ public partial class MainWindow : Window
         });
         if (!ok) return;
         string msg = $"Đã xuất vào thư mục:\n{folder}\n\nHoàn thành: {string.Join(", ", done)}";
+        if (exportNotes.Count > 0) msg += "\n\nBản vẽ:\n- " + string.Join("\n- ", exportNotes.Distinct().Take(12)) + (exportNotes.Count > 12 ? "\n…" : "");
         if (errors.Count > 0)
         {
             msg += "\n\nLỗi:\n- " + string.Join("\n- ", errors);
