@@ -14,7 +14,7 @@ public static partial class SlabDesigner
     /// <summary>Hàm lượng thép tối thiểu sàn (%)</summary>
     public const double MinRatioSlab = 0.10;
 
-    private enum EdgeKind { Simple, Fixed }
+    internal enum EdgeKind { Simple, Fixed }
 
     /// <summary>Thiết kế toàn bộ ô sàn. r có thể null (sàn tính từ tải khai báo, không dùng kết quả phân tích khung).</summary>
     public static List<SlabDesign> Design(Project p, AnalysisResults r, List<string> warnings)

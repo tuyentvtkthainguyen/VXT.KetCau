@@ -4,7 +4,8 @@ using KetCauVXT.Model;
 namespace KetCauVXT.Drawing;
 
 /// <summary>Mặt bằng thép sàn từng tầng: dầm đỡ (nét đứt) + cột, thép lớp dưới mỗi ô theo 2 phương,
-/// thép mũ trên các cạnh (cạnh chung 2 ô vẽ một thanh vắt qua dầm), tên ô sàn. Toạ độ mm.</summary>
+/// thép mũ trên các cạnh ngàm (cạnh chung 2 ô vẽ MỘT thanh vắt qua dầm, số hiệu của ô thống kê thanh đó),
+/// lưới trên liên tục (phương án lưới 2 lớp), tên ô sàn. Toạ độ mm.</summary>
 public static class SlabDrawing
 {
     /// <summary>Tỷ lệ tự chọn: 1/50 nếu mặt bằng ≤ 25 m, ngược lại 1/100.</summary>
@@ -48,7 +49,9 @@ public static class SlabDrawing
         {
             var pts = sl.Nodes.Select(id => p.Nodes.FirstOrDefault(n => n.Id == id)).Where(n => n != null)
                 .Select(n => (n.X * 1000, n.Y * 1000)).ToList();
-            var d = designs.FirstOrDefault(x => x.SlabId == sl.Id);
+            // ô gộp (Quantity > 1) chỉ giữ SlabId của ô đại diện → tra theo khoá "S:{id}"
+            string key = "S:" + sl.Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var d = designs.FirstOrDefault(x => x.SlabId == sl.Id) ?? designs.FirstOrDefault(x => x.RebarKeys.Contains(key));
             if (pts.Count < 3 && d != null) pts = d.Outline.Select(q => (q.x * 1000, q.y * 1000)).ToList();
             if (pts.Count < 3) continue;
             if (d != null) usedD.Add(d);
@@ -144,70 +147,74 @@ public static class SlabDrawing
             w.LeaderTag(xb + 2.0 * th + dxy, ay, xb + 2.0 * th + dxy, ay + 0.5 * th, tagAlongY, mY, 1, true, false);
         }
 
-        // ---- thép mũ trên cạnh ----
-        var edges = new Dictionary<string, List<(Panel P, double X1, double Y1, double X2, double Y2)>>();
-        foreach (var pn in panels)
+        // ---- thép trên: mũ gối (cạnh chung 2 ô = MỘT thanh vắt qua dầm) và lưới trên liên tục – theo SlabDesign.EdgeBars / TopMeshes ----
+        var storyDesigns = panels.Where(x => x.D != null).Select(x => x.D).Distinct().ToList();
+        foreach (var d in storyDesigns)
         {
-            for (int i = 0; i < pn.Pts.Count; i++)
+            foreach (var eb in d.EdgeBars.Where(x => x.Bar != null))
             {
-                var a = pn.Pts[i]; var b = pn.Pts[(i + 1) % pn.Pts.Count];
-                if (Math.Abs(a.X - b.X) < 1 && Math.Abs(a.Y - b.Y) < 1) continue;
-                var (p1, p2) = (a.X < b.X - 0.5 || (Math.Abs(a.X - b.X) <= 0.5 && a.Y < b.Y)) ? (a, b) : (b, a);
-                string key = $"{Math.Round(p1.X)},{Math.Round(p1.Y)},{Math.Round(p2.X)},{Math.Round(p2.Y)}";
-                if (!edges.TryGetValue(key, out var l)) edges[key] = l = new List<(Panel P, double X1, double Y1, double X2, double Y2)>();
-                l.Add((pn, p1.X, p1.Y, p2.X, p2.Y));
+                double x1 = eb.X1 * 1000, y1 = eb.Y1 * 1000, x2 = eb.X2 * 1000, y2 = eb.Y2 * 1000;
+                double ex = x2 - x1, ey = y2 - y1, el = Math.Sqrt(ex * ex + ey * ey);
+                if (el < 1) continue;
+                double ux = ex / el, uy = ey / el, nx = eb.NX, ny = eb.NY;
+                bool edgeAlongX = Math.Abs(ux) >= Math.Abs(uy);
+                double l1 = eb.Ext1 * 1000, l2 = eb.Ext2 * 1000;
+                string tag = eb.Bar.Tag;
+                int mark = eb.Bar.Mark;
+                double px = x1 + ex * 0.42, py = y1 + ey * 0.42;
+                double ax = px - nx * l2, ay = py - ny * l2, qx = px + nx * l1, qy = py + ny * l1;
+                double hk = Math.Max(80, 0.06 * Math.Max(l1, l2));
+                w.Polyline(Lay.Thep, new List<(double X, double Y)>
+                {
+                    (ax - ux * hk, ay - uy * hk), (ax, ay), (qx, qy), (qx - ux * hk, qy - uy * hk)
+                }, false, 0.3 * S);
+                double kx, ky;
+                if (edgeAlongX)
+                {
+                    double up = ny >= 0 ? l1 : l2;
+                    kx = px + 1.5 * th; ky = py + Math.Max(up, 600) * 0.6;
+                    var box = w.TagBox(kx, ky, tag, mark, 1);
+                    var (_, dy) = layout.PlaceBothWays(box, 0, 1.6 * th, 15);
+                    w.LeaderTag(px, py + 0.4 * up, kx, ky + dy, tag, mark, 1);
+                }
+                else
+                {
+                    double left = nx <= 0 ? l1 : l2;
+                    kx = px - Math.Max(left, 600) * 0.6; ky = py + 1.5 * th;
+                    var box = w.TagBox(kx, ky, tag, mark, 1, true);
+                    var (dx, _) = layout.PlaceBothWays(box, 1.6 * th, 0, 15);
+                    w.LeaderTag(px - 0.4 * left, py, kx + dx, ky, tag, mark, 1, true);
+                }
+                if (l1 > 1) w.Dim(px, py, qx, qy, edgeAlongX ? -1.5 * th : 1.5 * th);
+                if (l2 > 1) w.Dim(ax, ay, px, py, edgeAlongX ? -1.5 * th : 1.5 * th);
             }
-        }
-        foreach (var kv in edges)
-        {
-            var e = kv.Value[0];
-            double ex = e.X2 - e.X1, ey = e.Y2 - e.Y1, el = Math.Sqrt(ex * ex + ey * ey);
-            if (el < 1) continue;
-            double ux = ex / el, uy = ey / el, nx = -uy, ny = ux;
-            bool edgeAlongX = Math.Abs(ux) >= Math.Abs(uy);
-            string tag = null; int mark = 0; double lenSide1 = 0, lenSide2 = 0;
-            double mx = (e.X1 + e.X2) / 2, my = (e.Y1 + e.Y2) / 2;
-            foreach (var it in kv.Value)
+            foreach (var tm in d.TopMeshes.Where(x => x.Bar != null))
             {
-                var pn = it.P;
-                // cạnh song song phương dài -> thép mũ chạy theo phương ngắn: TopX
-                bool edgeParallelLong = pn.ShortIsX ? !edgeAlongX : edgeAlongX;
-                string t = TagOr(edgeParallelLong ? pn.D?.TopX : pn.D?.TopY, "Ø8a200");
-                if (tag == null) { tag = t; mark = book.Get(pn.D, t, true, null); }
-                double ext = 0.25 * pn.Lshort;
-                double pcx = (pn.X1 + pn.X2) / 2, pcy = (pn.Y1 + pn.Y2) / 2;
-                double side = (pcx - mx) * nx + (pcy - my) * ny;
-                if (side >= 0) lenSide1 = Math.Max(lenSide1, ext); else lenSide2 = Math.Max(lenSide2, ext);
+                double x1 = tm.X1 * 1000, y1 = tm.Y1 * 1000, x2 = tm.X2 * 1000, y2 = tm.Y2 * 1000;
+                double hk = 100;
+                string tag = tm.Bar.Tag + " lớp trên";
+                int mark = tm.Bar.Mark;
+                if (tm.AlongX)
+                {
+                    double yb = y1 + (y2 - y1) * 0.78;
+                    w.Polyline(Lay.Thep, new List<(double X, double Y)> { (x1 + 60, yb - hk), (x1 + 60, yb), (x2 - 60, yb), (x2 - 60, yb - hk) }, false, 0.3 * S);
+                    double ax = x1 + (x2 - x1) * 0.15;
+                    var box = w.TagBox(ax + 0.5 * th, yb + 1.2 * th, tag, mark, 1);
+                    var (_, dy) = layout.PlaceBothWays(box, 0, 1.6 * th, 12);
+                    w.LeaderTag(ax, yb, ax + 0.5 * th, yb + 1.2 * th + dy, tag, mark, 1);
+                    w.Dim(x1, yb, x2, yb, -1.8 * th);
+                }
+                else
+                {
+                    double xb = x1 + (x2 - x1) * 0.22;
+                    w.Polyline(Lay.Thep, new List<(double X, double Y)> { (xb + hk, y1 + 60), (xb, y1 + 60), (xb, y2 - 60), (xb + hk, y2 - 60) }, false, 0.3 * S);
+                    double ay = y1 + (y2 - y1) * 0.15;
+                    var box = w.TagBox(xb - 2.0 * th, ay, tag, mark, 1, true);
+                    var (dx, _) = layout.PlaceBothWays(box, -1.6 * th, 0, 12);
+                    w.LeaderTag(xb, ay, xb - 2.0 * th + dx, ay, tag, mark, 1, true);
+                    w.Dim(xb, y1, xb, y2, 1.8 * th);
+                }
             }
-            if (tag == null) continue;
-            // vị trí dọc cạnh: 0.4 chiều dài (lệch khỏi thanh lớp dưới)
-            double px = e.X1 + ex * 0.42, py = e.Y1 + ey * 0.42;
-            double ax = px - nx * lenSide2, ay = py - ny * lenSide2;
-            double qx = px + nx * lenSide1, qy = py + ny * lenSide1;
-            double hk = Math.Max(80, 0.06 * Math.Max(lenSide1, lenSide2));
-            // móc chống xuống: thể hiện bằng đoạn ngắn vuông góc theo hướng cạnh
-            w.Polyline(Lay.Thep, new List<(double X, double Y)>
-            {
-                (ax - ux * hk, ay - uy * hk), (ax, ay), (qx, qy), (qx - ux * hk, qy - uy * hk)
-            }, false, 0.3 * S);
-            // nhãn
-            if (edgeAlongX)
-            {
-                double kx = px + 1.5 * th, ky = py + Math.Max(lenSide1, 600) * 0.6;
-                var box = w.TagBox(kx, ky, tag, mark, 1);
-                var (_, dy) = layout.PlaceBothWays(box, 0, 1.6 * th, 15);
-                w.LeaderTag(px, py + 0.4 * lenSide1, kx, ky + dy, tag, mark, 1);
-            }
-            else
-            {
-                double kx = px - Math.Max(lenSide2, 600) * 0.6, ky = py + 1.5 * th;
-                var box = w.TagBox(kx, ky, tag, mark, 1, true);
-                var (dx, _) = layout.PlaceBothWays(box, 1.6 * th, 0, 15);
-                w.LeaderTag(px - 0.4 * lenSide2, py, kx + dx, ky, tag, mark, 1, true);
-            }
-            // kích thước đoạn vươn
-            if (lenSide1 > 1) w.Dim(px, py, qx, qy, edgeAlongX ? -1.5 * th : 1.5 * th);
-            if (lenSide2 > 1) w.Dim(ax, ay, px, py, edgeAlongX ? -1.5 * th : 1.5 * th);
         }
 
         string title = $"MẶT BẰNG THÉP SÀN TẦNG {st.Name} ({DxfWriter.ElevText(st.Elevation)})";

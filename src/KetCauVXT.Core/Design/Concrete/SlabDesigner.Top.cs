@@ -259,13 +259,13 @@ public static partial class SlabDesigner
             var cands = new[] { it, mate }.Where(x => x.Choice != null).ToList();
             if (cands.Count == 0) continue;
             EdgeItem gov = null;
-            foreach (var x in cands.Where(x => x.User))
+            foreach (var x in cands.Where(q => q.User))
             {
                 var other = x == it ? mate : it;
                 if (x.Choice.AsPerM >= Need(other, x.Choice.Dia) * (1 - 1e-6)) { gov = x; break; }
             }
             gov ??= cands.OrderByDescending(x => x.Choice.AsPerM).ThenBy(x => x.P.Slab.Id).First();
-            foreach (var x in cands.Where(x => x.User && x != gov))
+            foreach (var x in cands.Where(q => q.User && q != gov))
                 x.P.D.Messages.Add("Mũ gối cạnh chung với ô " + (x == it ? mate : it).P.Label + ": dùng " + gov.Choice.Text
                                    + " theo yêu cầu ô " + gov.P.Label + " (lớn hơn thép chọn " + x.Choice.Text + ")");
             var own = gov.P;
@@ -319,6 +319,9 @@ public static partial class SlabDesigner
                         Name = dir == 0 ? "Uốn gối phương ngắn" : "Uốn gối phương dài", Demand = Math.Abs(m), Capacity = mu, Unit = "kN.m/m",
                         Note = (txt.Length > 0 ? txt : "không có thép trên") + " – As = " + DesignUtil.F(As * 1e4, "0.00") + " cm²/m"
                     });
+                    string zoneTop = dir == 0 ? RebarZones.SlabTopX : RebarZones.SlabTopY;
+                    if (mu >= Math.Abs(m) - 1e-6)   // thép thực đặt (mũ chung theo ô kề / lưới) đã đủ → bỏ báo thiếu của riêng lựa chọn
+                        d.Messages.RemoveAll(x => x.StartsWith("LỖI bố trí thép do người dùng chọn không đạt – " + zoneTop + " ", StringComparison.Ordinal) && x.Contains(": As ="));
                     if (m < -1e-9 && mu < Math.Abs(m) - 1e-6 && d.UserRebarZones > 0)
                         d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – uốn gối phương " + (dir == 0 ? "ngắn" : "dài") + ": " + txt);
                 }
