@@ -213,6 +213,8 @@ public static class TitleBlockImporter
                         Pts = Flat(e.Points.Take(1), k), Tag = e.AttributeTag ?? ""
                     };
                     var info = scan?.Match(e, unitM, used);
+                    // bộ đọc chung (CleanMText) bỏ dấu { } → khôi phục chỗ trống {…} từ chữ gốc trong file (hoặc theo tên trường chuẩn)
+                    t.Text = info != null ? RestoreBraces(t.Text, info.Raw) : RestoreKnownKeys(t.Text);
                     if (info != null)
                     {
                         used.Add(info);
@@ -239,7 +241,7 @@ public static class TitleBlockImporter
                 if (!InRegion(probe, o, unitM)) continue;
                 def.Entities.Add(new TitleBlockEntity
                 {
-                    Type = "TEXT", SourceLayer = a.Layer, Text = string.IsNullOrEmpty(a.Text) ? a.Tag : a.Text, Tag = a.Tag ?? "",
+                    Type = "TEXT", SourceLayer = a.Layer, Text = string.IsNullOrEmpty(a.Text) ? a.Tag : RestoreBraces(a.Text, a.Raw), Tag = a.Tag ?? "",
                     H = Math.Max(0.1, a.Height * mmPerUnit), Rot = a.Rot, Ha = a.Ha, Va = a.Va,
                     Pts = new List<double> { a.X * mmPerUnit, a.Y * mmPerUnit }
                 });
@@ -281,6 +283,38 @@ public static class TitleBlockImporter
         if (o.Mode == TitleBlockMode.TitleBox && (def.W > 600 || def.H > 300))
             res.Warnings.Add($"Khung tên rộng {def.W:0} × {def.H:0} mm – có thể bản vẽ vẽ theo tỷ lệ; nhập lại với hệ số mm/đơn vị nhỏ hơn hoặc chọn \"khung bao toàn tờ\".");
         return res;
+    }
+
+    /// <summary>Đặt lại dấu { } quanh các chỗ trống {KHOA} có trong chữ gốc raw mà chữ đã làm sạch (cleaned) bị mất.</summary>
+    public static string RestoreBraces(string cleaned, string raw)
+    {
+        cleaned ??= "";
+        if (string.IsNullOrEmpty(raw) || !TitleFields.HasPlaceholder(raw) || TitleFields.HasPlaceholder(cleaned)) return cleaned;
+        var ms = System.Text.RegularExpressions.Regex.Matches(raw, @"\{([^{}\r\n]{1,60})\}");
+        int from = 0;
+        foreach (System.Text.RegularExpressions.Match m in ms)
+        {
+            string inner = m.Groups[1].Value;
+            int i = cleaned.IndexOf(inner, from, StringComparison.Ordinal);
+            if (i < 0) continue;
+            cleaned = cleaned[..i] + "{" + inner + "}" + cleaned[(i + inner.Length)..];
+            from = i + inner.Length + 2;
+        }
+        return cleaned;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex KeyTokenRx =
+        new(@"(?<![\p{L}\p{N}_{])([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?![\p{L}\p{N}_}])", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>Khi không có chữ gốc (đọc DWG trực tiếp): tên trường chuẩn viết hoa có gạch nối (TEN_CONG_TRINH, SO_HIEU…, TONG_TRANG)
+    /// đứng riêng → đặt lại thành {KHOA}; "TRANG/{TONG_TRANG}" → "{TRANG}/{TONG_TRANG}".</summary>
+    public static string RestoreKnownKeys(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text ?? "";
+        var keys = new HashSet<string>(TitleFields.Keys, StringComparer.Ordinal);
+        string s = KeyTokenRx.Replace(text, m => keys.Contains(m.Groups[1].Value) ? "{" + m.Groups[1].Value + "}" : m.Value);
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"(?<![\p{L}\p{N}_{])TRANG\s*/\s*\{TONG_TRANG\}", "{TRANG}/{TONG_TRANG}");
+        return s;
     }
 
     private static List<double> Flat(IEnumerable<(double X, double Y)> pts, double k)
@@ -393,6 +427,8 @@ public sealed class DxfTextScan
         public double X, Y, Height, Rot;
         public int Ha, Va;
         public string Tag = "", Text = "", Layer = "0";
+        /// <summary>Chữ gốc (đã giải mã \U+, còn nguyên dấu { }) – TEXT/ATTRIB/ATTDEF; MTEXT = Text</summary>
+        public string Raw = "";
         /// <summary>ATTDEF lấy từ block được chèn: tên block</summary>
         public string Block = "";
     }
@@ -511,7 +547,7 @@ public sealed class DxfTextScan
                 ModelTexts.Add(new TextInfo
                 {
                     Type = d.Type, X = ins.X + lx * c - ly * s, Y = ins.Y + lx * s + ly * c, Height = d.Height * Math.Sqrt(Math.Abs(ins.Sx * ins.Sy)),
-                    Rot = d.Rot + ins.Rot, Ha = d.Ha, Va = d.Va, Tag = d.Tag, Text = d.Text, Layer = d.Layer, Block = ins.Name
+                    Rot = d.Rot + ins.Rot, Ha = d.Ha, Va = d.Va, Tag = d.Tag, Text = d.Text, Raw = d.Raw, Layer = d.Layer, Block = ins.Name
                 });
             }
             if (ins.HasAttribs) continue;
@@ -521,7 +557,7 @@ public sealed class DxfTextScan
                 ModelAttDefs.Add(new TextInfo
                 {
                     Type = "ATTDEF", X = ins.X + lx * c - ly * s, Y = ins.Y + lx * s + ly * c, Height = d.Height * Math.Sqrt(Math.Abs(ins.Sx * ins.Sy)),
-                    Rot = d.Rot + ins.Rot, Ha = d.Ha, Va = d.Va, Tag = d.Tag, Text = d.Text, Layer = d.Layer, Block = ins.Name
+                    Rot = d.Rot + ins.Rot, Ha = d.Ha, Va = d.Va, Tag = d.Tag, Text = d.Text, Raw = d.Raw, Layer = d.Layer, Block = ins.Name
                 });
             }
         }
@@ -563,6 +599,7 @@ public sealed class DxfTextScan
             foreach (var (c, v) in b) if (c == 3) sb.Append(v);
             foreach (var (c, v) in b) if (c == 1) sb.Append(v);
             t.Text = DxfReader.CleanMText(sb.ToString());
+            t.Raw = t.Text;   // MTEXT: { } là mã nhóm định dạng; chữ { } thật được ghi \{ \} và CleanMText đã giữ lại
         }
         else
         {
@@ -577,6 +614,7 @@ public sealed class DxfTextScan
             if (ha is 3 or 5 && aligned) { t.Ha = 2; t.Va = 0; }   // chữ căn hai đầu: bộ đọc lấy điểm cuối (11) → căn phải tại đó
             if (GetOr(b, 230, 1) < 0) t.X = -t.X;
             t.Text = DxfReader.CleanMText(Find(b, 1) ?? "");
+            t.Raw = DxfReader.DecodeDxfEscapes(Find(b, 1) ?? "");
         }
         if (Math.Abs(t.Rot) < 1e-9) t.Rot = 0;
         return t;
