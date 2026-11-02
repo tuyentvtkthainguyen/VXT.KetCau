@@ -113,8 +113,9 @@ public static class PileCapDesigner
         return pts.Select(q => (Math.Round(q.X, 6) + 0.0, Math.Round(q.Y, 6) + 0.0)).ToList();
     }
 
-    /// <summary>Phản lực các cọc (kN, nén dương) của một tổ hợp: Pi = (N + G)/n + ax·xi + ay·yi,
-    /// Σxi·Pi = −My − H·Qx; Σyi·Pi = Mx − H·Qy (mô men phản lực chân cột + lực cắt × chiều cao đài).</summary>
+    /// <summary>Phản lực các cọc (kN, nén dương) của một tổ hợp: Pi = (N + G)/n + ax·(xi − x̄) + ay·(yi − ȳ),
+    /// Σxi·Pi = −My − H·Qx; Σyi·Pi = Mx − H·Qy (mô men phản lực chân cột + lực cắt × chiều cao đài, đối với tim cột = gốc toạ độ;
+    /// nhóm cọc lệch tâm x̄, ȳ ≠ 0 tự kể thêm mô men (N + G)·e).</summary>
     public static double[] PileForces(BaseLoad l, IList<(double X, double Y)> piles, double G, double H)
     {
         int np = piles.Count;
@@ -123,8 +124,9 @@ public static class PileCapDesigner
         double cx = piles.Average(q => q.X), cy = piles.Average(q => q.Y);
         double sx2 = piles.Sum(q => (q.X - cx) * (q.X - cx)), sy2 = piles.Sum(q => (q.Y - cy) * (q.Y - cy));
         double nt = l.N + G;
-        double ax = sx2 > 1e-9 ? (-l.My - H * l.Qx) / sx2 : 0;
-        double ay = sy2 > 1e-9 ? (l.Mx - H * l.Qy) / sy2 : 0;
+        // [FoundationChecks] mô men lấy đối với trọng tâm nhóm cọc (x̄, ȳ): kể thêm −(N + G)·x̄ khi nhóm cọc lệch tâm so với tim cột (đối xứng: x̄ = ȳ = 0, không đổi)
+        double ax = sx2 > 1e-9 ? (-l.My - H * l.Qx - nt * cx) / sx2 : 0;
+        double ay = sy2 > 1e-9 ? (l.Mx - H * l.Qy - nt * cy) / sy2 : 0;
         for (int i = 0; i < np; i++) res[i] = nt / np + ax * (piles[i].X - cx) + ay * (piles[i].Y - cy);
         return res;
     }
@@ -198,6 +200,10 @@ public static class PileCapDesigner
         double P = geo != null ? Math.Floor(geo.Allowable) : fs.PileCapacity, Pt = Math.Max(fs.PileTension, 0);
         if (!(P > 0)) throw new InvalidOperationException("sức chịu tải cọc tính từ hố khoan [P] ≤ 0");
         double edge = Math.Max(fs.CapEdge, 0.05);
+        // [FoundationChecks] quy định cấu tạo: mép cọc – mép đài ≥ max(150 mm; 0,7d − d/2) (PileLayout.CheckRules)
+        double edgeRule = Math.Max(PileLayout.MinEdgeClear, PileLayout.MinEdgeCentre * d - d / 2);
+        bool edgeRaised = edge < edgeRule - 1e-9;
+        if (edgeRaised) edge = edgeRule;
         double s = RcSection.CeilTo(Math.Max(fs.PileSpacingFactor, 1.5) * d, 0.05);
         double embed = Math.Clamp(fs.PileEmbed, 0, 0.5);
         double Df = Math.Max(soil.Depth, 0);
@@ -238,25 +244,44 @@ public static class PileCapDesigner
         bool found = false;
         var cands = Counts.Where(cc => cc >= n0).ToList();
         if (cands.Count == 0) cands.Add(Counts[^1]);
-        foreach (int np in cands)
+        // [FoundationChecks] bố trí cọc / kích thước đài do người dùng chọn (FoundationSettings.CapOverrides) – thay cho dãy sơ đồ tự chọn
+        var ovr = PileLayout.Find(fs, n.Id);
+        bool user = PileLayout.IsActive(ovr), userPat = user && ovr.Pattern != PilePattern.Auto;
+        var layouts = new List<List<(double X, double Y)>>();
+        if (userPat)
         {
-            piles = Layout(np, s, longX);
-            double spanX = piles.Max(q => q.X) - piles.Min(q => q.X), spanY = piles.Max(q => q.Y) - piles.Min(q => q.Y);
-            L = RcSection.CeilTo(Math.Max(spanX + d + 2 * edge, hc + 0.20), 0.05);
-            B = RcSection.CeilTo(Math.Max(spanY + d + 2 * edge, bc + 0.20), 0.05);
-            H = Hgiven > 0 ? Hgiven : Hmin;
+            double sxU = ovr.SpacingX > 0 ? ovr.SpacingX : s, syU = ovr.SpacingY > 0 ? ovr.SpacingY : sxU;
+            layouts.Add(PileLayout.Generate(ovr.Pattern, sxU, syU, ovr.Nx, ovr.Ny, ovr.Rotate.HasValue ? !ovr.Rotate.Value : longX, ovr.CustomPiles));
+            if (layouts[0].Count == 0) layouts[0] = Layout(cands[0], s, longX);
+            dsn.Spacing = layouts[0].Count > 1 ? PileLayout.MinSpacing(layouts[0]) : s;
+        }
+        else layouts.AddRange(cands.Select(np => Layout(np, s, longX)));
+        double Hfix = user && ovr.H > 0 ? Math.Max(ovr.H, embed + 0.2) : Hgiven;
+        foreach (var lay in layouts)
+        {
+            piles = lay;
+            (L, B) = PileLayout.CapSize(piles, d, edge, hc, bc);
+            if (user && ovr.L > 0) L = ovr.L;
+            if (user && ovr.B > 0) B = ovr.B;
+            H = Hfix > 0 ? Hfix : Hmin;
             for (int it = 0; it < 100; it++)
             {
                 h0 = H - embed - 0.05;
                 G = WeightFactor * gtb * L * B * Math.Max(Df, H);
                 ev = Evaluate(loads, piles, G, H, hc, bc, h0);
-                if (Hgiven > 0 || H >= MaxHeight - 1e-9) break;
+                if (Hfix > 0 || H >= MaxHeight - 1e-9) break;
                 if (PunchShearOk(ev, piles, L, B, hc, bc, h0, edge, d, rbt)) break;
                 H = Math.Round(H + 0.05, 3);
             }
             if (ev.PMax <= P + 1e-6 && ev.PMin >= -Pt - 1e-6) { found = true; break; }
         }
-        if (!found) dsn.Messages.Add("LỖI không chọn được số cọc thoả [P] với sơ đồ tới " + Counts[^1] + " cọc – tăng sức chịu tải cọc / tiết diện cọc");
+        if (!found && userPat)
+            dsn.Messages.Add("LỖI bố trí cọc do người dùng chọn (" + PileLayout.Name(ovr.Pattern) + ", " + piles.Count + " cọc) không thoả [P] / [Pk]: Pmax = "
+                             + DesignUtil.F(ev.PMax, "0") + " kN, Pmin = " + DesignUtil.F(ev.PMin, "0") + " kN – tăng số cọc hoặc khoảng cách cọc");
+        else if (!found) dsn.Messages.Add("LỖI không chọn được số cọc thoả [P] với sơ đồ tới " + Counts[^1] + " cọc – tăng sức chịu tải cọc / tiết diện cọc");
+        if (edgeRaised) dsn.Messages.Add("Mép cọc – mép đài tăng từ " + DesignUtil.F(Math.Max(fs.CapEdge, 0.05) * 1000, "0") + " lên " + DesignUtil.F(edge * 1000, "0")
+                                         + " mm theo quy định cấu tạo (≥ 150 mm và tim cọc – mép đài ≥ 0,7d)");
+        // ---- hết [FoundationChecks] ----
         if (piles.Count == 1 && loads.Any(l => Math.Abs(l.Mx) + Math.Abs(l.My) > 1e-3))
             dsn.Messages.Add("Đài 1 cọc: mô men chân cột do hệ giằng móng tiếp nhận (không kể vào phản lực cọc)");
 
@@ -275,10 +300,9 @@ public static class PileCapDesigner
         });
 
         // ---- chọc thủng, cắt ----
-        double uCol = 2 * (hc + bc + 2 * h0);
         dsn.Checks.Add(new CheckItem
         {
-            Name = "Chọc thủng đài do cột F ≤ Rbt·u·h0", Demand = ev.FCol, Capacity = rbt * uCol * h0, Unit = "kN",
+            Name = "Chọc thủng đài do cột F ≤ Rbt·u·h0", Demand = ev.FCol, Capacity = PileCapChecks.ColumnPunchCapacity(piles, hc, bc, h0, d, rbt), Unit = "kN",   // [FoundationChecks] kể k = h0/c
             Note = "H = " + DesignUtil.F(H * 1000, "0") + " mm, h0 = " + DesignUtil.F(h0 * 1000, "0") + " mm"
         });
         if (piles.Count > 1)
@@ -381,7 +405,22 @@ public static class PileCapDesigner
             Segments = new List<double> { DesignUtil.Mm(legT), DesignUtil.Mm(lenB), DesignUtil.Mm(legT) }
         });
         RebarNumbering.Renumber(dsn.Bars);
+        // [FoundationChecks] kiểm tra an toàn bổ sung (phản lực từng cọc, nhóm cọc, tải ngang, lún, bố trí, chọc thủng chi tiết) → dsn.Safety
+        try { PileCapChecks.Attach(p, dsn, loads, fs, geo, ovr, Hmin, Hfix > 0, conc); }
+        catch (Exception ex) { dsn.Messages.Add("Cảnh báo: không lập được bảng kiểm tra an toàn đài – " + ex.Message); }
         return dsn;
+    }
+
+    /// <summary>[FoundationChecks] Thiết kế thử đài cọc tại một nút chân cột với thông số fs (vd. bản sao có bố trí cọc thử) – dùng cho hộp thoại "Bố trí cọc…".
+    /// Không gộp đài, không đánh tên. Ném lỗi nếu nút không phải chân cột BTCT hoặc không có phản lực.</summary>
+    public static PileCapDesign DesignNode(Project p, AnalysisResults r, int nodeId, FoundationSettings fs = null)
+    {
+        if (p == null || r == null) throw new ArgumentNullException(p == null ? nameof(p) : nameof(r));
+        var bc = FoundationUtil.BaseColumns(p).FirstOrDefault(x => x.Node.Id == nodeId);
+        if (bc.Node == null) throw new InvalidOperationException("nút " + nodeId + " không phải chân cột BTCT");
+        var d = DesignOne(p, r, bc.Node, bc.Column, r.DesignCombos(), fs ?? p.Foundation ?? new FoundationSettings());
+        d.Name = "ĐC";
+        return d;
     }
 
     private static double BarArea(SpacingChoice sc) => sc.Spacing > 0 ? RcSection.BarArea(sc.Dia) / sc.Spacing : 0;
@@ -441,7 +480,7 @@ public static class PileCapDesigner
     private static bool PunchShearOk(Eval e, List<(double X, double Y)> piles, double L, double B, double hc, double bc, double h0, double edge, double d, double rbt)
     {
         if (h0 <= 0.05) return false;
-        if (e.FCol > rbt * 2 * (hc + bc + 2 * h0) * h0 + 1e-6) return false;
+        if (e.FCol > PileCapChecks.ColumnPunchCapacity(piles, hc, bc, h0, d, rbt) + 1e-6) return false;   // [FoundationChecks] kể k = h0/c
         if (piles.Count > 1 && e.FPile > PilePunchCap(edge, d, h0, rbt) + 1e-6) return false;
         if (e.QL > ShearCap(B, h0, MinClear(piles, true, hc, d), rbt) + 1e-6) return false;
         if (e.QB > ShearCap(L, h0, MinClear(piles, false, bc, d), rbt) + 1e-6) return false;

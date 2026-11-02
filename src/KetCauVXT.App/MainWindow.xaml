@@ -43,6 +43,7 @@
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
                 <MenuItem Header="Chuẩn _layer CAD…" Click="MnuCadStandard_Click"/>
                 <MenuItem Header="Thiết lập _bản vẽ (tỷ lệ, cỡ chữ)…" Click="MnuDrawingStyle_Click"/>
+                <MenuItem Header="Mẫu định dạng (te_mplate)…" Click="MnuTemplates_Click"/>
                 <Separator/>
                 <MenuItem Header="T_hoát" Click="MnuExit_Click"/>
             </MenuItem>

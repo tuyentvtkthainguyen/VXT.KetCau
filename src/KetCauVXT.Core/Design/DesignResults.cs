@@ -336,6 +336,8 @@ public class FootingDesign : MemberDesignBase
     /// <summary>Mô men tính thép tại mép cột theo phương L / B (kN.m, toàn bề rộng móng)</summary>
     public double ML { get; set; }
     public double MB { get; set; }
+    /// <summary>[FoundationChecks] Sự làm việc (móng cứng, lệch tâm, trượt, chọc thủng có mô men, cắt) – FootingBehaviour.AnalyzeIsolated</summary>
+    public KetCauVXT.Design.Foundation.FoundationCheckReport Safety { get; set; }
 }
 
 // ---------------------------------------------------------------------

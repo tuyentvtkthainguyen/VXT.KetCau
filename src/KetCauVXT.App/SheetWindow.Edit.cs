@@ -1368,6 +1368,7 @@ public partial class SheetWindow
         var fDesigner = Field("Người thiết kế", tb.Designer, "Dùng khi ô trên tờ để trống");
         var fChecker = Field("Người kiểm tra", tb.Checker, "Dùng khi ô trên tờ để trống");
         var fApprover = Field("Người duyệt", tb.Approver, "Dùng khi ô trên tờ để trống");
+        var fLeader = Field("Chủ trì thiết kế", tb.Leader, "Trường {CHU_TRI} của khung tên người dùng");   // [khung tên người dùng – SheetWindow.Template.cs]
         var fPrefix = Field("Tiền tố số hiệu tờ", string.IsNullOrEmpty(tb.NumberPrefix) ? "KC-" : tb.NumberPrefix, "Dùng cho \"Đánh số lại\" và tờ mới");
         string logo = tb.LogoData ?? "";
         var preview = new Image { Height = 60, Width = 160, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 8, 0) };
@@ -1384,6 +1385,22 @@ public partial class SheetWindow
         sp.Children.Add(lp);
         var chkAll = new CheckBox { Content = "Ghi người thiết kế / kiểm tra / duyệt vào mọi tờ (ghi đè ô trên tờ)", Margin = new Thickness(0, 6, 0, 0) };
         sp.Children.Add(chkAll);
+        // ---- [khung tên người dùng + trường tự đặt – SheetWindow.Template.cs] ----
+        var custom = tb.Custom;
+        var fExtra = new TextBox { Text = ExtraToText(tb.Extra), AcceptsReturn = true, Height = 46, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            ToolTip = "Mỗi dòng: KHOA = giá trị – thay cho chỗ trống {KHOA} trong khung tên người dùng (vd. SO_HOP_DONG = HĐ-12/2026)" };
+        var ep = new DockPanel { Margin = new Thickness(0, 4, 0, 2) };
+        ep.Children.Add(new TextBlock { Text = "Trường tự đặt", Width = 150, VerticalAlignment = VerticalAlignment.Top, ToolTip = fExtra.ToolTip });
+        ep.Children.Add(fExtra);
+        sp.Children.Add(ep);
+        TitleBlockInfo CurInfo() => new()
+        {
+            Company = fCompany.Text.Trim(), ProjectName = fProject.Text.Trim(), Location = fLoc.Text.Trim(), Owner = fOwner.Text.Trim(),
+            Designer = fDesigner.Text.Trim(), Checker = fChecker.Text.Trim(), Approver = fApprover.Text.Trim(), Leader = fLeader.Text.Trim(),
+            NumberPrefix = fPrefix.Text.Trim(), LogoData = logo, Extra = ExtraFromText(fExtra.Text), Custom = custom
+        };
+        sp.Children.Add(BuildCustomTitlePanel(dlg, () => custom, d => custom = d, CurInfo));
+        // ---- [hết] ----
         var bp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
         var ok = new Button { Content = "Đồng ý", IsDefault = true, Padding = new Thickness(14, 3, 14, 3), Margin = new Thickness(0, 0, 6, 0) };
         var cancel = new Button { Content = "Huỷ", IsCancel = true, Padding = new Thickness(14, 3, 14, 3) };
@@ -1393,12 +1410,7 @@ public partial class SheetWindow
         dlg.Content = sp;
         if (dlg.ShowDialog() != true) return;
         Record();
-        _p.TitleBlock = new TitleBlockInfo
-        {
-            Company = fCompany.Text.Trim(), ProjectName = fProject.Text.Trim(), Location = fLoc.Text.Trim(), Owner = fOwner.Text.Trim(),
-            Designer = fDesigner.Text.Trim(), Checker = fChecker.Text.Trim(), Approver = fApprover.Text.Trim(),
-            NumberPrefix = fPrefix.Text.Trim(), LogoData = logo
-        };
+        _p.TitleBlock = CurInfo();   // [khung tên người dùng: giữ Leader, Extra, Custom]
         if (chkAll.IsChecked == true)
             foreach (var s in _p.Sheets) { s.Designer = _p.TitleBlock.Designer; s.Checker = _p.TitleBlock.Checker; s.Approver = _p.TitleBlock.Approver; }
         Dirty();

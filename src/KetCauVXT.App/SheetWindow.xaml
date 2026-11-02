@@ -66,6 +66,8 @@
                     <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
                         <Button Content="Thêm" Click="BtnAddSheet_Click" Style="{StaticResource Btn}"/>
                         <Button Content="Trang trắng" ToolTip="Tờ không khung viền, không khung tên – dàn trang tự do" Click="BtnBlankSheet_Click" Style="{StaticResource Btn}"/>
+                        <Button Content="Tạo tờ từ mẫu" ToolTip="Tờ mới từ tờ mẫu trong thư viện mẫu định dạng – chọn nội dung cho các ô khung nhìn" Click="BtnSheetFromTemplate_Click" Style="{StaticResource Btn}"/>
+                        <Button Content="Lưu tờ làm mẫu" ToolTip="Lưu bố cục tờ hiện tại (khổ giấy, lề, khung, chữ, logo, bảng, ô khung nhìn) vào thư viện mẫu để dùng lại" Click="BtnSaveSheetTemplate_Click" Style="{StaticResource Btn}"/>
                         <Button Content="Nhân bản" Click="BtnDupSheet_Click" Style="{StaticResource Btn}"/>
                         <Button Content="Xoá" Click="BtnDelSheet_Click" Style="{StaticResource Btn}"/>
                         <Button Content="▲" ToolTip="Chuyển lên" Click="BtnSheetUp_Click" Style="{StaticResource Btn}"/>

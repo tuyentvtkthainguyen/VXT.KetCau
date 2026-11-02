@@ -134,12 +134,14 @@ public partial class MainWindow
                 sw.Close();
             }
             await SelfTestRebar(tag); // chọn bố trí thép, shop drawing – MainWindow.SelfTestRebar.cs
+            await SelfTestStair(tag); // cầu thang – MainWindow.SelfTestStair.cs
             await SelfTestQuantity(tag); // khối lượng vật tư, thuyết minh tự động – MainWindow.SelfTestQuantity.cs
             await SelfTestCadStandard(tag);
             await SelfTestDrawingStyle(tag); // tỷ lệ, cỡ chữ, kiểu kích thước – MainWindow.SelfTestDrawingStyle.cs // chuẩn layer CAD – MainWindow.SelfTestCad.cs
             await SelfTestAcadLink(tag);
             await SelfTestDwg(tag); // đọc DWG – MainWindow.SelfTestDwg.cs // nhận dữ liệu AutoCAD – MainWindow.SelfTestAcad.cs
-            await SelfTestManualSheet(tag); // dàn trang thủ công – MainWindow.SelfTestSheetEdit.cs
+            await SelfTestManualSheet(tag);
+            await SelfTestTemplate(tag); // template, khung tên người dùng – MainWindow.SelfTestTemplate.cs // dàn trang thủ công – MainWindow.SelfTestSheetEdit.cs
             StLog("XONG – không lỗi");
         }
         catch (Exception ex)

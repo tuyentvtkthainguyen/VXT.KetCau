@@ -85,6 +85,7 @@ public static class RebarSchedule
         foreach (var m in s.Footings) AddMember(m, "Móng");
         foreach (var m in s.PileCaps) AddMember(m, "Đài cọc");
         foreach (var m in s.StripFootings) AddMember(m, "Móng băng");
+        StairSchedule.AppendTo(rows, s);   // cầu thang (Drawing/StairDrawing.cs)
         return rows;
     }
 

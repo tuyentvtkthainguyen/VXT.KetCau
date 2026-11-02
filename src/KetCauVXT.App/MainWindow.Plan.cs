@@ -735,6 +735,12 @@ public partial class MainWindow
         int nl = _p.FrameLoads.Count(l => l.Source == "OPEN" + o.Id);
         if (nl > 0) sb.AppendLine($"Tải viền gán vào dầm: {nl}");
         if (!string.IsNullOrEmpty(o.Note)) sb.AppendLine($"Ghi chú: {o.Note}");
+        if (o.Kind == OpeningKind.Stair)   // cầu thang khai báo (MainWindow.Stair.cs)
+        {
+            var sd = StairEdit.ForOpening(_p, o);
+            sb.AppendLine(sd != null ? $"Cầu thang {sd.Name}: {Stair.TypeName(sd.Type)}, bậc {Stair.StepsName(sd.Steps).ToLowerInvariant()}, ốp {Stair.FinishName(sd.Finish).ToLowerInvariant()}"
+                                     : "Chưa khai báo cầu thang – bấm \"Khai báo cầu thang…\".");
+        }
         return sb.ToString();
     }
 

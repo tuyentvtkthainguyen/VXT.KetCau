@@ -62,6 +62,8 @@ public class PileCapDesign : MemberDesignBase
     public int DiaB { get; set; }
     public double SpacingL { get; set; }
     public double SpacingB { get; set; }
+    /// <summary>[FoundationChecks] Bảng kiểm tra an toàn chi tiết (phản lực từng cọc, chọc thủng, nhóm cọc, lún…) – PileCapChecks.Attach</summary>
+    public FoundationCheckReport Safety { get; set; }
 }
 
 /// <summary>Kết quả thiết kế một dải móng băng (dầm trên nền đàn hồi, tiết diện chữ T ngược).</summary>
@@ -135,4 +137,6 @@ public class StripFootingDesign : MemberDesignBase
     public double RibH0 { get; set; }
     public double FlangeH0 { get; set; }
     public double Length => End - Start;
+    /// <summary>[FoundationChecks] Phân loại sự làm việc (dầm cứng / hữu hạn / mềm trên nền Winkler) và các kiểm tra bổ sung – FootingBehaviour.AnalyzeStrip</summary>
+    public FoundationCheckReport Safety { get; set; }
 }

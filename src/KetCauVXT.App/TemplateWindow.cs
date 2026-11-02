@@ -78,7 +78,7 @@ internal sealed class TemplateWindow : Window
         Reload();
     }
 
-    private sealed class TemplateRow
+    internal sealed class TemplateRow
     {
         public TemplateLibraryEntry E { get; init; }
         public string DefaultMark => E.IsDefault ? "✔" : "";

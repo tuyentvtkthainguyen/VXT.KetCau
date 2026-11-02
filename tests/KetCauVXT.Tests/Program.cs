@@ -512,6 +512,12 @@ SpliceRuleTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.B
 Console.WriteLine("31. Thiết lập bản vẽ: tỷ lệ, cỡ chữ, kiểu kích thước theo tỷ lệ, ghi chú chung");
 DrawingStyleTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("32. Cầu thang bộ: hình học, tải, thiết kế, bản vẽ, khối lượng (bậc xây, ốp granite/gỗ)");
+StairTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
+Console.WriteLine("33. Mẫu định dạng (template), khung tên người dùng từ DWG/DXF/ảnh");
+TemplateTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

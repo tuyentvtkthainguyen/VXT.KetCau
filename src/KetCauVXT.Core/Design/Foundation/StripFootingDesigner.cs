@@ -570,6 +570,9 @@ public static class StripFootingDesigner
             var weak = GeotechCalc.WeakLayerBelow(geoBh, Df, B);
             if (weak != null) d.Messages.Add("Cảnh báo: lớp đất yếu \"" + weak.Name + "\" ở độ sâu " + DesignUtil.F(weak.Top, "0.0") + " m nằm trong phạm vi 2B dưới đáy móng – xem xét móng cọc");
         }
+        // [FoundationChecks] phân loại dầm cứng / hữu hạn / mềm trên nền Winkler, lún lệch, giải thích sự làm việc → d.Safety
+        try { FootingBehaviour.AnalyzeStrip(d, conc, fs); }
+        catch (Exception ex) { d.Messages.Add("Cảnh báo: không phân tích được sự làm việc móng băng – " + ex.Message); }
         RebarNumbering.Renumber(d.Bars);
         return d;
     }

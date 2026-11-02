@@ -332,7 +332,7 @@ public static class QuantityReport
         o.Add("Đinh", qs.FormworkNailsPer100, "kg/100 m²");
         o.Add("Mác vữa xây / trát / lót sàn", $"{qs.MasonryMortar} / {qs.PlasterMortar} / {qs.FloorMortar}", "");
         o.Add("Bê tông lót: mác, dày, mở rộng mỗi phía", $"{qs.LeanGrade}; {qs.LeanThickness:0.00}; {qs.LeanOffset:0.00}", "m");
-        o.Add("Cầu thang ước tính (bản dày)", qs.IncludeStairs ? qs.StairSlabThickness.ToString("0.00", Inv) : "không tính", "m");
+        o.Add("Cầu thang mặc định – lỗ sàn chưa khai báo (bản dày)", qs.IncludeStairs ? qs.StairSlabThickness.ToString("0.00", Inv) : "không tính", "m");
         o.Add("Lanh tô ước tính (cao; gác mỗi bên; cao cửa quy ước)", qs.IncludeLintels ? $"{qs.LintelHeight:0.00}; {qs.LintelBearing:0.00}; {qs.DoorHeight:0.00}" : "không tính", "m");
         l.Add(o);
         if (qs.Prices != null && qs.Prices.Count > 0)

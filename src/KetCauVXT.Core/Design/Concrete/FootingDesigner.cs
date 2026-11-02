@@ -259,6 +259,9 @@ public static class FootingDesigner
             Segments = new List<double> { DesignUtil.Mm(hookB), DesignUtil.Mm(lenB), DesignUtil.Mm(hookB) }
         });
         if (geoBh != null) AddSettlementCheck(d, geoBh, soil, L, B, ptb);
+        // [FoundationChecks] sự làm việc móng đơn: móng cứng, lệch tâm / tách nền, trượt, chọc thủng có mô men, cắt (không thêm CheckItem)
+        try { KetCauVXT.Design.Foundation.FootingBehaviour.AnalyzeIsolated(d, soil, conc, cover); }
+        catch (Exception ex) { d.Messages.Add("Cảnh báo: không phân tích được sự làm việc móng – " + ex.Message); }
         RebarNumbering.Renumber(d.Bars);
         return d;
     }
