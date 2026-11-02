@@ -474,35 +474,47 @@ public sealed partial class DxfWriter
         G(sb, 0, "ENDSEC");
 
         // TABLES
-        G(sb, 0, "SECTION"); G(sb, 2, "TABLES");
-        G(sb, 0, "TABLE"); G(sb, 2, "LTYPE"); G(sb, 70, 3);
-        G(sb, 0, "LTYPE"); G(sb, 2, "CONTINUOUS"); G(sb, 70, 0); G(sb, 3, "Solid line");
-        G(sb, 72, 65); G(sb, 73, 0); G(sb, 40, 0.0);
-        G(sb, 0, "LTYPE"); G(sb, 2, "DASHED"); G(sb, 70, 0); G(sb, 3, "__ __ __ __");
-        G(sb, 72, 65); G(sb, 73, 2); G(sb, 40, 19.05); G(sb, 49, 12.7); G(sb, 49, -6.35);
-        G(sb, 0, "LTYPE"); G(sb, 2, "CENTER"); G(sb, 70, 0); G(sb, 3, "____ _ ____ _");
-        G(sb, 72, 65); G(sb, 73, 4); G(sb, 40, 50.8); G(sb, 49, 31.75); G(sb, 49, -6.35); G(sb, 49, 6.35); G(sb, 49, -6.35);
-        G(sb, 0, "ENDTAB");
-
-        G(sb, 0, "TABLE"); G(sb, 2, "LAYER"); G(sb, 70, LayerDefs.Length);
-        foreach (var (name, color, lt) in LayerDefs)
+        var std = Standard ?? KetCauVXT.Model.CadStandard.Active;
+        if (std != null) WriteTablesStd(sb, std);   // chuẩn layer CAD (DxfWriter.Standard.cs)
+        else
         {
-            G(sb, 0, "LAYER"); G(sb, 2, name); G(sb, 70, 0); G(sb, 62, color); G(sb, 6, lt);
-        }
-        G(sb, 0, "ENDTAB");
+            G(sb, 0, "SECTION"); G(sb, 2, "TABLES");
+            G(sb, 0, "TABLE"); G(sb, 2, "LTYPE"); G(sb, 70, 3);
+            G(sb, 0, "LTYPE"); G(sb, 2, "CONTINUOUS"); G(sb, 70, 0); G(sb, 3, "Solid line");
+            G(sb, 72, 65); G(sb, 73, 0); G(sb, 40, 0.0);
+            G(sb, 0, "LTYPE"); G(sb, 2, "DASHED"); G(sb, 70, 0); G(sb, 3, "__ __ __ __");
+            G(sb, 72, 65); G(sb, 73, 2); G(sb, 40, 19.05); G(sb, 49, 12.7); G(sb, 49, -6.35);
+            G(sb, 0, "LTYPE"); G(sb, 2, "CENTER"); G(sb, 70, 0); G(sb, 3, "____ _ ____ _");
+            G(sb, 72, 65); G(sb, 73, 4); G(sb, 40, 50.8); G(sb, 49, 31.75); G(sb, 49, -6.35); G(sb, 49, 6.35); G(sb, 49, -6.35);
+            G(sb, 0, "ENDTAB");
 
-        G(sb, 0, "TABLE"); G(sb, 2, "STYLE"); G(sb, 70, 1);
-        G(sb, 0, "STYLE"); G(sb, 2, "STANDARD"); G(sb, 70, 0); G(sb, 40, 0.0); G(sb, 41, 1.0); G(sb, 50, 0.0);
-        G(sb, 71, 0); G(sb, 42, Th); G(sb, 3, "arial.ttf"); G(sb, 4, "");
-        G(sb, 0, "ENDTAB");
-        G(sb, 0, "ENDSEC");
+            G(sb, 0, "TABLE"); G(sb, 2, "LAYER"); G(sb, 70, LayerDefs.Length);
+            foreach (var (name, color, lt) in LayerDefs)
+            {
+                G(sb, 0, "LAYER"); G(sb, 2, name); G(sb, 70, 0); G(sb, 62, color); G(sb, 6, lt);
+            }
+            G(sb, 0, "ENDTAB");
+
+            G(sb, 0, "TABLE"); G(sb, 2, "STYLE"); G(sb, 70, 1);
+            G(sb, 0, "STYLE"); G(sb, 2, "STANDARD"); G(sb, 70, 0); G(sb, 40, 0.0); G(sb, 41, 1.0); G(sb, 50, 0.0);
+            G(sb, 71, 0); G(sb, 42, Th); G(sb, 3, "arial.ttf"); G(sb, 4, "");
+            G(sb, 0, "ENDTAB");
+            G(sb, 0, "ENDSEC");
+        }
 
         // ENTITIES
         G(sb, 0, "SECTION"); G(sb, 2, "ENTITIES");
+        var map = std != null ? OutputNameMap(std) : null;
         foreach (var e in _ents)
         {
             G(sb, 0, e.Type);
-            foreach (var (code, val) in e.Codes) G(sb, code, val);
+            foreach (var (code, val) in e.Codes)
+            {
+                object v = val;
+                if (map != null && code == 8 && val is string ln) v = map.TryGetValue(ln, out var on) ? on : KetCauVXT.Model.CadStandard.SafeLayerName(ln);
+                else if (map != null && code == 6 && val is string lt6 && _definedLtypes != null && !_definedLtypes.Contains(lt6)) v = "CONTINUOUS";
+                G(sb, code, v);
+            }
         }
         G(sb, 0, "ENDSEC");
         G(sb, 0, "EOF");

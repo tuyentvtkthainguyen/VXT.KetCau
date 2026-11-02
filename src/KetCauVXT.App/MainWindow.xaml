@@ -40,6 +40,7 @@
                 <MenuItem Header="Nhập _DXF..." Click="MnuImportDxf_Click"/>
                 <MenuItem Header="Nhập bản vẽ _kiến trúc (triển khai kết cấu)..." Click="MnuImportArch_Click"/>
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
+                <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
                 <Separator/>
                 <MenuItem Header="T_hoát" Click="MnuExit_Click"/>
             </MenuItem>

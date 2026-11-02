@@ -70,6 +70,10 @@ public abstract class MemberDesignBase
     public List<CheckItem> Checks { get; set; } = new();
     public List<string> Messages { get; set; } = new();
     public List<BarMark> Bars { get; set; } = new();
+    /// <summary>Khoá các cấu kiện vật lý gộp vào thiết kế này (dùng cho lựa chọn thép Project.RebarChoices): "D:12", "C:5", "S:3", "M:7".</summary>
+    public List<string> RebarKeys { get; set; } = new();
+    /// <summary>Số vùng thép đang dùng lựa chọn của người dùng (0 = tự chọn hoàn toàn).</summary>
+    public int UserRebarZones { get; set; }
     public bool Ok => Checks.All(c => c.Ok) && !Messages.Any(m => m.StartsWith("LỖI"));
     public double MaxRatio => Checks.Count == 0 ? 0 : Checks.Max(c => c.Ratio);
 }
@@ -149,6 +153,11 @@ public class BeamLineDesign : MemberDesignBase
     public double Sagitta { get; set; }
     /// <summary>Mô men xoắn bao lớn nhất |T| (kN.m)</summary>
     public double TorsionMax { get; set; }
+    /// <summary>Diện tích thép trên yêu cầu tại từng gối 0..số nhịp (m²; 0 tại đầu tự do công xôn)</summary>
+    public List<double> SupportAsReq { get; set; } = new();
+    /// <summary>Diện tích cốt chịu nén yêu cầu cho thép chạy suốt dưới (tại gối) / trên (giữa nhịp), m²</summary>
+    public double ContBotAsReq { get; set; }
+    public double ContTopAsReq { get; set; }
 }
 
 // ---------------------------------------------------------------------
@@ -256,6 +265,9 @@ public class FootingDesign : MemberDesignBase
     public int DiaB { get; set; }
     public double SpacingL { get; set; }
     public double SpacingB { get; set; }
+    /// <summary>Mô men tính thép tại mép cột theo phương L / B (kN.m, toàn bề rộng móng)</summary>
+    public double ML { get; set; }
+    public double MB { get; set; }
 }
 
 // ---------------------------------------------------------------------

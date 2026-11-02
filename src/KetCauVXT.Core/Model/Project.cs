@@ -121,6 +121,10 @@ public class Project
     public List<Sheet> Sheets { get; set; } = new();
     /// <summary>Thông tin khung tên mặc định của công trình (đơn vị thiết kế, người duyệt, logo…)</summary>
     public TitleBlockInfo TitleBlock { get; set; } = new();
+    /// <summary>Chuẩn layer CAD riêng của dự án (null = dùng chuẩn mặc định của người dùng, Model/CadStandard.cs)</summary>
+    public CadStandard CadStandard { get; set; }
+    /// <summary>Bảng gán layer → nhóm cấu kiện đã dùng lần nhập bản vẽ kiến trúc gần nhất (ghi lại để dùng lại)</summary>
+    public List<LayerMapEntry> ArchLayerMap { get; set; } = new();
 
     public List<LoadPattern> Patterns { get; set; } = new();
     public List<FrameLoad> FrameLoads { get; set; } = new();
@@ -135,6 +139,10 @@ public class Project
     public SoilSettings Soil { get; set; } = new();
     /// <summary>Hố khoan khảo sát địa chất (Model/Geotech.cs)</summary>
     public List<Borehole> Boreholes { get; set; } = new();
+    /// <summary>Lựa chọn bố trí thép của người dùng theo cấu kiện + vùng (Model/RebarChoices.cs); rỗng = tự chọn.</summary>
+    public List<RebarChoice> RebarChoices { get; set; } = new();
+    /// <summary>Tuỳ chọn chung khi tự chọn thép, nối chồng và gia công thép.</summary>
+    public RebarPreferences RebarPrefs { get; set; } = new();
 
     // ------------------------------------------------------------------
     // Truy vấn

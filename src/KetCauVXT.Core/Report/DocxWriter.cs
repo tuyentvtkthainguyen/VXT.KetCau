@@ -10,6 +10,9 @@ public enum ParaAlign { Left, Center, Right, Justify }
 /// Khổ A4 đứng, lề trên 2 cm, dưới 2 cm, trái 3 cm, phải 1.5 cm. Font Times New Roman 13 pt.</summary>
 public class DocxWriter
 {
+    /// <summary>Font thuyết minh (CadStandard.ReportFont) – mặc định Times New Roman.</summary>
+    public static string DefaultFont { get; set; } = "Times New Roman";
+
     private readonly StringBuilder _body = new();
     /// <summary>Bề rộng vùng in: 21 − 3 − 1.5 = 16.5 cm ≈ 9355 twips</summary>
     public const int TextWidthTwips = 9355;
@@ -204,7 +207,7 @@ public class DocxWriter
         Put(zip, "[Content_Types].xml", ContentTypes);
         Put(zip, "_rels/.rels", Rels);
         Put(zip, "word/_rels/document.xml.rels", DocRels);
-        Put(zip, "word/styles.xml", Styles);
+        Put(zip, "word/styles.xml", string.IsNullOrWhiteSpace(DefaultFont) || DefaultFont == "Times New Roman" ? Styles : Styles.Replace("Times New Roman", SecurityElement.Escape(DefaultFont.Trim())));
         Put(zip, "word/settings.xml", Settings);
         Put(zip, "word/document.xml", Document());
     }

@@ -29,7 +29,11 @@ public static class SlabDesigner
                 if (d == null) { warnings.Add("Sàn " + slab.Label + " không phải ô chữ nhật – bỏ qua thiết kế"); continue; }
                 string sig = Signature(d);
                 int k = list.FindIndex(x => x.sig == sig);
-                if (k >= 0) list[k].d.Quantity++;
+                if (k >= 0)
+                {
+                    list[k].d.Quantity++;
+                    list[k].d.RebarKeys.AddRange(d.RebarKeys.Where(x => !list[k].d.RebarKeys.Contains(x)));
+                }
                 else list.Add((d, sig));
             }
             catch (Exception ex)
@@ -62,7 +66,7 @@ public static class SlabDesigner
         // thép sàn: Ø < 10 dùng thép đai, Ø ≥ 10 dùng thép chính
         var stlSmall = p.Material(cs.RebarStirrup);
         var stlMain = p.Material(cs.RebarMain);
-        int[] dias = DesignUtil.Sorted(cs.SlabBars, new[] { 6, 8, 10, 12 });
+        int[] dias = (p.RebarPrefs ?? new RebarPreferences()).Filter(DesignUtil.Sorted(cs.SlabBars, new[] { 6, 8, 10, 12 }));
         double t = sec.Thickness;
 
         // ---- tải tính toán và tiêu chuẩn ----
@@ -132,28 +136,47 @@ public static class SlabDesigner
         double c = cs.CoverSlab;
         double sMax = Math.Min(1.5 * t, 0.20);
         Material SteelOf(int dia) => dia < 10 ? stlSmall : stlMain;
-        SpacingChoice Choose(double m, double extraDepth)
+        double Req(double m, double extraDepth, int dia)
         {
-            return RcSection.ChooseSpacing(dia =>
-            {
-                double h0 = t - c - extraDepth - dia / 2000.0;
-                var fr = RcSection.DesignRect(m, 1.0, h0, c, conc, SteelOf(dia), MinRatioSlab);
-                return fr.As;
-            }, dias, sMax, 0.10, 0.15);
+            double h0 = t - c - extraDepth - dia / 2000.0;
+            var fr = RcSection.DesignRect(m, 1.0, h0, c, conc, SteelOf(dia), MinRatioSlab);
+            return fr.As;
+        }
+        SpacingChoice Choose(double m, double extraDepth) => RcSection.ChooseSpacing(dia => Req(m, extraDepth, dia), dias, sMax, 0.10, 0.15);
+        // lựa chọn của người dùng (Project.RebarChoices) thay cho phương án tự chọn
+        string key = MemberKey(slab), basis = Basis(t);
+        d.RebarKeys.Add(key);
+        int nUser = 0;
+        SpacingChoice Ovr(string zone, SpacingChoice auto, Func<int, double> req, double sMaxZ)
+        {
+            var ch = p.ValidRebarChoice(key, zone, -1, basis);
+            if (ch == null || ch.Dia <= 0 || ch.Spacing <= 0) return auto;
+            nUser++;
+            var sc = new SpacingChoice { Dia = ch.Dia, Spacing = ch.Spacing, AsReqPerM = req(ch.Dia), Ok = true };
+            if (ch.Spacing < 0.10 - 1e-9 || ch.Spacing > sMaxZ + 1e-9)
+                d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + sc.Text + ": bước ngoài phạm vi 100…" + DesignUtil.F(sMaxZ * 1000, "0") + " mm");
+            if (sc.AsPerM < sc.AsReqPerM * (1 - 1e-6))
+                d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + sc.Text + ": As = " + DesignUtil.F(sc.AsPerM * 1e4, "0.00")
+                               + " < As yêu cầu " + DesignUtil.F(sc.AsReqPerM * 1e4, "0.00") + " cm²/m");
+            return sc;
         }
         // lớp dưới: phương ngắn đặt ngoài (h0 lớn), phương dài đặt trong
-        var bx = Choose(m1, 0);
+        var bx = Ovr(RebarZones.SlabBotX, Choose(m1, 0), dia => Req(m1, 0, dia), sMax);
         var by = Choose(m2, bx.Dia / 1000.0);
         var tx = mI < -1e-9 ? Choose(-mI, 0) : null;
         SpacingChoice ty = null;
         if (mII < -1e-9) ty = Choose(-mII, 0);
         else if (!d.TwoWay && fy > 0) ty = RcSection.ChooseSpacing(_ => 0.0, dias, 0.20, 0.10, 0.20);   // mũ cấu tạo cạnh ngắn bản dầm
         // phương dài của bản dầm: thép phân bố ≥ 10% thép chịu lực (TCVN 5574:2018 mục 10.3.8)
+        double needDist = Math.Max(0.1 * bx.AsPerM, 0), sMaxDist = Math.Min(0.25, Math.Max(sMax, 0.20));
         if (!d.TwoWay)
-        {
-            double need = Math.Max(0.1 * bx.AsPerM, 0);
-            by = RcSection.ChooseSpacing(_ => need, dias, Math.Min(0.25, Math.Max(sMax, 0.20)), 0.10, 0.20);
-        }
+            by = RcSection.ChooseSpacing(_ => needDist, dias, sMaxDist, 0.10, 0.20);
+        double bxDepth = bx.Dia / 1000.0;
+        by = Ovr(RebarZones.SlabBotY, by, dia => d.TwoWay ? Req(m2, bxDepth, dia) : needDist, d.TwoWay ? sMax : sMaxDist);
+        tx = Ovr(RebarZones.SlabTopX, tx, dia => mI < -1e-9 ? Req(-mI, 0, dia) : 0, sMax);
+        ty = Ovr(RebarZones.SlabTopY, ty, dia => mII < -1e-9 ? Req(-mII, 0, dia) : 0, Math.Max(sMax, 0.20));
+        d.UserRebarZones = nUser;
+        if (nUser > 0) d.Messages.Add("Bố trí thép theo lựa chọn của người dùng tại " + nUser + " vùng (đã kiểm tra lại khả năng chịu lực)");
         d.BotX = bx.Text; d.BotY = by.Text; d.TopX = tx?.Text ?? ""; d.TopY = ty?.Text ?? "";
         foreach (var sc in new[] { bx, by, tx, ty })
             if (sc != null && !sc.Ok) d.Messages.Add("LỖI sàn không bố trí đủ thép với bước ≥ 100 mm – cần tăng chiều dày");
@@ -263,6 +286,57 @@ public static class SlabDesigner
     }
 
     private static double Anchor(int dia) => Math.Max(10 * dia / 1000.0, 0.10);
+
+    /// <summary>Khoá cấu kiện vật lý của ô sàn (lựa chọn thép): "S:{id ô sàn}".</summary>
+    internal static string MemberKey(Slab slab) => "S:" + slab.Id.ToString(DesignUtil.Inv);
+
+    internal static string Basis(double t) => "t=" + DesignUtil.Mm(t).ToString("0", DesignUtil.Inv);
+
+    /// <summary>Các phương án Ø–bước cho một vùng thép của ô sàn đã thiết kế (zone = RebarZones.SlabBotX/BotY/TopX/TopY):
+    /// mỗi Ø một bước lớn nhất thoả As (làm tròn xuống 10 mm) và các bước chẵn 50 mm nhỏ hơn, trong khoảng [100 mm; smax].</summary>
+    internal static List<RebarAlternative> Alternatives(Project p, SlabDesign d, string zone, int max = 12)
+    {
+        var res = new List<RebarAlternative>();
+        var slab = p.Slabs.FirstOrDefault(x => x.Id == d.SlabId);
+        if (slab == null) return res;
+        var cs = p.Concrete;
+        SlabSection sec;
+        try { sec = p.SlabSection(slab.Section); } catch (KeyNotFoundException) { return res; }
+        var conc = DesignUtil.ConcreteOf(p, sec.Material, cs.ConcreteSlab);
+        var stlSmall = p.Material(cs.RebarStirrup);
+        var stlMain = p.Material(cs.RebarMain);
+        Material SteelOf(int dia) => dia < 10 ? stlSmall : stlMain;
+        int[] dias = (p.RebarPrefs ?? new RebarPreferences()).Filter(DesignUtil.Sorted(cs.SlabBars, new[] { 6, 8, 10, 12 }));
+        double t = sec.Thickness, c = cs.CoverSlab;
+        double sMax = Math.Min(1.5 * t, 0.20);
+        var (bxDia, bxS) = ParseSpacing(d.BotX);
+        double bxAs = bxS > 0 ? RcSection.BarArea(bxDia) / bxS : 0;
+        string cur = zone == RebarZones.SlabBotX ? d.BotX : zone == RebarZones.SlabBotY ? d.BotY : zone == RebarZones.SlabTopX ? d.TopX : d.TopY;
+        Func<int, double> req;
+        double sMaxZ = sMax;
+        if (zone == RebarZones.SlabBotX) req = dia => RcSection.DesignRect(d.M1, 1.0, t - c - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As;
+        else if (zone == RebarZones.SlabBotY)
+        {
+            if (d.TwoWay) req = dia => RcSection.DesignRect(d.M2, 1.0, t - c - bxDia / 1000.0 - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As;
+            else { req = _ => 0.1 * bxAs; sMaxZ = Math.Min(0.25, Math.Max(sMax, 0.20)); }
+        }
+        else if (zone == RebarZones.SlabTopX) req = dia => d.MI < -1e-9 ? RcSection.DesignRect(-d.MI, 1.0, t - c - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As : 0;
+        else { req = dia => d.MII < -1e-9 ? RcSection.DesignRect(-d.MII, 1.0, t - c - dia / 2000.0, c, conc, SteelOf(dia), MinRatioSlab).As : 0; sMaxZ = Math.Max(sMax, 0.20); }
+        res.AddRange(RebarOptions.SpacingAlternatives("Sàn", zone, req, dias, 0.10, sMaxZ, cur, max));
+        return res;
+    }
+
+    /// <summary>Đọc "Ø8a200" → (8; 0,20 m); chuỗi sai → (0; 0).</summary>
+    internal static (int Dia, double Spacing) ParseSpacing(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return (0, 0);
+        string t = text.Trim().TrimStart('Ø', 'ø', 'D', 'd', 'Φ', 'φ');
+        int k = t.IndexOf('a');
+        if (k <= 0) return (0, 0);
+        if (!int.TryParse(t.Substring(0, k), System.Globalization.NumberStyles.Integer, DesignUtil.Inv, out int dia)) return (0, 0);
+        if (!double.TryParse(t.Substring(k + 1), System.Globalization.NumberStyles.Float, DesignUtil.Inv, out double smm)) return (dia, 0);
+        return (dia, smm / 1000.0);
+    }
 
     /// <summary>Thép rải: Count = số thanh trên bề rộng rải width với bước s (cộng 1).</summary>
     private static BarMark Spread(string role, SpacingChoice sc, double len, double width, bool top, List<double> segs, double extraLen = 0)

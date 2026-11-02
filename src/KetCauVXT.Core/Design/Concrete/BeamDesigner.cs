@@ -99,6 +99,7 @@ public static class BeamDesigner
                 {
                     var keep = merged[k].d;
                     keep.Quantity++;
+                    keep.RebarKeys.AddRange(d.RebarKeys.Where(x => !keep.RebarKeys.Contains(x)));
                     keep.Messages.Add("Gộp dầm giống hệt: phần tử " + string.Join(",", d.Frames));
                     // giữ hệ số kiểm tra bất lợi nhất
                     for (int i = 0; i < keep.Checks.Count && i < d.Checks.Count; i++)
@@ -362,15 +363,22 @@ public static class BeamDesigner
         var stl = p.Material(cs.RebarStirrup);
         double b = sec.B, h = sec.H, c = cs.CoverBeam;
         double a = c + 0.010, h0 = h - a;
-        int[] dias = DesignUtil.Sorted(cs.BeamBars, new[] { 14, 16, 18, 20, 22, 25 });
+        var pref = p.RebarPrefs ?? new RebarPreferences();
+        int[] dias = pref.Filter(DesignUtil.Sorted(cs.BeamBars, new[] { 14, 16, 18, 20, 22, 25 }));
         int[] sdias = DesignUtil.Sorted(cs.StirrupBars, new[] { 6, 8, 10 }).Where(x => x >= 6).ToArray();
         if (sdias.Length == 0) sdias = new[] { 6 };
+        if (pref.StirrupDia >= 6) sdias = new[] { pref.StirrupDia };
+        var fitBot = new BeamFit { Top = false, MaxLayers = pref.AllowTwoLayers ? 2 : 1, Cap = Math.Max(pref.MaxBarsPerLayer, 0), SameDia = pref.PreferSameDia };
+        var fitTop = new BeamFit { Top = true, MaxLayers = fitBot.MaxLayers, Cap = fitBot.Cap, SameDia = fitBot.SameDia };
+        string key = MemberKey(li), basis = Basis(b, h);
+        double Anchor(int dia) => Math.Max(30 * dia / 1000.0, RebarDetailing.AnchorageLength(conc, main, dia));
 
         var d = new BeamLineDesign
         {
             Story = li.Story, Section = sec.Name, B = b, H = h, TopElevation = li.Z,
             Frames = li.Segs.Select(s => s.F.Id).ToList()
         };
+        d.RebarKeys.Add(key);
         int ns = li.Spans.Count;
         if (h0 <= 0) throw new InvalidOperationException("chiều cao dầm nhỏ hơn lớp bảo vệ");
 
@@ -453,10 +461,32 @@ public static class BeamDesigner
         nodeX[ns] = xEnd; nodeW[ns] = li.Spans[ns - 1].WR;
         for (int j = 1; j < ns; j++) nodeW[j] = Math.Max(li.Spans[j - 1].WR, li.Spans[j].WL);
 
-        // ---- chọn thép chạy suốt + tăng cường / mũ gối ----
+        // ---- chọn thép chạy suốt + tăng cường / mũ gối (có xét lựa chọn của người dùng – Project.RebarChoices) ----
         double compSup = supComp.Max(), compSpan = fs.Max(f => f.AsComp);
-        int dB = ChooseContinuous(dias, b, c, compSup, xEnd, k => fs[k].As, k => 0.8 * lcl[k], ns, out var extraBot);
-        int dT = ChooseContinuous(dias, b, c, compSpan, xEnd, j => supReq[j], j => SupportBarSpan(j, ns, nodeW, lcl), ns + 1, out var extraTop);
+        d.SupportAsReq = supReq.ToList(); d.ContBotAsReq = compSup; d.ContTopAsReq = compSpan;
+        List<(int Dia, int Count)> Ovr(string zone, int idx)
+        {
+            var ch = p.ValidRebarChoice(key, zone, idx, basis);
+            var g = ch?.Bars?.Where(x => x != null && x.Dia > 0 && x.Count > 0).Select(x => (x.Dia, x.Count)).ToList();
+            return g != null && g.Count > 0 ? g : null;
+        }
+        var ovBot = Enumerable.Range(0, ns).Select(k => Ovr(RebarZones.BeamBottom, k)).ToArray();
+        var ovTop = Enumerable.Range(0, ns + 1).Select(j => Ovr(RebarZones.BeamTopSupport, j)).ToArray();
+        var ovBotC = Ovr(RebarZones.BeamBotCont, -1);
+        var ovTopC = Ovr(RebarZones.BeamTopCont, -1);
+        int nUser = ovBot.Count(x => x != null) + ovTop.Count(x => x != null) + (ovBotC != null ? 1 : 0) + (ovTopC != null ? 1 : 0);
+        int dB = ChooseContinuous(dias, b, c, compSup, xEnd, k => fs[k].As, k => 0.8 * lcl[k], ns, out var extraBot,
+            fitBot, ovBotC?.Max(g => g.Dia) ?? 0, ovBot, out var adjBot);
+        int dT = ChooseContinuous(dias, b, c, compSpan, xEnd, j => supReq[j], j => SupportBarSpan(j, ns, nodeW, lcl), ns + 1, out var extraTop,
+            fitTop, ovTopC?.Max(g => g.Dia) ?? 0, ovTop, out var adjTop);
+        if (ovBotC != null && ovBotC.Sum(g => g.Count) != 2) d.Messages.Add("Thép dưới chạy suốt luôn gồm 2 thanh góc – lấy 2Ø" + dB);
+        if (ovTopC != null && ovTopC.Sum(g => g.Count) != 2) d.Messages.Add("Thép trên chạy suốt luôn gồm 2 thanh góc – lấy 2Ø" + dT);
+        for (int k = 0; k < ns; k++)
+            if (adjBot[k]) d.Messages.Add("Nhịp " + (k + 1) + ": thép dưới chọn " + RcSection.BarText(ovBot[k]) + " không có 2 thanh Ø" + dB
+                                          + " chạy suốt – đã điều chỉnh thành " + RcSection.BarText(new[] { (dB, 2) }.Concat(extraBot[k].Groups)));
+        for (int j = 0; j <= ns; j++)
+            if (adjTop[j]) d.Messages.Add("Gối " + (j + 1) + ": thép trên chọn " + RcSection.BarText(ovTop[j]) + " không có 2 thanh Ø" + dT
+                                          + " chạy suốt – đã điều chỉnh thành " + RcSection.BarText(new[] { (dT, 2) }.Concat(extraTop[j].Groups)));
         double aCont = 2 * RcSection.BarArea(dB), aTop = 2 * RcSection.BarArea(dT);
         if (aCont < compSup * (1 - 1e-6)) d.Messages.Add("Thép dưới chạy suốt chưa đủ làm cốt chịu nén tại gối – kiểm tra lại");
         if (aTop < compSpan * (1 - 1e-6)) d.Messages.Add("Thép trên chạy suốt chưa đủ làm cốt chịu nén giữa nhịp – kiểm tra lại");
@@ -467,11 +497,33 @@ public static class BeamDesigner
         foreach (int dd in sdias)
         {
             if (dd < sd) continue;
-            bool ok = d.Spans.All(res => RcSection.Shear(res.QMax, b, h0, conc, stl, dd).Ok);
+            bool ok = d.Spans.All(res =>
+            {
+                var sh = RcSection.Shear(res.QMax, b, h0, conc, stl, dd);
+                return sh.Ok && (pref.MinStirrupSpacing <= 0 || sh.SSupport >= pref.MinStirrupSpacing - 1e-9);
+            });
             sd = dd;
             if (ok) break;
         }
         var shear = d.Spans.Select(res => RcSection.Shear(res.QMax, b, h0, conc, stl, sd)).ToArray();
+        for (int k = 0; k < ns; k++) ClampStirrups(ref shear[k], pref);
+        var sdk = Enumerable.Repeat(sd, ns).ToArray();
+        var userShear = new bool[ns];
+        if (li.Arc == null)
+            for (int k = 0; k < ns; k++)
+            {
+                var ch = p.ValidRebarChoice(key, RebarZones.Stirrup, k, basis);
+                if (ch == null || ch.Dia < 6 || ch.Spacing <= 0) continue;
+                sdk[k] = ch.Dia;
+                var sh = RcSection.Shear(d.Spans[k].QMax, b, h0, conc, stl, ch.Dia);
+                sh.SSupport = ch.Spacing;
+                sh.SMid = Math.Max(ch.Spacing2 > 0 ? ch.Spacing2 : sh.SMid, ch.Spacing);
+                shear[k] = sh;
+                userShear[k] = true;
+                nUser++;
+            }
+        else if (Enumerable.Range(0, ns).Any(k => p.ValidRebarChoice(key, RebarZones.Stirrup, k, basis) != null))
+            d.Messages.Add("Dầm cong: bỏ qua lựa chọn đai của người dùng – đai kín tính theo xoắn + cắt");
         TorsionResult[] tor = null;
         if (li.Arc != null)
         {
@@ -490,6 +542,7 @@ public static class BeamDesigner
                 shear[k].SMid = Math.Max(Math.Min(shear[k].SMid, tor[k].S), shear[k].SSupport);
                 tor[k] = RcTorsion.Design(d.Spans[k].TMax, d.Spans[k].QMax, b, h, h0, c, conc, stl, sd, shear[k].SSupport, main);
             }
+            for (int k = 0; k < ns; k++) sdk[k] = sd;
         }
 
         // ---- kết quả từng nhịp + kiểm tra ----
@@ -517,6 +570,7 @@ public static class BeamDesigner
         for (int k = 0; k < ns; k++)
         {
             var res = d.Spans[k]; var sp = li.Spans[k];
+            var userNames = new List<string>();
             var botGroups = new List<(int Dia, int Count)> { (dB, 2) };
             botGroups.AddRange(extraBot[k].Groups);
             var topLG = new List<(int Dia, int Count)> { (dT, 2) };
@@ -529,27 +583,33 @@ public static class BeamDesigner
             res.BotText = RcSection.BarText(botGroups);
             res.TopLeftText = RcSection.BarText(topLG);
             res.TopRightText = RcSection.BarText(topRG);
-            res.StirrupDia = sd;
+            res.StirrupDia = sdk[k];
             res.StirrupSupport = shear[k].SSupport;
             res.StirrupMid = shear[k].SMid;
 
             // h0 thực tế theo số hàng thép
-            double h0b = h - EffA(c, botGroups, b);
-            double h0tl = h - EffA(c, topLG, b), h0tr = h - EffA(c, topRG, b);
+            double h0b = h - EffA(c, botGroups, b, fitBot);
+            double h0tl = h - EffA(c, topLG, b, fitTop), h0tr = h - EffA(c, topRG, b, fitTop);
             double muL = RcSection.MomentCapacity(b, h0tl, res.AsTopLeftProv, aCont, a, conc, main);
             double muS = RcSection.MomentCapacity(b, h0b, res.AsBotProv, aTop, a, conc, main);
             double muR = RcSection.MomentCapacity(b, h0tr, res.AsTopRightProv, aCont, a, conc, main);
             string sk = " nhịp " + (k + 1);
+            if (ovTop[k] != null || ovTopC != null) userNames.Add("Uốn gối trái" + sk);
+            if (ovBot[k] != null || ovBotC != null) userNames.Add("Uốn giữa nhịp" + sk);
+            if (ovTop[k + 1] != null || ovTopC != null) userNames.Add("Uốn gối phải" + sk);
+            if (userShear[k]) userNames.Add("Cắt" + sk);
             d.Checks.Add(new CheckItem { Name = "Uốn gối trái" + sk, Demand = Math.Abs(res.MLeft), Capacity = muL, Unit = "kN.m", Note = res.TopLeftText + " – " + res.ComboMLeft });
             d.Checks.Add(new CheckItem { Name = "Uốn giữa nhịp" + sk, Demand = res.MSpan, Capacity = muS, Unit = "kN.m", Note = res.BotText + " – " + res.ComboMSpan });
             d.Checks.Add(new CheckItem { Name = "Uốn gối phải" + sk, Demand = Math.Abs(res.MRight), Capacity = muR, Unit = "kN.m", Note = res.TopRightText + " – " + res.ComboMRight });
-            double qu = RcSection.ShearCapacity(b, h0, conc, stl, sd, 2, shear[k].SSupport);
+            double qu = RcSection.ShearCapacity(b, h0, conc, stl, sdk[k], 2, shear[k].SSupport);
             d.Checks.Add(new CheckItem
             {
                 Name = "Cắt" + sk, Demand = res.QMax, Capacity = qu, Unit = "kN",
-                Note = "Ø" + sd + "a" + DesignUtil.F(shear[k].SSupport * 1000, "0") + " – " + res.ComboQ + (string.IsNullOrEmpty(shear[k].Note) ? "" : "; " + shear[k].Note)
+                Note = "Ø" + sdk[k] + "a" + DesignUtil.F(shear[k].SSupport * 1000, "0") + " – " + res.ComboQ + (string.IsNullOrEmpty(shear[k].Note) ? "" : "; " + shear[k].Note)
             });
-            if (!shear[k].Ok) d.Messages.Add("LỖI" + sk + ": " + shear[k].Note);
+            if (!shear[k].Ok && !userShear[k]) d.Messages.Add("LỖI" + sk + ": " + shear[k].Note);
+            foreach (var ci in d.Checks.Where(ci => userNames.Contains(ci.Name) && !ci.Ok).ToList())
+                d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + ci.Name + ": " + ci.Note);
             if (tor != null)
             {
                 var tr = tor[k];
@@ -597,7 +657,10 @@ public static class BeamDesigner
             });
         }
         if (extraBot.Concat(extraTop).Any(e => !e.Ok))
-            d.Messages.Add("LỖI không bố trí đủ thép dọc trong bề rộng dầm b = " + DesignUtil.F(b * 1000, "0") + " mm – cần tăng tiết diện");
+            d.Messages.Add("LỖI không bố trí đủ thép dọc trong bề rộng dầm b = " + DesignUtil.F(b * 1000, "0") + " mm"
+                           + (nUser > 0 ? " (kiểm tra lại thép chọn: khoảng hở ≥ max(d; 25 mm) thép dưới, max(d; 30 mm) thép trên)" : " – cần tăng tiết diện"));
+        d.UserRebarZones = nUser;
+        if (nUser > 0) d.Messages.Add("Bố trí thép theo lựa chọn của người dùng tại " + nUser + " vùng (thiết kế lại đã kiểm tra khả năng chịu lực với thép chọn)");
 
         if (li.Arc != null)
             d.Messages.Add(CurvedBeam.Describe(li.Arc) + ". Mặt đứng dầm thể hiện trải theo chiều dài cung; chiều dài thép dọc tính theo cung. "
@@ -605,19 +668,19 @@ public static class BeamDesigner
                            + (h > 0.45 ? "; đặt thêm thép giá cạnh ≥ Ø12 a ≤ 300 mm." : "."));
 
         // ---- bố trí thép ----
-        Detail(d, li, cs, b, h, c, dB, dT, extraBot, extraTop, shear, sd, nodeX, nodeW, lcl, xEnd);
+        Detail(d, li, cs, b, h, c, dB, dT, extraBot, extraTop, shear, sdk, nodeX, nodeW, lcl, xEnd, Anchor, pref, conc, main);
         RebarNumbering.Renumber(d.Bars);
-        int sm = RebarNumbering.StirrupMark(d.Bars, sd);
-        foreach (var z in d.StirrupZones) z.Mark = sm;
+        foreach (var z in d.StirrupZones) z.Mark = RebarNumbering.StirrupMark(d.Bars, z.Dia);
         return d;
     }
 
     /// <summary>Khoảng cách từ mép chịu kéo tới trọng tâm nhóm thép (1 hoặc 2 hàng, khe hở hàng 25 mm).</summary>
-    private static double EffA(double cover, List<(int Dia, int Count)> groups, double b)
+    private static double EffA(double cover, List<(int Dia, int Count)> groups, double b, BeamFit fit = null)
     {
         int dmax = groups.Max(g => g.Dia);
         int total = groups.Sum(g => g.Count);
-        int per = Math.Max(RcSection.MaxBarsInLayer(b, cover, dmax), 1);
+        int per = Math.Max(RcSection.MaxBarsInLayer(b, cover, dmax, fit != null && fit.Top ? RcSection.ClearTop : RcSection.ClearBottom), 1);
+        if (fit != null && fit.Cap > 0) per = Math.Max(Math.Min(per, fit.Cap), 1);
         double dm = dmax / 1000.0;
         if (total <= per) return cover + dm / 2;
         // hai hàng: trọng tâm gần đúng theo số thanh
@@ -634,41 +697,125 @@ public static class BeamDesigner
         return nodeW[j] + lcl[j - 1] / 3 + lcl[j] / 3;
     }
 
-    /// <summary>Chọn Ø cho 2 thanh góc chạy suốt sao cho tổng khối lượng (chạy suốt + bổ sung) nhỏ nhất.</summary>
-    private static int ChooseContinuous(int[] dias, double b, double cover, double minArea, double totalLen,
-        Func<int, double> req, Func<int, double> extraLen, int count, out BarSet[] extras)
+    /// <summary>Điều kiện bố trí thép một phía dầm: khoảng hở theo vị trí (trên/dưới), số hàng, giới hạn số thanh một hàng.</summary>
+    internal sealed class BeamFit
     {
+        public bool Top;
+        public int MaxLayers = 2;
+        public int Cap;
+        public bool SameDia;
+        public double Clear => Top ? RcSection.ClearTop : RcSection.ClearBottom;
+    }
+
+    /// <summary>Khoá cấu kiện vật lý của dải dầm (lựa chọn thép): "D:{id phần tử nhỏ nhất}".</summary>
+    internal static string MemberKey(LineInfo li) => "D:" + li.Segs.Min(sg => sg.F.Id).ToString(DesignUtil.Inv);
+
+    /// <summary>Kích thước tiết diện dùng làm cơ sở lựa chọn thép ("220x400").</summary>
+    internal static string Basis(double b, double h) => DesignUtil.Mm(b).ToString("0", DesignUtil.Inv) + "x" + DesignUtil.Mm(h).ToString("0", DesignUtil.Inv);
+
+    /// <summary>Giới hạn bước đai theo tuỳ chọn người dùng (nhỏ nhất / lớn nhất).</summary>
+    private static void ClampStirrups(ref ShearResult sh, RebarPreferences pref)
+    {
+        if (pref.MaxStirrupSpacing > 0)
+        {
+            sh.SSupport = Math.Min(sh.SSupport, pref.MaxStirrupSpacing);
+            sh.SMid = Math.Min(sh.SMid, pref.MaxStirrupSpacing);
+        }
+        if (pref.MinStirrupSpacing > 0)
+        {
+            sh.SSupport = Math.Max(sh.SSupport, pref.MinStirrupSpacing);
+            sh.SMid = Math.Max(sh.SMid, sh.SSupport);
+        }
+    }
+
+    /// <summary>Phần thép bổ sung của vùng do người dùng chọn tổng số thanh G khi đã có 2 thanh góc chạy suốt Ø dC:
+    /// G − 2·Ø dC; nếu G không có đủ 2 thanh Ø dC thì bớt 2 thanh có Ø gần dC nhất (adjusted = true).</summary>
+    internal static BarSet Remainder(List<(int Dia, int Count)> g, int dC, double b, double cover, BeamFit fit, out bool adjusted)
+    {
+        adjusted = false;
+        var list = g.GroupBy(x => x.Dia).Select(x => (Dia: x.Key, Count: x.Sum(y => y.Count))).OrderByDescending(x => x.Dia).ToList();
+        int i = list.FindIndex(x => x.Dia == dC);
+        if (i >= 0 && list[i].Count >= 2) list[i] = (dC, list[i].Count - 2);
+        else
+        {
+            adjusted = true;
+            for (int t = 0; t < 2; t++)
+            {
+                int j = -1;
+                for (int q = 0; q < list.Count; q++)
+                {
+                    if (list[q].Count <= 0) continue;
+                    if (j < 0 || Math.Abs(list[q].Dia - dC) < Math.Abs(list[j].Dia - dC)) j = q;
+                }
+                if (j < 0) break;
+                list[j] = (list[j].Dia, list[j].Count - 1);
+            }
+        }
+        var groups = list.Where(x => x.Count > 0).Select(x => (x.Dia, x.Count)).ToList();
+        var all = new List<(int Dia, int Count)> { (dC, 2) };
+        all.AddRange(groups);
+        var fitRes = RebarOptions.CheckFit(all, b, cover, fit.Top, fit.MaxLayers, fit.Cap);
+        return new BarSet { Groups = groups, Layers = fitRes.Layers, Ok = fitRes.Fits };
+    }
+
+    /// <summary>Chọn Ø cho 2 thanh góc chạy suốt sao cho tổng khối lượng (chạy suốt + bổ sung) nhỏ nhất.
+    /// forcedDia &gt; 0: Ø chạy suốt do người dùng chọn. ovr[k] ≠ null: tổng thép tại vị trí k do người dùng chọn → phần bổ sung = ovr − 2 thanh góc.</summary>
+    private static int ChooseContinuous(int[] dias, double b, double cover, double minArea, double totalLen,
+        Func<int, double> req, Func<int, double> extraLen, int count, out BarSet[] extras,
+        BeamFit fit, int forcedDia, List<(int Dia, int Count)>[] ovr, out bool[] adjusted)
+    {
+        fit ??= new BeamFit();
         double best = double.MaxValue; int bestD = dias[0];
         BarSet[] bestEx = null;
-        foreach (int d in dias)
+        bool[] bestAdj = null;
+        IEnumerable<int> cands = dias;
+        if (forcedDia > 0) cands = new[] { forcedDia };
+        else if (ovr != null && ovr.Any(o => o != null))
         {
-            if (RcSection.MaxBarsInLayer(b, cover, d) < 2 && d != dias[0]) continue;
+            var ov = ovr.Where(o => o != null).SelectMany(o => o).ToList();
+            var c2 = ov.GroupBy(x => x.Dia).Where(gp => gp.Sum(x => x.Count) >= 2).Select(gp => gp.Key).ToList();
+            cands = (c2.Count > 0 ? c2 : ov.Select(x => x.Dia)).Distinct().OrderBy(x => x).ToArray();
+        }
+        foreach (int d in cands)
+        {
+            int per = RcSection.MaxBarsInLayer(b, cover, d, fit.Clear);
+            if (fit.Cap > 0) per = Math.Min(per, fit.Cap);
+            if (per < 2 && d != dias[0] && forcedDia <= 0) continue;
             double a2 = 2 * RcSection.BarArea(d);
             var ex = new BarSet[count];
+            var adj = new bool[count];
             double score = a2 * totalLen;
             bool ok = true;
             for (int k = 0; k < count; k++)
             {
-                double need = req(k) - a2;
-                ex[k] = need > 1e-9 ? RcSection.ChooseExtra(need, 2, d, b, cover, dias) : new BarSet();
+                if (ovr != null && k < ovr.Length && ovr[k] != null)
+                    ex[k] = Remainder(ovr[k], d, b, cover, fit, out adj[k]);
+                else
+                {
+                    double need = req(k) - a2;
+                    ex[k] = need > 1e-9 ? RcSection.ChooseExtra(need, 2, d, b, cover, dias, fit.MaxLayers, fit.Clear, fit.Cap, fit.SameDia) : new BarSet();
+                }
                 if (!ex[k].Ok) ok = false;
                 score += ex[k].Area * extraLen(k);
+                if (adj[k]) score *= 1.5;
             }
             if (a2 < minArea * (1 - 1e-6)) score *= 3;
             if (!ok) score *= 10;
-            if (score < best) { best = score; bestD = d; bestEx = ex; }
+            if (score < best) { best = score; bestD = d; bestEx = ex; bestAdj = adj; }
         }
         extras = bestEx ?? Enumerable.Range(0, count).Select(_ => new BarSet()).ToArray();
+        adjusted = bestAdj ?? new bool[count];
         return bestD;
     }
 
-    /// <summary>Đoạn neo tại gối biên: (đoạn thẳng trong gối, đoạn bẻ xuống/lên). Neo tổng 30d; đoạn bẻ ≥ 10d và ≤ h − 2c.</summary>
-    private static (double straight, double leg) EndAnchor(double w, int d, double h, double c)
+    /// <summary>Đoạn neo tại gối biên: (đoạn thẳng trong gối, đoạn bẻ xuống/lên). Neo tổng lan = max(30d; lan theo TCVN 5574:2018 10.3.5.5);
+    /// đoạn bẻ ≥ 10d và ≤ h − 2c.</summary>
+    private static (double straight, double leg) EndAnchor(double w, int d, double h, double c, double lan = 0)
     {
         double dm = d / 1000.0;
         if (w <= 1e-6) return (0, 0);
         double straight = Math.Max(w - c, 0);
-        double leg = Math.Max(30 * dm - straight, 0);
+        double leg = Math.Max(Math.Max(30 * dm, lan) - straight, 0);
         if (leg > 1e-6) leg = Math.Min(Math.Max(leg, 10 * dm), h - 2 * c);
         return (straight, DesignUtil.R10(leg));
     }
@@ -691,8 +838,9 @@ public static class BeamDesigner
     /// <summary>Bố trí thép dải dầm: thép dưới/trên chạy suốt (2 thanh góc, neo 30d vào gối biên), tăng cường dưới 0,8·Lo giữa nhịp,
     /// mũ gối giữa vươn Lo/3 mỗi bên, mũ gối biên vươn Lo/4, giá cạnh khi h &gt; 700 mm, đai kín 2 nhánh và vùng đai.</summary>
     private static void Detail(BeamLineDesign d, LineInfo li, ConcreteDesignSettings cs, double b, double h, double c,
-        int dB, int dT, BarSet[] extraBot, BarSet[] extraTop, ShearResult[] shear, int sd,
-        double[] nodeX, double[] nodeW, double[] lcl, double xEnd)
+        int dB, int dT, BarSet[] extraBot, BarSet[] extraTop, ShearResult[] shear, int[] sdk,
+        double[] nodeX, double[] nodeW, double[] lcl, double xEnd, Func<int, double> anchor, RebarPreferences pref,
+        Material conc, Material main)
     {
         int ns = li.Spans.Count;
         bool supStart = li.Spans[0].SupL, supEnd = li.Spans[ns - 1].SupR;
@@ -700,41 +848,50 @@ public static class BeamDesigner
         double xe = supEnd ? xEnd + nodeW[ns] / 2 - c : xEnd - c;
 
         // thép dưới chạy suốt
-        var (_, lb0) = EndAnchor(supStart ? nodeW[0] : 0, dB, h, c);
-        var (_, lb1) = EndAnchor(supEnd ? nodeW[ns] : 0, dB, h, c);
+        var (_, lb0) = EndAnchor(supStart ? nodeW[0] : 0, dB, h, c, anchor(dB));
+        var (_, lb1) = EndAnchor(supEnd ? nodeW[ns] : 0, dB, h, c, anchor(dB));
         d.Bars.Add(Longitudinal("Dưới", false, dB, 2, xs, xe, lb0, lb1, -1));
         // thép trên chạy suốt
-        var (_, lt0) = EndAnchor(supStart ? nodeW[0] : 0, dT, h, c);
-        var (_, lt1) = EndAnchor(supEnd ? nodeW[ns] : 0, dT, h, c);
+        var (_, lt0) = EndAnchor(supStart ? nodeW[0] : 0, dT, h, c, anchor(dT));
+        var (_, lt1) = EndAnchor(supEnd ? nodeW[ns] : 0, dT, h, c, anchor(dT));
         d.Bars.Add(Longitudinal("Trên", true, dT, 2, xs, xe, lt0, lt1, -1));
-        if (xe - xs > StockLength)
-            d.Messages.Add("Thép chạy suốt dài " + DesignUtil.F(xe - xs, "0.00") + " m > 11,7 m – nối chồng thép trên tại giữa nhịp, thép dưới tại gối (lnối ≥ 30d)");
+        double stock = pref.StockLength > 1 ? pref.StockLength : StockLength;
+        if (xe - xs > stock)
+        {
+            double lapB = RebarDetailing.LapLength(conc, main, dB), lapT = RebarDetailing.LapLength(conc, main, dT);
+            d.Messages.Add("Thép chạy suốt dài " + DesignUtil.F(xe - xs, "0.00") + " m > " + DesignUtil.F(stock, "0.0#") + " m – nối chồng thép trên tại giữa nhịp (ll = "
+                           + DesignUtil.F(lapT * 1000, "0") + " mm), thép dưới tại gối (ll = " + DesignUtil.F(lapB * 1000, "0")
+                           + " mm), so le ≥ 1,3·ll, không quá 50% số thanh tại một tiết diện – xem bản vẽ gia công thép");
+        }
 
-        // mũ gối
+        // mũ gối (mỗi nhóm Ø một số hiệu)
         for (int j = 0; j <= ns; j++)
         {
             var ex = extraTop[j];
             if (ex.IsEmpty) continue;
-            var (dia, n) = ex.Groups[0];
-            if (j == 0)
+            foreach (var (dia, n) in ex.Groups)
             {
-                var (_, leg) = EndAnchor(supStart ? nodeW[0] : 0, dia, h, c);
-                double x1 = li.Spans[0].X0 + li.Spans[0].FaceL + lcl[0] / 4;
-                d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, xs, x1, leg, 0, 0));
-            }
-            else if (j == ns)
-            {
-                var (_, leg) = EndAnchor(supEnd ? nodeW[ns] : 0, dia, h, c);
-                var sp = li.Spans[ns - 1];
-                double x0 = sp.X0 + sp.FaceR - lcl[ns - 1] / 4;
-                d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, x0, xe, 0, leg, ns - 1));
-            }
-            else
-            {
-                var spl = li.Spans[j - 1]; var spr = li.Spans[j];
-                double x0 = spl.X0 + spl.FaceR - lcl[j - 1] / 3;
-                double x1 = spr.X0 + spr.FaceL + lcl[j] / 3;
-                d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, x0, x1, 0, 0, j));
+                if (n <= 0) continue;
+                if (j == 0)
+                {
+                    var (_, leg) = EndAnchor(supStart ? nodeW[0] : 0, dia, h, c, anchor(dia));
+                    double x1 = li.Spans[0].X0 + li.Spans[0].FaceL + lcl[0] / 4;
+                    d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, xs, x1, leg, 0, 0));
+                }
+                else if (j == ns)
+                {
+                    var (_, leg) = EndAnchor(supEnd ? nodeW[ns] : 0, dia, h, c, anchor(dia));
+                    var sp = li.Spans[ns - 1];
+                    double x0 = sp.X0 + sp.FaceR - lcl[ns - 1] / 4;
+                    d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, x0, xe, 0, leg, ns - 1));
+                }
+                else
+                {
+                    var spl = li.Spans[j - 1]; var spr = li.Spans[j];
+                    double x0 = spl.X0 + spl.FaceR - lcl[j - 1] / 3;
+                    double x1 = spr.X0 + spr.FaceL + lcl[j] / 3;
+                    d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, x0, x1, 0, 0, j));
+                }
             }
         }
 
@@ -744,10 +901,13 @@ public static class BeamDesigner
             var ex = extraBot[k];
             if (ex.IsEmpty) continue;
             var sp = li.Spans[k];
-            var (dia, n) = ex.Groups[0];
-            double x0 = sp.X0 + sp.FaceL + 0.1 * lcl[k];
-            double x1 = sp.X0 + sp.FaceR - 0.1 * lcl[k];
-            d.Bars.Add(Longitudinal("Tăng cường dưới", false, dia, n, x0, x1, 0, 0, k));
+            foreach (var (dia, n) in ex.Groups)
+            {
+                if (n <= 0) continue;
+                double x0 = sp.X0 + sp.FaceL + 0.1 * lcl[k];
+                double x1 = sp.X0 + sp.FaceR - 0.1 * lcl[k];
+                d.Bars.Add(Longitudinal("Tăng cường dưới", false, dia, n, x0, x1, 0, 0, k));
+            }
         }
 
         // cốt giá cạnh dầm cao (TCVN 5574:2018 mục 10.3.6: h > 700 mm)
@@ -757,16 +917,16 @@ public static class BeamDesigner
             d.Bars.Add(Longitudinal("Giá", false, 12, 2 * Math.Max(pairs, 1), xs, xe, 0, 0, -1));
         }
 
-        // đai
-        double s1 = b - 2 * c, s2 = h - 2 * c;
-        int total = 0;
-        double minS = double.MaxValue;
+        // đai: kích thước theo mép ngoài đai, đai ôm ngoài thép dọc → lớp bảo vệ tới mép đai = c − Øđai
+        var totals = new Dictionary<int, int>();
+        var minS = new Dictionary<int, double>();
+        var order = new List<int>();
         for (int k = 0; k < ns; k++)
         {
             var sp = li.Spans[k];
+            int sd = sdk[k];
             double L0 = lcl[k];
             double ss = shear[k].SSupport, sm = shear[k].SMid;
-            minS = Math.Min(minS, ss);
             int nsup = (int)Math.Ceiling(L0 / 4 / ss - 1e-9);
             double zs = nsup * ss;
             if (2 * zs > L0) { zs = L0 / 2; nsup = (int)Math.Ceiling(zs / ss - 1e-9); }
@@ -774,20 +934,30 @@ public static class BeamDesigner
             int cnt;
             if (mid < 1e-6) cnt = 2 * nsup + 1;
             else cnt = 2 * (nsup + 1) + Math.Max((int)Math.Ceiling(mid / sm - 1e-9) - 1, 0);
-            total += cnt;
+            if (!totals.ContainsKey(sd)) { totals[sd] = 0; minS[sd] = double.MaxValue; order.Add(sd); }
+            totals[sd] += cnt;
+            minS[sd] = Math.Min(minS[sd], ss);
             double f0 = sp.X0 + sp.FaceL, f1 = sp.X0 + sp.FaceR;
             d.Spans[k].SupportZone = zs;
             d.StirrupZones.Add(new StirrupZone { Span = k, From = f0, To = f0 + zs, Dia = sd, Spacing = ss });
             if (mid > 1e-6) d.StirrupZones.Add(new StirrupZone { Span = k, From = f0 + zs, To = f1 - zs, Dia = sd, Spacing = sm });
             d.StirrupZones.Add(new StirrupZone { Span = k, From = f1 - zs, To = f1, Dia = sd, Spacing = ss });
         }
-        d.Bars.Add(new BarMark
+        foreach (int sd in order)
         {
-            Role = "Đai", Dia = sd, Count = total, Shape = "Đai", Spacing = minS < double.MaxValue ? minS : 0.15,
-            Length = DesignUtil.StirrupLength(s1, s2, sd), Segments = new List<double> { DesignUtil.Mm(s1), DesignUtil.Mm(s2) },
-            Start = 0, End = xEnd, Span = -1
-        });
+            double cst = StirrupCover(c, sd);
+            double s1 = b - 2 * cst, s2 = h - 2 * cst;
+            d.Bars.Add(new BarMark
+            {
+                Role = "Đai", Dia = sd, Count = totals[sd], Shape = "Đai", Spacing = minS[sd] < double.MaxValue ? minS[sd] : 0.15,
+                Length = DesignUtil.StirrupLength(s1, s2, sd), Segments = new List<double> { DesignUtil.Mm(s1), DesignUtil.Mm(s2) },
+                Start = 0, End = xEnd, Span = -1
+            });
+        }
     }
+
+    /// <summary>Khoảng cách từ mép bê tông tới mép ngoài cốt đai (m): lớp bảo vệ (tới mép cốt dọc) − Øđai, ≥ 15 mm.</summary>
+    internal static double StirrupCover(double coverToMain, int stirrupDia) => Math.Max(coverToMain - stirrupDia / 1000.0, 0.015);
 
     private static string Signature(BeamLineDesign d)
     {

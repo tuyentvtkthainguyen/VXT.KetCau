@@ -48,6 +48,7 @@ public static class FootingDesigner
                 {
                     var keep = list[k].d;
                     keep.Quantity++;
+                    keep.RebarKeys.AddRange(d.RebarKeys.Where(x => !keep.RebarKeys.Contains(x)));
                     for (int i = 0; i < keep.Checks.Count && i < d.Checks.Count; i++)
                         if (d.Checks[i].Ratio > keep.Checks[i].Ratio) keep.Checks[i] = d.Checks[i];
                     keep.Messages.Add("Gộp móng giống hệt tại " + DesignUtil.GridName(p, d.X, d.Y));
@@ -86,7 +87,7 @@ public static class FootingDesigner
         var conc = DesignUtil.ConcreteOf(p, cs.ConcreteFooting, cs.ConcreteFooting);
         var main = p.Material(cs.RebarMain);
         var stlSmall = p.Material(cs.RebarStirrup);
-        int[] dias = DesignUtil.Sorted(cs.FootingBars, new[] { 10, 12, 14, 16 });
+        int[] dias = (p.RebarPrefs ?? new RebarPreferences()).Filter(DesignUtil.Sorted(cs.FootingBars, new[] { 10, 12, 14, 16 }));
 
         // kích thước cột theo phương X (hc) và Y (bc)
         double hc = DesignUtil.ColumnDimAlong(p, col, Vec3.UnitX);
@@ -108,6 +109,8 @@ public static class FootingDesigner
             NodeId = n.Id, ColumnFrame = col.Id, X = n.X, Y = n.Y, ColumnB = bc, ColumnH = hc,
             Depth = soil.Depth, Story = "Móng"
         };
+        string key = MemberKey(n.Id);
+        d.RebarKeys.Add(key);
         if (loads.All(l => l.N <= 0)) d.Messages.Add("LỖI chân cột chịu kéo ở mọi tổ hợp – móng đơn trên nền thiên nhiên không phù hợp");
         if (loads.Any(l => l.N <= 0)) d.Messages.Add("Có tổ hợp chân cột chịu nhổ – cần kiểm tra chống nhổ móng");
 
@@ -198,10 +201,30 @@ public static class FootingDesigner
             mB = Math.Max(mB, L * cb * cb * (2 * pmB + pIB) / 6);
         }
         Material SteelOf(int dia) => dia < 10 ? stlSmall : main;
+        d.ML = mL; d.MB = mB;
+        string basis = Basis(L, B, H);
+        int nUser = 0;
+        SpacingChoice Ovr(string zone, SpacingChoice auto, Func<int, double> req)
+        {
+            var ch = p.ValidRebarChoice(key, zone, -1, basis);
+            if (ch == null || ch.Dia <= 0 || ch.Spacing <= 0) return auto;
+            nUser++;
+            var sc = new SpacingChoice { Dia = ch.Dia, Spacing = ch.Spacing, AsReqPerM = req(ch.Dia), Ok = true };
+            if (ch.Spacing < 0.10 - 1e-9 || ch.Spacing > 0.20 + 1e-9)
+                d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + sc.Text + ": bước ngoài phạm vi 100…200 mm");
+            if (sc.AsPerM < sc.AsReqPerM * (1 - 1e-6))
+                d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + sc.Text + ": As = " + DesignUtil.F(sc.AsPerM * 1e4, "0.00")
+                               + " < As yêu cầu " + DesignUtil.F(sc.AsReqPerM * 1e4, "0.00") + " cm²/m");
+            return sc;
+        }
         // lớp dưới cùng theo phương L (h0 lớn), lớp trên theo phương B
-        var sL = RcSection.ChooseSpacing(dia => AsPerM(mL / B, H - cover - dia / 2000.0, SteelOf(dia)), dias, 0.20, 0.10, 0.15, 10);
+        var sL = Ovr(RebarZones.FootingL, RcSection.ChooseSpacing(dia => AsPerM(mL / B, H - cover - dia / 2000.0, SteelOf(dia)), dias, 0.20, 0.10, 0.15, 10),
+            dia => AsPerM(mL / B, H - cover - dia / 2000.0, SteelOf(dia)));
         double dl = sL.Dia / 1000.0;
-        var sB = RcSection.ChooseSpacing(dia => AsPerM(mB / L, H - cover - dl - dia / 2000.0, SteelOf(dia)), dias, 0.20, 0.10, 0.15, 10);
+        var sB = Ovr(RebarZones.FootingB, RcSection.ChooseSpacing(dia => AsPerM(mB / L, H - cover - dl - dia / 2000.0, SteelOf(dia)), dias, 0.20, 0.10, 0.15, 10),
+            dia => AsPerM(mB / L, H - cover - dl - dia / 2000.0, SteelOf(dia)));
+        d.UserRebarZones = nUser;
+        if (nUser > 0) d.Messages.Add("Bố trí thép theo lựa chọn của người dùng tại " + nUser + " vùng (đã kiểm tra lại khả năng chịu lực)");
         d.AsL = sL.AsReqPerM * B; d.AsB = sB.AsReqPerM * L;
         d.DiaL = sL.Dia; d.DiaB = sB.Dia; d.SpacingL = sL.Spacing; d.SpacingB = sB.Spacing;
         d.BarsL = sL.Text; d.BarsB = sB.Text;
@@ -253,6 +276,28 @@ public static class FootingDesigner
         d.Messages.Add("Nền theo hố khoan " + bh.Name + ": φ = " + DesignUtil.F(soil.Phi, "0.#") + "°, c = " + DesignUtil.F(soil.C, "0.#") + " kPa, γ = " + DesignUtil.F(soil.Gamma, "0.##") + " kN/m³");
         var weak = KetCauVXT.Design.Foundation.GeotechCalc.WeakLayerBelow(bh, soil.Depth, Math.Min(L, B));
         if (weak != null) d.Messages.Add("Cảnh báo: lớp đất yếu \"" + weak.Name + "\" ở độ sâu " + DesignUtil.F(weak.Top, "0.0") + " m nằm trong phạm vi 2B dưới đáy móng – xem xét móng cọc");
+    }
+
+    /// <summary>Khoá cấu kiện vật lý của móng đơn (lựa chọn thép): "M:{id nút chân cột}".</summary>
+    internal static string MemberKey(int nodeId) => "M:" + nodeId.ToString(DesignUtil.Inv);
+
+    internal static string Basis(double L, double B, double H) =>
+        DesignUtil.Mm(L).ToString("0", DesignUtil.Inv) + "x" + DesignUtil.Mm(B).ToString("0", DesignUtil.Inv) + "x" + DesignUtil.Mm(H).ToString("0", DesignUtil.Inv);
+
+    /// <summary>Các phương án Ø–bước cho thép đáy móng đơn đã thiết kế (zone = RebarZones.FootingL / FootingB).</summary>
+    internal static List<RebarAlternative> Alternatives(Project p, FootingDesign d, string zone, int max = 12)
+    {
+        var cs = p.Concrete;
+        var main = p.Material(cs.RebarMain);
+        var stlSmall = p.Material(cs.RebarStirrup);
+        Material SteelOf(int dia) => dia < 10 ? stlSmall : main;
+        int[] dias = (p.RebarPrefs ?? new RebarPreferences()).Filter(DesignUtil.Sorted(cs.FootingBars, new[] { 10, 12, 14, 16 }));
+        double cover = cs.CoverFooting, H = d.H, dl = d.DiaL / 1000.0;
+        bool alongL = zone == RebarZones.FootingL;
+        Func<int, double> req = alongL
+            ? dia => AsPerM(d.ML / Math.Max(d.B, 1e-6), H - cover - dia / 2000.0, SteelOf(dia))
+            : dia => AsPerM(d.MB / Math.Max(d.L, 1e-6), H - cover - dl - dia / 2000.0, SteelOf(dia));
+        return RebarOptions.SpacingAlternatives("Móng", zone, req, dias.Where(x => x >= 10).DefaultIfEmpty(dias.Max()).ToArray(), 0.10, 0.20, alongL ? d.BarsL : d.BarsB, max);
     }
 
     /// <summary>Diện tích thép trên 1 m: As = M/(0,9·Rs·h0) (gần đúng cánh tay đòn z = 0,9h0).</summary>

@@ -109,11 +109,32 @@ public class ArchOpening
     public string Kind = "";
 }
 
+/// <summary>Dầm vẽ sẵn trên bản vẽ (layer nhóm "Dam"): tim dầm, bề rộng (0 = vẽ 1 nét, lấy bề rộng mặc định).</summary>
+public class ArchBeamLine
+{
+    public double Ax, Ay, Bx, By;
+    public double Width;
+    public string Layer = "";
+    public double Length => Math.Sqrt((Bx - Ax) * (Bx - Ax) + (By - Ay) * (By - Ay));
+    public bool AlongX => Math.Abs(By - Ay) < 1e-6;
+    public bool AlongY => Math.Abs(Bx - Ax) < 1e-6;
+}
+
+/// <summary>Vùng sàn vẽ sẵn (đa tuyến kín trên layer nhóm "San"). Vùng nằm trong vùng sàn khác = lỗ sàn.</summary>
+public class ArchSlabRegion
+{
+    public List<(double X, double Y)> Points = new();
+    public double X0, Y0, X1, Y1;
+    public bool IsOpening;
+    public string Layer = "";
+    public double Area => Math.Abs(ImportGeometry.SignedArea(Points));
+}
+
 /// <summary>Đoạn thẳng để vẽ nền bản vẽ kiến trúc khi xem trước (đã dời về hệ toạ độ chung).</summary>
 public struct PreviewLine
 {
     public double X1, Y1, X2, Y2;
-    /// <summary>0 = nét khác, 1 = tường, 2 = trục, 3 = cột, 4 = cửa, 5 = cầu thang</summary>
+    /// <summary>0 = nét khác, 1 = tường, 2 = trục, 3 = cột, 4 = cửa, 5 = cầu thang, 6 = dầm, 7 = sàn</summary>
     public int Kind;
     public PreviewLine(double x1, double y1, double x2, double y2, int kind) { X1 = x1; Y1 = y1; X2 = x2; Y2 = y2; Kind = kind; }
 }
@@ -147,6 +168,10 @@ public class ArchFloorPlan
     public List<ArchZone> Zones { get; set; } = new();
     public List<ArchOpening> Openings { get; set; } = new();
     public List<PreviewLine> Preview { get; set; } = new();
+    /// <summary>Dầm vẽ sẵn (layer dầm)</summary>
+    public List<ArchBeamLine> Beams { get; set; } = new();
+    /// <summary>Vùng sàn / lỗ sàn vẽ sẵn (layer sàn)</summary>
+    public List<ArchSlabRegion> SlabRegions { get; set; } = new();
     /// <summary>Đường bao sàn tầng (đa giác trực giao), hệ toạ độ chung</summary>
     public List<(double X, double Y)> Outline { get; set; } = new();
     public List<string> Notes { get; set; } = new();
@@ -160,6 +185,8 @@ public class ArchDrawing
     public List<ArchFloorPlan> Floors { get; set; } = new();
     public List<string> Warnings { get; } = new();
     public List<string> Info { get; } = new();
+    /// <summary>Layer có trong bản vẽ → nhóm cấu kiện đã dùng khi nhận diện ("" = không nhận) – để lưu lại vào dự án.</summary>
+    public Dictionary<string, string> LayerCategories { get; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public class ArchImportOptions
@@ -171,6 +198,17 @@ public class ArchImportOptions
     public string ColumnLayers { get; set; } = "COT,COLUMN,A-COLS,S-COLS,CỘT";
     public string DoorLayers { get; set; } = "CUA,DOOR,WINDOW,A-DOOR,A-GLAZ,CỬA";
     public string StairLayers { get; set; } = "THANG,STAIR,A-FLOR-STRS";
+    /// <summary>Quy tắc nhận diện layer (CadStandard.InputRules); null = quy tắc mặc định. Các chuỗi từ khoá ở trên luôn được thêm vào
+    /// thành quy tắc "chứa" (tương thích cách khai báo cũ).</summary>
+    public List<LayerRule> LayerRules { get; set; }
+    /// <summary>Gán trực tiếp layer → nhóm (ưu tiên cao nhất), vd. bảng "Layer trong file"</summary>
+    public List<LayerMapEntry> LayerMap { get; set; } = new();
+    /// <summary>Bỏ qua thực thể trên layer đang tắt</summary>
+    public bool SkipOffLayers { get; set; } = true;
+    /// <summary>Dầm vẽ trên mặt bằng tầng n là dầm đỡ sàn phía trên (trần tầng n – nét đứt kiến trúc); false = dầm của sàn tầng n</summary>
+    public bool DrawnBeamsAtCeiling { get; set; } = true;
+    /// <summary>Cao trình có dầm vẽ sẵn: không tự đặt thêm dầm phụ đỡ tường</summary>
+    public bool DrawnBeamsReplaceAuto { get; set; } = true;
     /// <summary>&gt; 0: hệ số đổi đơn vị bản vẽ → m; 0 = theo $INSUNITS (mặc định mm)</summary>
     public double ScaleOverride { get; set; }
     public double MinWallThickness { get; set; } = 0.08;

@@ -23,6 +23,12 @@ public class DxfEntity
     public string LineType { get; set; } = "";
     /// <summary>Thẻ (tag) của thuộc tính khi thực thể Text đến từ ATTRIB; "" với TEXT/MTEXT thường.</summary>
     public string AttributeTag { get; set; } = "";
+    /// <summary>Loại thực thể gốc trong file (LINE, LWPOLYLINE, ARC, MTEXT, HATCH, SOLID…) – dùng thống kê layer.</summary>
+    public string SourceType { get; set; } = "";
+    /// <summary>Bề rộng nét đa tuyến (mã 43 / 40=41), m; 0 = nét mảnh. Tường vẽ bằng 1 đa tuyến có bề rộng = chiều dày tường.</summary>
+    public double Width { get; set; }
+    /// <summary>Bảng mã chữ suy từ font (STYLE / mã \f trong MTEXT): "TCVN3" (.VnTime…), "VNI" (VNI-Times…) hoặc "".</summary>
+    public string FontHint { get; set; } = "";
 
     public override string ToString() => $"{Type} [{Layer}] {Points.Count} điểm" + (Block.Length > 0 ? $" <{Block}>" : "");
 }
@@ -53,6 +59,13 @@ public class DxfReader
     public HashSet<string> FrozenLayers { get; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Các lớp đang tắt (off, màu âm) – vẫn đọc thực thể, chỉ ghi nhận để người gọi tự lọc.</summary>
     public HashSet<string> OffLayers { get; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Màu ACI của từng lớp (giá trị tuyệt đối, lớp tắt có màu âm trong file).</summary>
+    public Dictionary<string, int> LayerColors { get; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Miền tô: biên HATCH, SOLID/TRACE (đa tuyến kín, toạ độ m). Không gộp vào Entities để bộ nhập DXF kết cấu không đổi;
+    /// bộ đọc kiến trúc dùng để nhận cột vẽ bằng miền tô.</summary>
+    public List<DxfEntity> FillEntities { get; } = new();
+    /// <summary>Kiểu chữ (STYLE) → gợi ý bảng mã ("TCVN3"/"VNI"/"").</summary>
+    public Dictionary<string, string> StyleFontHints { get; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Tên các block đã định nghĩa trong mục BLOCKS.</summary>
     public IReadOnlyCollection<string> BlockNames => _blocks.Keys;
 
@@ -85,6 +98,11 @@ public class DxfReader
         public double ColSp, RowSp;
         public bool Flip;
         public List<RawEnt> Attribs;
+        public string Source = "";
+        public double Width;
+        public string Style = "";
+        public string FontHint = "";
+        public bool IsFill;
     }
 
     private sealed class BlockDef
@@ -325,7 +343,7 @@ public class DxfReader
             }
 
         if (sections.TryGetValue("HEADER", out int hp)) ReadHeader(hp);
-        Scale = InsUnits switch { 1 => 0.0254, 2 => 0.3048, 4 => 0.001, 5 => 0.01, 6 => 1.0, _ => 0.001 };
+        Scale = InsUnits switch { 1 => 0.0254, 2 => 0.3048, 4 => 0.001, 5 => 0.01, 6 => 1.0, 7 => 1000.0, 8 => 0.0254e-6, 9 => 0.0254e-3, 10 => 0.9144, 14 => 0.1, _ => 0.001 };
         if (scaleOverride > 0) Scale = scaleOverride;
 
         if (sections.TryGetValue("TABLES", out int tp)) ReadTables(tp);
@@ -380,7 +398,19 @@ public class DxfReader
                 if (string.IsNullOrEmpty(name)) continue;
                 LayerLineTypes[name] = Find(b, 6) ?? "";
                 if ((ToInt(Find(b, 70)) & 1) != 0) FrozenLayers.Add(name);
-                if (ToInt(Find(b, 62)) < 0) OffLayers.Add(name);
+                int aci = ToInt(Find(b, 62));
+                if (aci < 0) OffLayers.Add(name);
+                LayerColors[name] = Math.Abs(aci) is >= 1 and <= 255 ? Math.Abs(aci) : 7;
+            }
+            else if (value == "STYLE")
+            {
+                var b = Body();
+                string name = Find(b, 2);
+                if (string.IsNullOrEmpty(name)) continue;
+                // tệp font (mã 3), tên họ font TrueType (XDATA 1000 sau 1001 ACAD)
+                string font = (Find(b, 3) ?? "") + "|" + string.Join("|", b.Where(x => x.code == 1000).Select(x => x.value));
+                string hint = FontHintOf(font);
+                if (hint.Length > 0) StyleFontHints[name] = hint;
             }
             else if (value == "BLOCK_RECORD")
             {
@@ -451,7 +481,10 @@ public class DxfReader
                     case "MTEXT": e = ReadText(true); break;
                     case "INSERT":
                     case "MINSERT": e = ReadInsert(); break;
-                    default: Body(); break; // ATTDEF, HATCH, DIMENSION, ELLIPSE, SPLINE, … bỏ qua
+                    case "SOLID":
+                    case "TRACE": e = ReadSolid(); break;
+                    case "HATCH": list.AddRange(ReadHatch()); break;
+                    default: Body(); break; // ATTDEF, DIMENSION, ELLIPSE, SPLINE, … bỏ qua
                 }
             }
             catch (Exception)
@@ -528,6 +561,7 @@ public class DxfReader
     {
         var b = Body();
         var e = Common(b, DxfEntityType.Line);
+        e.Source = "LINE";
         e.Pts.Add((Get(b, 10), Get(b, 20)));   // LINE ở WCS, bỏ Z
         e.Pts.Add((Get(b, 11), Get(b, 21)));
         return e;
@@ -537,7 +571,9 @@ public class DxfReader
     {
         var b = Body();
         var e = Common(b, DxfEntityType.Polyline);
+        e.Source = "LWPOLYLINE";
         e.Closed = (ToInt(Find(b, 70)) & 1) == 1;
+        e.Width = Math.Abs(Get(b, 43));
         bool flip = Flipped(b);
         var verts = new List<(double X, double Y, double Bulge)>();
         double? vx = null;
@@ -556,7 +592,10 @@ public class DxfReader
         var b = Body();
         var e = Common(b, DxfEntityType.Polyline);
         int flag = ToInt(Find(b, 70));
+        e.Source = "POLYLINE";
         e.Closed = (flag & 1) == 1;
+        double w0 = Math.Abs(Get(b, 40)), w1 = Math.Abs(Get(b, 41));
+        if (w0 > 0 && Math.Abs(w0 - w1) <= 1e-9 * Math.Max(1, w0)) e.Width = w0;
         bool mesh = (flag & (16 | 64)) != 0;
         bool is3d = (flag & 8) != 0;
         bool flip = !is3d && Flipped(b);
@@ -631,6 +670,7 @@ public class DxfReader
     {
         var b = Body();
         var e = Common(b, DxfEntityType.Circle);
+        e.Source = "CIRCLE";
         e.Radius = Get(b, 40);
         double x = Get(b, 10), y = Get(b, 20);
         e.Pts.Add((Flipped(b) ? -x : x, y));
@@ -641,6 +681,7 @@ public class DxfReader
     {
         var b = Body();
         var e = Common(b, DxfEntityType.Polyline);
+        e.Source = "ARC";
         double cx = Get(b, 10), cy = Get(b, 20), r = Get(b, 40);
         double a1 = Get(b, 50), a2 = Get(b, 51);
         if (r <= 0) return null;
@@ -662,6 +703,8 @@ public class DxfReader
         var b = Body();
         TruncateEmbedded(b);
         var e = Common(b, DxfEntityType.Text);
+        e.Source = mtext ? "MTEXT" : "TEXT";
+        e.Style = Find(b, 7) ?? "";
         e.Height = Get(b, 40);
         // TEXT: nếu có căn lề (72/73 ≠ 0) thì điểm căn là 11/21
         bool aligned = !mtext && b.Any(x => (x.code == 72 || x.code == 73) && ToInt(x.value) != 0) && Find(b, 11) != null;
@@ -672,6 +715,9 @@ public class DxfReader
         var sb = new StringBuilder();
         foreach (var (code, value) in b) if (code == 3) sb.Append(value);
         foreach (var (code, value) in b) if (code == 1) sb.Append(value);
+        // font ghi ngay trong MTEXT: {\fVNI-Times|b0|i0|c0|p18;...} hoặc {\F.VnTime.shx;...}
+        var fm = System.Text.RegularExpressions.Regex.Match(sb.ToString(), @"\\[fF]([^|;]*)");
+        if (fm.Success) e.FontHint = FontHintOf(fm.Groups[1].Value);
         e.Text = CleanMText(sb.ToString());
         return e.Text.Length > 0 ? e : null;
     }
@@ -687,6 +733,7 @@ public class DxfReader
     {
         var b = Body();
         var e = Common(b, DxfEntityType.Line);
+        e.Source = "INSERT";
         e.IsInsert = true;
         e.BlockName = Find(b, 2) ?? "";
         e.Ix = Get(b, 10); e.Iy = Get(b, 20);
@@ -717,6 +764,8 @@ public class DxfReader
         var b = Body();
         TruncateEmbedded(b);
         var e = Common(b, DxfEntityType.Text);
+        e.Source = "ATTRIB";
+        e.Style = Find(b, 7) ?? "";
         if ((ToInt(Find(b, 70)) & 1) != 0) return null; // thuộc tính ẩn
         e.Height = Get(b, 40);
         bool aligned = b.Any(x => (x.code == 72 || x.code == 74) && ToInt(x.value) != 0) && Find(b, 11) != null;
@@ -726,6 +775,129 @@ public class DxfReader
         e.Tag = Find(b, 2) ?? "";
         e.Text = CleanMText(Find(b, 1) ?? "");
         return e.Text.Length > 0 ? e : null;
+    }
+
+    /// <summary>"TCVN3" với font .VnTime/.VnArial… (hoặc VN3, ABC), "VNI" với VNI-Times…, "" nếu không rõ.</summary>
+    internal static string FontHintOf(string font)
+    {
+        string f = (font ?? "").Trim().ToUpperInvariant();
+        if (f.Length == 0) return "";
+        if (f.Contains("VNI")) return "VNI";
+        if (f.Contains(".VN") || f.StartsWith("VN", StringComparison.Ordinal) || f.Contains("|VN") || f.Contains("TCVN3") || f.Contains("ABC")) return "TCVN3";
+        return "";
+    }
+
+    /// <summary>SOLID / TRACE: 4 đỉnh theo thứ tự DXF 1-2-3-4, chu vi là 1→2→4→3.</summary>
+    private RawEnt ReadSolid()
+    {
+        var b = Body();
+        var e = Common(b, DxfEntityType.Polyline);
+        e.Source = "SOLID";
+        e.IsFill = true;
+        e.Closed = true;
+        bool flip = Flipped(b);
+        var p = new List<(double X, double Y)> { (Get(b, 10), Get(b, 20)), (Get(b, 11), Get(b, 21)), (Get(b, 13), Get(b, 23)), (Get(b, 12), Get(b, 22)) };
+        foreach (var q in p)
+        {
+            var v = flip ? (-q.X, q.Y) : q;
+            if (e.Pts.Count == 0 || Math.Abs(e.Pts[^1].X - v.Item1) > 1e-9 || Math.Abs(e.Pts[^1].Y - v.Item2) > 1e-9) e.Pts.Add(v);
+        }
+        if (e.Pts.Count > 2 && Math.Abs(e.Pts[0].X - e.Pts[^1].X) < 1e-9 && Math.Abs(e.Pts[0].Y - e.Pts[^1].Y) < 1e-9) e.Pts.RemoveAt(e.Pts.Count - 1);
+        return e.Pts.Count >= 3 ? e : null;
+    }
+
+    /// <summary>HATCH: mỗi vòng biên (dạng đa tuyến, hoặc gồm cạnh thẳng/cung tròn) → 1 đa tuyến kín.
+    /// Vòng có cạnh elip/spline bỏ qua. Đọc tuần tự theo đặc tả DXF (91 số vòng, 92 cờ vòng, 93 số đỉnh/cạnh, 72 loại cạnh…).</summary>
+    private List<RawEnt> ReadHatch()
+    {
+        var b = Body();
+        var res = new List<RawEnt>();
+        bool flip = Flipped(b);
+        int j = b.FindIndex(x => x.code == 91);
+        if (j < 0) return res;
+        int nLoops = Math.Clamp(ToInt(b[j].value), 0, 10000);
+        j++;
+        // giá trị kế tiếp có mã code (bỏ qua mã khác xen giữa); -1 = hết
+        string Next(int code)
+        {
+            while (j < b.Count && b[j].code != code)
+            {
+                if (b[j].code == 75 || b[j].code == 98) return null;   // hết phần biên (kiểu tô / điểm hạt giống)
+                j++;
+            }
+            if (j >= b.Count) return null;
+            return b[j++].value;
+        }
+        double D(int code) => ToD(Next(code));
+        for (int l = 0; l < nLoops; l++)
+        {
+            string fl = Next(92);
+            if (fl == null) break;
+            int flags = ToInt(fl);
+            var e = Common(b, DxfEntityType.Polyline);
+            e.Source = "HATCH"; e.IsFill = true; e.Closed = true;
+            bool ok = true;
+            if ((flags & 2) != 0)
+            {
+                bool hasBulge = ToInt(Next(72)) != 0;
+                Next(73);
+                int nv = Math.Clamp(ToInt(Next(93)), 0, 100000);
+                var verts = new List<(double X, double Y, double Bulge)>();
+                for (int k = 0; k < nv; k++)
+                {
+                    double x = D(10), y = D(20), bu = 0;
+                    if (hasBulge && j < b.Count && b[j].code == 42) bu = ToD(b[j++].value);
+                    verts.Add((x, y, bu));
+                }
+                BuildPolyline(e, verts, flip);
+            }
+            else
+            {
+                int ne = Math.Clamp(ToInt(Next(93)), 0, 100000);
+                for (int k = 0; k < ne && ok; k++)
+                {
+                    int et = ToInt(Next(72));
+                    switch (et)
+                    {
+                        case 1:
+                        {
+                            double x1 = D(10), y1 = D(20), x2 = D(11), y2 = D(21);
+                            AddPt(e.Pts, x1, y1, flip); AddPt(e.Pts, x2, y2, flip);
+                            break;
+                        }
+                        case 2:
+                        {
+                            double cx = D(10), cy = D(20), r = D(40), a1 = D(50), a2 = D(51);
+                            bool ccw = ToInt(Next(73)) != 0;
+                            double sweep = ((a2 - a1) % 360 + 360) % 360;
+                            if (!ccw) sweep = -sweep;
+                            if (Math.Abs(sweep) < 1e-9) sweep = ccw ? 360 : -360;
+                            int seg = Math.Max(1, (int)Math.Ceiling(Math.Abs(sweep) / ArcStepDeg));
+                            // cung theo chiều kim đồng hồ: góc ghi theo hệ lật (DXF), quy về góc thực
+                            double s0 = ccw ? a1 : -a1;
+                            for (int q = 0; q <= seg; q++)
+                            {
+                                double a = (s0 + sweep * q / seg) * Math.PI / 180;
+                                AddPt(e.Pts, cx + r * Math.Cos(a), cy + r * Math.Sin(a), flip);
+                            }
+                            break;
+                        }
+                        default: ok = false; break;   // elip, spline – bỏ vòng này
+                    }
+                }
+                CloseIfRepeated(e);
+            }
+            if (ok && e.Pts.Count >= 3) res.Add(e);
+            if (!ok) break;   // không đọc tiếp được đúng vị trí các vòng sau
+        }
+        return res;
+    }
+
+    private static void AddPt(List<(double X, double Y)> pts, double x, double y, bool flip)
+    {
+        if (flip) x = -x;
+        if (pts.Count > 0 && Math.Abs(pts[^1].X - x) < 1e-9 && Math.Abs(pts[^1].Y - y) < 1e-9) return;
+        pts.Add((x, y));
     }
 
     // ------------------------------------------------------------------ phân rã block
@@ -825,7 +997,12 @@ public class DxfReader
 
     private DxfEntity Emit(RawEnt re, Affine m, string layer, string lt, string block)
     {
-        var e = new DxfEntity { Type = re.Type, Layer = layer, LineType = lt, Block = block, Closed = re.Closed };
+        var e = new DxfEntity
+        {
+            Type = re.Type, Layer = layer, LineType = lt, Block = block, Closed = re.Closed, SourceType = re.Source ?? "",
+            Width = re.Width * m.LinearScale,
+            FontHint = re.FontHint.Length > 0 ? re.FontHint : StyleFontHints.TryGetValue(re.Style ?? "", out var fh) ? fh : ""
+        };
         switch (re.Type)
         {
             case DxfEntityType.Circle:
@@ -859,7 +1036,7 @@ public class DxfReader
                 break;
         }
         if (e.Points.Count == 0) return null;
-        Entities.Add(e);
+        if (re.IsFill) FillEntities.Add(e); else Entities.Add(e);
         return e;
     }
 
@@ -927,6 +1104,9 @@ public class DxfReader
             if (c == '\\' && i + 1 < s.Length)
             {
                 char k = s[i + 1];
+                // \p…; (chữ thường) là định dạng đoạn văn (thụt lề, căn lề, tab) – không phải xuống dòng
+                if (k == 'p' && s.IndexOf(';', i + 2) > 0 && (i + 2 < s.Length && "xilqtcrjd*0123456789-,.".IndexOf(s[i + 2]) >= 0))
+                { i = s.IndexOf(';', i + 2); continue; }
                 if (k == 'P' || k == 'p' || k == 'X' || k == 'N') { sb.Append(' '); i++; continue; }
                 if (k == '~') { sb.Append(' '); i++; continue; }
                 if (k == '\\' || k == '{' || k == '}') { sb.Append(k); i++; continue; }

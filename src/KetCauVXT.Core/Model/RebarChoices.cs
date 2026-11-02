@@ -1,0 +1,138 @@
+namespace KetCauVXT.Model;
+
+// =====================================================================
+// LỰA CHỌN BỐ TRÍ THÉP CỦA NGƯỜI DÙNG + TUỲ CHỌN CHUNG
+// Lưu trong Project (JSON *.kcvxt). File cũ không có các mục này → danh sách rỗng / mặc định = hành vi cũ.
+// Đơn vị: chiều dài m, đường kính mm.
+// =====================================================================
+
+/// <summary>Một nhóm thanh cùng đường kính (dạng lưu JSON được, thay cho tuple).</summary>
+public class RebarGroup
+{
+    public int Dia { get; set; }
+    public int Count { get; set; }
+    public RebarGroup() { }
+    public RebarGroup(int dia, int count) { Dia = dia; Count = count; }
+}
+
+/// <summary>Tên vùng bố trí thép dùng trong RebarChoice.Zone.</summary>
+public static class RebarZones
+{
+    // dầm
+    /// <summary>Thép dưới giữa nhịp (Index = số thứ tự nhịp, từ 0) – tổng số thanh tại tiết diện, kể cả 2 thanh góc chạy suốt.</summary>
+    public const string BeamBottom = "Dưới nhịp";
+    /// <summary>Thép trên tại gối (Index = số thứ tự gối, 0..số nhịp) – tổng số thanh kể cả 2 thanh góc chạy suốt.</summary>
+    public const string BeamTopSupport = "Trên gối";
+    /// <summary>Thép trên chạy suốt (giữa nhịp) – 2 thanh góc, Index = −1.</summary>
+    public const string BeamTopCont = "Trên chạy suốt";
+    /// <summary>Thép dưới chạy suốt – 2 thanh góc, Index = −1.</summary>
+    public const string BeamBotCont = "Dưới chạy suốt";
+    /// <summary>Đai dầm (Index = nhịp) / đai cột (Index = tầng): Dia, Spacing (vùng gối/đầu cột), Spacing2 (giữa).</summary>
+    public const string Stirrup = "Đai";
+    // cột
+    /// <summary>Thép dọc cột tầng Index: Dia, NB (số thanh mỗi cạnh b, kể cả góc), NH (mỗi cạnh h).</summary>
+    public const string ColumnMain = "Thép dọc";
+    // sàn (X = phương ngắn như SlabDesign.BotX)
+    public const string SlabBotX = "Dưới X";
+    public const string SlabBotY = "Dưới Y";
+    public const string SlabTopX = "Mũ X";
+    public const string SlabTopY = "Mũ Y";
+    // móng đơn
+    public const string FootingL = "Phương L";
+    public const string FootingB = "Phương B";
+}
+
+/// <summary>Một lựa chọn bố trí thép do người dùng chốt cho một vùng của một cấu kiện vật lý.
+/// Khoá cấu kiện (Member): "D:{id phần tử nhỏ nhất của dải dầm}", "C:{id phần tử cột tầng dưới cùng}", "S:{id ô sàn}", "M:{id nút chân cột}".</summary>
+public class RebarChoice
+{
+    public string Member { get; set; } = "";
+    public string Zone { get; set; } = "";
+    public int Index { get; set; } = -1;
+    /// <summary>Dầm: các nhóm thanh (tổng tại tiết diện).</summary>
+    public List<RebarGroup> Bars { get; set; } = new();
+    /// <summary>Cột / sàn / móng / đai: đường kính.</summary>
+    public int Dia { get; set; }
+    /// <summary>Cột: số thanh trên mỗi cạnh b và mỗi cạnh h (kể cả 2 thanh góc).</summary>
+    public int NB { get; set; }
+    public int NH { get; set; }
+    /// <summary>Sàn / móng: bước thép (m). Đai: bước vùng gối / đầu cột (m).</summary>
+    public double Spacing { get; set; }
+    /// <summary>Đai: bước giữa nhịp / giữa cột (m).</summary>
+    public double Spacing2 { get; set; }
+    /// <summary>Kích thước tiết diện lúc chọn ("220x400", "t=120", "1.6x1.4x0.5"); khác hiện tại → bỏ qua lựa chọn.</summary>
+    public string Basis { get; set; } = "";
+    /// <summary>Tên cấu kiện lúc chọn (chỉ để tham khảo, vd "D2-1").</summary>
+    public string Label { get; set; } = "";
+
+    public string Key => Member + "|" + Zone + "|" + Index;
+}
+
+/// <summary>Tuỳ chọn chung khi tự chọn thép và triển khai gia công. Giá trị mặc định = hành vi cũ của chương trình.</summary>
+public class RebarPreferences
+{
+    /// <summary>Đường kính ưu tiên cho thép dọc (giao với danh sách Ø của từng loại cấu kiện); rỗng = dùng hết.</summary>
+    public int[] PreferredDias { get; set; } = Array.Empty<int>();
+    /// <summary>Số thanh tối đa trên một hàng thép dầm; 0 = theo bề rộng (khoảng hở TCVN 5574:2018 mục 10.3.5).</summary>
+    public int MaxBarsPerLayer { get; set; }
+    /// <summary>Ưu tiên thép tăng cường / mũ gối cùng Ø với thép chạy suốt.</summary>
+    public bool PreferSameDia { get; set; }
+    /// <summary>Cho phép đặt thép dầm 2 hàng.</summary>
+    public bool AllowTwoLayers { get; set; } = true;
+    /// <summary>Ø đai cố định (mm); 0 = tự chọn.</summary>
+    public int StirrupDia { get; set; }
+    /// <summary>Bước đai nhỏ nhất (m); 0 = không giới hạn.</summary>
+    public double MinStirrupSpacing { get; set; }
+    /// <summary>Bước đai lớn nhất (m); 0 = theo cấu tạo của tiêu chuẩn.</summary>
+    public double MaxStirrupSpacing { get; set; }
+    /// <summary>Chiều dài cây thép thương phẩm (m) – thanh dài hơn phải nối chồng.</summary>
+    public double StockLength { get; set; } = 11.7;
+    /// <summary>Đầu thừa ≥ giá trị này (m) được coi là tái sử dụng được (không tính hao hụt).</summary>
+    public double MinReuseOffcut { get; set; } = 1.0;
+    /// <summary>Nối so le: không nối quá 50% số thanh tại một tiết diện (TCVN 5574:2018 mục 10.3.6).</summary>
+    public bool StaggerSplices { get; set; } = true;
+
+    /// <summary>Lọc danh sách Ø theo PreferredDias (giữ nguyên nếu giao rỗng).</summary>
+    public int[] Filter(int[] dias)
+    {
+        if (dias == null) return dias;
+        if (PreferredDias == null || PreferredDias.Length == 0) return dias;
+        var f = dias.Where(d => PreferredDias.Contains(d)).ToArray();
+        return f.Length > 0 ? f : dias;
+    }
+}
+
+/// <summary>Tra cứu / ghi lựa chọn thép trong Project.</summary>
+public static class RebarChoiceExt
+{
+    public static RebarChoice FindRebarChoice(this Project p, string member, string zone, int index)
+    {
+        if (p?.RebarChoices == null || string.IsNullOrEmpty(member)) return null;
+        return p.RebarChoices.LastOrDefault(c => c != null && c.Member == member && c.Zone == zone && c.Index == index);
+    }
+
+    /// <summary>Lựa chọn còn hiệu lực: cùng khoá và cùng kích thước tiết diện (Basis rỗng = luôn hiệu lực).</summary>
+    public static RebarChoice ValidRebarChoice(this Project p, string member, string zone, int index, string basis)
+    {
+        var c = p.FindRebarChoice(member, zone, index);
+        if (c == null) return null;
+        if (!string.IsNullOrEmpty(c.Basis) && !string.IsNullOrEmpty(basis) && c.Basis != basis) return null;
+        return c;
+    }
+
+    /// <summary>Thêm hoặc thay lựa chọn cùng khoá (Member, Zone, Index).</summary>
+    public static void SetRebarChoice(this Project p, RebarChoice c)
+    {
+        if (p == null || c == null) return;
+        p.RebarChoices ??= new List<RebarChoice>();
+        p.RebarChoices.RemoveAll(x => x == null || (x.Member == c.Member && x.Zone == c.Zone && x.Index == c.Index));
+        p.RebarChoices.Add(c);
+    }
+
+    /// <summary>Xoá lựa chọn; zone = null → xoá mọi vùng của cấu kiện. Trả về số lựa chọn đã xoá.</summary>
+    public static int ClearRebarChoice(this Project p, string member, string zone = null, int? index = null)
+    {
+        if (p?.RebarChoices == null) return 0;
+        return p.RebarChoices.RemoveAll(x => x == null || (x.Member == member && (zone == null || x.Zone == zone) && (index == null || x.Index == index.Value)));
+    }
+}

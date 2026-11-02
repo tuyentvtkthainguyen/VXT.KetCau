@@ -25,6 +25,8 @@ public partial class MainWindow
             Dispatcher.BeginInvoke(new Action(async () => await RunSelfTest(args[1], args[2])), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             return;
         }
+        InitAcadLink(true);                 // liên kết AutoCAD – MainWindow.AcadLink.cs
+        if (HandleAcadArgs(args)) return;   // --acad "<file.json>"
         var file = args.FirstOrDefault(a => a.EndsWith(".kcvxt", StringComparison.OrdinalIgnoreCase) && File.Exists(a));
         if (file != null)
         {

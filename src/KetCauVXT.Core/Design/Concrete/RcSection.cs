@@ -419,12 +419,19 @@ public static class RcSection
         return ebRed * Math.Min(ig, Math.Max(icr, ieff));
     }
 
-    /// <summary>Số thanh tối đa trên một hàng: khoảng hở giữa các thanh ≥ max(25 mm; d) (TCVN 5574:2018 mục 10.3.5),
-    /// bề rộng bố trí = b − 2·lớp bảo vệ (lớp bảo vệ tính tới mép cốt dọc).</summary>
-    public static int MaxBarsInLayer(double width, double cover, int d)
+    /// <summary>Khoảng hở tối thiểu giữa các thanh thép dọc dầm (TCVN 5574:2018 mục 10.3.5): thép dưới ≥ max(d; 25 mm),
+    /// thép trên (vị trí khi đổ bê tông) ≥ max(d; 30 mm).</summary>
+    public const double ClearBottom = 0.025, ClearTop = 0.030;
+
+    /// <summary>Khoảng hở yêu cầu (m) giữa hai thanh Ø d: max(d; clearMin).</summary>
+    public static double ClearRequired(int d, bool top) => Math.Max(d / 1000.0, top ? ClearTop : ClearBottom);
+
+    /// <summary>Số thanh tối đa trên một hàng: khoảng hở giữa các thanh ≥ max(clearMin; d) (TCVN 5574:2018 mục 10.3.5:
+    /// 25 mm thép dưới, 30 mm thép trên), bề rộng bố trí = b − 2·lớp bảo vệ (lớp bảo vệ tính tới mép cốt dọc).</summary>
+    public static int MaxBarsInLayer(double width, double cover, int d, double clearMin = ClearBottom)
     {
         double dm = d / 1000.0;
-        double s = Math.Max(0.025, dm);
+        double s = Math.Max(clearMin, dm);
         double avail = width - 2 * cover;
         if (avail < dm) return 0;
         return Math.Max((int)Math.Floor((avail + s) / (dm + s) + 1e-9), 0);
@@ -479,15 +486,25 @@ public static class RcSection
 
     /// <summary>Chọn thép bổ sung (một loại Ø) đặt cùng hàng với existingCount thanh Ø existingDia đã có
     /// (thép tăng cường, mũ gối). Ưu tiên cùng đường kính, ít hàng, ít thanh.</summary>
-    public static BarSet ChooseExtra(double asReq, int existingCount, int existingDia, double width, double cover, int[] dias, int maxLayers = 2)
+    /// <param name="clearMin">khoảng hở tối thiểu (ClearBottom / ClearTop)</param>
+    /// <param name="maxPerLayer">giới hạn số thanh một hàng (0 = theo bề rộng)</param>
+    /// <param name="sameDiaFirst">ưu tiên hẳn cùng Ø với thép đã có (chỉ đổi Ø khi cùng Ø không bố trí được)</param>
+    public static BarSet ChooseExtra(double asReq, int existingCount, int existingDia, double width, double cover, int[] dias, int maxLayers = 2,
+        double clearMin = ClearBottom, int maxPerLayer = 0, bool sameDiaFirst = false)
     {
         if (asReq <= 1e-12) return new BarSet();
         var ds = dias.Where(x => x > 0).Distinct().OrderBy(x => x).ToArray();
+        if (sameDiaFirst && ds.Contains(existingDia) && ds.Length > 1)
+        {
+            var same = ChooseExtra(asReq, existingCount, existingDia, width, cover, new[] { existingDia }, maxLayers, clearMin, maxPerLayer, false);
+            if (same.Ok) return same;
+        }
         BarSet best = null;
         double bestScore = double.MaxValue;
         foreach (int d in ds)
         {
-            int perLayer = MaxBarsInLayer(width, cover, Math.Max(d, existingDia));
+            int perLayer = MaxBarsInLayer(width, cover, Math.Max(d, existingDia), clearMin);
+            if (maxPerLayer > 0) perLayer = Math.Min(perLayer, maxPerLayer);
             if (perLayer <= 0) continue;
             for (int n = 1; existingCount + n <= perLayer * maxLayers; n++)
             {
@@ -505,7 +522,8 @@ public static class RcSection
         }
         if (best != null) return best;
         int dl = ds.Length > 0 ? ds[^1] : 25;
-        int pl = Math.Max(MaxBarsInLayer(width, cover, Math.Max(dl, existingDia)), 1);
+        int pl = Math.Max(MaxBarsInLayer(width, cover, Math.Max(dl, existingDia), clearMin), 1);
+        if (maxPerLayer > 0) pl = Math.Max(Math.Min(pl, maxPerLayer), 1);
         int nf = Math.Max(pl * maxLayers - existingCount, 1);
         return new BarSet { Groups = new List<(int, int)> { (dl, nf) }, Layers = maxLayers, Ok = false };
     }

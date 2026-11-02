@@ -48,6 +48,7 @@ public static class ColumnDesigner
                     var keep = designed[k].d;
                     keep.Quantity++;
                     keep.GridName += ", " + d.GridName;
+                    keep.RebarKeys.AddRange(d.RebarKeys.Where(x => !keep.RebarKeys.Contains(x)));
                     for (int i = 0; i < keep.Checks.Count && i < d.Checks.Count; i++)
                         if (d.Checks[i].Ratio > keep.Checks[i].Ratio) keep.Checks[i] = d.Checks[i];
                     for (int i = 0; i < keep.Stories.Count && i < d.Stories.Count; i++)
@@ -77,8 +78,11 @@ public static class ColumnDesigner
         var cs = p.Concrete;
         var main = p.Material(cs.RebarMain);
         var stl = p.Material(cs.RebarStirrup);
-        int[] dias = DesignUtil.Sorted(cs.ColumnBars, new[] { 14, 16, 18, 20, 22, 25 });
+        var pref = p.RebarPrefs ?? new RebarPreferences();
+        int[] dias = pref.Filter(DesignUtil.Sorted(cs.ColumnBars, new[] { 14, 16, 18, 20, 22, 25 }));
         int[] sdias = DesignUtil.Sorted(cs.StirrupBars, new[] { 6, 8, 10 });
+        if (pref.StirrupDia >= 6) sdias = new[] { pref.StirrupDia };
+        string key = MemberKey(stack);
         var n0 = DesignUtil.LowerNode(p, stack[0]);
         double zBase = n0.Z;
         var d = new ColumnDesign
@@ -87,6 +91,8 @@ public static class ColumnDesigner
             GridName = DesignUtil.GridName(p, n0.X, n0.Y),
             Frames = stack.Select(f => f.Id).ToList()
         };
+        d.RebarKeys.Add(key);
+        int nUser = 0;
 
         for (int si = 0; si < stack.Count; si++)
         {
@@ -102,8 +108,22 @@ public static class ColumnDesigner
                 Frame = f.Id, Story = f.Story ?? "", B = sec.B, H = sec.H, Length = L, ZBottom = lo.Z, ZTop = up.Z
             };
             var forces = CollectForces(r, f, combos);
-            var c = SelectBars(res, forces, sec, conc, main, cs, dias, d.Messages);
+            string basis = BeamDesigner.Basis(sec.B, sec.H);
+            var uch = p.ValidRebarChoice(key, RebarZones.ColumnMain, si, basis);
+            Candidate user = uch != null && uch.Dia > 0 && uch.NB >= 2 && uch.NH >= 2
+                ? new Candidate { Dia = uch.Dia, NB = uch.NB, NH = uch.NH, As = (2 * uch.NB + 2 * (uch.NH - 2)) * RcSection.BarArea(uch.Dia) } : null;
+            var c = SelectBars(res, forces, sec, conc, main, cs, dias, d.Messages, user);
             res.Dia = c.Dia; res.BarsAlongB = c.NB; res.BarsAlongH = c.NH; res.AsProv = c.As;
+            if (user != null)
+            {
+                nUser++;
+                string fitMsg = FitNote(sec.B, sec.H, cs.CoverColumn, user);
+                if (fitMsg != null) d.Messages.Add("LỖI tầng " + res.Story + " – thép chọn " + (2 * user.NB + 2 * (user.NH - 2)) + "Ø" + user.Dia + ": " + fitMsg);
+                if (user.As < cs.MinRatioColumn / 100.0 * sec.B * sec.H * (1 - 1e-6) && !d.Messages.Any(m => m.Contains("hàm lượng tối thiểu") && m.Contains(res.Story)))
+                    d.Messages.Add("LỖI tầng " + res.Story + ": thép chọn nhỏ hơn hàm lượng tối thiểu " + DesignUtil.F(cs.MinRatioColumn, "0.00") + "%");
+                if (res.Utilization > 1.0 + 1e-6)
+                    d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – tầng " + res.Story + ": hệ số sử dụng " + DesignUtil.F(res.Utilization, "0.00") + " > 1");
+            }
 
             // ---- cốt đai (TCVN 5574:2018 mục 10.3.4.3) ----
             int sd = sdias.FirstOrDefault(x => x >= Math.Max(6, (int)Math.Ceiling(res.Dia / 4.0)), sdias[^1]);
@@ -112,6 +132,18 @@ public static class ColumnDesigner
             if (sMid < 0.10) sMid = Math.Max(RcSection.FloorTo(Math.Min(15 * res.Dia / 1000.0, bmin), 0.01), 0.05);
             double sEnd = Math.Min(RcSection.FloorTo(sMid / 2, 0.01), 0.10);
             sEnd = Math.Max(sEnd, 0.05);
+            if (pref.MaxStirrupSpacing > 0) { sMid = Math.Min(sMid, pref.MaxStirrupSpacing); sEnd = Math.Min(sEnd, pref.MaxStirrupSpacing); }
+            if (pref.MinStirrupSpacing > 0) { sEnd = Math.Max(sEnd, pref.MinStirrupSpacing); sMid = Math.Max(sMid, sEnd); }
+            var sch = p.ValidRebarChoice(key, RebarZones.Stirrup, si, basis);
+            if (sch != null && sch.Dia >= 6 && sch.Spacing > 0)
+            {
+                nUser++;
+                double smax = Math.Min(Math.Min(15 * res.Dia / 1000.0, bmin), 0.40);
+                sd = sch.Dia; sEnd = sch.Spacing; sMid = Math.Max(sch.Spacing2 > 0 ? sch.Spacing2 : sMid, sEnd);
+                if (sMid > smax + 1e-6 || sd < Math.Ceiling(res.Dia / 4.0) - 1e-9)
+                    d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – đai tầng " + res.Story + ": cần Ø ≥ " + Math.Max(6, (int)Math.Ceiling(res.Dia / 4.0))
+                                   + " và bước ≤ " + DesignUtil.F(smax * 1000, "0") + " mm (TCVN 5574:2018 mục 10.3.4.3)");
+            }
             res.StirrupDia = sd; res.StirrupSpacing = sMid; res.StirrupSpacingEnd = sEnd;
 
             string tag = "tầng " + res.Story;
@@ -129,6 +161,8 @@ public static class ColumnDesigner
             d.Stories.Add(res);
         }
 
+        d.UserRebarZones = nUser;
+        if (nUser > 0) d.Messages.Add("Bố trí thép theo lựa chọn của người dùng tại " + nUser + " vùng (đã kiểm tra lại khả năng chịu lực)");
         Detail(p, d, stack, cs, zBase);
         RebarNumbering.Renumber(d.Bars);
         foreach (var z in d.StirrupZones) z.Mark = d.Bars.FirstOrDefault(bm => bm.Role == "Đai" && bm.Span == z.Span)?.Mark ?? 0;
@@ -152,7 +186,7 @@ public static class ColumnDesigner
     /// <summary>Chọn số thanh và Ø nhỏ nhất (theo diện tích) thoả mãn kiểm tra nén lệch tâm xiên cho mọi tổ hợp và cả hai đầu cột.
     /// Mô men thiết kế: M = η·max(|M|; N·ea) (TCVN 5574:2018 mục 8.1.2.2 – độ lệch tâm ngẫu nhiên; 8.1.2.4 – uốn dọc).</summary>
     private static Candidate SelectBars(ColumnStoryResult res, List<(string Combo, double N, double M2, double M3)> forces,
-        FrameSection sec, Material conc, Material steel, ConcreteDesignSettings cs, int[] dias, List<string> msgs)
+        FrameSection sec, Material conc, Material steel, ConcreteDesignSettings cs, int[] dias, List<string> msgs, Candidate user = null)
     {
         double B = sec.B, H = sec.H, a = cs.CoverColumn;
         double A = B * H;
@@ -163,27 +197,8 @@ public static class ColumnDesigner
         double ea3 = RcSection.Ea(res.Length, H), ea2 = RcSection.Ea(res.Length, B);
         if (Math.Max(lam2, lam3) > 120) msgs.Add("LỖI tầng " + res.Story + ": độ mảnh l0/i = " + DesignUtil.F(Math.Max(lam2, lam3), "0") + " > 120");
 
-        // danh sách phương án sắp theo diện tích
-        var cands = new List<Candidate>();
-        foreach (int dia in dias)
-        {
-            double dm = dia / 1000.0;
-            for (int nb = 2; nb <= 8; nb++)
-                for (int nh = 2; nh <= 8; nh++)
-                {
-                    double sb = (B - 2 * a - dm) / (nb - 1), sh = (H - 2 * a - dm) / (nh - 1);
-                    if (sb - dm < Math.Max(MinClearColumn, dm) - 1e-9 || sh - dm < Math.Max(MinClearColumn, dm) - 1e-9) continue;
-                    if (sb > MaxBarSpacing + 1e-9 || sh > MaxBarSpacing + 1e-9) continue;
-                    int n = 2 * nb + 2 * (nh - 2);
-                    double As = n * RcSection.BarArea(dia);
-                    if (As < asMin * (1 - 1e-6)) continue;
-                    cands.Add(new Candidate { Dia = dia, NB = nb, NH = nh, As = As });
-                }
-        }
-        // ưu tiên: diện tích nhỏ, ít thanh, bố trí cân đối theo tỷ lệ cạnh
-        cands = cands.OrderBy(c => Math.Round(c.As * 1e6))
-                     .ThenBy(c => 2 * c.NB + 2 * (c.NH - 2))
-                     .ThenBy(c => Math.Abs((c.NB - 1) / B - (c.NH - 1) / H)).ToList();
+        // danh sách phương án sắp theo diện tích (người dùng chọn → chỉ xét phương án đó)
+        var cands = user != null ? new List<Candidate> { user } : Candidates(B, H, a, dias, asMin);
         if (cands.Count == 0) throw new InvalidOperationException("không bố trí được thép dọc trong tiết diện " + sec.Name);
 
         Candidate chosen = null;
@@ -200,7 +215,16 @@ public static class ColumnDesigner
                 break;
             }
         }
-        if (chosen == null)
+        if (chosen == null && user != null)
+        {
+            chosen = user;
+            var lay = ColumnLayout.Create(B, H, a + chosen.Dia / 2000.0, chosen.Dia, chosen.NB, chosen.NH);
+            gov = Evaluate(lay, forces, conc, steel, l0, res.Length, lam2, lam3, ea2, ea3, B, H, out bool unstable);
+            if (unstable) msgs.Add("LỖI cột mất ổn định tầng " + res.Story + ": N ≥ Ncr – cần tăng tiết diện");
+            if (chosen.As > asMax * (1 + 1e-6)) msgs.Add("LỖI tầng " + res.Story + ": thép chọn vượt hàm lượng tối đa " + DesignUtil.F(cs.MaxRatioColumn, "0.0") + "%");
+            if (chosen.As < asMin * (1 - 1e-6)) msgs.Add("LỖI tầng " + res.Story + ": thép chọn nhỏ hơn hàm lượng tối thiểu " + DesignUtil.F(cs.MinRatioColumn, "0.00") + "%");
+        }
+        else if (chosen == null)
         {
             chosen = bestC ?? cands[^1];
             var lay = ColumnLayout.Create(B, H, a + chosen.Dia / 2000.0, chosen.Dia, chosen.NB, chosen.NH);
@@ -213,6 +237,100 @@ public static class ColumnDesigner
         res.Eta2 = gov.E2; res.Eta3 = gov.E3; res.Utilization = gov.U;
         res.AsReq = Math.Max(asMin, EstimateAsReq(B, H, a + chosen.Dia / 2000.0, chosen, forces, conc, steel, l0, res.Length, lam2, lam3, ea2, ea3));
         return chosen;
+    }
+
+    /// <summary>Khoá cấu kiện vật lý của chồng cột (lựa chọn thép): "C:{id phần tử tầng dưới cùng}".</summary>
+    internal static string MemberKey(List<FrameElement> stack) => "C:" + stack[0].Id.ToString(DesignUtil.Inv);
+
+    /// <summary>Các phương án bố trí thép đối xứng trên chu vi thoả khoảng hở ≥ max(50 mm; d) và khoảng cách tim ≤ 400 mm (TCVN 5574:2018 mục 10.3.5),
+    /// As ≥ As,min; sắp theo diện tích, số thanh, độ cân đối.</summary>
+    private static List<Candidate> Candidates(double B, double H, double a, int[] dias, double asMin)
+    {
+        var cands = new List<Candidate>();
+        foreach (int dia in dias)
+        {
+            double dm = dia / 1000.0;
+            for (int nb = 2; nb <= 8; nb++)
+                for (int nh = 2; nh <= 8; nh++)
+                {
+                    var cd = new Candidate { Dia = dia, NB = nb, NH = nh, As = (2 * nb + 2 * (nh - 2)) * RcSection.BarArea(dia) };
+                    if (FitNote(B, H, a, cd) != null) continue;
+                    if (cd.As < asMin * (1 - 1e-6)) continue;
+                    cands.Add(cd);
+                }
+        }
+        // ưu tiên: diện tích nhỏ, ít thanh, bố trí cân đối theo tỷ lệ cạnh
+        return cands.OrderBy(c => Math.Round(c.As * 1e6))
+                    .ThenBy(c => 2 * c.NB + 2 * (c.NH - 2))
+                    .ThenBy(c => Math.Abs((c.NB - 1) / B - (c.NH - 1) / H)).ToList();
+    }
+
+    /// <summary>Khoảng hở / khoảng cách tim thép dọc cột (mm) trên cạnh b và cạnh h.</summary>
+    internal static (double ClearB, double ClearH, double PitchB, double PitchH) Spacings(double B, double H, double a, int dia, int nb, int nh)
+    {
+        double dm = dia / 1000.0;
+        double sb = (B - 2 * a - dm) / Math.Max(nb - 1, 1), sh = (H - 2 * a - dm) / Math.Max(nh - 1, 1);
+        return ((sb - dm) * 1000, (sh - dm) * 1000, sb * 1000, sh * 1000);
+    }
+
+    /// <summary>null nếu bố trí lọt tiết diện; ngược lại là mô tả vi phạm.</summary>
+    private static string FitNote(double B, double H, double a, Candidate c)
+    {
+        if (c.NB < 2 || c.NH < 2) return "mỗi cạnh cần ít nhất 2 thanh";
+        var (cb, ch, pb, ph) = Spacings(B, H, a, c.Dia, c.NB, c.NH);
+        double need = Math.Max(MinClearColumn * 1000, c.Dia);
+        if (cb < need - 1e-6 || ch < need - 1e-6) return "khoảng hở " + DesignUtil.F(Math.Min(cb, ch), "0") + " mm < " + DesignUtil.F(need, "0") + " mm";
+        if (pb > MaxBarSpacing * 1000 + 1e-6 || ph > MaxBarSpacing * 1000 + 1e-6) return "khoảng cách tim " + DesignUtil.F(Math.Max(pb, ph), "0") + " mm > 400 mm";
+        return null;
+    }
+
+    /// <summary>Các phương án thép dọc cho tầng si của cột đã thiết kế: thoả khả năng chịu lực (hệ số sử dụng ≤ 1 khi có r), μmin ≤ μ ≤ μmax,
+    /// khoảng hở theo TCVN 5574:2018 mục 10.3.5. Không có r: chỉ lọc theo As ≥ As yêu cầu đã tính.</summary>
+    internal static List<RebarAlternative> Alternatives(Project p, AnalysisResults r, ColumnDesign d, int si, int max = 12)
+    {
+        var list = new List<RebarAlternative>();
+        if (d == null || si < 0 || si >= d.Stories.Count) return list;
+        var cs = p.Concrete;
+        var s = d.Stories[si];
+        var f = p.Frames.FirstOrDefault(x => x.Id == s.Frame);
+        FrameSection sec = null;
+        if (f != null) { try { sec = p.Section(f.Section); } catch (KeyNotFoundException) { } }
+        double B = sec?.B ?? s.B, H = sec?.H ?? s.H, a = cs.CoverColumn;
+        var conc = DesignUtil.ConcreteOf(p, sec?.Material ?? "", cs.ConcreteColumn);
+        var steel = p.Material(cs.RebarMain);
+        var pref = p.RebarPrefs ?? new RebarPreferences();
+        int[] dias = pref.Filter(DesignUtil.Sorted(cs.ColumnBars, new[] { 14, 16, 18, 20, 22, 25 }));
+        double asMin = cs.MinRatioColumn / 100.0 * B * H, asMax = cs.MaxRatioColumn / 100.0 * B * H;
+        var forces = r != null && f != null ? CollectForces(r, f, r.DesignCombos()) : new List<(string, double, double, double)>();
+        double L = s.Length > 0 ? s.Length : (f != null ? p.Length(f) : 3);
+        double l0 = cs.ColumnLengthFactor * L;
+        double lam3 = l0 / (H / Math.Sqrt(12)), lam2 = l0 / (B / Math.Sqrt(12));
+        double ea3 = RcSection.Ea(L, H), ea2 = RcSection.Ea(L, B);
+        foreach (var c in Candidates(B, H, a, dias, asMin))
+        {
+            if (c.As > asMax * (1 + 1e-6)) continue;
+            double u = 0;
+            if (forces.Count > 0)
+            {
+                var lay = ColumnLayout.Create(B, H, a + c.Dia / 2000.0, c.Dia, c.NB, c.NH);
+                var g = Evaluate(lay, forces, conc, steel, l0, L, lam2, lam3, ea2, ea3, B, H, out bool unstable);
+                if (unstable || g.U > 1.0 + 1e-6) continue;
+                u = g.U;
+            }
+            else if (c.As < s.AsReq * (1 - 1e-6)) continue;
+            var (cb, ch, _, _) = Spacings(B, H, a, c.Dia, c.NB, c.NH);
+            int n = 2 * c.NB + 2 * (c.NH - 2);
+            list.Add(new RebarAlternative
+            {
+                Kind = "Cột", Zone = RebarZones.ColumnMain, Index = si, Dia = c.Dia, NB = c.NB, NH = c.NH,
+                Text = n + "Ø" + c.Dia + " (" + c.NB + "×" + c.NH + ")", AsReq = s.AsReq, AsProv = c.As, Layers = 1,
+                ClearMm = Math.Min(cb, ch), ClearReqMm = Math.Max(MinClearColumn * 1000, c.Dia), Fits = true, Utilization = u,
+                IsCurrent = c.Dia == s.Dia && c.NB == s.BarsAlongB && c.NH == s.BarsAlongH,
+                Note = "μ = " + DesignUtil.F(c.As / (B * H) * 100, "0.00") + "%"
+            });
+            if (list.Count >= max) break;
+        }
+        return list;
     }
 
     /// <summary>Hệ số sử dụng lớn nhất của bố trí thép qua mọi tổ hợp/đầu cột, kèm nội lực tới hạn (đã kể ea và η).</summary>
@@ -288,7 +406,9 @@ public static class ColumnDesigner
             var segs = new List<double>();
             string shape = "Thẳng";
             double length;
-            double lap = DesignUtil.R10(30 * dm);
+            // nối chồng thép cột: max(30d; ll vùng nén theo TCVN 5574:2018 10.3.6.2)
+            var concS = DesignUtil.ConcreteOf(p, p.Section(stack[si].Section).Material, cs.ConcreteColumn);
+            double lap = DesignUtil.R10(Math.Max(30 * dm, RebarDetailing.LapLength(concS, p.Material(cs.RebarMain), s.Dia, tension: false)));
             if (top)
             {
                 end = z1 - cs.CoverBeam;
