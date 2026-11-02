@@ -12,6 +12,9 @@ namespace KetCauVXT.Loads;
 /// <item>Cấu tạo sàn: HTHT = Σ lớp hoàn thiện, HT = hoạt tải của cấu tạo.</item>
 /// <item>Dầm cong: tường khai báo theo dây cung của dầm (vd. "Gán tường" lên dầm cong) được coi là tường cong chạy theo dầm –
 ///   tải q kN/m đặt theo chiều dài cung (vị trí tương đối trên dây cung = vị trí tương đối trên cung), tổng tải = q·L cung.</item>
+/// <item>Tường cong (WallLine.Sagitta ≠ 0, vd. nhập từ bản vẽ kiến trúc): chiều dài, diện tích tường theo cung; tải đặt lên các dầm cong
+///   cùng đường tròn (tâm lệch ≤ 20 mm, bán kính lệch ≤ nửa chiều dày tường + 50 mm) nằm dưới tường, kể cả khi dầm cong đã bị chia
+///   thành nhiều đoạn – tổng tải = q·L cung phần có dầm đỡ; phần còn lại quy về ô sàn chứa điểm giữa cung.</item>
 /// </list></summary>
 public static class WallLoadGenerator
 {
@@ -68,6 +71,11 @@ public static class WallLoadGenerator
             {
                 // phần không có dầm đỡ → tải phân bố lên ô sàn
                 double mx = (w.X1 + w.X2) / 2, my = (w.Y1 + w.Y2) / 2;
+                if (w.IsCurved)
+                {
+                    var wa = CurvedBeam.Arc(new Vec3(w.X1, w.Y1, 0), new Vec3(w.X2, w.Y2, 0), w.Sagitta);
+                    if (wa != null) { var mp = wa.Mid; mx = mp.X; my = mp.Y; }
+                }
                 var sl = ModelEdit.SlabAt(p, w.Story, mx, my);
                 if (sl != null)
                 {
@@ -84,8 +92,9 @@ public static class WallLoadGenerator
     /// <summary>Các dầm ở cao độ z nằm dưới tường: (thanh, r0, r1 trên thanh, chiều dài phủ).</summary>
     public static List<(FrameElement f, double r0, double r1, double len)> BeamsUnder(Project p, WallLine w, double z, double thick)
     {
+        if (w.IsCurved) return CurvedBeamsUnder(p, w, z, thick);
         var res = new List<(FrameElement, double, double, double)>();
-        double L = w.Length;
+        double L = w.Chord;
         double ux = (w.X2 - w.X1) / L, uy = (w.Y2 - w.Y1) / L;
         double tol = Math.Max(0.06, thick / 2 + 0.05);
         foreach (var f in p.Frames)
@@ -104,6 +113,47 @@ public static class WallLoadGenerator
             if (hi - lo < 0.01) continue;
             double r0 = Math.Abs(lo - ta) / fl, r1 = Math.Abs(hi - ta) / fl;
             res.Add((f, Math.Min(r0, r1), Math.Max(r0, r1), hi - lo));
+        }
+        return res;
+    }
+
+    /// <summary>Tường cong: các dầm cong ở cao độ z cùng đường tròn với tim tường – (thanh, r0, r1 theo cung của thanh, chiều dài cung phủ).</summary>
+    private static List<(FrameElement f, double r0, double r1, double len)> CurvedBeamsUnder(Project p, WallLine w, double z, double thick)
+    {
+        var res = new List<(FrameElement, double, double, double)>();
+        var wa = CurvedBeam.Arc(new Vec3(w.X1, w.Y1, z), new Vec3(w.X2, w.Y2, z), w.Sagitta);
+        if (wa == null) return res;
+        double sw = Math.Abs(wa.Sweep), L = wa.Length;
+        if (sw < 1e-9) return res;
+        double tolR = Math.Max(0.06, thick / 2 + 0.05);
+        // tham số trên cung tường (0 … 1 trong phạm vi tường; phần ngoài chia đều hai phía)
+        double Rel(double x, double y)
+        {
+            double d = (Math.Atan2(y - wa.Cy, x - wa.Cx) - wa.StartAngle) * Math.Sign(wa.Sweep);
+            double lo = -(2 * Math.PI - sw) / 2;
+            d = (d - lo) % (2 * Math.PI);
+            if (d < 0) d += 2 * Math.PI;
+            return (d + lo) / sw;
+        }
+        foreach (var f in p.Frames)
+        {
+            if (f.IsVerticalKind || !f.IsCurved) continue;
+            var a = p.Node(f.NodeI); var b = p.Node(f.NodeJ);
+            if (Math.Abs(a.Z - z) > 0.01 || Math.Abs(b.Z - z) > 0.01) continue;
+            var fa = CurvedBeam.Arc(p, f);
+            if (fa == null) continue;
+            if (Math.Sqrt((fa.Cx - wa.Cx) * (fa.Cx - wa.Cx) + (fa.Cy - wa.Cy) * (fa.Cy - wa.Cy)) > 0.02) continue;
+            if (Math.Abs(fa.Radius - wa.Radius) > tolR) continue;
+            double tI = Rel(a.X, a.Y), tJ = Rel(b.X, b.Y);
+            if (Math.Abs(tJ - tI) < 1e-9) continue;
+            // dầm cong nằm trên cung tường: kiểm tra điểm giữa dầm cũng thuộc khoảng [tI, tJ] (không đi vòng phía ngoài)
+            var mid = fa.Mid;
+            double tm = Rel(mid.X, mid.Y);
+            if (tm < Math.Min(tI, tJ) - 1e-6 || tm > Math.Max(tI, tJ) + 1e-6) continue;
+            double lo2 = Math.Max(0, Math.Min(tI, tJ)), hi2 = Math.Min(1, Math.Max(tI, tJ));
+            if ((hi2 - lo2) * L < 0.01) continue;
+            double r0 = (lo2 - tI) / (tJ - tI), r1 = (hi2 - tI) / (tJ - tI);
+            res.Add((f, Math.Clamp(Math.Min(r0, r1), 0, 1), Math.Clamp(Math.Max(r0, r1), 0, 1), (hi2 - lo2) * L));
         }
         return res;
     }

@@ -53,7 +53,7 @@ public static class RoomCatalog
 
 public class ArchWall
 {
-    /// <summary>Tim tường (đã quy về song song trục X hoặc Y nếu lệch &lt; 1°)</summary>
+    /// <summary>Tim tường (đã quy về song song trục X hoặc Y nếu lệch &lt; 1°; tường xiên giữ nguyên phương; tường cong: hai đầu cung)</summary>
     public double Ax, Ay, Bx, By;
     /// <summary>Chiều dày tường, m (0,11 / 0,22 …)</summary>
     public double Thickness;
@@ -62,9 +62,24 @@ public class ArchWall
     /// <summary>Tổng chiều dài lỗ cửa trên đoạn tường, m</summary>
     public double OpeningLength;
     public string Layer = "";
-    public double Length => Math.Sqrt((Bx - Ax) * (Bx - Ax) + (By - Ay) * (By - Ay));
-    public bool AlongX => Math.Abs(By - Ay) < 1e-6;
-    public bool AlongY => Math.Abs(Bx - Ax) < 1e-6;
+    /// <summary>Tường cong: độ vồng có dấu của tim tường (cung tròn) so với dây cung A→B, m – dương = vồng về bên trái hướng A→B
+    /// (cùng quy ước với FrameElement.CurveMidOffset). 0 = tường thẳng.</summary>
+    public double Sagitta;
+    public bool IsCurved => Math.Abs(Sagitta) > 1e-6;
+    /// <summary>Chiều dài dây cung A–B (= chiều dài tường thẳng), m</summary>
+    public double Chord => Math.Sqrt((Bx - Ax) * (Bx - Ax) + (By - Ay) * (By - Ay));
+    /// <summary>Chiều dài tim tường, m (tường cong: chiều dài cung)</summary>
+    public double Length => IsCurved ? CurvedBeam.ArcLength(Chord, Sagitta) : Chord;
+    /// <summary>Bán kính tim tường cong (∞ với tường thẳng)</summary>
+    public double Radius => IsCurved ? CurvedBeam.RadiusFromSagitta(Chord, Sagitta) : double.PositiveInfinity;
+    public bool AlongX => !IsCurved && Math.Abs(By - Ay) < 1e-6;
+    public bool AlongY => !IsCurved && Math.Abs(Bx - Ax) < 1e-6;
+    /// <summary>Tường thẳng song song trục X hoặc Y</summary>
+    public bool IsOrthogonal => AlongX || AlongY;
+    /// <summary>Tường thẳng xiên (không song song trục X/Y)</summary>
+    public bool IsDiagonal => !IsCurved && !AlongX && !AlongY;
+    /// <summary>Góc phương A→B so với trục X (độ, trong [0, 180))</summary>
+    public double AngleDeg { get { double a = Math.Atan2(By - Ay, Bx - Ax) * 180 / Math.PI % 180; return a < 0 ? a + 180 : a; } }
 }
 
 public class ArchGrid
@@ -81,8 +96,12 @@ public class ArchColumn
 {
     /// <summary>Tâm cột</summary>
     public double X, Y;
-    /// <summary>Kích thước theo X, Y (m)</summary>
+    /// <summary>Kích thước theo X, Y (m). Cột xoay: kích thước theo trục riêng của cột (Bx theo phương góc Angle).</summary>
     public double Bx, By;
+    /// <summary>Góc xoay cột (độ, ngược chiều kim đồng hồ, trong (−45°, 45°]): cạnh Bx hợp với trục X góc này. 0 = cột vuông góc trục.</summary>
+    public double Angle;
+    /// <summary>Cột tròn: đường kính D (m); Bx = By = cạnh vuông tương đương cùng diện tích (D·√π/2 ≈ 0,886·D). 0 = cột chữ nhật.</summary>
+    public double Diameter;
 }
 
 public class ArchRoom
@@ -268,6 +287,10 @@ public class PropColumn
     /// <summary>Tiết diện theo từng đoạn tầng: tên cao trình đỉnh đoạn → tên tiết diện</summary>
     public Dictionary<string, string> SectionByLevel = new();
     public double TributaryArea;
+    /// <summary>Góc xoay cột theo bản vẽ kiến trúc (độ) – cộng vào góc tiết diện khi ghi mô hình (FrameElement.Angle)</summary>
+    public double Angle;
+    /// <summary>Cột tròn trên bản vẽ kiến trúc: đường kính (m), 0 = không</summary>
+    public double Diameter;
     public string Note = "";
     public bool Include = true;
 }
@@ -292,7 +315,12 @@ public class PropBeam
     public bool Parapet;
     public string Note = "";
     public bool Include = true;
+    /// <summary>Dầm cong (đỡ tường cong): độ vồng có dấu so với dây cung A→B (m), như FrameElement.CurveMidOffset; 0 = dầm thẳng</summary>
+    public double Sagitta;
+    /// <summary>Chiều dài dây cung A–B (dầm thẳng: chiều dài dầm), m</summary>
     public double Length => Math.Sqrt((Bx - Ax) * (Bx - Ax) + (By - Ay) * (By - Ay));
+    /// <summary>Chiều dài trục dầm (dầm cong: chiều dài cung), m</summary>
+    public double AxisLength => Math.Abs(Sagitta) > 1e-6 ? CurvedBeam.ArcLength(Length, Sagitta) : Length;
 }
 
 public class PropSlab

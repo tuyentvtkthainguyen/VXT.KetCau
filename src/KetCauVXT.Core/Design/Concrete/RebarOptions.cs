@@ -238,8 +238,8 @@ public static class RebarOptions
                 }
                 Add(RebarZones.BeamTopCont, -1, "Thép trên chạy suốt (giữa nhịp)", b.ContTopAsReq, top != null ? "2Ø" + top.Dia : "", true);
                 Add(RebarZones.BeamBotCont, -1, "Thép dưới chạy suốt", b.ContBotAsReq, bot != null ? "2Ø" + bot.Dia : "", false);
-                if (!b.IsCurved)
-                    for (int k = 0; k < ns; k++)
+                // dầm cong: đai chọn được kiểm tra lại cắt + xoắn
+                for (int k = 0; k < ns; k++)
                     {
                         var s = b.Spans[k];
                         Add(RebarZones.Stirrup, k, "Nhịp " + (k + 1) + " – cốt đai", 0,

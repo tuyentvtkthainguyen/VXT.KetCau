@@ -12,10 +12,10 @@ public static class RebarShopDrawing
 
     private static readonly string[] Heads =
     {
-        "TÊN CẤU KIỆN", "SỐ HIỆU", "MÃ HÌNH", "HÌNH DẠNG & KÍCH THƯỚC (mm)", "Ø (mm)", "CHIỀU DÀI CẮT 1 THANH (mm)",
-        "SỐ C.KIỆN", "SỐ THANH", "TỔNG CHIỀU DÀI (m)", "TỔNG TRỌNG LƯỢNG (kg)", "GHI CHÚ"
+        "TÊN CẤU KIỆN", "SỐ HIỆU", "MÃ HÌNH", "HÌNH DẠNG & KÍCH THƯỚC NGOÀI (mm)", "Ø (mm)", "TỔNG K.THƯỚC NGOÀI (mm)", "CHIỀU DÀI CẮT 1 THANH (mm)",
+        "SỐ C.KIỆN", "SỐ THANH", "TỔNG CHIỀU DÀI CẮT (m)", "TỔNG TRỌNG LƯỢNG (kg)", "GHI CHÚ"
     };
-    private static readonly double[] ColW = { 26, 14, 12, 66, 11, 22, 14, 30, 20, 22, 44 };
+    private static readonly double[] ColW = { 26, 14, 12, 66, 11, 20, 22, 14, 30, 20, 22, 44 };
 
     /// <summary>Các loại cấu kiện có thép gia công, theo thứ tự xuất.</summary>
     public static readonly string[] Categories = { "Dầm", "Cột", "Sàn", "Móng" };
@@ -70,7 +70,7 @@ public static class RebarShopDrawing
         for (int i = 0; i < Heads.Length; i++)
         {
             double cxm = (cx[i] + cx[i + 1]) / 2;
-            if (i == 7)
+            if (i == 8)
             {
                 double ym = y - headH / 2;
                 w.Line(Lay.KhungTen, cx[i], ym, cx[i + 1], ym);
@@ -100,15 +100,17 @@ public static class RebarShopDrawing
             w.Text(Lay.Chu, (cx[2] + cx[3]) / 2, ym, th, row.ShapeCode, 0, 1, 2);
             DrawShape(w, row, cx[3] + 3 * u, cx[4] - 3 * u, y2 + 2 * u, yr - 2 * u);
             w.Text(Lay.Chu, (cx[4] + cx[5]) / 2, ym, th, row.Dia.ToString(DrawUtil.Inv), 0, 1, 2);
-            w.Text(Lay.Chu, (cx[5] + cx[6]) / 2, ym, th, DxfWriter.N0(row.CutLengthMm), 0, 1, 2);
-            w.Text(Lay.Chu, (cx[6] + cx[7]) / 2, ym, th, row.MemberCount.ToString(DrawUtil.Inv), 0, 1, 2);
-            double cm = (cx[7] + cx[8]) / 2;
-            w.Text(Lay.Chu, (cx[7] + cm) / 2, ym, th, row.BarsPerMember.ToString(DrawUtil.Inv), 0, 1, 2);
-            w.Text(Lay.Chu, (cm + cx[8]) / 2, ym, th, row.BarsTotal.ToString(DrawUtil.Inv), 0, 1, 2);
-            w.Text(Lay.Chu, (cx[8] + cx[9]) / 2, ym, th, row.TotalLengthM.ToString("0.00", DrawUtil.Inv), 0, 1, 2);
-            w.Text(Lay.Chu, (cx[9] + cx[10]) / 2, ym, th, row.WeightKg.ToString("0.00", DrawUtil.Inv), 0, 1, 2);
+            w.Text(Lay.Chu, (cx[5] + cx[6]) / 2, ym, th, DxfWriter.N0(row.OutsideLengthMm), 0, 1, 2);
+            w.Text(Lay.Chu, (cx[6] + cx[7]) / 2, ym, th, DxfWriter.N0(row.CutLengthMm), 0, 1, 2);
+            w.Text(Lay.Chu, (cx[7] + cx[8]) / 2, ym, th, row.MemberCount.ToString(DrawUtil.Inv), 0, 1, 2);
+            double cm = (cx[8] + cx[9]) / 2;
+            w.Text(Lay.Chu, (cx[8] + cm) / 2, ym, th, row.BarsPerMember.ToString(DrawUtil.Inv), 0, 1, 2);
+            w.Text(Lay.Chu, (cm + cx[9]) / 2, ym, th, row.BarsTotal.ToString(DrawUtil.Inv), 0, 1, 2);
+            w.Text(Lay.Chu, (cx[9] + cx[10]) / 2, ym, th, row.TotalLengthM.ToString("0.00", DrawUtil.Inv), 0, 1, 2);
+            w.Text(Lay.Chu, (cx[10] + cx[11]) / 2, ym, th, row.WeightKg.ToString("0.00", DrawUtil.Inv), 0, 1, 2);
             string note = string.IsNullOrEmpty(row.Note) ? row.Role : row.Role + "; " + row.Note;
-            Wrap(w, (cx[10] + cx[11]) / 2, ym, ColW[10] * u, note, 0.75 * th);
+            if (row.BendDeductionMm > 0) note += "; trừ dãn uốn " + DxfWriter.N0(row.BendDeductionMm) + " mm";
+            Wrap(w, (cx[11] + cx[12]) / 2, ym, ColW[11] * u, note, 0.75 * th);
             yr = y2;
         }
         if (cur != null) spans.Add((rows[start].Member, yr, top));
@@ -122,13 +124,13 @@ public static class RebarShopDrawing
         double yt = yr - rowH;
         w.Line(Lay.KhungTen, 0, yt, W, yt);
         w.Text(Lay.Chu, cx[1] + 2 * u, (yr + yt) / 2, th, "TỔNG CỘNG", 0, 0, 2);
-        w.Text(Lay.Chu, (cx[9] + cx[10]) / 2, (yr + yt) / 2, th, rows.Sum(r => r.WeightKg).ToString("0.00", DrawUtil.Inv), 0, 1, 2);
+        w.Text(Lay.Chu, (cx[10] + cx[11]) / 2, (yr + yt) / 2, th, rows.Sum(r => r.WeightKg).ToString("0.00", DrawUtil.Inv), 0, 1, 2);
         for (int i = 0; i < cx.Length; i++)
         {
-            bool full = i == 0 || i == cx.Length - 1 || i >= 8;
+            bool full = i == 0 || i == cx.Length - 1 || i >= 9;
             w.Line(Lay.KhungTen, cx[i], y, cx[i], full ? yt : yr);
         }
-        w.Line(Lay.KhungTen, (cx[7] + cx[8]) / 2, yh, (cx[7] + cx[8]) / 2, yr);
+        w.Line(Lay.KhungTen, (cx[8] + cx[9]) / 2, yh, (cx[8] + cx[9]) / 2, yr);
         return w;
     }
 
@@ -370,7 +372,11 @@ public static class RebarShopDrawing
             "1. Số hiệu gia công trùng số hiệu trên bản vẽ chi tiết; thanh dài hơn cây " + DxfWriter.N0(shop.Options.StockLength * 1000) + " mm được tách nối chồng, ghi hậu tố a, b, c…",
             "2. Nối chồng theo TCVN 5574:2018 mục 10.3.6: ll = 1,2·l0,an (vùng kéo), l0,an = Rs·d/(4·η1·η2·Rbt); ≥ 20d và ≥ 250 mm.",
             "3. Thép dưới dầm nối trong ¼ nhịp gần gối, thép trên nối ở ⅓ giữa nhịp; nối so le, tim mối nối cách nhau ≥ 1,3·ll (≤ 50% số thanh tại một tiết diện).",
-            "4. Đai kín móc 135°, đoạn móc max(75 mm; 10d); chiều dài cắt = 2(A + B) + 2·móc. Chiều dài cắt chưa trừ độ giãn khi uốn.",
+            "4. Đai kín móc 135°, đoạn móc max(75 mm; 10d); kích thước ngoài = 2(A + B) + 2·móc. "
+                + (shop.Options.BendDeduction
+                    ? string.Format(DrawUtil.Inv, "Chiều dài cắt = kích thước ngoài − độ dãn khi uốn: {0:0.#}d mỗi chỗ uốn 90°, {1:0.#}d mỗi móc 135°, {2:0.#}d mỗi móc 180°.",
+                        shop.Options.Deduct90, shop.Options.Deduct135, shop.Options.Deduct180)
+                    : "Chiều dài cắt = kích thước ngoài (không trừ độ dãn khi uốn)."),
             "5. Đầu thừa ≥ " + DxfWriter.N0(shop.Options.MinReuseOffcut * 1000) + " mm thu hồi dùng lại; đầu thừa ngắn hơn tính hao hụt."
         };
         foreach (var n in notes) { w.Text(Lay.Chu, 0, yn, 0.85 * th, n, 0, 0, 0); yn -= 1.6 * th; }

@@ -113,6 +113,13 @@ public class RebarPreferences
     public double MinReuseOffcut { get; set; } = 1.0;
     /// <summary>Nối so le: không nối quá 50% số thanh tại một tiết diện (TCVN 5574:2018 mục 10.3.6).</summary>
     public bool StaggerSplices { get; set; } = true;
+    /// <summary>Trừ độ dãn dài khi uốn vào chiều dài cắt trên bản vẽ gia công (bản vẽ chi tiết vẫn ghi kích thước ngoài).</summary>
+    public bool BendDeduction { get; set; } = true;
+    /// <summary>Lượng trừ mỗi chỗ uốn theo góc, tính bằng bội số d (bảng thực hành gia công, xấp xỉ với bán kính uốn trong 2–2,5d):
+    /// 90° → 2d, 135° → 3d, 180° → 4d.</summary>
+    public double Deduct90 { get; set; } = 2.0;
+    public double Deduct135 { get; set; } = 3.0;
+    public double Deduct180 { get; set; } = 4.0;
     /// <summary>Phương án bố trí thép sàn mặc định cho cả công trình (từng ô có thể chọn riêng).</summary>
     public SlabRebarScheme SlabScheme { get; set; } = SlabRebarScheme.TopBarsBottomMesh;
 

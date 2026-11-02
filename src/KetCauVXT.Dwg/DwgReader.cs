@@ -18,7 +18,8 @@ namespace KetCauVXT.Dwg;
 /// <item>LINE, LWPOLYLINE, POLYLINE 2D/3D (cung lồi bulge chia đoạn 15°), ARC (→ đa tuyến), CIRCLE, TEXT, MTEXT (bỏ mã định dạng), ATTRIB;</item>
 /// <item>INSERT/MINSERT phân rã về toạ độ thế giới (kể cả block lồng nhau, tối đa 8 cấp), thực thể mang tên block ngoài cùng
 /// (block động *U đổi về tên block gốc), thực thể lớp "0" trong block lấy lớp của INSERT, kiểu đường BYLAYER/BYBLOCK được thay;</item>
-/// <item>HATCH (biên), SOLID → miền tô (FillEntities); DIMENSION, ATTDEF, ELLIPSE, SPLINE… bỏ qua;</item>
+/// <item>ELLIPSE, SPLINE → đa tuyến (chia như bộ đọc DXF – <see cref="KetCauVXT.Import.CadCurves"/>); cung ARC và cung lồi giữ tâm/bán kính (DxfEntity.Arcs);</item>
+/// <item>HATCH (biên), SOLID → miền tô (FillEntities); DIMENSION, ATTDEF… bỏ qua;</item>
 /// <item>lớp đóng băng (frozen): bỏ thực thể; lớp tắt (off): vẫn đọc, ghi vào OffLayers để người gọi tự lọc; xref: bỏ, có cảnh báo.</item>
 /// </list>
 /// Đăng ký vào lõi: <c>KetCauVXT.Import.CadFileReaders.Dwg = DwgReader.Read;</c></summary>
@@ -302,6 +303,8 @@ public static class DwgReader
         public string Style = "";
         public string FontHint = "";
         public bool IsFill;
+        /// <summary>Đoạn cung tròn (chỉ số điểm đầu/cuối, tâm, bán kính) trong hệ toạ độ của thực thể</summary>
+        public List<(int I0, int I1, double Cx, double Cy, double R)> Arcs;
     }
 
     private static readonly Regex MTextFontRx = new(@"\\[fF]([^|;]*)", RegexOptions.Compiled);
@@ -561,6 +564,13 @@ public static class DwgReader
                 default:
                     e.Points.Capacity = re.Pts.Count;
                     foreach (var p in re.Pts) e.Points.Add(m.Apply(p));
+                    // cung tròn giữ nguyên là cung khi phép biến đổi đồng dạng (co giãn đều)
+                    if (re.Arcs != null && m.IsUniform)
+                        e.Arcs = re.Arcs.Select(a =>
+                        {
+                            var c = m.Apply((a.Cx, a.Cy));
+                            return new DxfArcSpan { I0 = a.I0, I1 = a.I1, Cx = c.Item1, Cy = c.Item2, R = a.R * m.LinearScale };
+                        }).ToList();
                     break;
             }
             if (e.Points.Count == 0) return null;
@@ -630,6 +640,29 @@ public static class DwgReader
                         double x = cx + rad * Math.Cos(a), y = cy + rad * Math.Sin(a);
                         r.Pts.Add((flip ? -x : x, y));
                     }
+                    r.Arcs = new List<(int I0, int I1, double Cx, double Cy, double R)> { (0, r.Pts.Count - 1, flip ? -cx : cx, cy, rad) };
+                    return One(r);
+                }
+                case Ellipse el:
+                {
+                    var r = new Raw { Type = DxfEntityType.Polyline, Source = "ELLIPSE" };
+                    var mj = el.MajorAxisEndPoint;
+                    var pts = CadCurves.Ellipse(el.Center.X, el.Center.Y, mj.X, mj.Y, el.RadiusRatio, el.StartParameter, el.EndParameter, Flipped(el.Normal), out bool closed);
+                    if (pts.Count < 2) return null;
+                    r.Pts.AddRange(pts);
+                    r.Closed = closed;
+                    return One(r);
+                }
+                case Spline sp:
+                {
+                    var r = new Raw { Type = DxfEntityType.Polyline, Source = "SPLINE" };
+                    var ctrl = sp.ControlPoints.Select(q => (q.X, q.Y)).ToList();
+                    var fit = sp.FitPoints.Select(q => (q.X, q.Y)).ToList();
+                    bool closedFlag = (sp.Flags & SplineFlags.Closed) != 0;
+                    var pts = CadCurves.Spline(sp.Degree <= 0 ? 3 : sp.Degree, sp.Knots, ctrl, sp.Weights, fit, closedFlag, out bool closed);
+                    if (pts.Count < 2) return null;
+                    r.Pts.AddRange(pts);
+                    r.Closed = closed;
                     return One(r);
                 }
                 case Circle cir:
@@ -675,7 +708,7 @@ public static class DwgReader
                 case Hatch h:
                     return ConvertHatch(h);
                 default:
-                    return null;   // DIMENSION, ELLIPSE, SPLINE, POINT, VIEWPORT… bỏ qua (như bộ đọc DXF)
+                    return null;   // DIMENSION, POINT, VIEWPORT… bỏ qua (như bộ đọc DXF)
             }
         }
 
@@ -798,7 +831,10 @@ public static class DwgReader
                 if (Math.Abs(bulge) > 1e-9 && hasNext && n >= 2)
                 {
                     var q = v[(i + 1) % n];
+                    int i0 = e.Pts.Count - 1;
                     AddBulgePoints(e.Pts, v[i].X, v[i].Y, q.X, q.Y, bulge);
+                    if (!e.IsFill && CadCurves.BulgeCircle(v[i].X, v[i].Y, q.X, q.Y, bulge, out double bcx, out double bcy, out double br))
+                        (e.Arcs ??= new List<(int I0, int I1, double Cx, double Cy, double R)>()).Add((i0, e.Pts.Count, flip ? -bcx : bcx, bcy, br));
                 }
             }
             if (flip) for (int i = 0; i < e.Pts.Count; i++) e.Pts[i] = (-e.Pts[i].X, e.Pts[i].Y);

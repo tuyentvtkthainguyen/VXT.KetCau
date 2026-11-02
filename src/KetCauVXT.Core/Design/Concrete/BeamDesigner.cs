@@ -5,7 +5,8 @@ namespace KetCauVXT.Design.Concrete;
 
 /// <summary>Thiết kế dầm BTCT liên tục theo TCVN 5574:2018: gom phần tử thành dải dầm, tính thép dọc, đai, độ võng,
 /// bố trí thép (BarMark) và vùng đai (StirrupZone) theo quy tắc thể hiện kiểu Kết cấu Soft.
-/// <para>Dầm cong (FrameElement.IsCurved): mỗi phần tử dầm cong là một dải dầm riêng, toạ độ dọc dải = chiều dài cung
+/// <para>Dầm cong (FrameElement.IsCurved): các phần tử cong nối tiếp trên cùng một đường tròn (dầm cong bị chia tại nút) gộp thành một dải
+/// liên tục chia nhịp tại gối như dầm thẳng; phần tử cong đứng riêng là một dải; toạ độ dọc dải = chiều dài cung
 /// (nội lực của bộ phân tích đã theo cung, hệ trục tiếp tuyến). Ngoài uốn + cắt còn kiểm tra xoắn (RcTorsion – giản lược theo
 /// TCVN 5574:2018 mục 8.1.4): cốt dọc chịu xoắn cộng ½ vào thép trên, ½ vào thép dưới; đai kín bước theo xoắn + cắt.</para></summary>
 public static class BeamDesigner
@@ -161,9 +162,16 @@ public static class BeamDesigner
                 }
                 if (f0.IsCurved && CurvedBeam.Arc(p, f0) != null)
                 {
-                    // dầm cong: dải riêng một phần tử
+                    // dầm cong: các phần tử cong nối tiếp cùng đường tròn (dầm cong bị chia tại nút) gộp thành MỘT dải liên tục,
+                    // chia nhịp tại gối như dầm thẳng; không gộp được → dải riêng một phần tử
                     used.Add(f0.Id);
-                    var lc = MakeCurvedLine(p, f0, sec, byNode);
+                    var cchain = CurvedChain(p, pool, f0, used);
+                    var lc = cchain.Count > 1 ? MakeCurvedChainLine(p, cchain, sec, byNode) : null;
+                    if (lc == null)
+                    {
+                        foreach (var cf in cchain.Skip(1)) used.Remove(cf.Id);
+                        lc = MakeCurvedLine(p, f0, sec, byNode);
+                    }
                     if (lc != null) lines.Add(lc);
                     continue;
                 }
@@ -233,6 +241,102 @@ public static class BeamDesigner
                 cur.L = s.X0 + s.Len - cur.X0;
                 li.Spans.Add(cur);
                 cur = null;
+            }
+        }
+        return li;
+    }
+
+    /// <summary>Các phần tử dầm cong chưa dùng nối tiếp với f0 (chung nút đầu/cuối dải) và cùng đường tròn (tâm, bán kính, cao độ).</summary>
+    private static List<FrameElement> CurvedChain(Project p, List<FrameElement> pool, FrameElement f0, HashSet<int> used)
+    {
+        var a0 = CurvedBeam.Arc(p, f0);
+        var chain = new List<FrameElement> { f0 };
+        if (a0 == null) return chain;
+        var ends = new List<int> { f0.NodeI, f0.NodeJ };
+        double tol = 1e-3 * Math.Max(1, a0.Radius);
+        bool grown = true;
+        while (grown)
+        {
+            grown = false;
+            foreach (var f in pool)
+            {
+                if (used.Contains(f.Id) || !f.IsCurved) continue;
+                ArcGeometry a;
+                try { a = CurvedBeam.Arc(p, f); } catch (KeyNotFoundException) { continue; }
+                if (a == null || Math.Abs(a.Radius - a0.Radius) > tol || Math.Abs(a.Cx - a0.Cx) > tol || Math.Abs(a.Cy - a0.Cy) > tol || Math.Abs(a.Z - a0.Z) > 1e-3) continue;
+                int shared = ends.Contains(f.NodeI) ? f.NodeI : ends.Contains(f.NodeJ) ? f.NodeJ : -1;
+                if (shared < 0) continue;
+                chain.Add(f); used.Add(f.Id);
+                ends.Remove(shared);
+                ends.Add(f.NodeI == shared ? f.NodeJ : f.NodeI);
+                grown = true;
+            }
+        }
+        return chain;
+    }
+
+    /// <summary>Dải dầm cong nhiều phần tử trên cùng một cung: X dọc dải = chiều dài cung cộng dồn, chia nhịp tại nút có cột / dầm đỡ
+    /// (như dầm thẳng), bề rộng gối theo tiếp tuyến cung tại nút. null nếu chuỗi không mở (vòng kín) hoặc không lập được cung chung.</summary>
+    private static LineInfo MakeCurvedChainLine(Project p, List<FrameElement> chain, FrameSection sec, Dictionary<int, List<FrameElement>> byNode)
+    {
+        var cnt = new Dictionary<int, int>();
+        foreach (var f in chain)
+            foreach (int n in new[] { f.NodeI, f.NodeJ }) cnt[n] = (cnt.TryGetValue(n, out int k0) ? k0 : 0) + 1;
+        var startKv = cnt.Where(kv => kv.Value == 1).OrderBy(kv => kv.Key).ToList();
+        if (startKv.Count != 2) return null;
+        int start = startKv[0].Key, cur = start;
+        var left = new List<FrameElement>(chain);
+        var order = new List<(FrameElement F, bool Rev)>();
+        var nodeSeq = new List<int> { start };
+        while (left.Count > 0)
+        {
+            var f = left.FirstOrDefault(x => x.NodeI == cur || x.NodeJ == cur);
+            if (f == null) return null;
+            left.Remove(f);
+            bool rev = f.NodeJ == cur;
+            order.Add((f, rev));
+            cur = rev ? f.NodeI : f.NodeJ;
+            nodeSeq.Add(cur);
+        }
+        var A = p.Node(start).P; var Bp = p.Node(cur).P; var M = p.Node(nodeSeq[1]).P;
+        double sg = CurvedBeam.SagittaThrough(A.X, A.Y, Bp.X, Bp.Y, M.X, M.Y);
+        var arc = CurvedBeam.Arc(A, Bp, sg);
+        if (arc == null) return null;
+        var u = (Bp - A).Normalize();
+        var li = new LineInfo
+        {
+            Story = chain[0].Story ?? "", Group = chain[0].DesignGroup ?? "", Sec = sec, U = u, Origin = A,
+            Z = nodeSeq.Max(n => p.Node(n).Z), Arc = arc
+        };
+        double xAcc = 0;
+        foreach (var (f, rev) in order)
+        {
+            double len = p.Length(f);
+            li.Segs.Add(new Seg { F = f, Reversed = rev, X0 = xAcc, Len = len });
+            xAcc += len;
+        }
+        double Ltot = Math.Max(xAcc, 1e-9);
+        var lineIds = new HashSet<int>(chain.Select(f => f.Id));
+        SpanInfo sp = null;
+        for (int k = 0; k < li.Segs.Count; k++)
+        {
+            var sgm = li.Segs[k];
+            if (sp == null)
+            {
+                sp = new SpanInfo { X0 = sgm.X0, NodeL = nodeSeq[k] };
+                sp.WL = SupportWidth(p, nodeSeq[k], arc.TangentAt(sgm.X0 / Ltot), sec.H, lineIds, byNode, out sp.SupL);
+                sp.NameL = SupportName(p, nodeSeq[k], li, byNode);
+            }
+            sp.Segs.Add(sgm);
+            int nr = nodeSeq[k + 1];
+            double w = SupportWidth(p, nr, arc.TangentAt((sgm.X0 + sgm.Len) / Ltot), sec.H, lineIds, byNode, out bool sup);
+            if (k == li.Segs.Count - 1 || sup)
+            {
+                sp.NodeR = nr; sp.WR = w; sp.SupR = sup;
+                sp.NameR = SupportName(p, nr, li, byNode);
+                sp.L = sgm.X0 + sgm.Len - sp.X0;
+                li.Spans.Add(sp);
+                sp = null;
             }
         }
         return li;
@@ -522,8 +626,6 @@ public static class BeamDesigner
                 userShear[k] = true;
                 nUser++;
             }
-        else if (Enumerable.Range(0, ns).Any(k => p.ValidRebarChoice(key, RebarZones.Stirrup, k, basis) != null))
-            d.Messages.Add("Dầm cong: bỏ qua lựa chọn đai của người dùng – đai kín tính theo xoắn + cắt");
         TorsionResult[] tor = null;
         if (li.Arc != null)
         {
@@ -543,6 +645,20 @@ public static class BeamDesigner
                 tor[k] = RcTorsion.Design(d.Spans[k].TMax, d.Spans[k].QMax, b, h, h0, c, conc, stl, sd, shear[k].SSupport, main);
             }
             for (int k = 0; k < ns; k++) sdk[k] = sd;
+            // đai do người dùng chọn: kiểm tra lại cắt + xoắn với Ø và bước chọn
+            for (int k = 0; k < ns; k++)
+            {
+                var ch = p.ValidRebarChoice(key, RebarZones.Stirrup, k, basis);
+                if (ch == null || ch.Dia < 6 || ch.Spacing <= 0) continue;
+                sdk[k] = ch.Dia;
+                var sh = RcSection.Shear(d.Spans[k].QMax, b, h0, conc, stl, ch.Dia);
+                sh.SSupport = ch.Spacing;
+                sh.SMid = Math.Max(ch.Spacing2 > 0 ? ch.Spacing2 : sh.SMid, ch.Spacing);
+                shear[k] = sh;
+                tor[k] = RcTorsion.Design(d.Spans[k].TMax, d.Spans[k].QMax, b, h, h0, c, conc, stl, ch.Dia, ch.Spacing, main);
+                userShear[k] = true;
+                nUser++;
+            }
         }
 
         // ---- kết quả từng nhịp + kiểm tra ----
@@ -621,7 +737,7 @@ public static class BeamDesigner
                 d.Checks.Add(new CheckItem
                 {
                     Name = "Xoắn + cắt – cốt đai kín" + sk, Demand = tr.T, Capacity = tr.TswCapacity, Unit = "kN.m",
-                    Note = "Đai kín Ø" + sd + "a" + DesignUtil.F(tr.S * 1000, "0") + ": Tsw = 2·Ak·Rsw·(Asw1/s − qsw/2Rsw), Ak = " + DesignUtil.F(tr.Ak * 1e4, "0") + " cm²"
+                    Note = "Đai kín Ø" + sdk[k] + "a" + DesignUtil.F(tr.S * 1000, "0") + ": Tsw = 2·Ak·Rsw·(Asw1/s − qsw/2Rsw), Ak = " + DesignUtil.F(tr.Ak * 1e4, "0") + " cm²"
                 });
                 // phần thép dọc còn dư sau khi chịu uốn tại các tiết diện có yêu cầu (bỏ qua thép trên ở đầu tự do công xôn: T → 0)
                 double spare = res.AsBotProv - (res.AsBotReq - res.AsTorsion / 2);

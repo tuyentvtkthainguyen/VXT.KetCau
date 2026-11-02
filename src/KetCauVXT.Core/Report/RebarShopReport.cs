@@ -23,22 +23,22 @@ public static class RebarShopReport
     {
         sh.FirstRowIsHeader = false;
         sh.FreezeRows = 0;
-        sh.SetColumnWidths(12, 9, 9, 8, 18, 30, 7, 12, 9, 10, 10, 13, 13, 36);
+        sh.SetColumnWidths(12, 9, 9, 8, 18, 30, 7, 12, 10, 12, 9, 10, 10, 13, 13, 36);
         sh.AddRow(new XlCell("BẢNG GIA CÔNG CỐT THÉP – " + (p?.Name ?? ""), XlStyle.Title));
         sh.AddRow("Cây thép thương phẩm " + (shop.Options.StockLength * 1000).ToString("0", DrawUtil.Inv) + " mm; đầu thừa ≥ "
                   + (shop.Options.MinReuseOffcut * 1000).ToString("0", DrawUtil.Inv) + " mm tái sử dụng; nối chồng theo TCVN 5574:2018 mục 10.3.6"
                   + (shop.Options.Stagger ? ", so le ≤ 50% số thanh tại một tiết diện" : ""));
         sh.AddEmptyRow();
         sh.AddBoldRow("1. DANH SÁCH CẮT – UỐN");
-        sh.AddHeaderRow("Loại", "Cấu kiện", "Số hiệu CT", "Số hiệu GC", "Hình dạng (mã)", "Kích thước các đoạn (mm)", "Ø (mm)", "Chiều dài cắt (mm)",
-            "Số CK", "Thanh / 1 CK", "Tổng số thanh", "Tổng chiều dài (m)", "Khối lượng (kg)", "Ghi chú");
+        sh.AddHeaderRow("Loại", "Cấu kiện", "Số hiệu CT", "Số hiệu GC", "Hình dạng (mã)", "Kích thước ngoài các đoạn (mm)", "Ø (mm)", "Tổng kích thước ngoài (mm)",
+            "Trừ dãn khi uốn (mm)", "Chiều dài cắt (mm)", "Số CK", "Thanh / 1 CK", "Tổng số thanh", "Tổng chiều dài cắt (m)", "Khối lượng (kg)", "Ghi chú");
         if (shop.Bars.Count == 0) { sh.AddRow("Chưa có dữ liệu bố trí thép (chạy thiết kế trước)."); return; }
         foreach (var b in shop.Bars)
             sh.AddRow(b.Category, b.Member, b.ParentMark, b.Label, b.ShapeCode + " " + b.ShapeName,
                 string.Join(" × ", b.Segments.Select(DxfWriter.N0)) + (b.HookMm > 0 ? " + 2 móc " + DxfWriter.N0(b.HookMm) : ""),
-                b.Dia, b.CutLengthMm, b.MemberCount, b.BarsPerMember, b.BarsTotal, b.TotalLengthM, b.WeightKg,
+                b.Dia, b.OutsideLengthMm, b.BendDeductionMm, b.CutLengthMm, b.MemberCount, b.BarsPerMember, b.BarsTotal, b.TotalLengthM, b.WeightKg,
                 string.IsNullOrEmpty(b.Note) ? b.Role : b.Role + "; " + b.Note);
-        sh.AddBoldRow("TỔNG CỘNG", null, null, null, null, null, null, null, null, null, shop.Bars.Sum(b => b.BarsTotal),
+        sh.AddBoldRow("TỔNG CỘNG", null, null, null, null, null, null, null, null, null, null, null, shop.Bars.Sum(b => b.BarsTotal),
             Math.Round(shop.Bars.Sum(b => b.TotalLengthM), 2), shop.TotalWeightKg);
 
         sh.AddEmptyRow();

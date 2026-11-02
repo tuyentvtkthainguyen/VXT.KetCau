@@ -29,15 +29,29 @@ public class DxfEntity
     public double Width { get; set; }
     /// <summary>Bảng mã chữ suy từ font (STYLE / mã \f trong MTEXT): "TCVN3" (.VnTime…), "VNI" (VNI-Times…) hoặc "".</summary>
     public string FontHint { get; set; } = "";
+    /// <summary>Các đoạn cung tròn trong đa tuyến (ARC, cung lồi bulge của LWPOLYLINE/POLYLINE) – tâm, bán kính đúng (không phải điểm chia).
+    /// null = không có cung (hoặc block co giãn không đều làm cung thành elip). Dùng để nhận tường cong.</summary>
+    public List<DxfArcSpan> Arcs { get; set; }
 
     public override string ToString() => $"{Type} [{Layer}] {Points.Count} điểm" + (Block.Length > 0 ? $" <{Block}>" : "");
+}
+
+/// <summary>Một đoạn cung tròn nằm trong danh sách điểm của đa tuyến: các điểm I0 … I1 nằm trên đường tròn tâm (Cx, Cy) bán kính R (m).
+/// I1 = Points.Count nghĩa là điểm cuối là điểm đầu (đoạn khép kín của đa tuyến kín). Các đoạn thẳng k = I0 … I1 − 1 thuộc cung.</summary>
+public sealed class DxfArcSpan
+{
+    public int I0, I1;
+    public double Cx, Cy, R;
+    public override string ToString() => $"cung [{I0}..{I1}] tâm ({Cx:0.###};{Cy:0.###}) R={R:0.###}";
 }
 
 /// <summary>Bộ đọc DXF dạng ASCII (R12 … 2018).
 /// Đọc HEADER ($INSUNITS, $ACADVER, $DWGCODEPAGE), TABLES/LAYER (kiểu đường, đóng băng/tắt),
 /// BLOCKS (định nghĩa block) và ENTITIES (chỉ model space): LINE, LWPOLYLINE, POLYLINE/VERTEX/SEQEND, CIRCLE, ARC,
-/// TEXT, MTEXT, INSERT/MINSERT (phân rã block về toạ độ thế giới, kể cả block lồng nhau) + ATTRIB.
-/// Bỏ qua HATCH, DIMENSION, ELLIPSE, SPLINE… Đơn vị bản vẽ lấy theo $INSUNITS (4 = mm, 5 = cm, 6 = m), mặc định mm.</summary>
+/// TEXT, MTEXT, INSERT/MINSERT (phân rã block về toạ độ thế giới, kể cả block lồng nhau) + ATTRIB,
+/// ELLIPSE (chia theo tham số, mỗi đoạn ≤ 10°) và SPLINE (B-spline theo điểm điều khiển / nút, hoặc đường cong qua điểm khớp) → đa tuyến.
+/// Bỏ qua DIMENSION… Đơn vị bản vẽ lấy theo $INSUNITS (4 = mm, 5 = cm, 6 = m), mặc định mm.
+/// DXF nhị phân (Binary DXF) không đọc – báo lỗi rõ ràng (<see cref="BinaryDxfMessage"/>).</summary>
 public class DxfReader
 {
     public List<DxfEntity> Entities { get; } = new();
@@ -46,6 +60,9 @@ public class DxfReader
     /// <summary>Hệ số nhân để đổi đơn vị bản vẽ → m</summary>
     public double Scale { get; private set; } = 0.001;
     public List<string> Warnings { get; } = new();
+
+    /// <summary>Thông báo khi gặp file DXF nhị phân.</summary>
+    public const string BinaryDxfMessage = "File DXF dạng nhị phân (Binary DXF) – chưa hỗ trợ. Lưu lại dạng DXF ASCII: trong AutoCAD gõ SAVEAS → chọn kiểu DXF → Tools/Options → DXF Options → định dạng ASCII (bỏ chọn BINARY), rồi nhập lại.";
 
     /// <summary>Phiên bản DXF ($ACADVER, vd. "AC1027"); "" nếu không có.</summary>
     public string AcadVersion { get; private set; } = "";
@@ -103,6 +120,8 @@ public class DxfReader
         public string Style = "";
         public string FontHint = "";
         public bool IsFill;
+        /// <summary>Đoạn cung tròn (chỉ số điểm đầu/cuối, tâm, bán kính) trong hệ toạ độ của thực thể</summary>
+        public List<(int I0, int I1, double Cx, double Cy, double R)> Arcs;
     }
 
     private sealed class BlockDef
@@ -175,7 +194,7 @@ public class DxfReader
         bytes ??= Array.Empty<byte>();
         if (StartsWith(bytes, "AutoCAD Binary DXF"))
         {
-            r.Warnings.Add("File DXF dạng nhị phân (Binary DXF) – chưa hỗ trợ. Trong AutoCAD hãy SAVEAS → DXF, chọn Options → định dạng ASCII.");
+            r.Warnings.Add(BinaryDxfMessage);
             return r;
         }
         if (bytes.Length >= 6 && StartsWith(bytes, "AC10") && bytes[4] >= (byte)'0' && bytes[4] <= (byte)'9')
@@ -334,7 +353,7 @@ public class DxfReader
     {
         if (lines.Length > 0 && lines[0] != null && lines[0].StartsWith("AutoCAD Binary DXF", StringComparison.Ordinal))
         {
-            Warnings.Add("File DXF dạng nhị phân (Binary DXF) – chưa hỗ trợ. Trong AutoCAD hãy SAVEAS → DXF, chọn Options → định dạng ASCII.");
+            Warnings.Add(BinaryDxfMessage);
             return;
         }
 
@@ -502,7 +521,9 @@ public class DxfReader
                     case "SOLID":
                     case "TRACE": e = ReadSolid(); break;
                     case "HATCH": list.AddRange(ReadHatch()); break;
-                    default: Body(); break; // ATTDEF, DIMENSION, ELLIPSE, SPLINE, … bỏ qua
+                    case "ELLIPSE": e = ReadEllipse(); break;
+                    case "SPLINE": e = ReadSpline(); break;
+                    default: Body(); break; // ATTDEF, DIMENSION, … bỏ qua
                 }
             }
             catch (Exception)
@@ -644,7 +665,11 @@ public class DxfReader
             if (Math.Abs(bulge) > 1e-9 && hasNext && n >= 2)
             {
                 var q = v[(i + 1) % n];
+                int i0 = e.Pts.Count - 1;
                 AddBulgePoints(e.Pts, v[i].X, v[i].Y, q.X, q.Y, bulge);
+                // ghi lại cung (tâm, bán kính đúng) – điểm cuối cung là đỉnh kế tiếp (chỉ số Pts.Count; = số điểm khi là đoạn khép kín)
+                if (CadCurves.BulgeCircle(v[i].X, v[i].Y, q.X, q.Y, bulge, out double bcx, out double bcy, out double br))
+                    (e.Arcs ??= new List<(int I0, int I1, double Cx, double Cy, double R)>()).Add((i0, e.Pts.Count, flip ? -bcx : bcx, bcy, br));
             }
         }
         if (flip) for (int i = 0; i < e.Pts.Count; i++) e.Pts[i] = (-e.Pts[i].X, e.Pts[i].Y);
@@ -713,6 +738,51 @@ public class DxfReader
             double x = cx + r * Math.Cos(a), y = cy + r * Math.Sin(a);
             e.Pts.Add((flip ? -x : x, y));
         }
+        e.Arcs = new List<(int I0, int I1, double Cx, double Cy, double R)> { (0, e.Pts.Count - 1, flip ? -cx : cx, cy, r) };
+        return e;
+    }
+
+    /// <summary>ELLIPSE: tâm 10/20, đầu trục lớn 11/21 (so với tâm, WCS), tỷ số trục 40, tham số đầu/cuối 41/42 (rad) → đa tuyến (mỗi đoạn ≤ 10°).</summary>
+    private RawEnt ReadEllipse()
+    {
+        var b = Body();
+        var e = Common(b, DxfEntityType.Polyline);
+        e.Source = "ELLIPSE";
+        double ratio = GetOr(b, 40, 1.0);
+        var pts = CadCurves.Ellipse(Get(b, 10), Get(b, 20), Get(b, 11), Get(b, 21), ratio, GetOr(b, 41, 0), GetOr(b, 42, 2 * Math.PI), Flipped(b), out bool closed);
+        if (pts.Count < 2) return null;
+        e.Pts.AddRange(pts);
+        e.Closed = closed;
+        return e;
+    }
+
+    /// <summary>SPLINE: bậc 71, cờ 70 (1 = kín), nút 40, trọng số 41, điểm điều khiển 10/20, điểm khớp 11/21 (WCS) → đa tuyến.</summary>
+    private RawEnt ReadSpline()
+    {
+        var b = Body();
+        var e = Common(b, DxfEntityType.Polyline);
+        e.Source = "SPLINE";
+        int flags = ToInt(Find(b, 70));
+        int degree = ToInt(Find(b, 71));
+        var knots = new List<double>(); var weights = new List<double>();
+        var ctrl = new List<(double X, double Y)>(); var fit = new List<(double X, double Y)>();
+        double? cx = null, fx = null;
+        foreach (var (code, value) in b)
+        {
+            switch (code)
+            {
+                case 40: knots.Add(ToD(value)); break;
+                case 41: weights.Add(ToD(value)); break;
+                case 10: cx = ToD(value); break;
+                case 20: if (cx.HasValue) { ctrl.Add((cx.Value, ToD(value))); cx = null; } break;
+                case 11: fx = ToD(value); break;
+                case 21: if (fx.HasValue) { fit.Add((fx.Value, ToD(value))); fx = null; } break;
+            }
+        }
+        var pts = CadCurves.Spline(degree <= 0 ? 3 : degree, knots, ctrl, weights, fit, (flags & 1) != 0, out bool closed);
+        if (pts.Count < 2) return null;
+        e.Pts.AddRange(pts);
+        e.Closed = closed;
         return e;
     }
 
@@ -1051,6 +1121,13 @@ public class DxfReader
             default:
                 e.Points.Capacity = re.Pts.Count;
                 foreach (var p in re.Pts) e.Points.Add(m.Apply(p));
+                // cung tròn giữ nguyên là cung khi phép biến đổi đồng dạng (co giãn đều)
+                if (re.Arcs != null && m.IsUniform)
+                    e.Arcs = re.Arcs.Select(a =>
+                    {
+                        var c = m.Apply((a.Cx, a.Cy));
+                        return new DxfArcSpan { I0 = a.I0, I1 = a.I1, Cx = c.Item1, Cy = c.Item2, R = a.R * m.LinearScale };
+                    }).ToList();
                 break;
         }
         if (e.Points.Count == 0) return null;

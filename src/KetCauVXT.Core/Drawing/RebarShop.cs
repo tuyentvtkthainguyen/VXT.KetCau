@@ -23,12 +23,18 @@ public sealed class ShopOptions
     public bool Stagger { get; set; } = true;
     /// <summary>Chỉ lấy một loại cấu kiện ("Dầm", "Cột", "Sàn", "Móng"); null/"" = tất cả</summary>
     public string Category { get; set; }
+    /// <summary>Trừ độ dãn dài khi uốn vào chiều dài cắt (lượng trừ mỗi chỗ uốn = hệ số × d)</summary>
+    public bool BendDeduction { get; set; } = true;
+    public double Deduct90 { get; set; } = 2.0;
+    public double Deduct135 { get; set; } = 3.0;
+    public double Deduct180 { get; set; } = 4.0;
 
     public static ShopOptions From(RebarPreferences p) => p == null ? new ShopOptions() : new ShopOptions
     {
         StockLength = p.StockLength > 1 ? p.StockLength : 11.7,
         MinReuseOffcut = p.MinReuseOffcut >= 0 ? p.MinReuseOffcut : 1.0,
-        Stagger = p.StaggerSplices
+        Stagger = p.StaggerSplices,
+        BendDeduction = p.BendDeduction, Deduct90 = p.Deduct90, Deduct135 = p.Deduct135, Deduct180 = p.Deduct180
     };
 }
 
@@ -54,7 +60,11 @@ public class ShopBar
     /// <summary>Đoạn móc (mm) – đai/đai C: max(75; 10d) mỗi móc 135°</summary>
     public double HookMm { get; set; }
     public int Dia { get; set; }
-    /// <summary>Chiều dài cắt 1 thanh (mm), làm tròn 10 mm</summary>
+    /// <summary>Tổng kích thước ngoài các đoạn (mm) – như bản vẽ chi tiết / bảng thống kê</summary>
+    public double OutsideLengthMm { get; set; }
+    /// <summary>Lượng trừ độ dãn dài khi uốn (mm)</summary>
+    public double BendDeductionMm { get; set; }
+    /// <summary>Chiều dài cắt 1 thanh (mm) = kích thước ngoài − độ dãn khi uốn, làm tròn 10 mm</summary>
     public double CutLengthMm { get; set; }
     public int MemberCount { get; set; }
     public int BarsPerMember { get; set; }
@@ -166,6 +176,26 @@ public static class RebarShop
     public static double CTieLengthMm(double a, int d) => R10mm(a + 2 * StirrupHookMm(d));
 
     public static double R10mm(double mm) => Math.Round(mm / 10.0, MidpointRounding.AwayFromZero) * 10.0;
+
+    /// <summary>Số chỗ uốn 90° / 135° / 180° theo mã hình dạng: 11 chữ L (1×90°), 21 chữ U (2×90°), 31 hai móc 180°,
+    /// 51 đai kín (3×90° + 2 móc 135°), 52 đai C (2 móc 135°), 00 thẳng.</summary>
+    public static (int B90, int B135, int B180) Bends(string shapeCode) => shapeCode switch
+    {
+        "11" => (1, 0, 0),
+        "21" => (2, 0, 0),
+        "31" => (0, 0, 2),
+        "51" => (3, 2, 0),
+        "52" => (0, 2, 0),
+        _ => (0, 0, 0)
+    };
+
+    /// <summary>Độ dãn dài khi uốn (mm) cần trừ khỏi tổng kích thước ngoài: d·(n90·k90 + n135·k135 + n180·k180); 0 khi tắt.</summary>
+    public static double BendDeduction(string shapeCode, int d, ShopOptions o)
+    {
+        if (o == null || !o.BendDeduction) return 0;
+        var (a, b, c) = Bends(shapeCode);
+        return d * (a * o.Deduct90 + b * o.Deduct135 + c * o.Deduct180);
+    }
 
     // ------------------------------------------------------------------
     // Nối chồng – tách thanh dài
@@ -348,10 +378,12 @@ public static class RebarShop
                     foreach (var pc in pieces)
                     {
                         var (code, name) = ShapeCodeOf(pc.Shape);
+                        double outside = R10mm(pc.LengthMm), ded = BendDeduction(code, bm.Dia, o);
                         rows.Add(new ShopBar
                         {
                             Category = cat, Member = m.Name, Story = m.Story, ParentMark = bm.Mark, Role = bm.Role, Shape = pc.Shape,
-                            ShapeCode = code, ShapeName = name, Segments = pc.Segments, Dia = bm.Dia, CutLengthMm = R10mm(pc.LengthMm),
+                            ShapeCode = code, ShapeName = name, Segments = pc.Segments, Dia = bm.Dia,
+                            OutsideLengthMm = outside, BendDeductionMm = ded, CutLengthMm = R10mm(outside - ded),
                             MemberCount = q, BarsPerMember = pc.Count, HookMm = code is "51" or "52" ? StirrupHookMm(bm.Dia) : 0,
                             Spliced = pieces.Count > 1, LapMm = pieces.Count > 1 ? Math.Round(lapM * 1000) : 0
                         });
@@ -404,7 +436,8 @@ public static class RebarShop
         var segs = bm.Segments?.ToList() ?? new List<double>();
         string shape = bm.Shape ?? "Thẳng";
         var one = new Piece { Shape = shape, Segments = segs.Count > 0 ? segs : new List<double> { DesignUtil.Mm(bm.Length) }, LengthMm = bm.Length * 1000, Count = bm.Count };
-        bool stirrup = DrawUtil.IsStirrup(bm) || shape.StartsWith("Đai", StringComparison.Ordinal);
+        // chỉ đai / đai C không tách (DrawUtil.IsStirrup coi mọi thanh có bước rải – thép sàn, lưới, móng – là "đai" nên không dùng ở đây)
+        bool stirrup = shape.StartsWith("Đai", StringComparison.Ordinal) || (bm.Role ?? "").StartsWith("Đai", StringComparison.Ordinal);
         if (bm.Length <= stock + Eps || stirrup) return new List<Piece> { one };
 
         lap = RebarDetailing.LapLength(conc, steel, bm.Dia);

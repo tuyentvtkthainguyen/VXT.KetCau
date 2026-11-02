@@ -57,5 +57,15 @@ public class WallLine
     /// <summary>Diện tích cửa trên đoạn tường (m²); &lt; 0 = dùng tỷ lệ cửa của loại tường</summary>
     public double OpeningArea { get; set; } = -1;
     public string Note { get; set; } = "";
-    public double Length => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
+    /// <summary>Tường cong: độ vồng có dấu của tim tường so với dây cung (X1,Y1)→(X2,Y2), m – dương = vồng về bên trái
+    /// (cùng quy ước với <see cref="FrameElement.CurveMidOffset"/>). 0 = tường thẳng (mặc định, tương thích file cũ).
+    /// Tải tường cong đặt lên các dầm cong cùng đường tròn nằm dưới tường, theo chiều dài cung.</summary>
+    public double Sagitta { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsCurved => Math.Abs(Sagitta) > 1e-6;
+    /// <summary>Chiều dài dây cung (tường thẳng: chiều dài tường), m</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public double Chord => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
+    /// <summary>Chiều dài tường, m (tường cong: chiều dài cung)</summary>
+    public double Length => IsCurved ? CurvedBeam.ArcLength(Chord, Sagitta) : Chord;
 }
