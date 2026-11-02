@@ -105,7 +105,7 @@ public static class RebarShopTests
             return;
         }
         check("Mô hình mẫu: có dầm, cột, sàn", B(ds.Beams.Count > 0 && ds.Columns.Count > 0 && ds.Slabs.Count > 0), 1, 0);
-        check("Mọi cấu kiện có khoá lựa chọn thép (RebarKeys)", B(ds.All.Where(m => m is not SteelMemberCheck).All(m => m.RebarKeys.Count > 0)), 1, 0);
+        check("Mọi cấu kiện có khoá lựa chọn thép (RebarKeys)", B(ds.Beams.Cast<MemberDesignBase>().Concat(ds.Columns).Concat(ds.Slabs).Concat(ds.Footings).All(m => m.RebarKeys.Count > 0)), 1, 0);
         check("Số khoá = số cấu kiện vật lý gộp (Quantity)", B(ds.Beams.All(b => b.RebarKeys.Count == b.Quantity)), 1, 0);
 
         // đai dầm: kích thước theo mép ngoài đai = b − 2(c − Øđai), chiều dài = 2(A+B) + 2 móc
@@ -122,7 +122,7 @@ public static class RebarShopTests
         var zones = RebarOptions.Zones(p, beam);
         check("Dầm: số vùng thép = nhịp + gối + 2 chạy suốt + đai", zones.Count, beam.Spans.Count * 2 + 1 + 2 + beam.Spans.Count, 0);
         int nAlt = 0, badAs = 0, badFit = 0;
-        foreach (var z in zones.Where(z => z.Zone != RebarZones.Stirrup))
+        foreach (var z in zones.Where(q => q.Zone != RebarZones.Stirrup))
             foreach (var a in RebarOptions.Alternatives(p, r, beam, z))
             {
                 nAlt++;
@@ -170,8 +170,9 @@ public static class RebarShopTests
         string key = beam.RebarKeys[0];
         var zb = zones.First(z => z.Zone == RebarZones.BeamBottom && z.Index == 0);
         var alts = RebarOptions.Alternatives(p, r, beam, zb);
-        var pick = alts.FirstOrDefault(a => !a.IsCurrent && a.Bars.Count == 2 && a.Layers == 1)
-                   ?? alts.FirstOrDefault(a => !a.IsCurrent && a.Layers == 1) ?? alts.First();
+        // phương án khác hiện tại, 1 hàng, thừa ≥ 3% (tránh sai khác nhỏ do h0 thực tế theo Ø)
+        var pick = alts.FirstOrDefault(a => !a.IsCurrent && a.Bars.Count == 2 && a.Layers == 1 && a.OverPct >= 3)
+                   ?? alts.FirstOrDefault(a => !a.IsCurrent && a.Layers == 1 && a.OverPct >= 3) ?? alts.First();
         int nw = RebarOptions.Apply(p, beam, zb, pick);
         check("Áp dụng lựa chọn: ghi cho mọi dầm gộp", nw, beam.Quantity, 0);
         var ds2 = ConcreteDesigner.Design(p, r);

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace KetCauVXT.Model;
 
 // =====================================================================
@@ -65,7 +67,7 @@ public class RebarChoice
     /// <summary>Tên cấu kiện lúc chọn (chỉ để tham khảo, vd "D2-1").</summary>
     public string Label { get; set; } = "";
 
-    public string Key => Member + "|" + Zone + "|" + Index;
+    [JsonIgnore] public string Key => Member + "|" + Zone + "|" + Index;
 }
 
 /// <summary>Tuỳ chọn chung khi tự chọn thép và triển khai gia công. Giá trị mặc định = hành vi cũ của chương trình.</summary>
