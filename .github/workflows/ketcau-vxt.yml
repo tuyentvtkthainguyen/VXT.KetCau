@@ -52,6 +52,9 @@ jobs:
 
       - name: Kiem tra DXF bang ezdxf (doc + audit doc lap)
         shell: pwsh
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: "1"
         run: |
           python -m pip install --quiet ezdxf
           $py = @'
