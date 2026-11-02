@@ -176,12 +176,33 @@ public static class DwgConverter
             }
             if (!IsDwg(path)) return DxfReader.Read(path, scaleOverride);
 
+            // ---- bộ đọc DWG tích hợp (KetCauVXT.Dwg / ACadSharp), đăng ký qua CadFileReaders.Dwg ----
+            string builtinError = null;
+            if (CadFileReaders.Dwg != null)
+            {
+                try
+                {
+                    var rd = CadFileReaders.Dwg(path, scaleOverride);
+                    if (rd != null) return rd;
+                    builtinError = $"Không đọc được DWG '{Path.GetFileName(path)}'. Hãy mở bằng AutoCAD và lưu sang DXF (SAVEAS → DXF) rồi nhập lại.";
+                }
+                catch (Exception ex) { builtinError = ex.Message; }
+                // bộ đọc tích hợp không đọc được: thử tiếp ODA File Converter nếu máy có cài
+                if (FindOdaConverter() == null) { error = builtinError; return null; }
+            }
+            // ---- hết phần bộ đọc tích hợp ----
+
             string dxf = ConvertToDxf(path, out error);
-            if (dxf == null) return null;
+            if (dxf == null)
+            {
+                if (builtinError != null) error = builtinError + " (ODA File Converter: " + error + ")";
+                return null;
+            }
             try
             {
                 var r = DxfReader.Read(dxf, scaleOverride);
                 r.Warnings.Insert(0, "Đã chuyển DWG → DXF bằng ODA File Converter.");
+                if (builtinError != null) r.Warnings.Insert(0, "Bộ đọc DWG tích hợp lỗi (" + builtinError + ") – đã dùng ODA File Converter.");
                 return r;
             }
             finally

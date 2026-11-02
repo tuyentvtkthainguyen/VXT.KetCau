@@ -68,7 +68,8 @@ public static class DxfImporter
     {
         o ??= new DxfImportOptions();
         var rep = new ImportReport { Source = Path.GetFileName(path) };
-        var dxf = DxfReader.Read(path, o.ScaleOverride);
+        // DWG: bộ đọc tích hợp (CadFileReaders.Dwg) hoặc ODA File Converter – xem CadFileReaders.cs
+        var dxf = CadFileReaders.Read(path, o.ScaleOverride, out string cadErr) ?? throw new InvalidDataException(cadErr ?? "Không đọc được bản vẽ.");
         rep.Warnings.AddRange(dxf.Warnings);
         rep.Info.Add($"Đơn vị bản vẽ: $INSUNITS = {dxf.InsUnits} → hệ số {dxf.Scale.ToString(CultureInfo.InvariantCulture)} (đơn vị → m); {dxf.Entities.Count} thực thể");
 

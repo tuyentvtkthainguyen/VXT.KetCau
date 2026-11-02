@@ -195,6 +195,24 @@ public class DxfReader
         return r;
     }
 
+    /// <summary>Ghi thông tin đầu file khi thực thể được nạp bởi bộ đọc ngoài (vd. bộ đọc DWG – <see cref="CadFileReaders.Dwg"/>):
+    /// bộ đọc ngoài tạo <c>new DxfReader()</c>, gọi hàm này rồi tự thêm vào Entities, FillEntities, bảng layer, Warnings.</summary>
+    public void SetSourceInfo(int insUnits, double scale, string acadVersion, string codePage = "", string encodingUsed = "")
+    {
+        InsUnits = insUnits;
+        if (scale > 0 && !double.IsInfinity(scale)) Scale = scale;
+        AcadVersion = acadVersion ?? "";
+        CodePage = codePage ?? "";
+        EncodingUsed = encodingUsed ?? "";
+    }
+
+    /// <summary>Hệ số đổi đơn vị bản vẽ → m theo mã $INSUNITS (mặc định mm).</summary>
+    public static double UnitScale(int insUnits) =>
+        insUnits switch { 1 => 0.0254, 2 => 0.3048, 4 => 0.001, 5 => 0.01, 6 => 1.0, 7 => 1000.0, 8 => 0.0254e-6, 9 => 0.0254e-3, 10 => 0.9144, 14 => 0.1, _ => 0.001 };
+
+    /// <summary>Gợi ý bảng mã chữ theo tên font/tệp font: "TCVN3", "VNI" hoặc "".</summary>
+    public static string FontHintOfName(string font) => FontHintOf(font);
+
     // ------------------------------------------------------------------ giải mã
 
     private static bool StartsWith(byte[] b, string ascii)

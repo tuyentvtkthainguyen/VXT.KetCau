@@ -607,12 +607,15 @@ public static class QuantityCalculator
             double t = Math.Max(0.06, qs.StairSlabThickness);
             double wf = w / 2, land = Math.Min(w / 2, a / 2), run = Math.Max(0.5, a - land), rise = H / 2;
             double lf = Math.Sqrt(run * run + rise * rise);
-            double vFlights = 2 * (lf * wf * t + 0.5 * run * rise * wf);
+            // bậc xây/đổ trên bản thang: n bậc tam giác ½·b·h·rộng, tổng = ½·(chiều dài vế)·(chiều cao 1 bậc)·rộng
+            int nSteps = Math.Max(1, (int)Math.Round(rise / 0.165));
+            double riser = rise / nSteps;
+            double vFlights = 2 * (lf * wf * t + 0.5 * run * riser * wf);
             double vLand = w * land * t;
             q.Concrete.Add(new ConcreteItem
             {
                 Category = QtyCat.Stair, Story = op.Story, Member = $"Thang ô {F2(dx)}×{F2(dy)}", Grade = Grade(cs.ConcreteSlab, "B20"),
-                Dims = $"2 vế {F2(wf)}×{F2(lf)}, bản {Mm(t)}, chiếu nghỉ {F2(w)}×{F2(land)}; H = {F2(H)}",
+                Dims = $"2 vế {F2(wf)}×{F2(lf)}, {nSteps} bậc/vế cao {Mm(riser)}, bản {Mm(t)}, chiếu nghỉ {F2(w)}×{F2(land)}; H = {F2(H)}",
                 Volume = vFlights + vLand, Formwork = 2 * lf * wf + w * land,
                 FormworkNote = $"đáy 2 vế 2×{F2(lf)}×{F2(wf)} + chiếu nghỉ", Note = "Ước tính sơ bộ (thang 2 vế) – kiểm tra theo bản vẽ cầu thang"
             });
