@@ -40,8 +40,9 @@ public static class GeneralNotes
             _ => $"Bê tông: cột {c.ConcreteColumn}, dầm {c.ConcreteBeam}, sàn {c.ConcreteSlab}" + (all ? $", móng {c.ConcreteFooting}; bê tông lót móng B7,5 dày 100." : ".")
         };
         if (conc.Length > 0) res.Add(conc);
+        bool slabToo = scope == NotesScope.All || scope == NotesScope.Plan || scope == NotesScope.Schedule;
         res.Add(scope == NotesScope.Slab ? $"Thép sàn {c.RebarStirrup}."
-                                         : $"Cốt thép dọc chịu lực {c.RebarMain}; cốt đai{(scope is NotesScope.All or NotesScope.Plan or NotesScope.Schedule ? " và thép sàn" : "")} {c.RebarStirrup}.");
+                                         : $"Cốt thép dọc chịu lực {c.RebarMain}; cốt đai{(slabToo ? " và thép sàn" : "")} {c.RebarStirrup}.");
         string cover = scope switch
         {
             NotesScope.Foundation => $"móng {Mm(c.CoverFooting)}",
@@ -54,7 +55,7 @@ public static class GeneralNotes
         if (cover.Length > 0) res.Add("Chiều dày lớp bê tông bảo vệ: " + cover + ".");
         if (scope != NotesScope.Schedule)
             res.Add("Neo, nối cốt thép theo TCVN 5574:2018; mối nối so le, không nối quá 50% số thanh tại một mặt cắt.");
-        if ((all || scope is NotesScope.Beam or NotesScope.Plan) && HasCurvedBeams(p, s))
+        if ((all || scope == NotesScope.Beam || scope == NotesScope.Plan) && HasCurvedBeams(p, s))
             res.Add("Dầm cong: mặt đứng thể hiện trải theo cung, chiều dài thép dọc tính theo cung; dùng đai kín móc 135°.");
         if (scope != NotesScope.Schedule)
             res.Add("Số hiệu thép trên bản vẽ trùng số hiệu trong bảng thống kê cốt thép.");

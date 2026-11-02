@@ -119,7 +119,7 @@ public static class DrawingStyleTests
         List<Figure> figs100;
         using (DrawingStyle.Use(s100)) figs100 = BeamDrawing.Build(p, beam);
         var el2 = figs100[0].W;
-        var (a0, b0) = RangeX(el0, Lay.BeTong); var (a2, b2) = RangeX(el2, Lay.BeTong);
+        var (a0, b0) = RangeX(el0, Lay.Thep); var (a2, b2) = RangeX(el2, Lay.Thep);   // thép dọc: toạ độ không phụ thuộc cỡ chữ
         check("Tỷ lệ 1/100: bộ ghi mặt đứng dầm tỷ lệ 100", el2.Scale, 100, 0);
         check("Tỷ lệ 1/100: chiều dài dầm trên giấy giảm một nửa", ((b0 - a0) / 50) / ((b2 - a2) / 100), 2, 1e-9);
         check("Tỷ lệ 1/100: tên hình ghi \"tl: 1/100\"", B(el2.Texts().Contains("tl: 1/100")), 1, 0);

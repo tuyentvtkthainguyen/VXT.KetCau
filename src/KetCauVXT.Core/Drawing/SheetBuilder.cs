@@ -209,6 +209,7 @@ public static partial class SheetBuilder
             SheetViewKind.FoundationDetail => st.ScaleOf(DrawingKind.FootingDetail),
             SheetViewKind.BeamDetail => st.ScaleOf(DrawingKind.BeamElevation),
             SheetViewKind.ColumnDetail => st.ScaleOf(DrawingKind.ColumnElevation),
+            SheetViewKind.StairDetail => st.ScaleOf(DrawingKind.StairPlan),
             _ => 0
         };
     }

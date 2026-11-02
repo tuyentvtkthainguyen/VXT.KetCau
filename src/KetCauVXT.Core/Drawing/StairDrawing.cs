@@ -488,14 +488,13 @@ public static class StairDrawing
         string fin = s.Finish == StepFinish.None ? "" : $", ốp {Stair.FinishName(s.Finish).ToLowerInvariant()} dày {DesignUtil.F(s.FinishT * 1000, "0")} mm";
         var lines = new List<string>
         {
-            "GHI CHÚ:",
             $"1. Bê tông {cs.ConcreteSlab}; thép Ø<10 {cs.RebarStirrup}, Ø≥10 {cs.RebarMain}; lớp bảo vệ bản {DesignUtil.F(cs.CoverSlab * 1000, "0")} mm, dầm {DesignUtil.F(cs.CoverBeam * 1000, "0")} mm.",
             $"2. {steps}{fin}. {L.NRisers} bậc h = {DesignUtil.F(L.Riser * 1000, "0")}, b = {DesignUtil.F(L.Tread * 1000, "0")} mm (2h + b = {DesignUtil.F(L.Check2hb * 1000, "0")}).",
             "3. Thép bản thang chạy suốt, không nối trong nhịp; thép dưới neo vào dầm ≥ 150 mm; thép mũ dài L0/4 từ mép gối."
         };
-        double y = 0;
-        foreach (var l in lines) { w.Text(Lay.Chu, 0, y, th, l, 0, 0, 0); y -= 1.7 * th; }
-        return w;
+        // khối "GHI CHÚ CHUNG" dùng chung (GeneralNotes.cs – Thiết lập bản vẽ): một khối mỗi bản vẽ, tắt được; tắt → mảnh hình rỗng (bị bỏ qua khi ghép tờ)
+        _ = th;
+        return GeneralNotes.Figure(lines, S) ?? w;
     }
 
     // ==================================================================

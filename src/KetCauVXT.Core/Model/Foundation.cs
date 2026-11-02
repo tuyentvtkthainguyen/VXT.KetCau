@@ -38,6 +38,18 @@ public class FoundationSettings
     /// <summary>Diện tích thép dọc cọc As (m²) dùng tính Pvl; 0 = tự lấy 4Ø16 (d ≤ 300 mm) hoặc 6Ø18</summary>
     public double PileRebarArea { get; set; }
 
+    // ---- [FoundationChecks] bố trí cọc do người dùng chọn + kiểm tra an toàn bổ sung ----
+    /// <summary>Bố trí cọc / kích thước đài do người dùng chọn theo từng chân cột (PileCapOverride.NodeId); rỗng = tự chọn hoàn toàn.
+    /// File dự án cũ không có mục này vẫn mở được (danh sách rỗng).</summary>
+    public List<PileCapOverride> CapOverrides { get; set; } = new();
+    /// <summary>Sức chịu tải ngang cho phép của 1 cọc [H] (kN); 0 = ước lượng sơ bộ 0,1·[P] (chỉ cảnh báo)</summary>
+    public double PileLateralCapacity { get; set; }
+    /// <summary>Bản vẽ: thể hiện tháp chọc thủng 45° (nét đứt) trên mặt cắt đài cọc</summary>
+    public bool DrawPunchingPyramid { get; set; } = true;
+    /// <summary>Bản vẽ: thể hiện biểu đồ mô men sườn dưới mặt cắt dọc móng băng</summary>
+    public bool DrawStripMoment { get; set; }
+    // ---- hết [FoundationChecks] ----
+
     // ---- móng băng ----
     /// <summary>Phương dải móng băng: 0 = tự chọn (theo phương có nhiều cột thẳng hàng), 1 = dọc trục X, 2 = dọc trục Y, 3 = giao thoa 2 phương</summary>
     public int StripDirection { get; set; }

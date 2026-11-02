@@ -466,7 +466,8 @@ public static class RebarShop
             }
             if (!double.IsNaN(best))
             {
-                best = Math.Round(best, 3);
+                // tâm nối là giá trị LỚN NHẤT cho phép → làm tròn XUỐNG 1 mm (làm tròn thường có thể đẩy đầu đoạn nối vượt mép vùng cho phép)
+                best = RoundDown(best);
                 plan.Centers.Add(best); plan.Laps.Add(lap); plan.Bad.Add(false);
                 a = best - lap / 2; first = false;
                 continue;
@@ -483,7 +484,7 @@ public static class RebarShop
                 }
                 if (!double.IsNaN(cb))
                 {
-                    cb = Math.Round(cb, 3);
+                    cb = RoundDown(cb);
                     plan.Centers.Add(cb); plan.Laps.Add(0); plan.Bad.Add(false);
                     plan.Issues.Add("vùng cho phép ngắn hơn ll = " + DesignUtil.F(lap * 1000, "0") + " mm – dùng ống nối ren tại x = " + DesignUtil.F(cb, "0.00") + " m" + sugg);
                     a = cb; first = false;
@@ -498,6 +499,8 @@ public static class RebarShop
         }
         return plan;
     }
+
+    private static double RoundDown(double x) => Math.Floor(x * 1000 + 1e-9) / 1000.0;
 
     /// <summary>Đề xuất khi không nối chồng được trong tầm cây thép: vùng cho phép kế tiếp đủ dài → cây dài hơn; không có vùng đủ dài → ống nối ren.</summary>
     private static string Suggest(IList<(double A, double B)> zones, double a, double lead, double lap, double stock)
@@ -536,7 +539,7 @@ public static class RebarShop
         double sd = RcSection.CeilTo(k * lap, 0.01);
         foreach (double sg in new[] { -1.0, 1.0 })
         {
-            var cb = pa.Centers.Select(c => Math.Round(c + sg * sd, 3)).ToList();
+            var cb = pa.Centers.Select(c => sg < 0 ? Math.Ceiling((c + sg * sd) * 1000 - 1e-9) / 1000.0 : RoundDown(c + sg * sd)).ToList();
             var ps = PiecesFromCenters(S, E, cb, pa.Laps);
             bool ok = true;
             for (int i = 0; i < ps.Count && ok; i++)
