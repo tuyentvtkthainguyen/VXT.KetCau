@@ -95,6 +95,8 @@ internal sealed class FoundationDialog : Window
         _gStrip = new GroupBox { Header = "Móng băng", Content = strip, Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(4) };
         root.Children.Add(_gStrip);
 
+        root.Children.Add(DialogUi.Hint("Móng lệch tâm (cột sát ranh giới đất): khai báo ở tab 'Mô hình móng' → 'Ranh giới đất…'; phương án từng chân cột (dầm cân bằng / tự cân bằng / móng kết hợp) → 'Lệch tâm…'"   // [MóngLệchTâm]
+                                        + ((f.Boundaries?.Count(b => b != null && b.Enabled) ?? 0) > 0 ? $" (đang có {f.Boundaries.Count(b => b != null && b.Enabled)} cạnh ranh giới)." : ".")));
         root.Children.Add(DialogUi.Hint("Thông số nền đất (góc ma sát φ, lực dính c, γ, độ sâu chôn móng Df, R nhập tay) nằm ở tab 'Công trình' → nhóm 'Nền đất dưới móng'. " +
                                         "Bê tông móng chọn ở nhóm 'Vật liệu'."));
 

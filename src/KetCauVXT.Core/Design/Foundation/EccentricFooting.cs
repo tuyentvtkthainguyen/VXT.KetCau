@@ -359,6 +359,7 @@ public static class EccentricFooting
             bool edgeX = e.Limits.EdgeX, edgeY = e.Limits.EdgeY;
             if (!edgeX && !edgeY)
             {
+                if (e.Secondary) continue;   // đã gộp vào móng kết hợp của cột biên
                 e.Scheme = e.Recommended = EccentricScheme.SelfBalanced;
                 e.Reason = "Cột không sát ranh giới: móng chỉ dịch (nếu cần) để không vượt ranh giới";
                 continue;
@@ -765,7 +766,7 @@ public static class EccentricFooting
             var items = g.Select(x => x.d).ToList();
             var keep = items.OrderByDescending(x => x.M).First();
             keep.Quantity = items.Count;
-            keep.Links = items.SelectMany(x => x.Links).ToList();
+            keep.Links = new[] { keep }.Concat(items.Where(x => !ReferenceEquals(x, keep))).SelectMany(x => x.Links).ToList();   // liên kết của dầm giữ lại đứng đầu
             keep.RebarKeys = items.SelectMany(x => x.RebarKeys).Distinct().ToList();
             res.Add(keep);
         }

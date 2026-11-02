@@ -65,7 +65,11 @@ public partial class MainWindow
         if (_p.Boreholes != null) foreach (var bh in _p.Boreholes) { xs.Add(bh.X); ys.Add(bh.Y); }
         if (_design != null)
         {
-            foreach (var f in _design.Footings) { xs.Add(f.X - f.L / 2); xs.Add(f.X + f.L / 2); ys.Add(f.Y - f.B / 2); ys.Add(f.Y + f.B / 2); }
+            foreach (var f in _design.Footings)
+            {
+                if (f.Eccentric != null) { EccExtents(f, xs, ys); continue; }   // [MóngLệchTâm]
+                xs.Add(f.X - f.L / 2); xs.Add(f.X + f.L / 2); ys.Add(f.Y - f.B / 2); ys.Add(f.Y + f.B / 2);
+            }
             AddPileStripExtents(xs, ys);
         }
         if (xs.Count == 0) xs.AddRange(new[] { 0.0, 10.0 });
@@ -89,6 +93,7 @@ public partial class MainWindow
         bool labels = chkFndLabels.IsChecked == true;
         var nodes = NodeMap(); var secs = SectionMap();
         SyncFoundationUi();
+        EnsureEccentricUi();   // [MóngLệchTâm] nút "Ranh giới đất…", "Lệch tâm…"
 
         DrawPlanGrids(fndCanvas, FW2S, true);
 
@@ -100,7 +105,8 @@ public partial class MainWindow
         foreach (var fd in foots)
         {
             if (fd.L <= 0 || fd.B <= 0) continue;
-            bool sel = _selFooting != 0 && _selFooting == fd.NodeId;
+            bool sel = _selFooting != 0 && (_selFooting == fd.NodeId || EccHasNode(fd, _selFooting));
+            if (DrawEccentricFooting(fd, sel, labels)) continue;   // [MóngLệchTâm] móng lệch tâm / móng kết hợp
             bool ok = fd.Ok;
             var g = FootingGeom(fd, nodes);
             var p0 = FW2S(fd.X - fd.L / 2, fd.Y + fd.B / 2); var p1 = FW2S(fd.X + fd.L / 2, fd.Y - fd.B / 2);
@@ -160,6 +166,7 @@ public partial class MainWindow
             if (!covered.Contains(n.Id)) _fndHits.Add((new Rect(c.X - rw / 2 - 3, c.Y - rh / 2 - 3, rw + 6, rh + 6), 0, col, null));
             if (labels && nAll == 0) CText(fndCanvas, col.Label, new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 12), Brushes.Black, 9, false);
         }
+        DrawBoundariesAndStraps();   // [MóngLệchTâm] ranh giới đất + dầm móng cân bằng – MainWindow.Eccentric.cs
         DrawBoreholeMarkers();   // hố khoan – MainWindow.Geotech.cs
 
         int bad = foots.Count(f => !f.Ok) + badOther;
@@ -223,18 +230,19 @@ public partial class MainWindow
 
         // ---- thân móng + cổ móng + cột ----
         double cx = g.Cx, tx = g.TopX;
+        double co = fd.Eccentric?.Combined == null ? -(fd.Eccentric?.OffsetX ?? 0) : 0;   // [MóngLệchTâm] tim cột cách tâm móng −ex
         var body = new Shapes.Polygon
         {
             Points = new PointCollection
             {
-                S(-L / 2, zb), S(L / 2, zb), S(L / 2, zEdge), S(tx / 2, zTop), S(cx / 2, zTop), S(cx / 2, colTop),
-                S(-cx / 2, colTop), S(-cx / 2, zTop), S(-tx / 2, zTop), S(-L / 2, zEdge)
+                S(-L / 2, zb), S(L / 2, zb), S(L / 2, zEdge), S(co + tx / 2, zTop), S(co + cx / 2, zTop), S(co + cx / 2, colTop),
+                S(co - cx / 2, colTop), S(co - cx / 2, zTop), S(co - tx / 2, zTop), S(-L / 2, zEdge)
             },
             Fill = ConcreteFill, Stroke = Brushes.Black, StrokeThickness = 1.6, IsHitTestVisible = false
         };
         fndSecCanvas.Children.Add(body);
         // đường cắt ngắt cột
-        var b0 = S(-cx / 2 - 0.08, colTop); var b1 = S(cx / 2 + 0.08, colTop);
+        var b0 = S(co - cx / 2 - 0.08, colTop); var b1 = S(co + cx / 2 + 0.08, colTop);
         var zig = new Shapes.Polyline
         {
             Points = new PointCollection { b0, new Point(b0.X + (b1.X - b0.X) * 0.4, b0.Y), new Point(b0.X + (b1.X - b0.X) * 0.47, b0.Y - 6),
@@ -243,7 +251,13 @@ public partial class MainWindow
         };
         fndSecCanvas.Children.Add(zig);
         // mặt trên cổ móng = nút chân cột
-        CLine(fndSecCanvas, S(-cx / 2, zN), S(cx / 2, zN), Brushes.Gray, 0.6, true);
+        CLine(fndSecCanvas, S(co - cx / 2, zN), S(co + cx / 2, zN), Brushes.Gray, 0.6, true);
+        if (Math.Abs(co) > 1e-6)   // [MóngLệchTâm] trục cột + kích thước tim cột – mép móng
+        {
+            CLine(fndSecCanvas, S(co, zb - 0.05), S(co, colTop + 0.1), Brushes.SteelBlue, 0.7, true);
+            DimLine(fndSecCanvas, S(-L / 2, zTop), S(co, zTop), -30, ((co + L / 2) * 1000).ToString("0", Inv));
+            DimLine(fndSecCanvas, S(co, zTop), S(L / 2, zTop), -30, ((L / 2 - co) * 1000).ToString("0", Inv));
+        }
 
         // ---- thép lớp dưới ----
         double cover = 0.05;
@@ -275,13 +289,13 @@ public partial class MainWindow
         DimLine(fndSecCanvas, S(L / 2, zb), S(L / 2, zEdge), -22, (g.Hb * 1000).ToString("0", Inv));
         if (g.H - g.Hb > 1e-3) DimLine(fndSecCanvas, S(L / 2, zEdge), S(L / 2, zTop), -22, ((g.H - g.Hb) * 1000).ToString("0", Inv));
         DimLine(fndSecCanvas, S(L / 2, zb), S(L / 2, zTop), -48, "H=" + (g.H * 1000).ToString("0", Inv));
-        DimLine(fndSecCanvas, S(-cx / 2, colTop), S(cx / 2, colTop), -14, (cx * 1000).ToString("0", Inv));
+        DimLine(fndSecCanvas, S(co - cx / 2, colTop), S(co + cx / 2, colTop), -14, (cx * 1000).ToString("0", Inv));
         if (zb < -1e-3) DimLine(fndSecCanvas, S(-L / 2, 0), S(-L / 2, zb), 30, "Df=" + (-zb * 1000).ToString("0", Inv));
 
         // ---- cao độ ----
         ElevMark(fndSecCanvas, S(L / 2 + 0.75, zb), Elev(zb) + " (đáy móng)");
         ElevMark(fndSecCanvas, S(L / 2 + 0.75, zTop), Elev(zTop));
-        ElevMark(fndSecCanvas, S(cx / 2 + 0.35, zN), Elev(zN) + " (chân cột)");
+        ElevMark(fndSecCanvas, S(co + cx / 2 + 0.35, zN), Elev(zN) + " (chân cột)");
 
         // ---- tiêu đề + thông tin ----
         string name = string.IsNullOrEmpty(fd.Name) ? "M" : fd.Name;
@@ -291,7 +305,8 @@ public partial class MainWindow
         void Info(string t, Brush br) { CText(fndSecCanvas, t, new Point(10, y), br, 10.5, false); y += 15; }
         Info($"L×B×H = {fd.L.ToString("0.00", Inv)}×{fd.B.ToString("0.00", Inv)}×{fd.H.ToString("0.00", Inv)} m;  Hb = {g.Hb.ToString("0.00", Inv)} m;  cột {(g.Cx * 1000).ToString("0", Inv)}×{(g.Cy * 1000).ToString("0", Inv)}", Brushes.Black);
         Info($"N = {fd.N.ToString("0.0", Inv)} kN;  Mx = {fd.Mx.ToString("0.0", Inv)};  My = {fd.My.ToString("0.0", Inv)} kN.m  ({fd.Combo})", Brushes.Black);
-        Info($"Pmax = {fd.Pmax.ToString("0.0", Inv)};  Ptb = {fd.Ptb.ToString("0.0", Inv)};  R = {fd.R.ToString("0.0", Inv)} kN/m²", Brushes.Black);
+        Info($"Pmax = {fd.Pmax.ToString("0.0", Inv)};  Ptb = {fd.Ptb.ToString("0.0", Inv)};  R = {fd.R.ToString("0.0", Inv)} kN/m²"
+             + (fd.Eccentric != null ? $";  {EccentricOverride.SchemeName(fd.Eccentric.Scheme)}, e = {fd.Eccentric.E0 * 1000:0} mm" : ""), Brushes.Black);   // [MóngLệchTâm]
         string msg = fd.Messages.FirstOrDefault(m => m.StartsWith("LỖI")) ?? fd.Checks.Where(c => !c.Ok).Select(c => $"{c.Name}: {c.Ratio.ToString("0.00", Inv)}").FirstOrDefault();
         Info(fd.Ok ? "Kết quả: ĐẠT" : "Kết quả: KHÔNG ĐẠT" + (string.IsNullOrEmpty(msg) ? "" : " – " + msg), fd.Ok ? FootOkStroke : FootBadStroke);
     }

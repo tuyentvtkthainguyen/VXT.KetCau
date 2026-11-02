@@ -99,6 +99,10 @@ public partial class MainWindow
         Add(_design.PileCaps?.FirstOrDefault(c => c.NodeIds.Contains(nodeId))?.Safety);
         Add(_design.StripFootings?.FirstOrDefault(c => c.NodeIds.Contains(nodeId))?.Safety);
         Add(_design.Footings?.FirstOrDefault(c => c.NodeId == nodeId)?.Safety);
+        // [MóngLệchTâm] phương án móng lệch tâm tại chân cột (nút "Lệch tâm…")
+        var ecc = _design.Footings?.FirstOrDefault(f => EccHasNode(f, nodeId))?.Eccentric ?? _design.PileCaps?.FirstOrDefault(c => c.NodeIds.Contains(nodeId))?.Eccentric;
+        if (ecc != null)
+            sb.AppendLine($"Lệch tâm ({(string.IsNullOrEmpty(ecc.Sides) ? "ranh giới" : ecc.Sides)}): {EccentricOverride.SchemeName(ecc.Scheme)}, ex = {ecc.OffsetX * 1000:0}, ey = {ecc.OffsetY * 1000:0} mm (nút 'Lệch tâm…')");
         return sb.ToString();
     }
 }

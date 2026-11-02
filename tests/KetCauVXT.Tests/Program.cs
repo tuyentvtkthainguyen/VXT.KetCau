@@ -527,6 +527,9 @@ ResultImportTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext
 Console.WriteLine("36. Bảng thống kê (SL=n), xuất gộp/tách file, hiệu chỉnh bản vẽ sau khi xuất, khoá bản vẽ sửa trong CAD");
 DrawingExportTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("37. Móng lệch tâm: ranh giới đất, dầm móng cân bằng, móng phối hợp, đài cọc/móng băng lệch tâm");
+EccentricFootingTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

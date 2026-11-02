@@ -34,7 +34,7 @@ public partial class MainWindow
 
     private void AddPileStripExtents(List<double> xs, List<double> ys)
     {
-        foreach (var c in DesignCaps()) { xs.Add(c.X - c.L / 2); xs.Add(c.X + c.L / 2); ys.Add(c.Y - c.B / 2); ys.Add(c.Y + c.B / 2); }
+        foreach (var c in DesignCaps()) { xs.Add(c.X + c.OffsetX - c.L / 2); xs.Add(c.X + c.OffsetX + c.L / 2); ys.Add(c.Y + c.OffsetY - c.B / 2); ys.Add(c.Y + c.OffsetY + c.B / 2); }   // [MóngLệchTâm] tâm đài lệch
         foreach (var s in DesignStrips())
         {
             if (s.AlongX) { xs.Add(s.Start); xs.Add(s.End); ys.Add(s.C - s.Width / 2); ys.Add(s.C + s.Width / 2); }
@@ -47,7 +47,15 @@ public partial class MainWindow
     {
         var h = new HashSet<int>();
         if (_design == null) return h;
-        foreach (var f in _design.Footings.Where(f => f.L > 0 && f.B > 0)) h.Add(f.NodeId);
+        foreach (var f in _design.Footings.Where(f => f.L > 0 && f.B > 0))
+        {
+            h.Add(f.NodeId);
+            if (f.Eccentric != null)   // [MóngLệchTâm] vị trí gộp + cột trong của móng kết hợp
+            {
+                foreach (var l in f.Eccentric.Locations) h.Add(l.NodeId);
+                if (f.Eccentric.Combined != null) h.Add(f.Eccentric.Combined.NodeB);
+            }
+        }
         foreach (var c in DesignCaps()) foreach (int n in c.NodeIds) h.Add(n);
         foreach (var s in DesignStrips()) foreach (int n in s.NodeIds) h.Add(n);
         return h;
@@ -67,9 +75,9 @@ public partial class MainWindow
         {
             case PileCapDesign pc when caps.Contains(pc) && pc.NodeIds.Contains(_selFooting): return pc;
             case StripFootingDesign sd when strips.Contains(sd) && sd.NodeIds.Contains(_selFooting): return sd;
-            case FootingDesign fd when foots.Contains(fd) && fd.NodeId == _selFooting: return fd;
+            case FootingDesign fd when foots.Contains(fd) && EccHasNode(fd, _selFooting): return fd;
         }
-        object f0 = foots.FirstOrDefault(f => f.NodeId == _selFooting);
+        object f0 = foots.FirstOrDefault(f => EccHasNode(f, _selFooting));   // [MóngLệchTâm] kể vị trí gộp / móng kết hợp
         object c0 = caps.FirstOrDefault(c => c.NodeIds.Contains(_selFooting));
         object s0 = strips.FirstOrDefault(s => s.NodeIds.Contains(_selFooting));
         return NodeFoundationType(_selFooting) switch
@@ -127,15 +135,16 @@ public partial class MainWindow
             fndCanvas.Children.Add(r);
             // sườn (nét đứt)
             double hb = (sf.RibB > 0 ? sf.RibB : 0.3) / 2;
+            double rc = sf.FlangeSide != 0 ? sf.RibC : sf.C;   // [MóngLệchTâm] sườn sát ranh giới (bản cánh một phía)
             if (sf.AlongX)
             {
-                CLine(fndCanvas, FW2S(x0, sf.C + hb), FW2S(x1, sf.C + hb), st, 0.8, true);
-                CLine(fndCanvas, FW2S(x0, sf.C - hb), FW2S(x1, sf.C - hb), st, 0.8, true);
+                CLine(fndCanvas, FW2S(x0, rc + hb), FW2S(x1, rc + hb), st, 0.8, true);
+                CLine(fndCanvas, FW2S(x0, rc - hb), FW2S(x1, rc - hb), st, 0.8, true);
             }
             else
             {
-                CLine(fndCanvas, FW2S(sf.C + hb, y0), FW2S(sf.C + hb, y1), st, 0.8, true);
-                CLine(fndCanvas, FW2S(sf.C - hb, y0), FW2S(sf.C - hb, y1), st, 0.8, true);
+                CLine(fndCanvas, FW2S(rc + hb, y0), FW2S(rc + hb, y1), st, 0.8, true);
+                CLine(fndCanvas, FW2S(rc - hb, y0), FW2S(rc - hb, y1), st, 0.8, true);
             }
             _fndHits.Add((new Rect(p0, p1), sf.NodeIds.FirstOrDefault(), null, sf));
             if (labels || sel)
@@ -155,7 +164,7 @@ public partial class MainWindow
             bool ok = pc.Ok, sel = ReferenceEquals(selItem, pc);
             if (!ok) bad++;
             Brush st = ok ? FootOkStroke : FootBadStroke;
-            var p0 = FW2S(pc.X - pc.L / 2, pc.Y + pc.B / 2); var p1 = FW2S(pc.X + pc.L / 2, pc.Y - pc.B / 2);
+            var p0 = FW2S(pc.X + pc.OffsetX - pc.L / 2, pc.Y + pc.OffsetY + pc.B / 2); var p1 = FW2S(pc.X + pc.OffsetX + pc.L / 2, pc.Y + pc.OffsetY - pc.B / 2);   // [MóngLệchTâm] tâm đài lệch
             var r = new Shapes.Rectangle
             {
                 Width = Math.Max(2, p1.X - p0.X), Height = Math.Max(2, p1.Y - p0.Y), Fill = ok ? FootOkFill : FootBadFill, Stroke = st,
@@ -208,7 +217,7 @@ public partial class MainWindow
         double show = Math.Clamp(L * 0.8, 0.9, 1.6);   // đoạn cọc thể hiện
         double zPileBot = zb - show;
 
-        double wx0 = -L / 2 - 0.9, wx1 = L / 2 + 1.4, wz0 = zPileBot - 0.6, wz1 = Math.Max(colTop, 0.25) + 0.3;
+        double wx0 = -L / 2 - 0.9 - Math.Abs(pc.OffsetX), wx1 = L / 2 + 1.4 + Math.Abs(pc.OffsetX), wz0 = zPileBot - 0.6, wz1 = Math.Max(colTop, 0.25) + 0.3;   // [MóngLệchTâm]
         double top = 44, bottom = 92;
         double s = Math.Min((w - 20) / (wx1 - wx0), (h - top - bottom) / (wz1 - wz0));
         if (s <= 0) return;
@@ -218,8 +227,9 @@ public partial class MainWindow
 
         DrawGround(S, wx0, wx1, L);
 
+        double ocx = pc.OffsetX;   // [MóngLệchTâm] tâm đài cách tim cột (gốc toạ độ mặt cắt = tim cột)
         // bê tông lót
-        AddRect(fndSecCanvas, S(-L / 2 - 0.1, zb), S(L / 2 + 0.1, zb - 0.1), LeanFill, Brushes.Gray, 0.8);
+        AddRect(fndSecCanvas, S(ocx - L / 2 - 0.1, zb), S(ocx + L / 2 + 0.1, zb - 0.1), LeanFill, Brushes.Gray, 0.8);
 
         // cọc (các hàng cọc theo X)
         var xs = pc.Piles.Select(p => Math.Round(p.X, 3)).Distinct().OrderBy(x => x).ToList();
@@ -232,7 +242,7 @@ public partial class MainWindow
         // đài + cột
         fndSecCanvas.Children.Add(new Shapes.Polygon
         {
-            Points = new PointCollection { S(-L / 2, zb), S(L / 2, zb), S(L / 2, zTop), S(cx / 2, zTop), S(cx / 2, colTop), S(-cx / 2, colTop), S(-cx / 2, zTop), S(-L / 2, zTop) },
+            Points = new PointCollection { S(ocx - L / 2, zb), S(ocx + L / 2, zb), S(ocx + L / 2, zTop), S(cx / 2, zTop), S(cx / 2, colTop), S(-cx / 2, colTop), S(-cx / 2, zTop), S(ocx - L / 2, zTop) },
             Fill = ConcreteFill, Stroke = Brushes.Black, StrokeThickness = 1.6, IsHitTestVisible = false
         });
         // đoạn cọc ngàm trong đài (nét đứt)
@@ -249,7 +259,7 @@ public partial class MainWindow
         double zr = zb + emb + 0.05, hook = Math.Min(0.2, H - emb - 0.1);
         fndSecCanvas.Children.Add(new Shapes.Polyline
         {
-            Points = new PointCollection { S(-L / 2 + 0.05, zr + hook), S(-L / 2 + 0.05, zr), S(L / 2 - 0.05, zr), S(L / 2 - 0.05, zr + hook) },
+            Points = new PointCollection { S(ocx - L / 2 + 0.05, zr + hook), S(ocx - L / 2 + 0.05, zr), S(ocx + L / 2 - 0.05, zr), S(ocx + L / 2 - 0.05, zr + hook) },
             Stroke = RebarBrush, StrokeThickness = 2, IsHitTestVisible = false
         });
         var tagL = S(L * 0.2, zr); var tagB = S(-L * 0.2, zr);
@@ -257,13 +267,13 @@ public partial class MainWindow
         Leader(fndSecCanvas, tagB, new Point(tagB.X - 10, S(0, zb + H * 0.85).Y), $"{(string.IsNullOrEmpty(pc.BarsB) ? "?" : pc.BarsB)} (phương B = Y)");
 
         // kích thước: chuỗi mép – tim cọc – mép, tổng L
-        var chain = new List<double> { -L / 2 };
-        chain.AddRange(xs.Where(x => x > -L / 2 + 1e-3 && x < L / 2 - 1e-3));
-        chain.Add(L / 2);
+        var chain = new List<double> { ocx - L / 2 };
+        chain.AddRange(xs.Where(x => x > ocx - L / 2 + 1e-3 && x < ocx + L / 2 - 1e-3));
+        chain.Add(ocx + L / 2);
         for (int i = 0; i + 1 < chain.Count; i++)
             DimLine(fndSecCanvas, S(chain[i], zPileBot), S(chain[i + 1], zPileBot), 16, ((chain[i + 1] - chain[i]) * 1000).ToString("0", Inv));
-        DimLine(fndSecCanvas, S(-L / 2, zPileBot), S(L / 2, zPileBot), 38, (L * 1000).ToString("0", Inv));
-        DimLine(fndSecCanvas, S(L / 2, zb), S(L / 2, zTop), 22, "H=" + (H * 1000).ToString("0", Inv));
+        DimLine(fndSecCanvas, S(ocx - L / 2, zPileBot), S(ocx + L / 2, zPileBot), 38, (L * 1000).ToString("0", Inv));
+        DimLine(fndSecCanvas, S(ocx + L / 2, zb), S(ocx + L / 2, zTop), 22, "H=" + (H * 1000).ToString("0", Inv));
         DimLine(fndSecCanvas, S(-cx / 2, colTop), S(cx / 2, colTop), -14, (cx * 1000).ToString("0", Inv));
 
         ElevMark(fndSecCanvas, S(L / 2 + 0.75, zb), Elev(zb) + " (đáy đài)");

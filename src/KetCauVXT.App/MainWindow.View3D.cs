@@ -299,7 +299,14 @@ public partial class MainWindow
     {
         var g = FootingGeom(fd, nodes);
         if (g.L <= 0 || g.B <= 0) return;
-        AddHexa(m, RectAt(fd.X, fd.Y, g.L, g.B, g.ZBot), RectAt(fd.X, fd.Y, g.L, g.B, g.ZBot + g.Hb));
+        // [MóngLệchTâm] đế móng lệch tâm (tâm đế = tim cột + độ lệch tâm; móng kết hợp: tâm khung bao)
+        double fx = fd.X + (fd.Eccentric?.OffsetX ?? 0), fy = fd.Y + (fd.Eccentric?.OffsetY ?? 0);
+        if (fd.Eccentric?.Combined != null)
+        {
+            var o = fd.Eccentric.Combined.Outline;
+            fx = (o.Min(q => q.X) + o.Max(q => q.X)) / 2; fy = (o.Min(q => q.Y) + o.Max(q => q.Y)) / 2;
+        }
+        AddHexa(m, RectAt(fx, fy, g.L, g.B, g.ZBot), RectAt(fx, fy, g.L, g.B, g.ZBot + g.Hb));
         if (g.H - g.Hb > 1e-3)
             AddHexa(m, RectAt(fd.X, fd.Y, g.L, g.B, g.ZBot + g.Hb), RectAt(fd.X, fd.Y, g.TopX, g.TopY, g.ZBot + g.H));
         if (g.ZNode - (g.ZBot + g.H) > 1e-3)
