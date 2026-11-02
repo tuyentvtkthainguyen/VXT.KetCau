@@ -362,6 +362,7 @@ internal sealed class PileLayoutDialog : Window
             Canvas.SetLeft(tb, c.X + ds / 2 + 1); Canvas.SetTop(tb, c.Y - ds / 2 - 2);
             _plan.Children.Add(tb);
         }
+        PileSetbackUi.DrawOnPlan(_plan, t, S);   // [LùiCọcRanh] ranh giới + giới hạn tim cọc (cọc tự lùi khi thiết kế thử)
         var cap = new TextBlock { Text = "Nét đứt xanh: đáy tháp chọc thủng 45°;  số dưới tên cọc: Pmax (kN)", FontSize = 9.5, Foreground = Brushes.DimGray };
         Canvas.SetLeft(cap, 4); Canvas.SetTop(cap, h - 16);
         _plan.Children.Add(cap);

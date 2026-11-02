@@ -94,6 +94,7 @@ public partial class MainWindow
         var nodes = NodeMap(); var secs = SectionMap();
         SyncFoundationUi();
         EnsureEccentricUi();   // [MóngLệchTâm] nút "Ranh giới đất…", "Lệch tâm…"
+        EnsureCuTramUi();   // [CừTràm] nút "Cừ tràm…" – MainWindow.CuTram.cs
 
         DrawPlanGrids(fndCanvas, FW2S, true);
 
@@ -167,6 +168,7 @@ public partial class MainWindow
             if (labels && nAll == 0) CText(fndCanvas, col.Label, new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 12), Brushes.Black, 9, false);
         }
         DrawBoundariesAndStraps();   // [MóngLệchTâm] ranh giới đất + dầm móng cân bằng – MainWindow.Eccentric.cs
+        DrawGroundOverlays();   // [LùiCọcRanh] đường giới hạn tim cọc + [CừTràm] lưới cừ – MainWindow.CuTram.cs
         DrawBoreholeMarkers();   // hố khoan – MainWindow.Geotech.cs
 
         int bad = foots.Count(f => !f.Ok) + badOther;

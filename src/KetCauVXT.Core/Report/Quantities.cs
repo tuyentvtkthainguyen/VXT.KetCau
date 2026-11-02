@@ -157,6 +157,8 @@ public class QuantityResult
     public List<FinishItem> Finishes { get; set; } = new();
     /// <summary>Cầu thang: xây bậc gạch, ốp bậc, trát (Report/StairQuantity.cs)</summary>
     public List<StairWorkItem> StairWorks { get; set; } = new();
+    /// <summary>[CừTràm] Gia cố nền: số cây cừ tràm, chiều dài, cát đệm (Report/CuTramQuantity.cs)</summary>
+    public List<GroundWorkItem> GroundWorks { get; set; } = new();
     public List<MaterialLine> MaterialLines { get; set; } = new();
     public List<MaterialTotal> Materials { get; set; } = new();
     public List<string> Notes { get; set; } = new();
@@ -312,6 +314,8 @@ public static class QuantityCalculator
         FoundationQty(p, q, s, qs, cs);
         try { EccentricQuantity.Compute(p, q, s, qs, cs); }   // [MóngLệchTâm] dầm móng cân bằng, móng kết hợp hình thang
         catch (Exception ex) { q.Warnings.Add("Dầm móng cân bằng: " + ex.Message); }
+        try { CuTramQuantity.Compute(p, q, s, qs); }   // [CừTràm] số cây cừ tràm, chiều dài, cát đệm
+        catch (Exception ex) { q.Warnings.Add("Cừ tràm: " + ex.Message); }
 
         // ---------------- cầu thang (Report/StairQuantity.cs) ----------------
         if (qs.IncludeStairs) StairQty(p, q, qs, cs);
@@ -803,6 +807,7 @@ public static class QuantityCalculator
             Add("Hoàn thiện sàn", g.Key, g.Sum(f => f.Volume), "m³", g.Key, 1, "m³/m³", "m³");
         // cầu thang: xây bậc, ốp bậc, vữa lót, trát (Report/StairQuantity.cs)
         StairQuantity.AddMaterials(q, qs, Add, Mortar);
+        CuTramQuantity.AddMaterials(q, Add);   // [CừTràm]
         // cốt thép
         var gr = q.RebarGroups ?? new GroupSummary();
         Add("Cốt thép", "Cốt thép Ø≤10", gr.WeightLe10, "kg", "Thép Ø≤10", 1, "kg/kg", "kg");

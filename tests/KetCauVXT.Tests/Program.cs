@@ -530,6 +530,9 @@ DrawingExportTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContex
 Console.WriteLine("37. Móng lệch tâm: ranh giới đất, dầm móng cân bằng, móng phối hợp, đài cọc/móng băng lệch tâm");
 EccentricFootingTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("38. Lùi cọc khỏi ranh giới để ép cọc; gia cố nền bằng cừ tràm (2 phương pháp, lún, mực nước ngầm)");
+PileSetbackCuTramTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

@@ -23,6 +23,7 @@ internal sealed class FoundationDialog : Window
     // [FoundationChecks] sức chịu tải ngang cọc, tuỳ chọn bản vẽ
     private readonly TextBox _tLat;
     private readonly CheckBox _chkPyr, _chkMom;
+    private readonly CheckBox _chkCuTram;   // [CừTràm]
 
     /// <summary>true = người dùng bấm "Thiết kế móng" (chạy thiết kế sau khi đóng)</summary>
     public bool RunDesign { get; private set; }
@@ -94,6 +95,10 @@ internal sealed class FoundationDialog : Window
         strip.Children.Add(_chkMom);
         _gStrip = new GroupBox { Header = "Móng băng", Content = strip, Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(4) };
         root.Children.Add(_gStrip);
+        // [CừTràm] gia cố nền cừ tràm (thông số chi tiết: tab 'Mô hình móng' → 'Cừ tràm…')
+        _chkCuTram = new CheckBox { Content = "Gia cố nền bằng cừ tràm dưới móng đơn / móng băng (cả công trình)", IsChecked = f.CuTram?.Enabled == true, Margin = new Thickness(0, 6, 0, 0) };
+        root.Children.Add(_chkCuTram);
+        root.Children.Add(DialogUi.Hint("Thông số cừ tràm (chiều dài, Ø, mật độ, MNN thấp nhất, phương pháp tính) và chọn riêng từng chân cột: tab 'Mô hình móng' → 'Cừ tràm…'."));
 
         root.Children.Add(DialogUi.Hint("Móng lệch tâm (cột sát ranh giới đất): khai báo ở tab 'Mô hình móng' → 'Ranh giới đất…'; phương án từng chân cột (dầm cân bằng / tự cân bằng / móng kết hợp) → 'Lệch tâm…'"   // [MóngLệchTâm]
                                         + ((f.Boundaries?.Count(b => b != null && b.Enabled) ?? 0) > 0 ? $" (đang có {f.Boundaries.Count(b => b != null && b.Enabled)} cạnh ranh giới)." : ".")));
@@ -172,6 +177,8 @@ internal sealed class FoundationDialog : Window
         _f.StripDirection = Math.Clamp(_cbStripDir.SelectedIndex, 0, 3);
         _f.StripRibWidth = rib / 1000; _f.SubgradeModulus = k; _f.StripOverhang = over;
         _f.PileLateralCapacity = lat; _f.DrawPunchingPyramid = _chkPyr.IsChecked == true; _f.DrawStripMoment = _chkMom.IsChecked == true;
+        _f.CuTram ??= new CuTramSettings();
+        _f.CuTram.Enabled = _chkCuTram.IsChecked == true;   // [CừTràm]
         return true;
     }
 }

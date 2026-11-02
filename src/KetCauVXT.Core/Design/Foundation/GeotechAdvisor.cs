@@ -6,7 +6,7 @@ using KetCauVXT.Model;
 namespace KetCauVXT.Design.Foundation;
 
 /// <summary>Phương án móng được xét.</summary>
-public enum FoundationChoice { Isolated, Strip, DrivenPile, BoredPile }
+public enum FoundationChoice { Isolated, Strip, DrivenPile, BoredPile, /* [CừTràm] móng nông trên nền gia cố cừ tràm */ CuTramFooting }
 
 /// <summary>Một phương án móng trong bảng gợi ý.</summary>
 public sealed class FoundationOption
@@ -44,6 +44,7 @@ public sealed class FoundationOption
     {
         FoundationChoice.Isolated => FoundationType.Isolated,
         FoundationChoice.Strip => FoundationType.Strip,
+        FoundationChoice.CuTramFooting => FoundationType.Isolated,   // [CừTràm]
         _ => FoundationType.Pile
     };
 
@@ -55,6 +56,8 @@ public sealed class FoundationOption
         var fs = p.Foundation;
         fs.Type = Type;
         if (Choice == FoundationChoice.Strip) fs.StripDirection = StripAlongX ? 1 : 2;
+        if (Choice == FoundationChoice.CuTramFooting) { fs.CuTram ??= new CuTramSettings(); fs.CuTram.Enabled = true; }   // [CừTràm]
+        else if ((Choice == FoundationChoice.Isolated || Choice == FoundationChoice.Strip) && fs.CuTram != null) fs.CuTram.Enabled = false;
         if (Type != FoundationType.Pile) return;
         fs.PileSize = PileSize; fs.PileRound = PileRound; fs.PileBored = Bored;
         if (double.IsFinite(PileLength) && PileLength > 0) fs.PileLength = Math.Round(PileLength, 2);
@@ -341,6 +344,8 @@ public static class FoundationAdvisor
         });
         adv.Notes.Add(adv.Explanation);
         adv.Notes.Add("Số liệu chỉ để chọn phương án sơ bộ – thiết kế chi tiết theo kết quả khảo sát địa chất, thí nghiệm nén tĩnh cọc và tính toán đầy đủ.");
+        try { GroundAdvisor.Augment(p, adv, bh, soil, Df, ntc, gtb, sMin); }   // [CừTràm] phương án móng nông trên nền cừ tràm + [LùiCọcRanh] lùi cọc cột biên
+        catch (Exception ex) { adv.Notes.Add("Không đánh giá được phương án cừ tràm / lùi cọc: " + ex.Message); }
         return adv;
     }
 }

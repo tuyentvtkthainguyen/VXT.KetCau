@@ -286,6 +286,8 @@ public static class PileCapDesigner
         var ep = plan?.Get(n.Id);
         if (ep != null && ep.Scheme == EccentricScheme.None) ep = null;
         double cox = 0, coy = 0;
+        PileSetbackInfo sbInfo = null;   // [LùiCọcRanh]
+        bool sbOn = ep != null && PileSetback.Active(p);
         List<BaseLoad> EvLoads() => ep == null || piles == null || piles.Count == 0 ? loads
             : EccentricFooting.CapLoads(plan, ep, loads, piles.Average(q => q.X), piles.Average(q => q.Y), G, H);   // e = trọng tâm nhóm cọc so với tim cột
         foreach (var lay in layouts)
@@ -298,6 +300,8 @@ public static class PileCapDesigner
             {
                 (cox, coy) = EccentricFooting.OffsetFor(ep, L, B);
                 if (Math.Abs(cox) > 1e-9 || Math.Abs(coy) > 1e-9) piles = lay.Select(q => (Math.Round(q.X + cox, 6) + 0.0, Math.Round(q.Y + coy, 6) + 0.0)).ToList();
+                // [LùiCọcRanh] tim cọc cách ranh giới ≥ khoảng lùi ép cọc: dịch nhóm cọc vào trong, lập lại kích thước đài
+                if (sbOn) { var sa = PileSetback.Adjust(p, n.X, n.Y, hc, bc, d, edge, piles, L, B, cox, coy); piles = sa.Piles; L = sa.L; B = sa.B; cox = sa.Ox; coy = sa.Oy; sbInfo = sa.Info; }
             }
             H = Hfix > 0 ? Hfix : Hmin;
             for (int it = 0; it < 100; it++)
@@ -445,7 +449,13 @@ public static class PileCapDesigner
         // [FoundationChecks] kiểm tra an toàn bổ sung (phản lực từng cọc, nhóm cọc, tải ngang, lún, bố trí, chọc thủng chi tiết) → dsn.Safety
         try { PileCapChecks.Attach(p, dsn, EvLoads(), fs, geo, ovr, Hmin, Hfix > 0, conc); }
         catch (Exception ex) { dsn.Messages.Add("Cảnh báo: không lập được bảng kiểm tra an toàn đài – " + ex.Message); }
-        if (ep != null) AttachEccentric(plan, ep, dsn, cox, coy);   // [MóngLệchTâm]
+        bool sbShift = sbInfo != null && sbInfo.Shifted;   // [LùiCọcRanh] độ lệch tâm đòn bẩy = trọng tâm nhóm cọc (đài vươn sát ranh: tâm đài ≠ trọng tâm cọc)
+        if (ep != null) AttachEccentric(plan, ep, dsn, sbShift ? piles.Average(q => q.X) : cox, sbShift ? piles.Average(q => q.Y) : coy);   // [MóngLệchTâm]
+        if (sbInfo != null)   // [LùiCọcRanh] kiểm tra khoảng lùi, phản lực có / không dầm cân bằng, công xôn đài, xoắn, phương án
+        {
+            try { PileSetback.Attach(p, dsn, sbInfo, plan, ep, loads, P, Pt, conc, main, cover); dsn.Setback = sbInfo; }
+            catch (Exception ex) { dsn.Messages.Add("Cảnh báo: không lập được kiểm tra lùi cọc khỏi ranh giới – " + ex.Message); }
+        }
         return dsn;
     }
 

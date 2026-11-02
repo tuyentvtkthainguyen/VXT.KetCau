@@ -67,6 +67,24 @@ public class FoundationSettings
     public double StrapReliefFactor { get; set; } = 0.5;
     // ---- hết [MóngLệchTâm] ----
 
+    // ---- [LùiCọcRanh] lùi tim cọc khỏi ranh giới đất để thi công ép cọc (Design/Foundation/PileSetback.cs) ----
+    /// <summary>true = bố trí cọc cách ranh giới đất ≥ PileSetback (nhà giáp ranh không ép sát ranh được). Mặc định tắt: file cũ giữ nguyên thiết kế.</summary>
+    public bool PileSetbackEnabled { get; set; }
+    /// <summary>Khoảng lùi tối thiểu từ ranh giới tới tim cọc (m), mặc định 0,5 m; từng cạnh ghi đè bằng PropertyBoundary.PileSetback</summary>
+    public double PileSetback { get; set; } = 0.5;
+    /// <summary>true = khoảng lùi đo tới MÉP cọc (thay vì tim cọc)</summary>
+    public bool PileSetbackToFace { get; set; }
+    /// <summary>Phương pháp ép cọc (ghi chú – robot cần khoảng lùi lớn hơn)</summary>
+    public PilePressMethod PilePressMethod { get; set; } = PilePressMethod.Anchor;
+    /// <summary>true = "Đài vươn ra sát ranh" (phần đài công xôn ngoài hàng cọc tới ranh giới); false = "Mép đài theo cọc" (mép đài = mép cọc + khoảng mép, tối thiểu phủ cột)</summary>
+    public bool CapToBoundary { get; set; } = true;
+    // ---- hết [LùiCọcRanh] ----
+
+    // ---- [CừTràm] gia cố nền bằng cừ tràm dưới móng đơn / móng băng (Model/CuTram.cs, Design/Foundation/CuTramCalc.cs) ----
+    /// <summary>Thông số cừ tràm; mặc định tắt (file cũ không có mục này vẫn mở được)</summary>
+    public CuTramSettings CuTram { get; set; } = new();
+    // ---- hết [CừTràm] ----
+
     // ---- móng băng ----
     /// <summary>Phương dải móng băng: 0 = tự chọn (theo phương có nhiều cột thẳng hàng), 1 = dọc trục X, 2 = dọc trục Y, 3 = giao thoa 2 phương</summary>
     public int StripDirection { get; set; }

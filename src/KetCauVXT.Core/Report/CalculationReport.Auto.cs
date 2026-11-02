@@ -76,6 +76,7 @@ public static partial class CalculationReport
                 if (s.PileCaps.Count > 0) PileCapsSection(p, s, d, sec++);
                 if (s.StripFootings.Count > 0) StripFootingsSection(p, s, d, sec++);
                 if (HasEccentric(s)) EccentricSection(p, s, d, sec++);   // [MóngLệchTâm] CalculationReport.Eccentric.cs
+                if (HasCuTram(s)) CuTramSection(p, s, d, sec++);   // [CừTràm] CalculationReport.CuTram.cs
             }
             if (c.Steel)
             {

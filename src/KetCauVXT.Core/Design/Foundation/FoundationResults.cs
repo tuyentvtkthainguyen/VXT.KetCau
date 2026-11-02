@@ -71,6 +71,8 @@ public class PileCapDesign : MemberDesignBase
     /// <summary>Thông tin lệch tâm (null = đài đặt tâm tại tim cột)</summary>
     public EccentricInfo Eccentric { get; set; }
     // ---- hết [MóngLệchTâm] ----
+    /// <summary>[LùiCọcRanh] Kết quả lùi cọc khỏi ranh giới để ép cọc (null = không áp dụng / không cần lùi) – PileSetback.cs</summary>
+    public PileSetbackInfo Setback { get; set; }
 }
 
 /// <summary>Kết quả thiết kế một dải móng băng (dầm trên nền đàn hồi, tiết diện chữ T ngược).</summary>
@@ -161,4 +163,6 @@ public class StripFootingDesign : MemberDesignBase
     public List<double> ColumnTorsion { get; set; } = new();
     public string Boundary { get; set; } = "";
     // ---- hết [MóngLệchTâm] ----
+    /// <summary>[CừTràm] Gia cố nền bằng cừ tràm dưới dải móng (null = không gia cố) – CuTramCalc.cs</summary>
+    public CuTramResult CuTram { get; set; }
 }

@@ -97,6 +97,7 @@ public static class QuantityReport
             pt.Add(q.Piles.Size, q.Piles.Grade, q.Piles.Count, R(q.Piles.LengthEach, 2), R(q.Piles.TotalLength, 2), R(q.Piles.Volume));
             sheets[1].Tables.Add(pt);
         }
+        if (q.GroundWorks.Count > 0) sheets[1].Tables.Add(CuTramQuantity.Table(q));   // [CừTràm] Report/CuTramQuantity.cs
 
         // ---------------- VÁN KHUÔN ----------------
         var vk = new QtyTable
@@ -462,6 +463,11 @@ public static class QuantityReport
         {
             d.Heading($"{n}.{k++}. Cầu thang: xây bậc, ốp bậc, trát", 2);
             WordTable(d, StairQuantity.Table(q), 9);
+        }
+        if (q.GroundWorks.Count > 0)   // [CừTràm]
+        {
+            d.Heading($"{n}.{k++}. Gia cố nền bằng cừ tràm", 2);
+            WordTable(d, CuTramQuantity.Table(q), 9);
         }
         d.Heading($"{n}.{k++}. Tổng hợp vật tư", 2);
         d.Paragraph("Nhu cầu vật tư = khối lượng công tác × định mức. " + (string.IsNullOrWhiteSpace(qs.NormSource) ? QuantitySettings.DefaultSource : qs.NormSource), false, true);

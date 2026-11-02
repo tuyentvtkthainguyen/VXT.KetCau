@@ -335,7 +335,11 @@ public static class StripFootingDesigner
         double h = Math.Max(0.40, RcSection.CeilTo(maxSpan / 7.0, 0.05));
         double hf = 0.25, hEdge = MinEdge;
         double sumNtcMax = slsNames.Max(cn => slsLoads.Select((L, i) => cols[i].Share * L.First(x => x.Combo == cn).N).Sum());
-        double R1 = FootingDesigner.BearingR(soil, 1.0);
+        // [CừTràm] gia cố nền cừ tràm dưới dải: R(B) ← [p] (CuTramCalc, móng Ls × B); không gia cố → R theo TCVN 9362 như cũ
+        bool cuOn = members.Any(mb => CuTramCalc.ActiveAt(p, mb.Node.Id, true));
+        double cuX = members.Average(mb => mb.Node.X), cuY = members.Average(mb => mb.Node.Y);
+        double CuR(double BB) => cuOn ? CuTramCalc.Evaluate(p, cuX, cuY, soil, Ls, BB).Allowable : FootingDesigner.BearingR(soil, BB);
+        double R1 = CuR(1.0);
         double B = Math.Max(RcSection.CeilTo(Math.Max(sumNtcMax, 0) / (Ls * Math.Max(R1 - gtb * Df, 10)), 0.05), Math.Max(b + 0.20, 0.60));
 
         WinklerBeam beam = null;
@@ -356,7 +360,7 @@ public static class StripFootingDesigner
             sized = false;
             for (int it = 0; it < 200; it++)
             {
-                R = FootingDesigner.BearingR(soil, B);
+                R = CuR(B);   // [CừTràm]
                 k = fs.SubgradeModulus > 0 ? fs.SubgradeModulus : 120 * Math.Max(R, 10);
                 double I = InertiaT(B, (hf + hEdge) / 2, b, h);
                 beam = new WinklerBeam(xs, conc.E * I, k, B);
@@ -568,7 +572,12 @@ public static class StripFootingDesigner
             foreach (var ci in d.Checks.Where(ck => (ck.Name.StartsWith("Uốn") || ck.Name.StartsWith("Cắt sườn")) && !ck.Ok).ToList())
                 d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + ci.Name + ": " + ci.Note);
         }
-        if (geoBh != null)
+        if (cuOn)   // [CừTràm] kết quả cừ tràm dưới dải + kiểm tra độ bền, lún khối quy ước
+        {
+            d.CuTram = CuTramCalc.Evaluate(p, cuX, cuY, soil, Ls, B, pavg, pmax, slsLoads.Max(ll => ll.Count > 0 ? ll.Max(x2 => x2.N) : 0));
+            CuTramCalc.AddChecks(d.Checks, d.Messages, d.CuTram);
+        }
+        if (geoBh != null && !cuOn)
         {
             // lún móng băng L × B, áp lực trung bình tiêu chuẩn ptb (GeotechCalc.Settlement)
             var st = GeotechCalc.Settlement(geoBh, Ls, B, Df, pavg);

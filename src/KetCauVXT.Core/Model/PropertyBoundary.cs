@@ -20,6 +20,8 @@ public class PropertyBoundary
     /// <summary>Toạ độ tuyệt đối (X với Trái/Phải, Y với Trước/Sau), m – dùng khi Grid rỗng</summary>
     public double Coord { get; set; }
     public bool Enabled { get; set; } = true;
+    /// <summary>[LùiCọcRanh] Khoảng lùi tim cọc tới cạnh ranh giới này (m); −1 = theo FoundationSettings.PileSetback; 0 = không cần lùi (phía không có nhà bên cạnh)</summary>
+    public double PileSetback { get; set; } = -1;
 
     public bool IsVertical => Side == BoundarySide.Left || Side == BoundarySide.Right;
     /// <summary>+1: phía trong lô đất là chiều dương của trục (Trái, Trước); −1: Phải, Sau</summary>
@@ -30,7 +32,7 @@ public class PropertyBoundary
         BoundarySide.Left => "Ranh giới trái", BoundarySide.Right => "Ranh giới phải", BoundarySide.Front => "Ranh giới trước", _ => "Ranh giới sau"
     };
 
-    public PropertyBoundary Clone() => new() { Side = Side, Grid = Grid, Offset = Offset, Coord = Coord, Enabled = Enabled };
+    public PropertyBoundary Clone() => new() { Side = Side, Grid = Grid, Offset = Offset, Coord = Coord, Enabled = Enabled, PileSetback = PileSetback };
 }
 
 /// <summary>Phương án móng lệch tâm.</summary>

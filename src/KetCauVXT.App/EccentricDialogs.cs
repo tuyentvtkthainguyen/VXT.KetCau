@@ -14,7 +14,7 @@ namespace KetCauVXT.App;
 
 /// <summary>[MóngLệchTâm] Hộp thoại "Ranh giới đất…": chọn các cạnh ranh giới (trái / phải / trước / sau) theo trục + khoảng cách ra ngoài trục
 /// (hoặc toạ độ), khoảng hở mép móng – ranh giới, dung sai nhận cột sát ranh, phương án móng lệch tâm mặc định; xem trước trên mặt bằng.</summary>
-internal sealed class BoundaryDialog : Window
+internal sealed partial class BoundaryDialog : Window   // [LùiCọcRanh] partial: EccentricDialogs.Setback.cs
 {
     private sealed class SideRow
     {
@@ -97,6 +97,7 @@ internal sealed class BoundaryDialog : Window
         left.Children.Add(DialogUi.Hint("Tự chọn: có cột trong cùng trục trong phạm vi nhịp trên → (a) dầm móng cân bằng (móng kết hợp nếu 2 móng gần chạm nhau); không có → (b) tự cân bằng. "
                                         + "Chọn riêng từng chân cột bằng nút 'Lệch tâm…' trên tab Mô hình móng."));
         foreach (var tb in new[] { _tClear, _tTol }) tb.TextChanged += (s, e) => Preview();
+        AddSetbackUi(left, fs);   // [LùiCọcRanh] khoảng lùi ép cọc + tuỳ chọn mép đài (EccentricDialogs.Setback.cs)
 
         var ok = DialogUi.Btn("Đồng ý", (s, e) => { Result = Build(); DialogResult = true; }, true);
         ok.IsDefault = true;
@@ -168,6 +169,7 @@ internal sealed class BoundaryDialog : Window
         fs.StrapMaxSpan = Math.Max(0.5, DialogUi.ParseNum(_tSpan.Text, 6));
         fs.StrapReliefFactor = Math.Clamp(DialogUi.ParseNum(_tBeta.Text, 0.5), 0, 1);
         fs.EccentricDefault = _cbScheme.SelectedIndex switch { 1 => EccentricScheme.Strap, 2 => EccentricScheme.SelfBalanced, 3 => EccentricScheme.Combined, _ => EccentricScheme.Auto };
+        ReadSetback(fs);   // [LùiCọcRanh]
         return fs;
     }
 

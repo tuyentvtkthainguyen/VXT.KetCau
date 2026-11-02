@@ -176,6 +176,7 @@ public static class FoundationDrawing
         w.DimChainV(chainY, 0, -3 * th, k);
         w.Dim(0, 0, 0, B, 5.5 * th, k);
         PileNumbers(w, c, xc, yc, k, L);   // [FoundationChecks] số hiệu + toạ độ cọc
+        PileSetbackDrawing.OnCapPlan(w, c, xc, yc, k, L, B);   // [LùiCọcRanh] ranh giới + kích thước lùi ép cọc
         w.Title(L / 2, w.Extents.Y2 + 4 * th, $"{c.Name} (SL={Math.Max(1, c.Quantity)})", DrawUtil.ScaleText(det));
         return w;
     }

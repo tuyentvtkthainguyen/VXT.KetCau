@@ -340,6 +340,8 @@ public class FootingDesign : MemberDesignBase
     public KetCauVXT.Design.Foundation.FoundationCheckReport Safety { get; set; }
     /// <summary>[MóngLệchTâm] Móng lệch tâm (ranh giới đất): phương án, độ lệch tâm, dầm cân bằng, móng kết hợp; null = móng đặt tâm tại tim cột</summary>
     public KetCauVXT.Design.Foundation.EccentricInfo Eccentric { get; set; }
+    /// <summary>[CừTràm] Gia cố nền bằng cừ tràm dưới móng (null = nền thiên nhiên) – Design/Foundation/CuTramCalc.cs</summary>
+    public KetCauVXT.Design.Foundation.CuTramResult CuTram { get; set; }
 }
 
 // ---------------------------------------------------------------------

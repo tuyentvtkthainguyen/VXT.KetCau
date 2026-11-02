@@ -76,7 +76,9 @@ public static class FootingDesigner
         if (plan != null) list = list.OrderBy(x => rank.TryGetValue(x.d.NodeId, out int k) ? k : 0).ToList();   // [MóngLệchTâm] giữ thứ tự đặt tên như cũ
         int no = 1;
         foreach (var (d, _) in list) d.Name = "M" + no++;
-        return list.Select(x => x.d).ToList();
+        var outList = list.Select(x => x.d).ToList();
+        CuTramCalc.DifferentialSettlement(outList);   // [CừTràm] lún lệch giữa các móng cừ tràm kề nhau
+        return outList;
     }
 
     /// <summary>Sức chịu tải tiêu chuẩn của nền R = m1·m2/ktc·(A·b·γII + B·Df·γ'II + D·c) (TCVN 9362:2012 mục 4.6.9, công thức 3),
@@ -148,9 +150,13 @@ public static class FootingDesigner
         }
         // ---- hết [MóngLệchTâm] ----
 
+        // [CừTràm] gia cố nền bằng cừ tràm: sức chịu tải nền R ← [p] theo kích thước móng (CuTramCalc.Evaluate); không gia cố → R theo TCVN 9362 như cũ
+        bool cuOn = CuTramCalc.ActiveAt(p, n.Id);
+        double RofSize(double LL, double BB) => cuOn ? CuTramCalc.Evaluate(p, n.X, n.Y, soil, LL, BB).Allowable : BearingR(soil, Math.Min(LL, BB));
+
         // ---- kích thước đáy (TCVN 9362:2012 mục 4.6) ----
         double Nmax = loads.Max(l => l.N) / kt;
-        double R0 = BearingR(soil, 1.0);
+        double R0 = RofSize(1.0, 1.0);
         double Aest = Nmax / Math.Max(R0 - gtb * Df, 10);
         double bs = Math.Max(RcSection.CeilTo(Math.Sqrt(Math.Max(Aest, 0) / asp), 0.1), MinSize);
         double L = 0, B = 0, Rv = 0;
@@ -169,7 +175,7 @@ public static class FootingDesigner
         if (given != null && given.L > 0 && given.B > 0)
         {
             L = given.L; B = given.B;
-            Rv = BearingR(soil, Math.Min(L, B));
+            Rv = RofSize(L, B);   // [CừTràm]
             Eval(L, B);   // [MóngLệchTâm]
             sized = true;
             d.Messages.Add("Kích thước đáy móng do người dùng chọn");
@@ -180,7 +186,7 @@ public static class FootingDesigner
             {
                 double sl = RcSection.CeilTo(bs * asp, 0.1);
                 L = longX ? sl : bs; B = longX ? bs : sl;
-                Rv = BearingR(soil, Math.Min(L, B));
+                Rv = RofSize(L, B);   // [CừTràm]
                 Eval(L, B);   // [MóngLệchTâm]
                 if (ep == null ? ptb <= Rv + 1e-6 && pmax <= 1.2 * Rv + 1e-6 && pmin >= -1e-6 : EccentricFooting.PressureOk(epr, Rv)) { sized = true; break; }
                 if (ep != null && (Math.Abs(eox) > 1e-6 || Math.Abs(eoy) > 1e-6) && Math.Min(L, B) >= EccentricFooting.MaxSelfSize - 1e-9) break;   // [MóngLệchTâm] không tăng quá 4 m
@@ -196,7 +202,7 @@ public static class FootingDesigner
                 {
                     double sl = RcSection.CeilTo(bs * asp, 0.1);
                     L = longX ? sl : bs; B = longX ? bs : sl;
-                    Rv = BearingR(soil, Math.Min(L, B));
+                    Rv = RofSize(L, B);   // [CừTràm]
                     Eval(L, B);
                     if (ptb <= Rv + 1e-6) break;
                     bs = Math.Round(bs + 0.1, 3);
@@ -331,7 +337,12 @@ public static class FootingDesigner
             Length = DesignUtil.R10(lenB + 2 * hookB), Shape = "U", Start = c, End = B - c,
             Segments = new List<double> { DesignUtil.Mm(hookB), DesignUtil.Mm(lenB), DesignUtil.Mm(hookB) }
         });
-        if (geoBh != null) AddSettlementCheck(d, geoBh, soil, L, B, ptb);
+        if (geoBh != null && !cuOn) AddSettlementCheck(d, geoBh, soil, L, B, ptb);
+        if (cuOn)   // [CừTràm] kết quả 2 phương pháp + kiểm tra độ bền (MNN), lún khối quy ước, áp lực mũi cừ
+        {
+            d.CuTram = CuTramCalc.Evaluate(p, n.X, n.Y, soil, L, B, ptb, pmax, loads.Max(l => l.N) / kt);
+            CuTramCalc.AddChecks(d.Checks, d.Messages, d.CuTram);
+        }
         if (ep != null) AttachEccentric(p, plan, ep, d, eox, eoy, epr, L, B, kt, gtb, Df, Rv);   // [MóngLệchTâm]
         // [FoundationChecks] sự làm việc móng đơn: móng cứng, lệch tâm / tách nền, trượt, chọc thủng có mô men, cắt (không thêm CheckItem)
         try { KetCauVXT.Design.Foundation.FootingBehaviour.AnalyzeIsolated(d, soil, conc, cover); }
@@ -452,5 +463,6 @@ public static class FootingDesigner
 
     private static string Signature(FootingDesign d) =>
         Math.Round(d.L * 100) + "x" + Math.Round(d.B * 100) + "x" + Math.Round(d.H * 100) + "|" + Math.Round(d.ColumnB * 1000) + "x" + Math.Round(d.ColumnH * 1000)
-        + "|" + d.BarsL + "|" + d.BarsB + "|" + RebarNumbering.Signature(d.Bars) + EccentricFooting.Sig(d.Eccentric);   // [MóngLệchTâm]
+        + "|" + d.BarsL + "|" + d.BarsB + "|" + RebarNumbering.Signature(d.Bars) + EccentricFooting.Sig(d.Eccentric)   // [MóngLệchTâm]
+        + (d.CuTram != null ? "|CT" + d.CuTram.Count : "");   // [CừTràm] móng có / không gia cố cừ tràm không gộp
 }

@@ -47,6 +47,9 @@ public static class FootingDrawing
             catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(g.Key, ex, SheetScale), g.Key, true)); }
             first = false;
         }
+        // [CừTràm] mặt bằng lưới cừ + mặt cắt (MNN thấp nhất)
+        try { res.AddRange(CuTramDrawing.BuildDetails(p, s, SheetScale)); }
+        catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure("Cừ tràm", ex, SheetScale), "CT", true)); }
         // đài cọc, móng băng
         try { res.AddRange(FoundationDrawing.BuildDetails(p, s, SheetScale)); }
         catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure("Đài cọc / móng băng", ex, SheetScale), "ĐC", true)); }
@@ -82,6 +85,8 @@ public static class FootingDrawing
         }
         FoundationDrawing.AddToLayout(w, s, k, ref box);
         EccentricDrawing.AddToLayout(w, p, s, k, ref box);   // [MóngLệchTâm] ranh giới đất + dầm cân bằng
+        CuTramDrawing.AddToLayout(w, s, k, ref box);   // [CừTràm] ghi chú móng gia cố cừ tràm
+        PileSetbackDrawing.AddToLayout(w, p, s, k, ref box);   // [LùiCọcRanh] đường giới hạn tim cọc + "≥ 500 (lùi ép cọc)"
         // trục
         var gx = p.GridsX.ToList(); var gy = p.GridsY.ToList();
         foreach (var g in gx) box = box.Union(g.Coord * 1000 * k, box.Cy);

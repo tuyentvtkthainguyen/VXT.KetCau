@@ -117,7 +117,8 @@ public partial class MainWindow
             tabView.SelectedItem = ViewTab("3D"); await Pause(2000); Shot($"{tag}_9_3D_SauKhiSua");
             await SelfTestWallsFoundation(tag, story);
             await SelfTestPileLayout(tag); // bố trí cọc – MainWindow.SelfTestPileLayout.cs
-            await SelfTestEccentricFooting(tag); // móng lệch tâm – MainWindow.SelfTestEccentric.cs
+            await SelfTestEccentricFooting(tag);
+            await SelfTestCuTram(tag); // lùi cọc khỏi ranh, cừ tràm – MainWindow.SelfTestCuTram.cs // móng lệch tâm – MainWindow.SelfTestEccentric.cs
             await SelfTestCurvedBeam(tag, story); // dầm cong – MainWindow.SelfTestCurved.cs
             await SelfTestGeoAppendix(tag); // địa danh gió, hố khoan, gợi ý móng, phụ lục – MainWindow.SelfTestGeo.cs
             // dầm, tường, cấu tạo sàn, móng cọc, móng băng – MainWindow.SelfTestFoundation.cs
