@@ -18,6 +18,17 @@ namespace KetCauVXT.AcadLink
         public bool Plot = true;
     }
 
+    // ---- kiểu kích thước VXT_1-25… (CadStandard.json → "Drawing") ----
+    /// <summary>Kiểu kích thước theo tỷ lệ (đã quy đổi: ô trống lấy theo thông số chung). Thông số mm trên giấy, Scale = DIMSCALE.</summary>
+    internal sealed class DimStyleA
+    {
+        public string Name = "";
+        public double Scale = 100, TextHeight = 2.5, TickSize = 2.5, ExtOffset = 0.625, ExtBeyond = 1.25, LineExtend = 1.0, TextGap = 0.75, Baseline = 7, LinearFactor = 1;
+        public bool Arrow;
+        public int Decimals;
+    }
+    // ---- hết kiểu kích thước ----
+
     internal sealed class LayerRuleDef
     {
         public string Pattern = "", Mode = "Contains", Category = "";
@@ -35,6 +46,8 @@ namespace KetCauVXT.AcadLink
         public List<LayerRuleDef> Rules = new List<LayerRuleDef>();
         public Dictionary<string, string> LayerMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         public string FontName = "Arial";
+        /// <summary>Kiểu kích thước (mặc định VXT_1-15, 1-25, 1-30, 1-50, 1-100, 1-200, 1-250)</summary>
+        public List<DimStyleA> DimStyles = DefaultDimStyles();
         /// <summary>Đường dẫn file đã đọc ("" = mặc định của add-in)</summary>
         public string SourceFile = "";
 
@@ -88,6 +101,8 @@ namespace KetCauVXT.AcadLink
                 var root = MiniJson.Parse(File.ReadAllText(f, Encoding.UTF8));
                 s.SourceFile = f;
                 s.FontName = MiniJson.Str(root, "FontName", "Arial");
+                var drw = MiniJson.Get(root, "Drawing");
+                if (drw != null) s.DimStyles = ReadDimStyles(drw);
                 foreach (var o in MiniJson.Arr(root, "OutputLayers"))
                 {
                     string name = MiniJson.Str(o, "Name");
@@ -139,6 +154,55 @@ namespace KetCauVXT.AcadLink
             }
             return s;
         }
+
+        // ---- kiểu kích thước ----
+        private static readonly double[] DimScales = { 15, 25, 30, 50, 100, 200, 250 };
+
+        private static List<DimStyleA> DefaultDimStyles() => ReadDimStyles(new Dictionary<string, object>());
+
+        /// <summary>Đọc mục "Drawing" của CadStandard.json:
+        /// DimStylePrefix ("VXT_"), DimTextHeight, DimTickSize, DimArrowType ("Tick" | "ClosedArrow"), DimExtOffset, DimExtBeyond, DimLineExtend,
+        /// DimTextGap, DimBaselineSpacing, DimDecimals, DimLinearFactor (thông số chung, mm giấy) và
+        /// DimStyles: [{ Scale, TextHeight, TickSize, Arrow, ExtOffset, ExtBeyond, LineExtend, TextGap, BaselineSpacing, Decimals, LinearFactor }]
+        /// (giá trị null = theo thông số chung). Không có DimStyles → 7 tỷ lệ mặc định.</summary>
+        private static List<DimStyleA> ReadDimStyles(object d)
+        {
+            string prefix = MiniJson.Str(d, "DimStylePrefix", "VXT_");
+            var clean = new StringBuilder();
+            foreach (char ch in prefix ?? "") if (ch < 128 && (char.IsLetterOrDigit(ch) || ch == '_' || ch == '-' || ch == '$')) clean.Append(ch);
+            prefix = clean.Length == 0 ? "VXT_" : clean.ToString();
+            var b = new DimStyleA
+            {
+                TextHeight = MiniJson.Num(d, "DimTextHeight", 2.5), TickSize = MiniJson.Num(d, "DimTickSize", 2.5),
+                ExtOffset = MiniJson.Num(d, "DimExtOffset", 0.625), ExtBeyond = MiniJson.Num(d, "DimExtBeyond", 1.25),
+                LineExtend = MiniJson.Num(d, "DimLineExtend", 1.0), TextGap = MiniJson.Num(d, "DimTextGap", 0.75),
+                Baseline = MiniJson.Num(d, "DimBaselineSpacing", 7), LinearFactor = MiniJson.Num(d, "DimLinearFactor", 1),
+                Decimals = (int)MiniJson.Num(d, "DimDecimals", 0),
+                Arrow = string.Equals(MiniJson.Str(d, "DimArrowType", "Tick"), "ClosedArrow", StringComparison.OrdinalIgnoreCase)
+            };
+            var defs = MiniJson.Get(d, "DimStyles") as List<object>;
+            var items = defs != null ? defs : DimScales.Select(x => (object)new Dictionary<string, object> { ["Scale"] = x }).ToList();
+            var res = new List<DimStyleA>();
+            foreach (var o in items)
+            {
+                double sc = Math.Round(MiniJson.Num(o, "Scale", 0), 2);
+                if (sc <= 0 || sc > 2000 || res.Any(q => Math.Abs(q.Scale - sc) < 0.01)) continue;
+                object arr = MiniJson.Get(o, "Arrow");
+                res.Add(new DimStyleA
+                {
+                    Name = prefix + "1-" + sc.ToString("0.##", CultureInfo.InvariantCulture).Replace('.', '_'),
+                    Scale = sc,
+                    TextHeight = MiniJson.Num(o, "TextHeight", b.TextHeight), TickSize = MiniJson.Num(o, "TickSize", b.TickSize),
+                    ExtOffset = MiniJson.Num(o, "ExtOffset", b.ExtOffset), ExtBeyond = MiniJson.Num(o, "ExtBeyond", b.ExtBeyond),
+                    LineExtend = MiniJson.Num(o, "LineExtend", b.LineExtend), TextGap = MiniJson.Num(o, "TextGap", b.TextGap),
+                    Baseline = MiniJson.Num(o, "BaselineSpacing", b.Baseline), LinearFactor = MiniJson.Num(o, "LinearFactor", b.LinearFactor),
+                    Decimals = (int)MiniJson.Num(o, "Decimals", b.Decimals),
+                    Arrow = arr is string ? string.Equals((string)arr, "ClosedArrow", StringComparison.OrdinalIgnoreCase) : b.Arrow
+                });
+            }
+            return res.OrderBy(q => q.Scale).ToList();
+        }
+        // ---- hết kiểu kích thước ----
 
         /// <summary>Layer kết cấu của một nhóm: ưu tiên OutputLayers có Key trùng tên nhóm (vd. "Cot"), không có thì mặc định KC-….</summary>
         public OutLayer ForCategory(string cat)

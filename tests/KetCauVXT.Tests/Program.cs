@@ -503,6 +503,9 @@ DwgTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDire
 Console.WriteLine("28. Thép sàn: mũ cạnh chung tính một lần, phương án lưới 2 lớp, so sánh vượt/tiết kiệm thép");
 SlabSchemeTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("29. Nhập kiến trúc: tường xiên, tường cong, ELLIPSE/SPLINE, cột tròn/xoay, DXF nhị phân");
+ArchGeometryTests.Run(Check, Path.Combine(Path.GetTempPath(), "kcvxt_archgeo"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");
