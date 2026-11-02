@@ -61,10 +61,12 @@ public static class RebarSchedule
         {
             int q = Math.Max(1, m.Quantity);
             // các BarMark cùng số hiệu (thanh đối xứng: mũ gối trái – phải, mũ sàn các cạnh…) gộp thành MỘT hàng, số thanh cộng dồn
-            foreach (var gm in m.Bars.Where(x => x.Count > 0 && x.Length > 0 && x.Dia > 0).GroupBy(x => x.Mark).OrderBy(x => x.Key))
+            // (thanh chưa đánh số – Mark = 0 – giữ riêng từng hàng)
+            foreach (var gm in m.Bars.Where(x => x.Count > 0 && x.Length > 0 && x.Dia > 0).Select((x, i) => (Bar: x, Key: x.Mark > 0 ? x.Mark : -1 - i))
+                         .GroupBy(t => t.Key).OrderBy(t => t.Key))
             {
-                var b = gm.First();
-                int cnt = gm.Sum(x => x.Count);
+                var b = gm.First().Bar;
+                int cnt = gm.Sum(t => t.Bar.Count);
                 double lmm = Math.Round(b.Length * 100) * 10;
                 int tot = cnt * q;
                 double tl = tot * lmm / 1000.0;

@@ -345,7 +345,9 @@ public static class BeamDrawing
         foreach (var bm in ordered) for (int i = 0; i < Math.Max(0, bm.Count); i++) items.Add(bm);
         if (items.Count == 0) return res;
         double dmax = items.Max(x => x.Dia);
-        int perRow = Math.Max(2, (int)Math.Floor((b - 2 * cover + 25) / (dmax + 25)));
+        // khoảng hở như khi thiết kế (TCVN 5574:2018 mục 10.3.5): thép dưới ≥ max(d; 25), thép trên ≥ max(d; 30) mm
+        double clr = Math.Max(top ? 30 : 25, dmax);
+        int perRow = Math.Max(2, (int)Math.Floor((b - 2 * cover + clr) / (dmax + clr) + 1e-9));
         var row1 = items.Take(perRow).ToList();
         var row2 = items.Skip(perRow).ToList();
         double xa = cover + dmax / 2, xb = b - cover - dmax / 2;

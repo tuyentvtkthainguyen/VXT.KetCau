@@ -728,6 +728,7 @@ public partial class MainWindow : Window
             Step("gia công thép (shop drawing)", () => ExportRebarShop(ds, Path.Combine(folder, "GiaCongThep")));   // MainWindow.Rebar.cs
             Step("thuyết minh Word", () => CalculationReport.Export(_p, res, ds, Path.Combine(folder, "ThuyetMinh.docx")));
             Step("bảng tính Excel", () => ExcelReport.Export(_p, res, ds, Path.Combine(folder, "BangTinh.xlsx")));
+            Step("bảng khối lượng vật tư", () => ExportQuantitiesTo(_p, ds, folder));   // MainWindow.Quantity.cs
             Step("nội lực CSV", () =>
             {
                 string d = Path.Combine(folder, "NoiLuc");

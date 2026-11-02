@@ -333,8 +333,11 @@ public static class RebarShop
             if (!string.IsNullOrEmpty(o.Category) && CategoryGroup(cat) != o.Category && cat != o.Category) continue;
             var conc = ConcreteFor(p, m);
             int q = Math.Max(1, m.Quantity);
-            foreach (var g in m.Bars.Where(b => b.Count > 0 && b.Length > 0 && b.Dia > 0).GroupBy(b => b.Mark).OrderBy(t => t.Key))
+            // cùng số hiệu → một nhóm (thanh chưa đánh số – Mark = 0 – giữ riêng)
+            foreach (var g in m.Bars.Where(x => x.Count > 0 && x.Length > 0 && x.Dia > 0).Select((x, i) => (Bar: x, Key: x.Mark > 0 ? x.Mark : -1 - i))
+                         .GroupBy(t => t.Key, t => t.Bar).OrderBy(t => t.Key))
             {
+                int mark = Math.Max(g.Key, 0);
                 var rows = new List<ShopBar>();
                 bool splitAny = false;
                 foreach (var bm in g)
@@ -359,14 +362,14 @@ public static class RebarShop
                     .Select(gr => { var f = gr.First(); f.BarsPerMember = gr.Sum(x => x.BarsPerMember); return f; }).ToList();
                 if (!splitAny && merged.Count == 1)
                 {
-                    merged[0].Label = g.Key.ToString(DrawUtil.Inv);
+                    merged[0].Label = mark.ToString(DrawUtil.Inv);
                     res.Bars.Add(merged[0]);
                     continue;
                 }
                 int k = 0;
                 foreach (var r in merged.OrderBy(x => x.Segments.Count > 1 && x.Shape != "Thẳng" ? 0 : 1).ThenByDescending(x => x.CutLengthMm))
                 {
-                    r.Label = merged.Count == 1 ? g.Key.ToString(DrawUtil.Inv) : g.Key.ToString(DrawUtil.Inv) + (char)('a' + Math.Min(k, 25));
+                    r.Label = merged.Count == 1 ? mark.ToString(DrawUtil.Inv) : mark.ToString(DrawUtil.Inv) + (char)('a' + Math.Min(k, 25));
                     if (r.Spliced) r.Note = "nối chồng ll = " + DxfWriter.N0(r.LapMm) + " mm" + (o.Stagger ? ", so le ≥ 1,3·ll" : "");
                     k++;
                     res.Bars.Add(r);
@@ -426,10 +429,11 @@ public static class RebarShop
             else msgs.Add(m.Name + " – số hiệu " + bm.Mark + " (" + bm.Count + "Ø" + bm.Dia + "): không so le được mối nối trong cây " + DesignUtil.F(stock, "0.0#") + " m – nối 100% tại một tiết diện, cần tăng ll hoặc dùng cây dài hơn");
         }
         var list = new List<Piece>();
+        double lapL = lap; // tham số out không dùng được trong hàm cục bộ
         void AddPieces(List<double> centers, int count)
         {
             if (count <= 0) return;
-            var ps = PiecesFromCenters(S, E, lap, centers);
+            var ps = PiecesFromCenters(S, E, lapL, centers);
             for (int i = 0; i < ps.Count; i++)
             {
                 double str = ps[i].B - ps[i].A;

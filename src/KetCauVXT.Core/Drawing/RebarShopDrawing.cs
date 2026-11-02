@@ -46,7 +46,7 @@ public static class RebarShopDrawing
                 figs.Add(new Figure(Table(part, title), "GC_" + c + "_" + (i + 1), i == 0));
             }
         }
-        figs.Add(new Figure(CutPlan(shop), "PAC", true));
+        figs.AddRange(PlanFigures(shop));
         figs.Add(new Figure(Summary(shop), "THGC", false));
         return figs;
     }
@@ -239,7 +239,16 @@ public static class RebarShopDrawing
     // ------------------------------------------------------------------
     // Phương án cắt
     // ------------------------------------------------------------------
-    private static DxfWriter CutPlan(ShopResult shop, int maxPatterns = 14)
+    /// <summary>Sơ đồ cắt: mỗi Ø một mảnh hình (để xếp vừa khổ giấy), mảnh đầu bắt đầu hàng mới.</summary>
+    private static List<Figure> PlanFigures(ShopResult shop)
+    {
+        var res = new List<Figure>();
+        for (int i = 0; i < shop.Plans.Count; i++)
+            res.Add(new Figure(CutPlan(shop, shop.Plans[i]), "PAC_" + shop.Plans[i].Dia, i == 0));
+        return res;
+    }
+
+    private static DxfWriter CutPlan(ShopResult shop, DiaCutPlan only, int maxPatterns = 14)
     {
         var w = new DxfWriter(SheetScale);
         double th = w.Th, u = SheetScale;
@@ -248,9 +257,9 @@ public static class RebarShopDrawing
         double k = barW / Math.Max(stock, 1);
         double y = 0;
         w.Text(Lay.Chu, (x0 + barW) / 2, y + 3 * u, 1.6 * th,
-            "SƠ ĐỒ CẮT THÉP TỪ CÂY " + DxfWriter.N0(stock) + " mm (tối ưu first-fit decreasing)", 0, 1, 0);
+            "SƠ ĐỒ CẮT THÉP Ø" + only.Dia + " TỪ CÂY " + DxfWriter.N0(stock) + " mm (tối ưu first-fit decreasing)", 0, 1, 0);
         y -= 6 * u;
-        foreach (var pl in shop.Plans)
+        foreach (var pl in new[] { only })
         {
             var pats = pl.Patterns();
             w.Text(Lay.Chu, 0, y - 0.5 * rowH, 1.1 * th, string.Format(DrawUtil.Inv,
@@ -401,7 +410,8 @@ public static class RebarShopDrawing
         var all = RebarShop.Build(p, s, ShopOptions.From(p.RebarPrefs));
         if (all.Bars.Count > 0)
         {
-            var figs = new List<Figure> { new Figure(CutPlan(all), "PAC", true), new Figure(Summary(all), "THGC", false) };
+            var figs = PlanFigures(all);
+            figs.Add(new Figure(Summary(all), "THGC", false));
             var w = SheetComposer.Compose(figs, SheetScale, Info("PHƯƠNG ÁN CẮT VÀ TỔNG HỢP GIA CÔNG THÉP", "KC-07"), DrawingSet.Paper);
             string path = Path.Combine(folder, "KC-07_PhuongAnCatThep.dxf");
             w.Save(path);

@@ -358,13 +358,14 @@ public static class ExcelReport
         void Add(MemberDesignBase m, string type)
         {
             // gộp các BarMark cùng số hiệu (thanh đối xứng) thành một dòng – giống bảng thống kê DXF
-            foreach (var g in m.Bars.Where(b => b.Dia > 0 && b.Count > 0 && b.Length > 0).GroupBy(b => b.Mark).OrderBy(g => g.Key))
+            foreach (var g in m.Bars.Where(x => x.Dia > 0 && x.Count > 0 && x.Length > 0).Select((x, i) => (Bar: x, Key: x.Mark > 0 ? x.Mark : -1 - i))
+                         .GroupBy(t => t.Key).OrderBy(t => t.Key))
             {
-                var b = g.First();
+                var b = g.First().Bar;
                 rows.Add(new RebarRow
                 {
                     Member = m.Name, Type = type, Mark = b.Mark, Role = b.Role, Shape = b.Shape, Dia = b.Dia,
-                    LengthMm = Math.Round(b.Length * 100) * 10, Members = Math.Max(1, m.Quantity), PerMember = g.Sum(x => x.Count)
+                    LengthMm = Math.Round(b.Length * 100) * 10, Members = Math.Max(1, m.Quantity), PerMember = g.Sum(t => t.Bar.Count)
                 });
             }
         }
