@@ -157,13 +157,13 @@ public static class DwgTests
         var ao = new ArchImportOptions();
         var archDwg = ArchPlanReader.Read(dwg, ao);
         var archDxf = ArchPlanReader.Read(dxf, new ArchImportOptions());
-        foreach (var w in archDwg.Warnings) Console.WriteLine("   ! " + w);
+        foreach (var wn in archDwg.Warnings) Console.WriteLine("   ! " + wn);
         Console.WriteLine("   · DWG: " + string.Join(" | ", archDwg.Floors.Select(f => f.ToString())));
         Console.WriteLine("   · DXF: " + string.Join(" | ", archDxf.Floors.Select(f => f.ToString())));
         check("DWG → ArchPlanReader: 1 mặt bằng", archDwg.Floors.Count, 1, 0);
         var f1 = archDwg.Floors.FirstOrDefault();
         check("DWG → ArchPlanReader: có tường", B(f1 != null && f1.Walls.Count > 0), 1, 0);
-        check("DWG → ArchPlanReader: tường 220 và 110", B(f1 != null && f1.Walls.Any(w => Math.Abs(w.Thickness - 0.22) < 0.005)) + B(f1 != null && f1.Walls.Any(w => Math.Abs(w.Thickness - 0.11) < 0.005)), 2, 0);
+        check("DWG → ArchPlanReader: tường 220 và 110", B(f1 != null && f1.Walls.Any(wl => Math.Abs(wl.Thickness - 0.22) < 0.005)) + B(f1 != null && f1.Walls.Any(wl => Math.Abs(wl.Thickness - 0.11) < 0.005)), 2, 0);
         check("DWG → ArchPlanReader: trục 1, 2 (X)", f1?.Grids.Count(g => g.Dir == KetCauVXT.Model.GridDir.X && (g.Name == "1" || g.Name == "2")) ?? 0, 2, 0);
         check("DWG → ArchPlanReader: trục A, B, C (Y)", f1?.Grids.Count(g => g.Dir == KetCauVXT.Model.GridDir.Y && "ABC".Contains(g.Name) && g.Name.Length == 1) ?? 0, 3, 0);
         var d1 = archDxf.Floors.FirstOrDefault();
