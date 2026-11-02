@@ -135,7 +135,7 @@ public static class StairTests
             B(new[] { "BE_TONG", "THEP", "DAI", "KICH_THUOC", "CHU", "KY_HIEU" }.All(x => txt.Contains("\n" + x + "\r") || txt.Contains(x))), 1, 0);
         check("Bản vẽ DXF: chữ mã hoá \\U+XXXX, nhãn Ø (\\U+00D8)", B(!txt.Any(ch => ch > 127) && txt.Contains("\\U+00D8")), 1, 0);
         var texts = figs.SelectMany(f => f.W.Texts()).ToList();
-        check("Bản vẽ: có MẶT CẮT 1-1, BẢNG THỐNG KÊ, GHI CHÚ một khối", B(texts.Any(x => x.Contains("MẶT CẮT 1-1")) && texts.Any(x => x.StartsWith("BẢNG THỐNG KÊ CỐT THÉP")) && texts.Count(x => x == "GHI CHÚ:") == 1), 1, 0);
+        check("Bản vẽ: có MẶT CẮT 1-1, BẢNG THỐNG KÊ, GHI CHÚ một khối", B(texts.Any(x => x.Contains("MẶT CẮT 1-1")) && texts.Any(x => x.StartsWith("BẢNG THỐNG KÊ CỐT THÉP")) && texts.Count(x => x == GeneralNotes.Heading || x == "GHI CHÚ:") == 1), 1, 0);
         var rows = StairSchedule.Rows(ds);
         check("Bảng thống kê: trọng lượng = 0,00617·d²·L", rows.Sum(x => x.WeightKg), rows.Sum(x => Math.Round(0.00617 * x.Dia * x.Dia * x.TotalLengthM, 2)), 1e-6);
         var all = new List<ScheduleRow>(); StairSchedule.AppendTo(all, ds); StairSchedule.AppendTo(all, ds);
