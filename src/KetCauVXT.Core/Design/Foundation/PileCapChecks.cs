@@ -97,11 +97,14 @@ public static class PileCapChecks
     public static double ColumnPunchCapacity(IList<(double X, double Y)> piles, double hc, double bc, double h0, double d, double rbt) =>
         ColumnPunchCapacity(piles, hc, bc, h0, d, rbt, out _, out _, out _, out _);
 
-    /// <summary>Chu vi chọc thủng của cọc ui (m): đường bao vuông cách mép cọc h0/2, bỏ các cạnh nằm ngoài mép đài L × B (đài tâm tại gốc).</summary>
+    /// <summary>Chu vi chọc thủng của cọc ui (m): đường bao vuông cách mép cọc h0/2, bỏ các cạnh nằm ngoài mép đài L × B (đài tâm tại gốc).
+    /// Trả về 0 khi đường bao vượt cả hai mép đối diện (đài hẹp, vd. đài 2 cọc) – khi đó kiểm tra theo cắt trên tiết diện nghiêng.</summary>
     public static double PilePerimeter(double px, double py, double d, double h0, double L, double B)
     {
         double a = d / 2 + h0 / 2;
         double x1 = px - a, x2 = px + a, y1 = py - a, y2 = py + a;
+        // đài hẹp: đường bao bị cắt cả hai mép đối diện → không hình thành tháp chọc thủng quanh cọc (phá hoại dạng cắt – kiểm tra theo tiết diện nghiêng)
+        if ((x1 <= -L / 2 + 1e-9 && x2 >= L / 2 - 1e-9) || (y1 <= -B / 2 + 1e-9 && y2 >= B / 2 - 1e-9)) return 0;
         double yl = Math.Max(y1, -B / 2), yh = Math.Min(y2, B / 2), xl = Math.Max(x1, -L / 2), xh = Math.Min(x2, L / 2);
         double u = 0;
         if (x2 < L / 2 - 1e-9) u += Math.Max(yh - yl, 0);
@@ -311,6 +314,7 @@ public static class PileCapChecks
             {
                 if (rows[i].InsidePyramid) continue;
                 double u = PilePerimeter(piles[i].X, piles[i].Y, d, h0, inp.L, inp.B);
+                if (u <= 1e-9) continue;
                 double cap = rbt * Math.Min(u, 4 * (d + h0)) * h0;
                 double ratio = cap > 1e-9 ? pileNetMax[i] / cap : 99;
                 if (ratio > wr) { wr = ratio; worst = i; wu = Math.Min(u, 4 * (d + h0)); }

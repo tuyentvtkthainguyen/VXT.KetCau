@@ -169,6 +169,7 @@ public static class FoundationDrawing
         w.Dim(0, 0, L, 0, -9.0 * th, k);
         w.DimChainV(chainY, 0, -3 * th, k);
         w.Dim(0, 0, 0, B, 5.5 * th, k);
+        PileNumbers(w, c, xc, yc, k, L);   // [FoundationChecks] số hiệu + toạ độ cọc
         w.Title(L / 2, w.Extents.Y2 + 4 * th, $"{c.Name} (SL={Math.Max(1, c.Quantity)})", DrawUtil.ScaleText(det));
         return w;
     }
@@ -239,6 +240,7 @@ public static class FoundationDrawing
         var chain = new List<double> { 0 }; chain.AddRange(xsP); chain.Add(L);
         w.DimChainH(chain, -lot, -lot - pileShow - 8.5 * th, k);
         w.Dim(0, -lot, L, -lot, -pileShow - 11 * th, k);
+        if (p.Foundation?.DrawPunchingPyramid ?? true) PunchPyramid(w, c, xc, H, hc, k);   // [FoundationChecks] tháp chọc thủng 45°
         double zTop = p.BaseElevation;
         w.ElevMark(L + 4 * th, H, DxfWriter.ElevText(zTop), 1);
         w.ElevMark(L + 4 * th, 0, DxfWriter.ElevText(zTop - c.H), 1);
@@ -247,6 +249,65 @@ public static class FoundationDrawing
                       (w.Style.ShowDesignValues ? $", [P] = {DxfWriter.N0(c.PileCapacity)} kN" : "");
         w.Text(Lay.Chu, L / 2, w.Extents.Y1 - 1.0 * th, th, info, 0, 1, 3);
         return w;
+    }
+
+    // ------------------------------------------------------------------
+    // [FoundationChecks] số hiệu cọc, tháp chọc thủng, biểu đồ mô men sườn móng băng
+    // ------------------------------------------------------------------
+    /// <summary>Ghi số hiệu cọc C1, C2… cạnh từng cọc và bảng toạ độ tim cọc (so với tim cột, mm) bên phải mặt bằng đài.</summary>
+    private static void PileNumbers(DxfWriter w, PileCapDesign c, double xc, double yc, double k, double L)
+    {
+        if (c?.Piles == null || c.Piles.Count == 0) return;
+        double th = w.Th, r = Math.Max(c.PileSize * 500 * k, 1);
+        for (int i = 0; i < c.Piles.Count; i++)
+        {
+            double x = xc + c.Piles[i].X * 1000 * k, y = yc + c.Piles[i].Y * 1000 * k;
+            w.Text(Lay.Chu, x + r + 0.2 * th, y + r + 0.2 * th, 0.8 * th, "C" + (i + 1), 0, 0, 0);
+        }
+        if (c.Piles.Count > 16) return;
+        double tx = L + 9 * th, ty = w.Extents.Y2 - th;
+        w.Text(Lay.Chu, tx, ty, 0.85 * th, "TOẠ ĐỘ TIM CỌC (mm, gốc tại tim cột)", 0, 0, 0);
+        for (int i = 0; i < c.Piles.Count; i++)
+        {
+            ty -= 1.4 * th;
+            string txt = "C" + (i + 1) + ": x = " + DxfWriter.N0(c.Piles[i].X * 1000) + "; y = " + DxfWriter.N0(c.Piles[i].Y * 1000)
+                         + (w.Style.ShowDesignValues && c.Safety?.Piles != null && i < c.Safety.Piles.Count ? "; Pmax = " + DxfWriter.N0(c.Safety.Piles[i].PMax) + " kN" : "");
+            w.Text(Lay.Chu, tx, ty, 0.8 * th, txt, 0, 0, 0);
+        }
+    }
+
+    /// <summary>Tháp chọc thủng 45° (nét đứt) trên mặt cắt đài: từ mép cột tại mặt trên đài xuống mức h0, mở rộng h0 mỗi phía.</summary>
+    private static void PunchPyramid(DxfWriter w, PileCapDesign c, double xc, double H, double hc, double k)
+    {
+        if (c == null || c.Piles.Count < 2) return;
+        double h0 = (c.H0 > 0 ? c.H0 : c.H - 0.15) * 1000 * k;
+        if (h0 <= 1) return;
+        double y1 = H - h0;
+        w.Line(Lay.KyHieu, xc - hc / 2, H, xc - hc / 2 - h0, y1, "DASHED");
+        w.Line(Lay.KyHieu, xc + hc / 2, H, xc + hc / 2 + h0, y1, "DASHED");
+        w.Text(Lay.Chu, xc + hc / 2 + h0 + 0.3 * w.Th, y1 + 0.3 * w.Th, 0.75 * w.Th, "tháp chọc thủng 45°", 0, 0, 0);
+    }
+
+    /// <summary>Biểu đồ bao mô men sườn móng băng (TTGH I, kN.m) vẽ dưới mặt cắt dọc; mô men dương (căng dưới) vẽ phía dưới trục.</summary>
+    private static void StripMomentDiagram(DxfWriter w, StripFootingDesign st, double k, double L)
+    {
+        if (st?.Stations == null || st.Stations.Count < 2) return;
+        var mx = st.MMax != null && st.MMax.Count == st.Stations.Count ? st.MMax : st.M;
+        var mn = st.MMin != null && st.MMin.Count == st.Stations.Count ? st.MMin : st.M;
+        if (mx == null || mn == null || mx.Count != st.Stations.Count) return;
+        double mAbs = Math.Max(mx.Select(Math.Abs).DefaultIfEmpty(0).Max(), mn.Select(Math.Abs).DefaultIfEmpty(0).Max());
+        if (mAbs < 1e-6) return;
+        double th = w.Th, hDia = 6 * th, sc = hDia / mAbs;
+        double y0 = w.Extents.Y1 - 3 * th - hDia;
+        w.Line(Lay.KyHieu, 0, y0, L, y0);
+        List<(double X, double Y)> Curve(List<double> m) =>
+            st.Stations.Select((x, i) => P((x - st.Start) * 1000 * k, y0 - m[i] * sc)).ToList();
+        w.Polyline(Lay.KyHieu, Curve(mx), false);
+        w.Polyline(Lay.KyHieu, Curve(mn), false, 0, "DASHED");
+        int iMax = mx.IndexOf(mx.Max()), iMin = mn.IndexOf(mn.Min());
+        if (mx[iMax] > 1e-6) w.Text(Lay.Chu, (st.Stations[iMax] - st.Start) * 1000 * k, y0 - mx[iMax] * sc - 1.0 * th, 0.8 * th, "M+ = " + mx[iMax].ToString("0.0", DrawUtil.Inv), 0, 1, 0);
+        if (mn[iMin] < -1e-6) w.Text(Lay.Chu, (st.Stations[iMin] - st.Start) * 1000 * k, y0 - mn[iMin] * sc + 0.4 * th, 0.8 * th, "M− = " + mn[iMin].ToString("0.0", DrawUtil.Inv), 0, 1, 0);
+        w.Text(Lay.Chu, 0, y0 + 0.4 * th, 0.8 * th, "BIỂU ĐỒ BAO MÔ MEN SƯỜN (kN.m) – " + (st.Safety?.Classification ?? "dầm trên nền đàn hồi"), 0, 0, 0);
     }
 
     /// <summary>Mặt cắt dọc dải móng băng: sườn, cổ cột, thép trên/dưới, đai, chuỗi kích thước tim cột.</summary>
@@ -317,6 +378,7 @@ public static class FoundationDrawing
         w.Dim(0, 0, 0, h, 2.5 * th, k);
         w.ElevMark(L + 3 * th, h, DxfWriter.ElevText(p.BaseElevation), 1);
         w.ElevMark(L + 3 * th, 0, DxfWriter.ElevText(p.BaseElevation - st.RibH), 1);
+        if (p.Foundation?.DrawStripMoment == true) StripMomentDiagram(w, st, k, L);   // [FoundationChecks] biểu đồ mô men sườn
         w.Title(L / 2, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT DỌC {st.Name} ({st.Grid})", DrawUtil.ScaleText(scale), true);
         return w;
     }

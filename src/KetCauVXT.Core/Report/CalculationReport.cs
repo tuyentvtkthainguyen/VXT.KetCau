@@ -624,6 +624,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         foreach (var c in f0.Checks)
             d.Equation($"{c.Name}: {N(c.Demand)} / {N(c.Capacity)} {c.Unit} → tỷ số {N(c.Ratio, "0.000")} – {OkText(c.Ok)}");
 
+        FootingBehaviourReport(f0, d);   // [FoundationChecks]
         ExtraFootingExamples(p, s, d, n);   // [AutoReport]
         d.Heading($"{n}.2. Bảng tổng hợp thiết kế móng", 2);
         d.Table(new[] { "Móng", "SL", "N (kN)", "Mx", "My", "L×B×H (m)", "R", "Ptb", "Pmax", "Pmin", "Thép L", "Thép B", "KL" },
@@ -644,7 +645,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         d.Paragraph($"Móng cọc BTCT: {pile}, chiều dài cọc {N(fs.PileLength, "0.0")} m, sức chịu tải cho phép của cọc [P] = {N(fs.PileCapacity, "0")} kN (theo TCVN 10304:2014 / thí nghiệm nén tĩnh – do người thiết kế cung cấp), sức chịu nhổ [Pk] = {N(fs.PileTension, "0")} kN. Khoảng cách tim cọc ≥ {N(fs.PileSpacingFactor, "0.#")}d, mép đài cách mép cọc {Mm(fs.CapEdge)} mm, cọc ngàm vào đài {Mm(fs.PileEmbed)} mm, chiều cao đài tối thiểu {Mm(fs.CapMinHeight)} mm.");
         d.Paragraph("Đài được coi là tuyệt đối cứng; phản lực cọc tính cho từng tổ hợp TTGH I, kể cả trọng lượng đài và đất trên đài (hệ số 1,1). Chiều cao đài chọn theo chọc thủng của cột (tháp 45°) và của cọc góc, cắt trên tiết diện nghiêng tại mép cột (TCVN 5574:2018 mục 8.1.3, 8.1.6 – dạng đơn giản hoá); cốt thép đáy theo mô men tại mép cột.");
         d.Equation("n ≥ 1,2·Nmax/[P];   Pi = (N + G)/n ± My'·xi/Σxi² ± Mx'·yi/Σyi² ≤ [P],  Pmin ≥ −[Pk];   My' = My + Qx·H, Mx' = Mx − Qy·H");
-        d.Equation("F = Σ Pi (cọc ngoài tháp chọc thủng) ≤ Rbt·u·h0,  u = 2(hc + bc + 2h0);   M = Σ Pi·(xi − hc/2);   h0 = H − lngàm − 50 mm");
+        d.Equation("F = Σ Pi (cọc ngoài tháp chọc thủng) ≤ Fb,u = 2·Rbt·h0·[k1(bc + c2) + k2(hc + c1)], k = h0/c (1…2,5) – với k = 1: Rbt·u·h0, u = 2(hc + bc + 2h0);   M = Σ Pi·(xi − hc/2);   h0 = H − lngàm − 50 mm");   // [FoundationChecks]
         var c0 = s.PileCaps.OrderByDescending(x => x.PMax).First();
         d.Heading($"{n}.1. Ví dụ tính toán: đài {c0.Name} ({c0.Piles.Count} cọc, nút {string.Join(", ", c0.NodeIds.Take(6))})", 2);
         d.Paragraph($"Nội lực tính toán tại chân cột (tổ hợp {c0.Combo}): N = {N(c0.N)} kN; Mx = {N(c0.Mx)} kN.m; My = {N(c0.My)} kN.m; Qx = {N(c0.Qx)} kN; Qy = {N(c0.Qy)} kN; trọng lượng đài + đất G = {N(c0.Weight)} kN.");
@@ -656,6 +657,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
             c0.Checks.Select(c => new[] { c.Name, N(c.Demand, "0.0"), N(c.Capacity, "0.0"), c.Unit, N(c.Ratio, "0.000"), OkText(c.Ok) }),
             new[] { 6.0, 1.8, 1.8, 1.3, 1.4, 1.8 }, 9);
         foreach (var msg in c0.Messages.Where(m => !m.StartsWith("Gộp"))) d.Paragraph(msg, false, true);
+        PileCapSafetyReport(s, c0, d, n);   // [FoundationChecks]
 
         d.Heading($"{n}.2. Bảng tổng hợp thiết kế đài cọc", 2);
         d.Table(new[] { "Đài", "SL", "Số cọc", "N (kN)", "L×B×H (m)", "Pmax", "Pmin", "[P]", "Thép L", "Thép B", "Lớp trên", "KL" },
@@ -702,6 +704,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
                 }), new[] { 1.6, 2.2, 2.2, 2.2, 2.6, 3.0 }, 9);
         }
 
+        StripBehaviourReport(s, s0, d, n);   // [FoundationChecks]
         d.Heading($"{n}.2. Bảng tổng hợp thiết kế móng băng", 2);
         d.Table(new[] { "Dải", "Trục", "Dài (m)", "B (m)", "b×h (mm)", "R", "ptb", "pmax", "Thép dưới", "Thép trên", "Đai", "Bản cánh", "KL" },
             s.StripFootings.Select(x => new[]

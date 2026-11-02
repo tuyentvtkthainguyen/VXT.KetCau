@@ -124,9 +124,22 @@ public static class PileCapDesigner
         double cx = piles.Average(q => q.X), cy = piles.Average(q => q.Y);
         double sx2 = piles.Sum(q => (q.X - cx) * (q.X - cx)), sy2 = piles.Sum(q => (q.Y - cy) * (q.Y - cy));
         double nt = l.N + G;
-        // [FoundationChecks] mô men lấy đối với trọng tâm nhóm cọc (x̄, ȳ): kể thêm −(N + G)·x̄ khi nhóm cọc lệch tâm so với tim cột (đối xứng: x̄ = ȳ = 0, không đổi)
-        double ax = sx2 > 1e-9 ? (-l.My - H * l.Qx - nt * cx) / sx2 : 0;
-        double ay = sy2 > 1e-9 ? (l.Mx - H * l.Qy - nt * cy) / sy2 : 0;
+        // [FoundationChecks] mô men lấy đối với trọng tâm nhóm cọc (x̄, ȳ): kể thêm −(N + G)·x̄ khi nhóm cọc lệch tâm so với tim cột,
+        // và tích quán tính Sxy = Σ(xi − x̄)(yi − ȳ) khi trục nhóm cọc không phải trục chính (nhóm đối xứng: x̄ = ȳ = Sxy = 0 → công thức cũ)
+        double sxy = piles.Sum(q => (q.X - cx) * (q.Y - cy));
+        double rx = -l.My - H * l.Qx - nt * cx, ry = l.Mx - H * l.Qy - nt * cy;
+        double ax, ay;
+        double det = sx2 * sy2 - sxy * sxy;
+        if (sx2 > 1e-9 && sy2 > 1e-9 && det > 1e-12 * Math.Max(sx2 * sy2, 1e-12))
+        {
+            ax = (rx * sy2 - ry * sxy) / det;
+            ay = (ry * sx2 - rx * sxy) / det;
+        }
+        else
+        {
+            ax = sx2 > 1e-9 ? rx / sx2 : 0;
+            ay = sy2 > 1e-9 ? ry / sy2 : 0;
+        }
         for (int i = 0; i < np; i++) res[i] = nt / np + ax * (piles[i].X - cx) + ay * (piles[i].Y - cy);
         return res;
     }

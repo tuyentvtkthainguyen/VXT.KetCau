@@ -145,9 +145,9 @@ public static class FoundationCheckTests
         double fb = PileCapChecks.ColumnPunchCapacity(far, 0.4, 0.4, 0.5, 0.3, 1050, out _, out _, out double k1, out double k2);
         check("Chọc thủng: cọc xa (c > h0) → k = 1", k1 + k2, 2, 1e-12);
         check("Chọc thủng: Fb,u = Rbt·2(hc + bc + 2h0)·h0 khi k = 1", fb, 1050 * 2 * (0.4 + 0.4 + 1.0) * 0.5, 1e-9);
-        // cọc gần: c = 0,4h0 → k = 2,5
-        var near = PileLayout.Generate(PilePattern.P4, 0.4 + 2 * 0.15 + 0.3 + 2 * 0.1, 0, 0, 0, true); // mép trong cọc cách mép cột 0,1 m
-        PileCapChecks.ColumnPunchCapacity(near, 0.4, 0.4, 0.5, 0.3, 1050, out double c1, out _, out double kk, out _);
+        // cọc lớn d = 0,8 m, tim ±0,75 (ngoài tháp: 0,75 > 0,2 + 0,5): mép trong cọc cách mép cột 0,15 m < 0,4h0 → c = 0,4h0, k = 2,5
+        var near = PileLayout.Generate(PilePattern.P4, 1.5, 0, 0, 0, true);
+        PileCapChecks.ColumnPunchCapacity(near, 0.4, 0.4, 0.5, 0.8, 1050, out double c1, out _, out double kk, out _);
         check("Chọc thủng: c < 0,4h0 → c = 0,4h0", c1, 0.2, 1e-9);
         check("Chọc thủng: c < 0,4h0 → k = 2,5", kk, 2.5, 1e-9);
         // chu vi chọc thủng cọc góc: u = 2·(a_mép + d + h0/2)
@@ -364,7 +364,7 @@ public static class FoundationCheckTests
         check("Móng băng: mọi dải có phân loại sự làm việc", sb.StripFootings.Count(x => x.Safety != null && x.Safety.LambdaL > 0), sb.StripFootings.Count, 0);
         foreach (var m in sb.StripFootings)
         {
-            var conc = DesignUtil.ConcreteOf(p, p.Concrete.ConcreteFooting, p.Concrete.ConcreteFooting);
+            var conc = p.Material(p.Concrete.ConcreteFooting);
             double lam = FootingBehaviour.Lambda(m.K, m.Width, m.Safety.EI);
             Console.WriteLine($"   · {m.Name}: λ = {m.Safety.Lambda:0.000} 1/m, λL = {m.Safety.LambdaL:0.00} → {m.Safety.Classification}");
             check($"{m.Name}: λL = λ·L", m.Safety.LambdaL, lam * m.Length, 1e-9);
