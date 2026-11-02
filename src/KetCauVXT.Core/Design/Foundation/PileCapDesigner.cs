@@ -295,8 +295,8 @@ public static class PileCapDesigner
 
         // ---- thép lớp trên (cấu tạo Ø12a200, hoặc theo tính toán khi có cọc chịu nhổ) ----
         double h0t = H - cover - 0.01;
-        var tL = RcSection.ChooseSpacing(dia => Math.Max(AsPerM(ev.MTopL, B, h0t, conc, main), BarArea(12) / 0.20), dias, 0.20, 0.10, 0.20, 12);
-        var tB = RcSection.ChooseSpacing(dia => Math.Max(AsPerM(ev.MTopB, L, h0t - tL.Dia / 1000.0, conc, main), BarArea(12) / 0.20), dias, 0.20, 0.10, 0.20, 12);
+        var tL = RcSection.ChooseSpacing(dia => Math.Max(AsPerM(ev.MTopL, B, h0t, conc, main), RcSection.BarArea(12) / 0.20), dias, 0.20, 0.10, 0.20, 12);
+        var tB = RcSection.ChooseSpacing(dia => Math.Max(AsPerM(ev.MTopB, L, h0t - tL.Dia / 1000.0, conc, main), RcSection.BarArea(12) / 0.20), dias, 0.20, 0.10, 0.20, 12);
         dsn.BarsTop = tL.Text == tB.Text ? tL.Text : tL.Text + " / " + tB.Text;
         if (ev.MTopL > 1e-9)
             dsn.Checks.Add(new CheckItem
