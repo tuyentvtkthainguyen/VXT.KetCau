@@ -69,7 +69,7 @@ public static class RegulationTests
         check("Luật 50/2014/QH13: hết hiệu lực → 135/2025/QH15", B(F("50/2014/QH13").Status == RegulationStatus.HetHieuLuc && F("50/2014/QH13").ReplacedBy == "135/2025/QH15"), 1, 0);
         check("Luật 62/2020/QH14: hết hiệu lực → 135/2025/QH15", B(F("62/2020/QH14").Status == RegulationStatus.HetHieuLuc && F("62/2020/QH14").ReplacedBy == "135/2025/QH15"), 1, 0);
         var nd217 = F("217/2026/NĐ-CP");
-        check("NĐ 217/2026: ngày 19/6/2026, hiệu lực \"theo văn bản\"", B(nd217.IssuedDate == "19/6/2026" && nd217.EffectiveDate == Regulations.ByDocument), 1, 0);
+        check("NĐ 217/2026: ngày 19/6/2026, hiệu lực 01/7/2026", B(nd217.IssuedDate == "19/6/2026" && nd217.EffectiveDate == "01/7/2026"), 1, 0);
         check("NĐ 217/2026: ghi chú Điều 16, 19–23, 24, 25", B(nd217.Note.Contains("Điều 16") && nd217.Note.Contains("Điều 19–23") && nd217.Note.Contains("Điều 24") && nd217.Note.Contains("Điều 25")), 1, 0);
         check("NĐ 212/2026: 17/6/2026, hiệu lực 01/7/2026", B(F("212/2026/NĐ-CP").IssuedDate == "17/6/2026" && F("212/2026/NĐ-CP").EffectiveDate == "01/7/2026"), 1, 0);
         check("NĐ 175/2024: hết hiệu lực từ 01/7/2026, thay bởi 217/2026", B(F("175/2024/NĐ-CP").Status == RegulationStatus.HetHieuLuc && F("175/2024/NĐ-CP").ReplacedBy == "217/2026/NĐ-CP"), 1, 0);
