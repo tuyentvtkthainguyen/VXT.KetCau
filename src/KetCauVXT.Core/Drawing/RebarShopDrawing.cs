@@ -371,7 +371,11 @@ public static class RebarShopDrawing
             "GHI CHÚ GIA CÔNG:",
             "1. Số hiệu gia công trùng số hiệu trên bản vẽ chi tiết; thanh dài hơn cây " + DxfWriter.N0(shop.Options.StockLength * 1000) + " mm được tách nối chồng, ghi hậu tố a, b, c…",
             "2. Nối chồng theo TCVN 5574:2018 mục 10.3.6: ll = 1,2·l0,an (vùng kéo), l0,an = Rs·d/(4·η1·η2·Rbt); ≥ 20d và ≥ 250 mm.",
-            "3. Thép dưới dầm nối trong ¼ nhịp gần gối, thép trên nối ở ⅓ giữa nhịp; nối so le, tim mối nối cách nhau ≥ 1,3·ll (≤ 50% số thanh tại một tiết diện).",
+            "3. KHÔNG nối trong vùng nguy hiểm: nút khung, vùng tới hạn lcr (dầm k·h từ mép cột; cột max(hc; Hc/6; 450) hai đầu tầng), thép dưới dầm giữa nhịp,",
+            "   thép trên dầm trên gối. Thép dưới dầm nối từ lcr tới Lo/4 cạnh gối, thép trên nối ở ⅓ giữa nhịp; cột nối giữa chiều cao thông thuỷ; lưới trên sàn nối ⅓ giữa nhịp,",
+            "   lưới dưới sàn trong L/4 cạnh dầm; móng đơn / đài cọc không nối. So le ≥ " + string.Format(DrawUtil.Inv, "{0:0.0#}", shop.Options.StaggerFactor)
+                + "·ll (≤ 50% số thanh tại một tiết diện); vùng ngắn hơn ll → ống nối ren. Mối nối: " + shop.Splices.Count + ", ống nối ren: "
+                + shop.Splices.Where(x => x.Coupler).Sum(x => x.Count) + ", vi phạm: " + shop.Violations + ".",
             "4. Đai kín móc 135°, đoạn móc max(75 mm; 10d); kích thước ngoài = 2(A + B) + 2·móc. "
                 + (shop.Options.BendDeduction
                     ? string.Format(DrawUtil.Inv, "Chiều dài cắt = kích thước ngoài − độ dãn khi uốn: {0:0.#}d mỗi chỗ uốn 90°, {1:0.#}d mỗi móc 135°, {2:0.#}d mỗi móc 180°.",
@@ -380,7 +384,9 @@ public static class RebarShopDrawing
             "5. Đầu thừa ≥ " + DxfWriter.N0(shop.Options.MinReuseOffcut * 1000) + " mm thu hồi dùng lại; đầu thừa ngắn hơn tính hao hụt."
         };
         foreach (var n in notes) { w.Text(Lay.Chu, 0, yn, 0.85 * th, n, 0, 0, 0); yn -= 1.6 * th; }
-        foreach (var m in shop.Messages.Distinct().Take(8)) { w.Text(Lay.Chu, 0, yn, 0.75 * th, "· " + m, 0, 0, 0); yn -= 1.4 * th; }
+        var msgs = shop.Messages.Distinct().ToList();
+        foreach (var m in msgs.Take(25)) { w.Text(Lay.Chu, 0, yn, 0.75 * th, "· " + m, 0, 0, 0); yn -= 1.4 * th; }
+        if (msgs.Count > 25) w.Text(Lay.Chu, 0, yn, 0.75 * th, "… và " + (msgs.Count - 25) + " ghi chú khác – xem bảng Excel \"Gia công thép\"", 0, 0, 0);
         return w;
     }
 

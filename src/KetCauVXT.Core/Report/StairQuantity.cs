@@ -115,7 +115,7 @@ public static class StairQuantity
         // ---- xây bậc gạch ----
         if (s.Steps == StepConstruction.Brick)
         {
-            double v = L.Flights.Sum(L.StepVolume);
+            double v = L.Flights.Sum(f => L.StepVolume(f));
             int nt = L.Flights.Sum(f => f.Treads);
             if (v > 1e-9)
                 q.StairWorks.Add(new StairWorkItem
@@ -128,7 +128,7 @@ public static class StairQuantity
         // ---- ốp bậc + chiếu nghỉ ----
         if (s.Finish != StepFinish.None)
         {
-            double aSteps = L.Flights.Sum(L.FinishArea), aLand = L.Landings.Sum(ld => ld.Area);
+            double aSteps = L.Flights.Sum(f => L.FinishArea(f)), aLand = L.Landings.Sum(ld => ld.Area);
             double a = aSteps + aLand;
             string work = s.Finish switch
             {

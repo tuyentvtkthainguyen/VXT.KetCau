@@ -310,6 +310,11 @@ internal static class SheetRender
         var dg = new DrawingGroup();
         using (var dc = dg.Open())
         {
+            // ---- [khung tên người dùng dạng ảnh – SheetBuilder.TitleBlockCustom.cs]: ảnh nằm dưới chữ trường ----
+            var cr = SheetBuilder.CustomTitleImageRect(p, s);
+            var cimg = cr.IsEmpty ? null : DecodeImage(p.TitleBlock.Custom.ImageData);
+            if (cimg != null) dc.DrawImage(cimg, new Rect(cr.X1, ph - cr.Y2, Math.Max(0.1, cr.W), Math.Max(0.1, cr.H)));
+            // ---- [hết] ----
             dc.DrawDrawing(Render(new[] { (tb, 1.0, 0.0, 0.0) }, 0, ph, minStroke, w => w.GetPrimitives()));
             var lr = SheetBuilder.TitleLogoRect(p, s);
             var img = lr.IsEmpty ? null : DecodeImage(p.TitleBlock.LogoData);

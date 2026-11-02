@@ -1,3 +1,4 @@
+using System.Text;
 using KetCauVXT.Model;
 
 namespace KetCauVXT.Drawing;
@@ -33,6 +34,68 @@ public sealed partial class DxfWriter
     public double BubbleR => Style.AxisBubbleDiameter / 2 * Scale;
     /// <summary>Hệ số rộng chữ đang dùng.</summary>
     public double WidthFactor => Style.WidthFactor;
+
+    // ------------------------------------------------------------------
+    // Kiểu kích thước (DIMSTYLE) – bảng ghi vào DXF
+    // ------------------------------------------------------------------
+    private readonly HashSet<double> _dimUsed = new();
+
+    /// <summary>Tỷ lệ (mẫu số) của các kiểu kích thước đã dùng trong bộ ghi (kể cả mảnh hình ghép vào).</summary>
+    public IReadOnlyCollection<double> DimScalesUsed => _dimUsed;
+
+    private void UseDimStyle(double scale)
+    {
+        if (scale > 0 && !double.IsNaN(scale)) _dimUsed.Add(Math.Round(scale, 2));
+    }
+
+    /// <summary>Thêm kiểu kích thước của tỷ lệ 1/scale vào bảng DIMSTYLE (vd. tỷ lệ thực của khung nhìn trên tờ in).</summary>
+    public void RegisterDimStyle(double scale) => UseDimStyle(scale);
+
+    private void MergeDimStyles(DxfWriter other)
+    {
+        if (other == null || ReferenceEquals(other, this)) return;
+        foreach (var v in other._dimUsed) _dimUsed.Add(v);
+    }
+
+    /// <summary>Các kiểu kích thước sẽ ghi vào bảng DIMSTYLE: danh sách trong Thiết lập bản vẽ + tỷ lệ phát sinh.</summary>
+    public List<DimParams> DimStyleTable() => Style.DimTable(_dimUsed);
+
+    /// <summary>Bảng DIMSTYLE (DXF R12 / AC1009): DIMSCALE = mẫu số tỷ lệ, các thông số mm giấy; gạch xiên DIMTSZ = ½ chiều dài gạch,
+    /// mũi tên DIMTSZ = 0 và DIMASZ = chiều dài mũi tên; chữ trên đường kích thước (DIMTAD = 1), chữ song song đường (DIMTIH = DIMTOH = 0).</summary>
+    private void WriteDimStyles(StringBuilder sb)
+    {
+        var list = DimStyleTable();
+        if (list.Count == 0) return;
+        G(sb, 0, "TABLE"); G(sb, 2, "DIMSTYLE"); G(sb, 70, list.Count);
+        foreach (var d in list)
+        {
+            bool tick = d.Arrow == DimArrow.Tick;
+            G(sb, 0, "DIMSTYLE"); G(sb, 2, d.Name); G(sb, 70, 0);
+            // không ghi mã 3–7 (DIMPOST, DIMAPOST, DIMBLK…): để mặc định; mã 5 dễ bị đọc nhầm là handle
+            G(sb, 40, d.Scale);                                   // DIMSCALE
+            G(sb, 41, d.TickSize);                                // DIMASZ
+            G(sb, 42, d.ExtOffset);                               // DIMEXO
+            G(sb, 43, d.BaselineSpacing);                         // DIMDLI
+            G(sb, 44, d.ExtBeyond);                               // DIMEXE
+            G(sb, 45, 0.0);                                       // DIMRND
+            G(sb, 46, tick ? d.LineExtend : 0.0);                 // DIMDLE
+            G(sb, 47, 0.0); G(sb, 48, 0.0);                       // DIMTP, DIMTM
+            G(sb, 140, d.TextHeight);                             // DIMTXT
+            G(sb, 141, 0.0);                                      // DIMCEN
+            G(sb, 142, tick ? d.TickSize / 2 : 0.0);              // DIMTSZ
+            G(sb, 143, 25.4);                                     // DIMALTF
+            G(sb, 144, d.LinearFactor);                           // DIMLFAC
+            G(sb, 145, 0.0); G(sb, 146, 1.0);                     // DIMTVP, DIMTFAC
+            G(sb, 147, d.TextGap);                                // DIMGAP
+            G(sb, 71, 0); G(sb, 72, 0);                           // DIMTOL, DIMLIM
+            G(sb, 73, 0); G(sb, 74, 0);                           // DIMTIH, DIMTOH
+            G(sb, 75, 0); G(sb, 76, 0);                           // DIMSE1, DIMSE2
+            G(sb, 77, 1); G(sb, 78, 8);                           // DIMTAD, DIMZIN
+            G(sb, 170, 0); G(sb, 171, 2); G(sb, 172, 1); G(sb, 173, 0); G(sb, 174, 0); G(sb, 175, 0);
+            G(sb, 176, 0); G(sb, 177, 0); G(sb, 178, 0);
+        }
+        G(sb, 0, "ENDTAB");
+    }
 
     /// <summary>Đếm chữ (TEXT) theo lớp – kiểm thử.</summary>
     public List<double> TextHeights(string layer = null)

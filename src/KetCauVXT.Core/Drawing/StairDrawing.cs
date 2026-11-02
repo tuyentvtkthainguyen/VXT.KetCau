@@ -18,11 +18,19 @@ public static class StairDrawing
 {
     /// <summary>Tỷ lệ tờ mặc định (mặt bằng); mặt cắt vẽ ở tỷ lệ S/2, mặt cắt dầm ở S·2/5.</summary>
     public const double SheetScale = 50;
+    /// <summary>Tỷ lệ mặt bằng cầu thang theo Thiết lập bản vẽ (DrawingKind.StairPlan, mặc định 1/50).</summary>
+    public static double CurrentScale => Pos(DrawingStyle.Current.ScaleOf(DrawingKind.StairPlan), SheetScale);
+    /// <summary>Hệ số phóng hình mặt cắt vế / chiếu nghỉ = tỷ lệ tờ / tỷ lệ mặt cắt (DrawingKind.StairSection, mặc định 1/25).</summary>
+    public static double SectionK(double S) => S / Pos(DrawingStyle.Current.ScaleOf(DrawingKind.StairSection), 25);
+    /// <summary>Hệ số phóng hình mặt cắt dầm chiếu nghỉ / dầm cốn (DrawingKind.MemberSection, mặc định 1/25).</summary>
+    public static double BeamK(double S) => S / Pos(DrawingStyle.Current.ScaleOf(DrawingKind.MemberSection), 25);
+    private static double Pos(double v, double def) => v > 0 && double.IsFinite(v) ? v : def;
 
-    public static List<Figure> BuildAll(Project p, DesignSummary d, double scale = SheetScale)
+    public static List<Figure> BuildAll(Project p, DesignSummary d, double scale = 0)
     {
         var res = new List<Figure>();
         if (d?.Stairs == null) return res;
+        if (scale <= 0) scale = CurrentScale;
         foreach (var sd in d.Stairs)
         {
             try { res.AddRange(Build(p, d, sd, scale)); }
@@ -32,7 +40,7 @@ public static class StairDrawing
     }
 
     /// <summary>Bản vẽ một cầu thang khai báo (thiết kế ngay nếu bản thiết kế chưa có cầu thang này).</summary>
-    public static List<Figure> Build(Project p, DesignSummary design, Stair stair, double scale = SheetScale)
+    public static List<Figure> Build(Project p, DesignSummary design, Stair stair, double scale = 0)
     {
         var sd = design?.Stairs?.FirstOrDefault(x => (stair.Id > 0 && x.StairId == stair.Id) || (stair.Id <= 0 && stair.OpeningId > 0 && x.OpeningId == stair.OpeningId))
                  ?? StairDesigner.DesignOne(p, stair);
@@ -40,11 +48,11 @@ public static class StairDrawing
     }
 
     /// <summary>Các mảnh hình của một cầu thang ở tỷ lệ tờ 1/scale.</summary>
-    public static List<Figure> Build(Project p, DesignSummary design, StairDesign sd, double scale = SheetScale)
+    public static List<Figure> Build(Project p, DesignSummary design, StairDesign sd, double scale = 0)
     {
         var res = new List<Figure>();
         if (sd?.Stair == null) return res;
-        double S = scale > 0 ? scale : SheetScale;
+        double S = scale > 0 ? scale : CurrentScale;
         var L = sd.Stair.Layout(p);
         if (!L.Valid) { res.Add(new Figure(DrawUtil.ErrorFigure("cầu thang " + sd.Name, new InvalidOperationException(string.Join(" ", L.Warnings)), S), sd.Name, true)); return res; }
         res.Add(new Figure(Plan(p, sd, L, S), sd.Name + " MB", true));
@@ -114,7 +122,7 @@ public static class StairDrawing
             w.Line(Lay.KyHieu, ax, ay, bx, by);
             w.Circle(Lay.KyHieu, ax, ay, 0.35 * th);
             double ux = Math.Sign(bx - ax), uy = Math.Sign(by - ay);
-            w.Polyline(Lay.KyHieu, new List<(double X, double Y)> { (bx - ux * th + uy * 0.4 * th, by - uy * th + ux * 0.4 * th), (bx, by), (bx - ux * th - uy * 0.4 * th, by - uy * th - ux * 0.4 * th) }, false);
+            w.Polyline(Lay.KyHieu, new List<(double, double)> { (bx - ux * th + uy * 0.4 * th, by - uy * th + ux * 0.4 * th), (bx, by), (bx - ux * th - uy * 0.4 * th, by - uy * th - ux * 0.4 * th) }, false);
             if (f.Index == 1) w.Text(Lay.Chu, ax, ay + 0.8 * th, th, "LÊN", 0, 1, 0);
             // dầm cốn
             if (L.Stringers)
@@ -207,7 +215,7 @@ public static class StairDrawing
     private static DxfWriter FlightSection(Project p, StairDesign sd, StairLayout L, StairFlight f, StairPart part, int no, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = 2.0;                   // tỷ lệ chi tiết S/2
+        double th = w.Th, k = SectionK(S);            // mặt cắt ở tỷ lệ Thiết lập bản vẽ (mặc định 1/25)
         var s = L.S;
         double b = L.Tread, h = L.Riser, run = f.Run, t = L.WaistT, cos = f.CosA, tan = h / Math.Max(b, 1e-6);
         double zB = f.ZBottom, zT = f.ZTop, zRef = zB;
@@ -224,7 +232,11 @@ public static class StairDrawing
         }, false);
         // ---- bậc ----
         var prof = new List<(double X, double Y)> { (X(0), Y(zB)) };
-        for (int i = 1; i <= f.Treads; i++) { prof.Add((X((i - 1) * b), Y(zB + i * h))); prof.Add((X(i * b), Y(zB + i * h))); }
+        for (int i = 1; i <= f.Treads; i++)
+        {
+            double xa = X(b * (i - 1)), xb = X(b * i), yi = Y(zB + i * h);
+            prof.Add((xa, yi)); prof.Add((xb, yi));
+        }
         prof.Add((X(run), Y(zT)));
         w.Polyline(Lay.BeTong, prof, false);
         w.Line(s.Steps == StepConstruction.Concrete ? Lay.BeTong : Lay.KyHieu, X(0), Y(zB), X(run), Y(zTopLine(run)));
@@ -232,14 +244,18 @@ public static class StairDrawing
             for (int i = 1; i <= f.Treads; i++)
             {
                 // ký hiệu khối xây: 2 nét xiên trong tam giác bậc
-                double x0 = X((i - 1) * b), y0 = Y(zB + (i - 1) * h);
+                double x0 = X(b * (i - 1)), y0 = Y(zB + (i - 1) * h);
                 w.Line(Lay.KyHieu, x0 + 0.25 * b * 1000 * k, y0 + 0.75 * h * 1000 * k, x0 + 0.5 * b * 1000 * k, y0 + 0.95 * h * 1000 * k);
             }
         if (s.Finish != StepFinish.None)
         {
             double tf = (s.FinishT + Math.Max(0, s.BeddingThickness)) * 1000 * k;
             var fin = new List<(double X, double Y)>();
-            for (int i = 1; i <= f.Treads; i++) { fin.Add((X((i - 1) * b) - tf, Y(zB + i * h) + tf)); fin.Add((X(i * b) - tf, Y(zB + i * h) + tf)); }
+            for (int i = 1; i <= f.Treads; i++)
+            {
+                double xa = X(b * (i - 1)) - tf, xb = X(b * i) - tf, yi = Y(zB + i * h) + tf;
+                fin.Add((xa, yi)); fin.Add((xb, yi));
+            }
             if (fin.Count > 1) w.Polyline(Lay.KyHieu, fin, false);
         }
 
@@ -367,7 +383,7 @@ public static class StairDrawing
     private static DxfWriter LandingDetail(Project p, StairDesign sd, StairLayout L, StairPart part, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = 2.0;
+        double th = w.Th, k = SectionK(S);
         var s = L.S;
         double span = part.Span, t = part.H, c = Math.Max(0.015, p.Concrete.CoverSlab);
         double X(double x) => x * 1000 * k;
@@ -416,7 +432,7 @@ public static class StairDrawing
     private static DxfWriter BeamSection(Project p, StairPart part, double S)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, k = 2.5;   // tỷ lệ S/2,5 (1/20 khi tờ 1/50)
+        double th = w.Th, k = BeamK(S);   // mặt cắt dầm theo Thiết lập bản vẽ (mặc định 1/25)
         double c = Math.Max(0.02, p.Concrete.CoverBeam);
         double B = part.B * 1000 * k, H = part.H * 1000 * k;
         w.Rect(Lay.BeTong, 0, 0, B, H);
@@ -495,7 +511,7 @@ public static class StairDrawing
     public static DxfWriter ScheduleTable(List<ScheduleRow> rows, double S, string title)
     {
         var w = new DxfWriter(S);
-        double th = w.Th, u = S;
+        double th = w.ScheduleTh, u = S;
         double rowH = 12 * u, headH = 16 * u;
         var cx = new double[ColW.Length + 1];
         for (int i = 0; i < ColW.Length; i++) cx[i + 1] = cx[i] + ColW[i] * u;
@@ -601,7 +617,7 @@ public static class StairDrawing
 
     private static void Shape(DxfWriter w, ScheduleRow r, double x1, double x2, double y1, double y2)
     {
-        double th = 0.8 * w.Th;
+        double th = 0.8 * w.ScheduleTh;
         var seg = r.Segments ?? new List<double>();
         string sh = r.Shape ?? "";
         double xm = (x1 + x2) / 2, ym = (y1 + y2) / 2, hh = y2 - y1, yb = ym - 0.15 * hh, hk = 0.45 * hh;
@@ -663,7 +679,7 @@ public static class StairSchedule
     }
 
     public static List<ScheduleRow> Rows(DesignSummary s) =>
-        s?.Stairs == null ? new List<ScheduleRow>() : s.Stairs.SelectMany(RowsOf).ToList();
+        s?.Stairs == null ? new List<ScheduleRow>() : s.Stairs.SelectMany(x => RowsOf(x)).ToList();
 
     /// <summary>Thêm hàng thép cầu thang vào danh sách (bỏ qua nếu đã có hàng loại "Cầu thang").</summary>
     public static void AppendTo(List<ScheduleRow> rows, DesignSummary s)

@@ -83,7 +83,7 @@ public static class DrawingSet
         foreach (var sd in s.Stairs ?? new List<StairDesign>())
         {
             kst++;
-            Write($"KC-08.{kst}_CauThang_{DrawUtil.SafeFile(sd.Name)}.dxf", StairDrawing.Build(p, s, sd, StairDrawing.SheetScale), StairDrawing.SheetScale,
+            Write($"KC-08.{kst}_CauThang_{DrawUtil.SafeFile(sd.Name)}.dxf", StairDrawing.Build(p, s, sd, StairDrawing.CurrentScale), StairDrawing.CurrentScale,
                 $"CẦU THANG {sd.Name} – MẶT BẰNG, MẶT CẮT, BỐ TRÍ THÉP", $"KC-08.{kst}");
         }
         // ---- hết cầu thang ----

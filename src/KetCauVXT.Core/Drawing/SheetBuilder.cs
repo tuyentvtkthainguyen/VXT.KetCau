@@ -311,7 +311,7 @@ public static partial class SheetBuilder
                 case SheetViewKind.StairDetail:
                     if (d?.Stairs != null)
                         foreach (var sd in d.Stairs.Where(x => par.Length == 0 || x.Name == par))
-                            res.AddRange(StairDrawing.Build(p, d, sd, StairDrawing.SheetScale));
+                            res.AddRange(StairDrawing.Build(p, d, sd, StairDrawing.CurrentScale));
                     break;
                 // ---- hết cầu thang ----
             }
@@ -452,6 +452,7 @@ public static partial class SheetBuilder
     /// cột phải: logo (nếu có), tỷ lệ, ngày, số hiệu bản vẽ. Ô trống trên tờ lấy theo khung tên mặc định của công trình.</summary>
     public static DxfWriter TitleBlock(Project p, Sheet s, string scaleText = null)
     {
+        if (HasCustomTitle(p)) return CustomTitleBlock(p, s, scaleText);   // [khung tên người dùng – SheetBuilder.TitleBlockCustom.cs]
         var w = new DxfWriter(1);
         string L = Lay.KhungTen;
         var (pw, ph) = s.PaperSize();
@@ -512,6 +513,7 @@ public static partial class SheetBuilder
     /// <summary>Ô đặt logo công ty trong khung tên (mm giấy); rỗng nếu không có logo hoặc tờ không có khung tên.</summary>
     public static Rect2 TitleLogoRect(Project p, Sheet s)
     {
+        if (HasCustomTitle(p)) return CustomTitleLogoRect(p, s);   // [khung tên người dùng – SheetBuilder.TitleBlockCustom.cs]
         if (s == null || !s.ShowTitleBlock || string.IsNullOrEmpty(p?.TitleBlock?.LogoData)) return Rect2.Empty;
         var (_, tb) = Frame(s);
         double rh = TitleH / 6, cR = tb.X2 - 0.28 * tb.W;
@@ -540,6 +542,10 @@ public static partial class SheetBuilder
         outW.Append(TitleBlock(p, s, ScaleText(lays)), 0, 0);
         // ---- dàn trang thủ công: cắt khung nhìn, viền, đối tượng chú thích (SheetBuilder.Manual.cs) ----
         foreach (var (v, lay) in lays) ComposeView(outW, v, lay);
+        // kiểu kích thước theo tỷ lệ thực của từng khung nhìn (tỷ lệ tuỳ ý → tạo VXT_1-… tự động)
+        foreach (var (v, lay) in lays)
+            if (v.Kind is not (SheetViewKind.Notes or SheetViewKind.RebarSchedule or SheetViewKind.View3D or SheetViewKind.RebarShop) && lay.EffectiveScale > 0)
+                outW.RegisterDimStyle(lay.EffectiveScale);
         ComposeItems(outW, s);
         return outW;
     }

@@ -119,6 +119,7 @@ public sealed partial class DxfWriter
     {
         if (other == null) return;
         if (Math.Abs(k - 1) < 1e-12) { Append(other, dx, dy); return; }
+        MergeDimStyles(other);
         foreach (var e in other._ents)
         {
             var b = e.Box;

@@ -44,6 +44,7 @@ internal sealed class AutoReportDialog : Window
         Chk("Thiết kế dầm", () => ch.Beams, v => ch.Beams = v);
         Chk("Thiết kế cột", () => ch.Columns, v => ch.Columns = v);
         Chk("Thiết kế sàn", () => ch.Slabs, v => ch.Slabs = v);
+        Chk("Thiết kế cầu thang", () => ch.Stairs, v => ch.Stairs = v);
         Chk("Thiết kế móng (móng đơn, đài cọc, móng băng)", () => ch.Foundation, v => ch.Foundation = v);
         Chk("Địa chất (khi có hố khoan)", () => ch.Geotech, v => ch.Geotech = v);
         Chk("Thống kê cốt thép, kết cấu thép", () => ch.Steel, v => ch.Steel = v);

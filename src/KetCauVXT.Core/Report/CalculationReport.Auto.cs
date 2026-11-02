@@ -68,6 +68,7 @@ public static partial class CalculationReport
             if (c.Beams) BeamsSection(p, s, d, sec++);
             if (c.Columns) ColumnsSection(p, s, d, sec++);
             if (c.Slabs) SlabsSection(p, s, d, sec++);
+            if (c.Stairs && s.Stairs != null && s.Stairs.Count > 0) StairsSection(p, s, d, sec++);   // cầu thang (CalculationReport.Stair.cs)
             if (c.Geotech && p.Boreholes != null && p.Boreholes.Count > 0) GeotechReport.Section(p, s, d, sec++);
             if (c.Foundation)
             {

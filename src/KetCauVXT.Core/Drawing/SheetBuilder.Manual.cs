@@ -196,10 +196,11 @@ public static partial class SheetBuilder
             {
                 if (it.Pts == null || it.Pts.Count < 4) break;
                 double h = Math.Max(0.5, it.TextHeight);
-                // chữ kích thước đúng cao h (mm giấy): tỷ lệ bộ ghi = h / cỡ chữ dim của Thiết lập bản vẽ (gạch xiên, đường gióng theo cùng tỷ lệ)
-                var dw = new DxfWriter(h / Math.Max(0.1, DrawingStyle.Current.DimTextHeight));
+                // kiểu kích thước theo tỷ lệ ghi của đối tượng (VXT_1-…); chữ đúng cao h (mm giấy): tỷ lệ bộ ghi = h / cỡ chữ của kiểu
+                var dp = DrawingStyle.Current.DimFor(it.DimScale > 0 ? it.DimScale : 1);
+                var dw = new DxfWriter(h / Math.Max(0.1, dp.TextHeight));
                 double k = it.DimScale > 0 ? 1 / it.DimScale : 1;
-                dw.Dim(it.Pts[0], it.Pts[1], it.Pts[2], it.Pts[3], it.Offset, k, string.IsNullOrWhiteSpace(it.Text) ? null : it.Text.Trim());
+                dw.Dim(it.Pts[0], it.Pts[1], it.Pts[2], it.Pts[3], it.Offset, k, string.IsNullOrWhiteSpace(it.Text) ? null : it.Text.Trim(), dp);
                 w.Append(dw, 0, 0);
                 break;
             }

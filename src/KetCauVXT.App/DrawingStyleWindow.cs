@@ -1,0 +1,346 @@
+using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Media;
+using KetCauVXT.Drawing;
+using KetCauVXT.Model;
+
+namespace KetCauVXT.App;
+
+/// <summary>Dòng bảng tỷ lệ theo loại bản vẽ.</summary>
+internal sealed class StyleScaleRow : RowBase
+{
+    private readonly Func<DrawingStyle> _style;
+    private readonly Action _changed;
+    public DrawingKind Kind { get; }
+
+    public StyleScaleRow(DrawingKind k, Func<DrawingStyle> style, Action changed) { Kind = k; _style = style; _changed = changed; }
+
+    public string Name => DrawingStyle.KindLabel(Kind);
+    public bool Fixed => DrawingStyle.FixedScale(Kind);
+
+    public string Scale
+    {
+        get => DrawingStyle.ScaleLabel(Kind, _style().ScaleOf(Kind));
+        set
+        {
+            if (!Fixed && DrawingStyle.TryParseScale(value, out double v) && (v > 0 || Kind == DrawingKind.SlabPlan))
+            {
+                _style().SetScale(Kind, v);
+                _changed?.Invoke();
+            }
+            RaiseAll();
+        }
+    }
+
+    public string Note => Kind switch
+    {
+        DrawingKind.SlabPlan => "Tự chọn: 1/50 nếu mặt bằng ≤ 25 m, ngược lại 1/100",
+        DrawingKind.MemberSection => "Mặt cắt dầm và cột (vẽ phóng trên tờ mặt đứng)",
+        DrawingKind.FootingDetail => "Móng đơn, đài cọc, mặt cắt ngang móng băng",
+        DrawingKind.BeamElevation => "Kể cả mặt cắt dọc móng băng",
+        DrawingKind.Shop => "Bảng và sơ đồ gia công vẽ theo mm giấy",
+        DrawingKind.StairPlan or DrawingKind.StairSection => "Bản vẽ cầu thang",
+        _ => ""
+    };
+
+    public void Refresh() => RaiseAll();
+}
+
+/// <summary>Dòng bảng cỡ chữ / kích thước ký hiệu (mm trên giấy).</summary>
+internal sealed class StyleSizeRow : RowBase
+{
+    private readonly Func<DrawingStyle, double> _get;
+    private readonly Action<DrawingStyle, double> _set;
+    private readonly Func<DrawingStyle> _style;
+    private readonly Action _changed;
+    private readonly double _min, _max;
+
+    public StyleSizeRow(string name, string unit, Func<DrawingStyle, double> get, Action<DrawingStyle, double> set,
+        Func<DrawingStyle> style, Action changed, double min = 0.5, double max = 20)
+    {
+        Name = name; Unit = unit; _get = get; _set = set; _style = style; _changed = changed; _min = min; _max = max;
+    }
+
+    public string Name { get; }
+    public string Unit { get; }
+
+    public double Value
+    {
+        get => _get(_style());
+        set
+        {
+            if (value >= _min && value <= _max) { _set(_style(), value); _changed?.Invoke(); }
+            RaiseAll();
+        }
+    }
+
+    public string Range => $"{DialogUi.F(_min)} … {DialogUi.F(_max)}";
+    public void Refresh() => RaiseAll();
+}
+
+/// <summary>Cửa sổ "Thiết lập bản vẽ (tỷ lệ, cỡ chữ)": tỷ lệ theo loại bản vẽ, cỡ chữ kích thước / ghi chú / nhãn thép / tên hình /
+/// đầu trục / bảng thống kê, hệ số rộng chữ, bật/tắt chú thích tuỳ chọn; xem trước mẫu (kích thước + nhãn + ghi chú) ở đúng cỡ in.
+/// Lưu trong chuẩn CAD (CadStandard.Drawing): mặc định người dùng hoặc riêng dự án.</summary>
+internal sealed class DrawingStyleWindow : Window
+{
+    private readonly Project _p;
+    private DrawingStyle _st;
+    private readonly ObservableCollection<StyleScaleRow> _scales = new();
+    private readonly ObservableCollection<StyleSizeRow> _sizes = new();
+    private readonly DataGrid _gScale, _gSize;
+    private readonly List<(CheckBox Box, Func<DrawingStyle, bool> Get, Action<DrawingStyle, bool> Set)> _checks = new();
+    private readonly CheckBox _chkProject;
+    private readonly TextBlock _txtStatus;
+    private readonly DrawingHost _preview = new() { Background = Brushes.White, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+    private bool _loading;
+
+    /// <summary>Đã áp dụng hoặc lưu ít nhất một lần.</summary>
+    public bool Changed { get; private set; }
+
+    public static readonly string[] ScaleChoices =
+        new[] { "Tự chọn" }.Concat(DrawingStyle.StandardScales.Select(s => "1/" + DialogUi.F(s))).ToArray();
+
+    public DrawingStyleWindow(Project p)
+    {
+        _p = p;
+        DialogUi.Setup(this, "Thiết lập bản vẽ (tỷ lệ, cỡ chữ)", 1180, 720);
+        _st = (CadStandard.Active?.Drawing ?? CadStandard.EffectiveFor(p).Drawing ?? DrawingStyle.Default()).Clone();
+
+        // ---------------- bảng tỷ lệ ----------------
+        _gScale = DialogUi.NewGrid();
+        _gScale.Columns.Add(DialogUi.Text("Loại bản vẽ", nameof(StyleScaleRow.Name), true, 220));
+        _gScale.Columns.Add(ScaleColumn());
+        _gScale.Columns.Add(DialogUi.Text("Ghi chú", nameof(StyleScaleRow.Note), true, 260));
+        _gScale.ItemsSource = _scales;
+
+        // ---------------- bảng cỡ chữ ----------------
+        _gSize = DialogUi.NewGrid();
+        _gSize.Columns.Add(DialogUi.Text("Thành phần", nameof(StyleSizeRow.Name), true, 300));
+        _gSize.Columns.Add(DialogUi.Num("Giá trị", nameof(StyleSizeRow.Value), "0.###", false, 80));
+        _gSize.Columns.Add(DialogUi.Text("Đơn vị", nameof(StyleSizeRow.Unit), true, 110));
+        _gSize.Columns.Add(DialogUi.Text("Phạm vi", nameof(StyleSizeRow.Range), true, 90));
+        _gSize.ItemsSource = _sizes;
+
+        // ---------------- chú thích tuỳ chọn ----------------
+        var opt = new WrapPanel { Margin = new Thickness(0, 2, 0, 2) };
+        void Chk(string text, string tip, Func<DrawingStyle, bool> get, Action<DrawingStyle, bool> set)
+        {
+            var cb = new CheckBox { Content = text, ToolTip = tip, Margin = new Thickness(0, 2, 16, 2) };
+            cb.Checked += (s, e) => { if (!_loading) { set(_st, true); Edited(); } };
+            cb.Unchecked += (s, e) => { if (!_loading) { set(_st, false); Edited(); } };
+            _checks.Add((cb, get, set));
+            opt.Children.Add(cb);
+        }
+        Chk("Số hiệu phần tử nội bộ", "Tên phần tử (B12, C5…) cho dầm/cột chưa có tên thiết kế trên mặt bằng kết cấu", s => s.ShowMemberIds, (s, v) => s.ShowMemberIds = v);
+        Chk("Giá trị nội lực", "Số trên biểu đồ nội lực và dòng \"Giá trị lớn nhất…\"", s => s.ShowLoadValues, (s, v) => s.ShowLoadValues = v);
+        Chk("Giá trị thiết kế", "Tmax dầm cong, sức chịu tải cọc [P]", s => s.ShowDesignValues, (s, v) => s.ShowDesignValues = v);
+        Chk("Ký hiệu cao độ ▽", "Cao độ đỉnh dầm, chân/đỉnh cột, cao độ tầng, cao độ móng", s => s.ShowElevationMarks, (s, v) => s.ShowElevationMarks = v);
+        Chk("Kích thước lưới trục", "Chuỗi kích thước trục trên mặt bằng kết cấu, mặt bằng thép sàn, mặt bằng móng, mặt đứng khung", s => s.ShowGridDims, (s, v) => s.ShowGridDims = v);
+        Chk("Khối GHI CHÚ CHUNG", "Một khối ghi chú chung cho mỗi bản vẽ KC-01…KC-06 (đơn vị, bê tông, thép, lớp bảo vệ, neo nối)", s => s.ShowGeneralNotes, (s, v) => s.ShowGeneralNotes = v);
+
+        // ---------------- bố cục ----------------
+        var left = new DockPanel();
+        var hint = DialogUi.Hint("Tỷ lệ chọn trong danh sách hoặc gõ tỷ lệ tuỳ ý (vd. 1/40). Cỡ chữ tính bằng mm trên giấy in – trong mô hình nhân với mẫu số tỷ lệ. " +
+                                 "Mặc định: chữ 2,5 mm, tên hình 3,5 mm, mặt đứng/mặt bằng chi tiết 1/50, mặt cắt 1/25 (theo quy tắc Kết cấu Soft).");
+        DockPanel.SetDock(hint, Dock.Top); left.Children.Add(hint);
+        var lbScale = DialogUi.Label("Tỷ lệ theo loại bản vẽ", double.NaN, true);
+        DockPanel.SetDock(lbScale, Dock.Top); left.Children.Add(lbScale);
+        _gScale.Height = 290;
+        DockPanel.SetDock(_gScale, Dock.Top); left.Children.Add(_gScale);
+        var lbOpt = DialogUi.Label("Chú thích hiển thị", double.NaN, true);
+        DockPanel.SetDock(lbOpt, Dock.Top); left.Children.Add(lbOpt);
+        DockPanel.SetDock(opt, Dock.Top); left.Children.Add(opt);
+        var lbSize = DialogUi.Label("Cỡ chữ và ký hiệu (mm trên giấy)", double.NaN, true);
+        DockPanel.SetDock(lbSize, Dock.Top); left.Children.Add(lbSize);
+        left.Children.Add(_gSize);
+
+        var right = new DockPanel { Margin = new Thickness(10, 0, 0, 0) };
+        var lbPrev = DialogUi.Label("Xem trước (đúng cỡ in, phóng ×2)", double.NaN, true);
+        DockPanel.SetDock(lbPrev, Dock.Top); right.Children.Add(lbPrev);
+        var pvHint = DialogUi.Hint("Mẫu: mặt cắt dầm 220×300 với kích thước, nhãn thép 3Ø22 ①, đai Ø6a100 ④, đầu trục, cao độ, ghi chú và tên mặt cắt.");
+        DockPanel.SetDock(pvHint, Dock.Bottom); right.Children.Add(pvHint);
+        right.Children.Add(new Border
+        {
+            BorderBrush = Brushes.Silver, BorderThickness = new Thickness(1), Background = Brushes.White,
+            Child = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _preview }
+        });
+
+        var body = new Grid();
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(640) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(left, 0); Grid.SetColumn(right, 1);
+        body.Children.Add(left); body.Children.Add(right);
+
+        _chkProject = new CheckBox { Content = "Lưu riêng cho dự án này", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0), IsChecked = p?.CadStandard != null };
+        _txtStatus = new TextBlock { Foreground = Brushes.DimGray, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+        var bApply = DialogUi.Btn("Áp dụng", (s, e) => Apply(), true);
+        var bSave = DialogUi.Btn("Lưu làm mặc định", (s, e) => SaveDefault());
+        var bReset = DialogUi.Btn("Khôi phục mặc định", (s, e) => RestoreDefault());
+        var bClose = DialogUi.Btn("Đóng", (s, e) => Close());
+        var bottom = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
+        var bl = DialogUi.Row(bApply, bSave, bReset, _chkProject);
+        var br = DialogUi.Row(bClose);
+        DockPanel.SetDock(bl, Dock.Left); DockPanel.SetDock(br, Dock.Right);
+        bottom.Children.Add(bl); bottom.Children.Add(br); bottom.Children.Add(_txtStatus);
+
+        var root = new DockPanel { Margin = new Thickness(8) };
+        DockPanel.SetDock(bottom, Dock.Bottom);
+        root.Children.Add(bottom); root.Children.Add(body);
+        Content = root;
+
+        LoadAll();
+        SetStatus((p?.CadStandard != null ? "Đang dùng thiết lập riêng của dự án." : "Đang dùng thiết lập mặc định của người dùng.") + " File mặc định: " + CadStandard.UserFilePath);
+    }
+
+    private void SetStatus(string s) => _txtStatus.Text = s;
+
+    private DataGridTemplateColumn ScaleColumn()
+    {
+        var col = new DataGridTemplateColumn { Header = "Tỷ lệ", Width = 150 };
+        var tb = new FrameworkElementFactory(typeof(TextBlock));
+        tb.SetBinding(TextBlock.TextProperty, new Binding(nameof(StyleScaleRow.Scale)));
+        tb.SetValue(FrameworkElement.MarginProperty, new Thickness(4, 0, 4, 0));
+        col.CellTemplate = new DataTemplate { VisualTree = tb };
+        var cb = new FrameworkElementFactory(typeof(ComboBox));
+        cb.SetValue(ComboBox.IsEditableProperty, true);
+        cb.SetValue(ItemsControl.ItemsSourceProperty, ScaleChoices);
+        cb.SetBinding(ComboBox.TextProperty, new Binding(nameof(StyleScaleRow.Scale)) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.LostFocus });
+        col.CellEditingTemplate = new DataTemplate { VisualTree = cb };
+        return col;
+    }
+
+    // ------------------------------------------------------------------ nạp
+    private void LoadAll()
+    {
+        _loading = true;
+        try
+        {
+            _st.Normalize();
+            _scales.Clear();
+            foreach (var k in DrawingStyle.Kinds) _scales.Add(new StyleScaleRow(k, () => _st, Edited));
+            _sizes.Clear();
+            void Size(string name, string unit, Func<DrawingStyle, double> g, Action<DrawingStyle, double> s, double min = 0.5, double max = 20) =>
+                _sizes.Add(new StyleSizeRow(name, unit, g, s, () => _st, Edited, min, max));
+            foreach (var r in DrawingStyle.Roles)
+                Size(DrawingStyle.RoleLabel(r), "mm chữ hoa", s => s.Height(r), (s, v) => s.SetHeight(r, v));
+            Size("Kích thước: gạch xiên đầu đường kích thước", "mm dài", s => s.DimTickSize, (s, v) => s.DimTickSize = v, 0.2);
+            Size("Kích thước: hở từ điểm đo tới đường gióng", "mm", s => s.DimExtOffset, (s, v) => s.DimExtOffset = v, 0);
+            Size("Kích thước: đường gióng vượt đường kích thước", "mm", s => s.DimExtBeyond, (s, v) => s.DimExtBeyond = v, 0);
+            Size("Kích thước: đường kích thước kéo qua đường gióng", "mm", s => s.DimLineExtend, (s, v) => s.DimLineExtend = v, 0);
+            Size("Kích thước: chữ số cách đường kích thước", "mm", s => s.DimTextGap, (s, v) => s.DimTextGap = v, 0);
+            Size("Vòng tròn số hiệu thép", "mm đường kính", s => s.MarkDiameter, (s, v) => s.MarkDiameter = v, 1, 40);
+            Size("Vòng tròn đầu trục", "mm đường kính", s => s.AxisBubbleDiameter, (s, v) => s.AxisBubbleDiameter = v, 2, 40);
+            Size("Hệ số rộng chữ", "× (1 = chuẩn)", s => s.WidthFactor, (s, v) => s.WidthFactor = v, 0.3, 2);
+            foreach (var (box, get, _) in _checks) box.IsChecked = get(_st);
+        }
+        finally { _loading = false; }
+        RefreshPreview();
+    }
+
+    private void Edited()
+    {
+        if (_loading) return;
+        foreach (var r in _scales) r.Refresh();
+        foreach (var r in _sizes) r.Refresh();
+        RefreshPreview();
+        SetStatus("Đã sửa – bấm \"Áp dụng\" để dùng cho các bản vẽ xuất ra / tờ in, hoặc \"Lưu làm mặc định\".");
+    }
+
+    // ------------------------------------------------------------------ xem trước
+    /// <summary>Mẫu vẽ ở tỷ lệ 1/1 trên giấy (mm in) bằng đúng các hàm vẽ của bộ ghi DXF.</summary>
+    internal static DxfWriter Sample(DrawingStyle st)
+    {
+        var w = new DxfWriter(1) { Style = st };
+        double th = w.Th;
+        // mặt cắt dầm 220×300 ở tl 1/25 → 8,8 × 12 mm giấy
+        double k = 1.0 / 25, B = 220 * k, H = 300 * k, c = 25 * k;
+        w.Rect(Lay.BeTong, 0, 0, B, H);
+        w.Polyline(Lay.Dai, new List<(double X, double Y)> { (c, c), (B - c, c), (B - c, H - c), (c, H - c) }, true, 0.25);
+        double r = 0.4;
+        foreach (double x in new[] { c + 0.6, B / 2, B - c - 0.6 }) { w.Dot(Lay.Thep, x, H - c - 0.6, r); w.Dot(Lay.Thep, x, c + 0.6, r); }
+        w.Line(Lay.KyHieu, c + 0.6, H - c - 0.6, B - c - 0.6, H - c - 0.6);
+        w.LeaderTag(B / 2, H - c - 0.6, B / 2, H + 2.2 * th, "3Ø22", 1, 1, false, false);
+        w.Line(Lay.KyHieu, c + 0.6, c + 0.6, B - c - 0.6, c + 0.6);
+        w.LeaderTag(B / 2, c + 0.6, B / 2, -2.6 * th, "3Ø18", 2, 1, false, false);
+        w.LeaderTag(B - c, H * 0.6, B + 2 * th, H * 0.6, "Ø6a100", 4, 1);
+        w.Dim(0, 0, B, 0, -4.6 * th, k);
+        w.Dim(0, 0, 0, H, 2.6 * th, k);
+        w.ElevMark(-6 * th, H, "+3.600", -1);
+        w.GridBubble(B / 2, -9.5 * th, "A");
+        w.Text(Lay.Chu, -14 * th, -14 * th, th, "Ghi chú: bê tông dầm B25, thép CB400-V.");
+        w.Title(B / 2, -16.5 * th, "1-1", DrawUtil_ScaleText(25), true);
+        return w;
+    }
+
+    private static string DrawUtil_ScaleText(double den) => "tl: 1/" + Math.Round(den).ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+
+    private void RefreshPreview()
+    {
+        try
+        {
+            var w = Sample(_st);
+            var e = w.Extents;
+            double pad = 4, zoom = 2;
+            var dg = SheetRender.Render(new[] { (w, 1.0, 0.0, 0.0) }, e.X1 - pad, e.Y2 + pad, 0.12, x => x.GetPrimitives());
+            _preview.Drawing = dg;
+            _preview.Scale = SheetRender.DipPerMm * zoom;
+            _preview.Width = (e.W + 2 * pad) * SheetRender.DipPerMm * zoom;
+            _preview.Height = (e.H + 2 * pad) * SheetRender.DipPerMm * zoom;
+            _preview.InvalidateVisual();
+        }
+        catch (Exception ex) { SetStatus("Lỗi xem trước: " + ex.Message); }
+    }
+
+    // ------------------------------------------------------------------ lưu
+    private void Commit()
+    {
+        DialogUi.Commit(_gScale); DialogUi.Commit(_gSize);
+        _st.Normalize();
+    }
+
+    /// <summary>Áp dụng: dùng ngay cho bản vẽ DXF / tờ in; "Lưu riêng cho dự án này" → ghi vào dự án.</summary>
+    private void Apply()
+    {
+        Commit();
+        if (_p != null && _chkProject.IsChecked == true)
+        {
+            _p.CadStandard ??= CadStandard.EffectiveFor(_p);
+            _p.CadStandard.Drawing = _st.Clone();
+        }
+        else if (_p != null && _p.CadStandard != null)
+        {
+            // bỏ chọn "lưu riêng": dự án trở về chuẩn mặc định của người dùng (giữ thiết lập vừa sửa cho phiên làm việc)
+            _p.CadStandard = null;
+        }
+        var std = (CadStandard.Active ?? CadStandard.EffectiveFor(_p)).Clone();
+        std.Drawing = _st.Clone();
+        CadStandard.Activate(std);
+        Changed = true;
+        SetStatus(_p != null && _chkProject.IsChecked == true ? "Đã áp dụng và lưu riêng cho dự án (nhớ lưu dự án)." : "Đã áp dụng cho phiên làm việc (chưa lưu làm mặc định).");
+    }
+
+    private void SaveDefault()
+    {
+        Commit();
+        try
+        {
+            var d = CadStandard.LoadUserDefault();
+            d.Drawing = _st.Clone();
+            CadStandard.SaveUserDefault(d);
+            Apply();
+            SetStatus("Đã lưu làm mặc định và áp dụng: " + CadStandard.UserFilePath);
+        }
+        catch (Exception ex) { MessageBox.Show(this, "Không lưu được: " + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void RestoreDefault()
+    {
+        if (MessageBox.Show(this, "Trở về thiết lập mặc định của chương trình (chữ 2,5 mm, tên hình 3,5 mm, mặt đứng 1/50, mặt cắt 1/25, mặt bằng 1/100)?\n" +
+                                  "Bấm \"Áp dụng\" hoặc \"Lưu làm mặc định\" để dùng.", Title, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        _st = DrawingStyle.Default();
+        LoadAll();
+        SetStatus("Đã nạp thiết lập mặc định của chương trình – chưa áp dụng.");
+    }
+}

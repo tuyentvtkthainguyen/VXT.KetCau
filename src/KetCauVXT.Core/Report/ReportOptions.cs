@@ -21,6 +21,8 @@ public class ReportChapters
     public bool Beams { get; set; } = true;
     public bool Columns { get; set; } = true;
     public bool Slabs { get; set; } = true;
+    /// <summary>Cầu thang (CalculationReport.Stair.cs) – khi có cầu thang trong kết quả thiết kế</summary>
+    public bool Stairs { get; set; } = true;
     /// <summary>Móng đơn / đài cọc / móng băng</summary>
     public bool Foundation { get; set; } = true;
     /// <summary>Địa chất (khi có hố khoan)</summary>

@@ -77,10 +77,17 @@ public static class RebarShopReport
         sh.AddRow("Ø > 18", Math.Round(g3, 2), g3 / 1000);
         sh.AddBoldRow("TỔNG CỘNG", Math.Round(g1 + g2 + g3, 2), (g1 + g2 + g3) / 1000);
 
+        sh.AddEmptyRow();
+        sh.AddBoldRow("5. MỐI NỐI THÉP (nguyên tắc: không nối trong nút khung, vùng tới hạn, vùng mô men lớn; so le ≤ 50%)");
+        sh.AddHeaderRow("Cấu kiện", "Số hiệu", "Ø (mm)", "Nhóm", "Số thanh", "Tâm mối nối (m)", "Chiều dài nối (mm)", "Vùng cho phép (m)", "Kiểu", "Đánh giá");
+        foreach (var sp in shop.Splices)
+            sh.AddRow(sp.Member, sp.Mark, sp.Dia, sp.Group, sp.Count, Math.Round(sp.Center, 3), Math.Round(sp.Lap * 1000),
+                double.IsNaN(sp.ZoneA) ? "–" : sp.ZoneA.ToString("0.00", DrawUtil.Inv) + "–" + sp.ZoneB.ToString("0.00", DrawUtil.Inv),
+                sp.Coupler ? "ống nối ren" : "nối chồng", sp.Violation ? new XlCell("VI PHẠM – vùng cấm", XlStyle.Fail) : (object)"đạt");
         if (shop.Messages.Count > 0)
         {
             sh.AddEmptyRow();
-            sh.AddBoldRow("5. GHI CHÚ / CẢNH BÁO");
+            sh.AddBoldRow("6. GHI CHÚ / CẢNH BÁO (vi phạm, thoả hiệp, đề xuất)");
             foreach (var m in shop.Messages.Distinct()) sh.AddRow(m);
         }
     }

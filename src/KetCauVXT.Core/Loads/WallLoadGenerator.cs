@@ -94,6 +94,7 @@ public static class WallLoadGenerator
     {
         if (w.IsCurved) return CurvedBeamsUnder(p, w, z, thick);
         var res = new List<(FrameElement, double, double, double)>();
+        var spans = new List<(bool curved, double lo, double hi)>();
         double L = w.Chord;
         double ux = (w.X2 - w.X1) / L, uy = (w.Y2 - w.Y1) / L;
         double tol = Math.Max(0.06, thick / 2 + 0.05);
@@ -113,7 +114,14 @@ public static class WallLoadGenerator
             if (hi - lo < 0.01) continue;
             double r0 = Math.Abs(lo - ta) / fl, r1 = Math.Abs(hi - ta) / fl;
             res.Add((f, Math.Min(r0, r1), Math.Max(r0, r1), hi - lo));
+            spans.Add((f.IsCurved, lo, hi));
         }
+        // dầm cong có dây cung trùng tường thẳng (vd. ô văng/bay cong nhô ra ngoài mặt tiền) chỉ nhận tải phần tường không có dầm thẳng đỡ –
+        // tránh tính tải tường hai lần (dầm thẳng + dầm cong cùng dây cung)
+        if (spans.Any(q => q.curved) && spans.Any(q => !q.curved))
+            for (int i = res.Count - 1; i >= 0; i--)
+                if (spans[i].curved && spans.Any(q => !q.curved && Math.Min(q.hi, spans[i].hi) - Math.Max(q.lo, spans[i].lo) > 0.01))
+                    res.RemoveAt(i);
         return res;
     }
 

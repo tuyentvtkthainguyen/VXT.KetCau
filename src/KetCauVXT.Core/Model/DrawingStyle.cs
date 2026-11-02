@@ -64,7 +64,10 @@ public class DrawingStyle
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
     /// <summary>Danh sách tỷ lệ chọn nhanh (mẫu số).</summary>
-    public static readonly double[] StandardScales = { 10, 20, 25, 30, 50, 75, 100, 150, 200 };
+    public static readonly double[] StandardScales = { 10, 15, 20, 25, 30, 50, 75, 100, 150, 200, 250 };
+
+    /// <summary>Các tỷ lệ có sẵn kiểu kích thước (VXT_1-15 … VXT_1-250).</summary>
+    public static readonly double[] DefaultDimScales = { 15, 25, 30, 50, 100, 200, 250 };
 
     /// <summary>Thứ tự hiển thị các loại bản vẽ trên bảng thiết lập.</summary>
     public static readonly DrawingKind[] Kinds =
@@ -105,6 +108,22 @@ public class DrawingStyle
     public double DimLineExtend { get; set; } = 1.0;
     /// <summary>Chữ số cách đường kích thước</summary>
     public double DimTextGap { get; set; } = 0.75;
+    /// <summary>Đầu đường kích thước: gạch xiên (kết cấu, mặc định) hoặc mũi tên đặc</summary>
+    public DimArrow DimArrowType { get; set; } = DimArrow.Tick;
+    /// <summary>Số chữ số thập phân (0 = mm chẵn)</summary>
+    public int DimDecimals { get; set; }
+    /// <summary>Hệ số chiều dài (giá trị ghi = chiều dài đo × hệ số; DIMLFAC)</summary>
+    public double DimLinearFactor { get; set; } = 1.0;
+    /// <summary>Khoảng cách giữa các đường kích thước song song (DIMDLI) – dùng cho kiểu kích thước trong AutoCAD</summary>
+    public double DimBaselineSpacing { get; set; } = 7.0;
+
+    // ---------------- kiểu kích thước theo tỷ lệ (DIMSTYLE "VXT_1-25"…) ----------------
+    /// <summary>Tiền tố tên kiểu kích thước: "VXT_" → VXT_1-25, VXT_1-100…</summary>
+    public string DimStylePrefix { get; set; } = "VXT_";
+    /// <summary>Kiểu kích thước theo tỷ lệ; ô trống (null) = lấy theo thông số chung ở trên. Tỷ lệ không có trong danh sách → tạo tự động.</summary>
+    public List<DimStyleDef> DimStyles { get; set; } = DefaultDimStyles();
+
+    public static List<DimStyleDef> DefaultDimStyles() => DefaultDimScales.Select(x => new DimStyleDef { Scale = x }).ToList();
     /// <summary>Ghi chú (đồng thời là đơn vị khoảng cách bố trí hình)</summary>
     public double NoteHeight { get; set; } = 2.5;
     /// <summary>Nhãn thép</summary>
@@ -271,6 +290,55 @@ public class DrawingStyle
         _ => r.ToString()
     };
 
+    // ------------------------------------------------------------------ kiểu kích thước
+    /// <summary>Tiền tố hợp lệ cho tên DIMSTYLE (chữ, số, _ -); rỗng → "VXT_".</summary>
+    public static string SafePrefix(string p)
+    {
+        var t = new string((p ?? "").Trim().Where(c => c < 128 && (char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == '$')).ToArray());
+        return t.Length == 0 ? "VXT_" : t.Length > 20 ? t.Substring(0, 20) : t;
+    }
+
+    /// <summary>Tên kiểu kích thước của tỷ lệ 1/scale: "VXT_1-25" (tỷ lệ lẻ: "VXT_1-12_5").</summary>
+    public string DimStyleName(double scale) => SafePrefix(DimStylePrefix) + "1-" + Math.Round(scale, 2).ToString("0.##", Inv).Replace('.', '_');
+
+    /// <summary>Định nghĩa của tỷ lệ (null nếu chưa có trong danh sách).</summary>
+    public DimStyleDef FindDimStyle(double scale) => DimStyles?.FirstOrDefault(x => x != null && Math.Abs(x.Scale - scale) < 0.01);
+
+    /// <summary>Thông số kích thước đã quy đổi cho tỷ lệ 1/scale: lấy kiểu trong danh sách (ô trống = thông số chung),
+    /// tỷ lệ chưa có → tạo tự động từ thông số chung.</summary>
+    public DimParams DimFor(double scale)
+    {
+        if (double.IsNaN(scale) || scale <= 0) scale = 1;
+        scale = Math.Round(scale, 2);
+        var x = FindDimStyle(scale);
+        return new DimParams
+        {
+            Name = DimStyleName(scale), Scale = scale, Defined = x != null,
+            TextHeight = x?.TextHeight ?? DimTextHeight,
+            TickSize = x?.TickSize ?? DimTickSize,
+            Arrow = x?.Arrow ?? DimArrowType,
+            ExtOffset = x?.ExtOffset ?? DimExtOffset,
+            ExtBeyond = x?.ExtBeyond ?? DimExtBeyond,
+            LineExtend = x?.LineExtend ?? DimLineExtend,
+            TextGap = x?.TextGap ?? DimTextGap,
+            BaselineSpacing = x?.BaselineSpacing ?? DimBaselineSpacing,
+            Decimals = x?.Decimals ?? DimDecimals,
+            LinearFactor = x?.LinearFactor ?? DimLinearFactor
+        };
+    }
+
+    /// <summary>Bảng DIMSTYLE ghi vào DXF / tạo trong AutoCAD: các kiểu trong danh sách + các tỷ lệ phát sinh (extra).</summary>
+    public List<DimParams> DimTable(IEnumerable<double> extra = null)
+    {
+        var sc = (DimStyles ?? new List<DimStyleDef>()).Where(x => x != null).Select(x => Math.Round(x.Scale, 2)).ToList();
+        foreach (var e in extra ?? Enumerable.Empty<double>())
+        {
+            double r = Math.Round(e, 2);
+            if (r > 0 && r <= 2000 && !sc.Any(q => Math.Abs(q - r) < 0.01)) sc.Add(r);
+        }
+        return sc.Distinct().OrderBy(v => v).Select(DimFor).ToList();
+    }
+
     // ------------------------------------------------------------------ chuẩn hoá, JSON
     private static double Clamp(double v, double lo, double hi, double def) =>
         double.IsNaN(v) || double.IsInfinity(v) || v <= 0 ? def : Math.Clamp(v, lo, hi);
@@ -301,6 +369,15 @@ public class DrawingStyle
         AxisTextHeight = Clamp(AxisTextHeight, 0.5, 20, d.AxisTextHeight);
         ScheduleTextHeight = Clamp(ScheduleTextHeight, 0.5, 20, d.ScheduleTextHeight);
         WidthFactor = Clamp(WidthFactor, 0.3, 2, d.WidthFactor);
+        DimDecimals = Math.Clamp(DimDecimals, 0, 4);
+        DimLinearFactor = Clamp(DimLinearFactor, 1e-4, 1e4, 1.0);
+        DimBaselineSpacing = double.IsNaN(DimBaselineSpacing) || DimBaselineSpacing < 0 ? d.DimBaselineSpacing : Math.Min(DimBaselineSpacing, 50);
+        if (!Enum.IsDefined(typeof(DimArrow), DimArrowType)) DimArrowType = DimArrow.Tick;
+        DimStylePrefix = SafePrefix(DimStylePrefix);
+        DimStyles ??= DefaultDimStyles();
+        DimStyles.RemoveAll(x => x == null || double.IsNaN(x.Scale) || x.Scale <= 0 || x.Scale > 2000);
+        foreach (var x in DimStyles) x.Normalize();
+        DimStyles = DimStyles.GroupBy(x => Math.Round(x.Scale, 2)).Select(g => g.First()).OrderBy(x => x.Scale).ToList();
         return this;
     }
 
@@ -314,4 +391,80 @@ public class DrawingStyle
         (JsonSerializer.Deserialize<DrawingStyle>(string.IsNullOrWhiteSpace(json) ? "{}" : json, CadStandard.JsonOptions) ?? new DrawingStyle()).Normalize();
 
     public DrawingStyle Clone() => FromJson(ToJson());
+}
+
+/// <summary>Đầu đường kích thước.</summary>
+public enum DimArrow
+{
+    /// <summary>Gạch xiên 45° (bản vẽ kết cấu, kiến trúc)</summary>
+    Tick,
+    /// <summary>Mũi tên đặc</summary>
+    ClosedArrow
+}
+
+/// <summary>Kiểu kích thước của một tỷ lệ (DIMSTYLE "VXT_1-25"). Thông số tính bằng mm trên giấy; ô null = theo thông số chung của DrawingStyle.
+/// JSON: { "Scale": 25, "TextHeight": null, "TickSize": null, "Arrow": null | "Tick" | "ClosedArrow", "ExtOffset": null, "ExtBeyond": null,
+/// "LineExtend": null, "TextGap": null, "BaselineSpacing": null, "Decimals": null, "LinearFactor": null }.</summary>
+public class DimStyleDef
+{
+    /// <summary>Mẫu số tỷ lệ (= DIMSCALE)</summary>
+    public double Scale { get; set; } = 100;
+    /// <summary>Chiều cao chữ (DIMTXT)</summary>
+    public double? TextHeight { get; set; }
+    /// <summary>Gạch xiên: chiều dài gạch (DIMTSZ = ½ giá trị này); mũi tên: chiều dài mũi tên (DIMASZ)</summary>
+    public double? TickSize { get; set; }
+    public DimArrow? Arrow { get; set; }
+    /// <summary>Hở từ điểm đo (DIMEXO)</summary>
+    public double? ExtOffset { get; set; }
+    /// <summary>Gióng vượt (DIMEXE)</summary>
+    public double? ExtBeyond { get; set; }
+    /// <summary>Đường kích thước kéo qua gióng (DIMDLE)</summary>
+    public double? LineExtend { get; set; }
+    /// <summary>Chữ cách đường kích thước (DIMGAP)</summary>
+    public double? TextGap { get; set; }
+    /// <summary>Khoảng cách đường kích thước song song (DIMDLI)</summary>
+    public double? BaselineSpacing { get; set; }
+    /// <summary>Số lẻ thập phân (DIMDEC)</summary>
+    public int? Decimals { get; set; }
+    /// <summary>Hệ số chiều dài (DIMLFAC)</summary>
+    public double? LinearFactor { get; set; }
+
+    private static double? Pos(double? v, double lo, double hi) => v.HasValue && !double.IsNaN(v.Value) && v.Value >= lo ? Math.Min(v.Value, hi) : null;
+
+    public void Normalize()
+    {
+        TextHeight = Pos(TextHeight, 0.5, 20);
+        TickSize = Pos(TickSize, 0.2, 20);
+        ExtOffset = Pos(ExtOffset, 0, 20);
+        ExtBeyond = Pos(ExtBeyond, 0, 20);
+        LineExtend = Pos(LineExtend, 0, 20);
+        TextGap = Pos(TextGap, 0, 20);
+        BaselineSpacing = Pos(BaselineSpacing, 0, 50);
+        LinearFactor = Pos(LinearFactor, 1e-4, 1e4);
+        if (Decimals.HasValue) Decimals = Math.Clamp(Decimals.Value, 0, 4);
+        if (Arrow.HasValue && !Enum.IsDefined(typeof(DimArrow), Arrow.Value)) Arrow = null;
+    }
+
+    public DimStyleDef Clone() => (DimStyleDef)MemberwiseClone();
+}
+
+/// <summary>Thông số kích thước đã quy đổi (không còn ô trống) của một tỷ lệ – mm trên giấy.</summary>
+public sealed class DimParams
+{
+    public string Name = "";
+    public double Scale = 1;
+    /// <summary>Có trong danh sách kiểu (false = tạo tự động cho tỷ lệ tuỳ ý)</summary>
+    public bool Defined;
+    public double TextHeight = 2.5, TickSize = 2.5, ExtOffset = 0.625, ExtBeyond = 1.25, LineExtend = 1.0, TextGap = 0.75, BaselineSpacing = 7;
+    public DimArrow Arrow = DimArrow.Tick;
+    public int Decimals;
+    public double LinearFactor = 1;
+
+    /// <summary>Chuỗi số kích thước của chiều dài v (mm) theo số lẻ, hệ số.</summary>
+    public string Format(double v)
+    {
+        double x = v * LinearFactor;
+        if (Decimals <= 0) return Math.Round(x).ToString("0", CultureInfo.InvariantCulture);
+        return x.ToString("0." + new string('0', Decimals), CultureInfo.InvariantCulture);
+    }
 }

@@ -356,6 +356,10 @@ public static class RebarShop
             if (!string.IsNullOrEmpty(o.Category) && CategoryGroup(cat) != o.Category && cat != o.Category) continue;
             var conc = ConcreteFor(p, m);
             int q = Math.Max(1, m.Quantity);
+            // mối nối đã bố trí ở bản vẽ chi tiết (thép cột nối giữa tầng) + ghi chú nguyên tắc nối của cấu kiện
+            foreach (var sp in m.Splices) { sp.Member = m.Name; res.Splices.Add(sp); }
+            foreach (var msg in m.Messages.Where(x => x.StartsWith("Nối thép", StringComparison.Ordinal) || x.StartsWith("LỖI nguyên tắc nối", StringComparison.Ordinal)))
+                res.Messages.Add(m.Name + ": " + msg);
             // cùng số hiệu → một nhóm (thanh chưa đánh số – Mark = 0 – giữ riêng)
             foreach (var g in m.Bars.Where(x => x.Count > 0 && x.Length > 0 && x.Dia > 0).Select((x, i) => (Bar: x, Key: x.Mark > 0 ? x.Mark : -1 - i))
                          .GroupBy(t => t.Key, t => t.Bar).OrderBy(t => t.Key))

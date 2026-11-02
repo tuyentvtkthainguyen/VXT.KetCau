@@ -256,6 +256,7 @@ public sealed partial class DxfWriter
     public void Append(DxfWriter other, double dx, double dy)
     {
         if (other == null) return;
+        MergeDimStyles(other);
         foreach (var e in other._ents)
         {
             var n = new DxfEnt { Type = e.Type, Box = e.Box.Offset(dx, dy) };
@@ -327,28 +328,43 @@ public sealed partial class DxfWriter
 
     /// <summary>Kích thước thẳng vẽ bằng LINE + gạch xiên + TEXT (không dùng DIMENSION).
     /// offset: khoảng cách từ điểm đo tới đường kích thước, dương về phía pháp tuyến trái của p1→p2.
-    /// k: hệ số phóng hình (giá trị ghi = chiều dài / k).</summary>
-    public void Dim(double x1, double y1, double x2, double y2, double offset, double k = 1, string text = null)
+    /// k: hệ số phóng hình (giá trị ghi = chiều dài / k). Kiểu kích thước (Thiết lập bản vẽ) theo tỷ lệ thể hiện Scale / k
+    /// (vd. mặt cắt 1/25 vẽ phóng trên tờ 1/50 → kiểu VXT_1-25); dimStyle != null: dùng thông số cho trước.</summary>
+    public void Dim(double x1, double y1, double x2, double y2, double offset, double k = 1, string text = null,
+        KetCauVXT.Model.DimParams dimStyle = null)
     {
         double dx = x2 - x1, dy = y2 - y1, len = Math.Sqrt(dx * dx + dy * dy);
         if (len < 1e-6) return;
-        var st = Style;
-        double th = st.DimTextHeight * Scale;                       // chữ số kích thước
+        var st = dimStyle ?? Style.DimFor(Scale / (k <= 0 ? 1 : k));
+        UseDimStyle(st.Scale);
+        double th = st.TextHeight * Scale;                       // chữ số kích thước
         double ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
         double sg = offset >= 0 ? 1 : -1;
-        double gap = st.DimExtOffset * Scale, ext = st.DimExtBeyond * Scale;   // hở điểm đo, gióng vượt
-        double dle = st.DimLineExtend * Scale, tick = st.DimTickSize * Scale, tgap = st.DimTextGap * Scale;
+        double gap = st.ExtOffset * Scale, ext = st.ExtBeyond * Scale;   // hở điểm đo, gióng vượt
+        double dle = st.LineExtend * Scale, tick = st.TickSize * Scale, tgap = st.TextGap * Scale;
+        bool arrow = st.Arrow == KetCauVXT.Model.DimArrow.ClosedArrow;
         double ax = x1 + nx * offset, ay = y1 + ny * offset, bx = x2 + nx * offset, by = y2 + ny * offset;
         if (Math.Abs(offset) > gap)
         {
             Line(Lay.KichThuoc, x1 + nx * gap * sg, y1 + ny * gap * sg, ax + nx * ext * sg, ay + ny * ext * sg);
             Line(Lay.KichThuoc, x2 + nx * gap * sg, y2 + ny * gap * sg, bx + nx * ext * sg, by + ny * ext * sg);
         }
-        Line(Lay.KichThuoc, ax - ux * dle, ay - uy * dle, bx + ux * dle, by + uy * dle);
-        double tx = (ux + nx) * 0.3536 * tick, ty = (uy + ny) * 0.3536 * tick;
-        Line(Lay.KichThuoc, ax - tx, ay - ty, ax + tx, ay + ty);
-        Line(Lay.KichThuoc, bx - tx, by - ty, bx + tx, by + ty);
-        string t = text ?? N0(len / (k <= 0 ? 1 : k));
+        if (!arrow)
+        {
+            Line(Lay.KichThuoc, ax - ux * dle, ay - uy * dle, bx + ux * dle, by + uy * dle);
+            double tx = (ux + nx) * 0.3536 * tick, ty = (uy + ny) * 0.3536 * tick;
+            Line(Lay.KichThuoc, ax - tx, ay - ty, ax + tx, ay + ty);
+            Line(Lay.KichThuoc, bx - tx, by - ty, bx + tx, by + ty);
+        }
+        else
+        {
+            // mũi tên đặc (SOLID) dài "tick", rộng tick/3, đỉnh tại đường gióng
+            Line(Lay.KichThuoc, ax, ay, bx, by);
+            double hw = tick / 6;
+            Solid(Lay.KichThuoc, ax, ay, ax + ux * tick + nx * hw, ay + uy * tick + ny * hw, ax + ux * tick - nx * hw, ay + uy * tick - ny * hw, ax + ux * tick - nx * hw, ay + uy * tick - ny * hw);
+            Solid(Lay.KichThuoc, bx, by, bx - ux * tick + nx * hw, by - uy * tick + ny * hw, bx - ux * tick - nx * hw, by - uy * tick - ny * hw, bx - ux * tick - nx * hw, by - uy * tick - ny * hw);
+        }
+        string t = text ?? (st.Decimals == 0 && Math.Abs(st.LinearFactor - 1) < 1e-12 ? N0(len / (k <= 0 ? 1 : k)) : st.Format(len / (k <= 0 ? 1 : k)));
         double ang = Math.Atan2(uy, ux) * 180 / Math.PI;
         if (ang > 90.001) ang -= 180;
         else if (ang <= -89.999) ang += 180;
@@ -505,6 +521,7 @@ public sealed partial class DxfWriter
             G(sb, 0, "STYLE"); G(sb, 2, "STANDARD"); G(sb, 70, 0); G(sb, 40, 0.0); G(sb, 41, WidthFactor); G(sb, 50, 0.0);
             G(sb, 71, 0); G(sb, 42, Th); G(sb, 3, "arial.ttf"); G(sb, 4, "");
             G(sb, 0, "ENDTAB");
+            WriteDimStyles(sb);   // bảng DIMSTYLE VXT_1-25… (DxfWriter.Style.cs)
             G(sb, 0, "ENDSEC");
         }
 

@@ -57,6 +57,7 @@ public sealed partial class DxfWriter
         if (other == null) return;
         var tmp = new DxfWriter(Scale);
         tmp.AppendScaled(other, k, dx, dy);
+        MergeDimStyles(tmp);
         foreach (var e in tmp._ents)
         {
             if (ContainsR(clip, e.Box)) { _ents.Add(e); _ext = _ext.Union(e.Box); continue; }

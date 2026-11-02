@@ -34,6 +34,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         BeamsSection(p, s, d, sec++);
         ColumnsSection(p, s, d, sec++);
         SlabsSection(p, s, d, sec++);
+        if (s.Stairs != null && s.Stairs.Count > 0) StairsSection(p, s, d, sec++);   // cầu thang (CalculationReport.Stair.cs)
         if (p.Boreholes != null && p.Boreholes.Count > 0) GeotechReport.Section(p, s, d, sec++);   // Report/GeotechReport.cs
         if (s.Footings.Count > 0 || (s.PileCaps.Count == 0 && s.StripFootings.Count == 0)) FootingsSection(p, s, d, sec++);
         if (s.PileCaps.Count > 0) PileCapsSection(p, s, d, sec++);
