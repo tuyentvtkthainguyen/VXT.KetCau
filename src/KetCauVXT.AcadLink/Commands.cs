@@ -667,6 +667,46 @@ namespace KetCauVXT.AcadLink
             return ts.ObjectId;
         }
 
+        // ---- kiểu kích thước VXT_1-25… theo CadStandard.json (mục "Drawing") ----
+        /// <summary>Tạo/cập nhật DIMSTYLE theo tỷ lệ: DIMSCALE = mẫu số, thông số mm giấy; gạch xiên (DIMTSZ = ½ chiều dài gạch) hoặc mũi tên đặc.</summary>
+        private static int EnsureDimStyles(Database db, Transaction tr, IEnumerable<DimStyleA> styles, ObjectId textStyle)
+        {
+            var dst = (DimStyleTable)tr.GetObject(db.DimStyleTableId, OpenMode.ForRead);
+            int n = 0;
+            foreach (var d in styles)
+            {
+                if (string.IsNullOrEmpty(d.Name)) continue;
+                DimStyleTableRecord r;
+                bool isNew = !dst.Has(d.Name);
+                if (isNew) r = new DimStyleTableRecord { Name = d.Name };
+                else r = (DimStyleTableRecord)tr.GetObject(dst[d.Name], OpenMode.ForWrite);
+                r.Dimscale = d.Scale;
+                r.Dimtxt = d.TextHeight;
+                r.Dimasz = d.TickSize;
+                r.Dimtsz = d.Arrow ? 0.0 : d.TickSize / 2;
+                r.Dimexo = d.ExtOffset;
+                r.Dimexe = d.ExtBeyond;
+                r.Dimdle = d.Arrow ? 0.0 : d.LineExtend;
+                r.Dimdli = d.Baseline;
+                r.Dimgap = d.TextGap;
+                r.Dimlfac = d.LinearFactor;
+                r.Dimtad = 1;
+                r.Dimtih = false;
+                r.Dimtoh = false;
+                r.Dimdec = Math.Max(0, Math.Min(8, d.Decimals));
+                if (!textStyle.IsNull) r.Dimtxsty = textStyle;
+                if (isNew)
+                {
+                    dst.UpgradeOpen();
+                    dst.Add(r);
+                    tr.AddNewlyCreatedDBObject(r, true);
+                }
+                n++;
+            }
+            return n;
+        }
+        // ---- hết kiểu kích thước ----
+
         [CommandMethod("VXT_LAYER", CommandFlags.Modal)]
         public void LayerStandard()
         {
@@ -731,6 +771,21 @@ namespace KetCauVXT.AcadLink
                         tr.Commit();
                     }
                     ed.WriteMessage($"\nĐã tạo kiểu chữ {style} ({face}) và đặt làm hiện hành.");
+                }
+                // ---- kiểu kích thước VXT_1-15 … VXT_1-250 (chữ theo VXT_ARIAL/VXT_TIMES) ----
+                if (std.DimStyles.Count > 0)
+                {
+                    int nd;
+                    using (doc.LockDocument())
+                    using (var tr = db.TransactionManager.StartTransaction())
+                    {
+                        string tsName = f == "Times" || (f != "Arial" && defFont == "Times") ? "VXT_TIMES" : "VXT_ARIAL";
+                        string tsFace = tsName == "VXT_TIMES" ? "Times New Roman" : "Arial";
+                        var tsId = EnsureTextStyle(db, tr, tsName, tsFace);
+                        nd = EnsureDimStyles(db, tr, std.DimStyles, tsId);
+                        tr.Commit();
+                    }
+                    ed.WriteMessage($"\nĐã tạo/cập nhật {nd} kiểu kích thước: " + string.Join(", ", std.DimStyles.Select(q => q.Name)) + ".");
                 }
                 VxtPalette.RefreshCounts();
             }
