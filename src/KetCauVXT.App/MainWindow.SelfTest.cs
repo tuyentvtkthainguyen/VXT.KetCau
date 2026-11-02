@@ -136,7 +136,8 @@ public partial class MainWindow
             await SelfTestRebar(tag); // chọn bố trí thép, shop drawing – MainWindow.SelfTestRebar.cs
             await SelfTestQuantity(tag); // khối lượng vật tư, thuyết minh tự động – MainWindow.SelfTestQuantity.cs
             await SelfTestCadStandard(tag); // chuẩn layer CAD – MainWindow.SelfTestCad.cs
-            await SelfTestAcadLink(tag); // nhận dữ liệu AutoCAD – MainWindow.SelfTestAcad.cs
+            await SelfTestAcadLink(tag);
+            await SelfTestDwg(tag); // đọc DWG – MainWindow.SelfTestDwg.cs // nhận dữ liệu AutoCAD – MainWindow.SelfTestAcad.cs
             await SelfTestManualSheet(tag); // dàn trang thủ công – MainWindow.SelfTestSheetEdit.cs
             StLog("XONG – không lỗi");
         }

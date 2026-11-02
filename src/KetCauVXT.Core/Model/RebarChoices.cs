@@ -17,6 +17,17 @@ public class RebarGroup
     public RebarGroup(int dia, int count) { Dia = dia; Count = count; }
 }
 
+/// <summary>Phương án bố trí thép sàn.</summary>
+public enum SlabRebarScheme
+{
+    /// <summary>Lưới dưới 2 phương + thép mũ tại các cạnh ngàm (cạnh chung 2 ô: một thanh vắt qua dầm)</summary>
+    TopBarsBottomMesh = 0,
+    /// <summary>Lưới 2 lớp: lưới trên liên tục cả ô / dải ô (As = max yêu cầu gối, hàm lượng tối thiểu); mũ bổ sung chỉ nơi lưới thiếu</summary>
+    TwoLayerMesh = 1,
+    /// <summary>Lưới 2 lớp (lưới trên theo hàm lượng tối thiểu) + mũ tăng cường tại gối</summary>
+    TwoLayerMeshPlusTop = 2
+}
+
 /// <summary>Tên vùng bố trí thép dùng trong RebarChoice.Zone.</summary>
 public static class RebarZones
 {
@@ -39,6 +50,13 @@ public static class RebarZones
     public const string SlabBotY = "Dưới Y";
     public const string SlabTopX = "Mũ X";
     public const string SlabTopY = "Mũ Y";
+    /// <summary>Lưới trên phương ngắn / dài (phương án lưới 2 lớp): Dia, Spacing</summary>
+    public const string SlabMeshX = "Lưới trên X";
+    public const string SlabMeshY = "Lưới trên Y";
+    /// <summary>Phương án bố trí thép của ô sàn (RebarChoice.Scheme)</summary>
+    public const string SlabScheme = "Phương án sàn";
+    /// <summary>Phương án bố trí thép cho cả tầng (chỉ dùng trong hộp thoại – ghi thành SlabScheme cho mọi ô của tầng)</summary>
+    public const string SlabSchemeStory = "Phương án sàn cả tầng";
     // móng đơn
     public const string FootingL = "Phương L";
     public const string FootingB = "Phương B";
@@ -62,6 +80,8 @@ public class RebarChoice
     public double Spacing { get; set; }
     /// <summary>Đai: bước giữa nhịp / giữa cột (m).</summary>
     public double Spacing2 { get; set; }
+    /// <summary>Sàn: phương án bố trí (Zone = RebarZones.SlabScheme)</summary>
+    public SlabRebarScheme Scheme { get; set; }
     /// <summary>Kích thước tiết diện lúc chọn ("220x400", "t=120", "1.6x1.4x0.5"); khác hiện tại → bỏ qua lựa chọn.</summary>
     public string Basis { get; set; } = "";
     /// <summary>Tên cấu kiện lúc chọn (chỉ để tham khảo, vd "D2-1").</summary>
@@ -93,6 +113,16 @@ public class RebarPreferences
     public double MinReuseOffcut { get; set; } = 1.0;
     /// <summary>Nối so le: không nối quá 50% số thanh tại một tiết diện (TCVN 5574:2018 mục 10.3.6).</summary>
     public bool StaggerSplices { get; set; } = true;
+    /// <summary>Phương án bố trí thép sàn mặc định cho cả công trình (từng ô có thể chọn riêng).</summary>
+    public SlabRebarScheme SlabScheme { get; set; } = SlabRebarScheme.TopBarsBottomMesh;
+
+    /// <summary>Tên hiển thị phương án sàn.</summary>
+    public static string SchemeName(SlabRebarScheme s) => s switch
+    {
+        SlabRebarScheme.TwoLayerMesh => "Lưới 2 lớp",
+        SlabRebarScheme.TwoLayerMeshPlusTop => "Lưới 2 lớp + mũ tăng cường",
+        _ => "Thép mũ + lưới dưới"
+    };
 
     /// <summary>Lọc danh sách Ø theo PreferredDias (giữ nguyên nếu giao rỗng).</summary>
     public int[] Filter(int[] dias)

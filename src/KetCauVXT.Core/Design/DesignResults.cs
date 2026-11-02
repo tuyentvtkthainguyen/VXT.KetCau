@@ -223,9 +223,46 @@ public class SlabDesign : MemberDesignBase
     public string TopX { get; set; } = "";  // mũ gối cạnh vuông góc phương ngắn
     public string TopY { get; set; } = "";
     public double Deflection { get; set; }
+    /// <summary>Phương án bố trí thép đã dùng</summary>
+    public KetCauVXT.Model.SlabRebarScheme Scheme { get; set; }
+    /// <summary>Tổng chiều dài cạnh ngàm có thép mũ theo phương ngắn (cạnh dài) / phương dài (cạnh ngắn), m</summary>
+    public double FixedEdgeLenShort { get; set; }
+    public double FixedEdgeLenLong { get; set; }
+    /// <summary>Thép trên vẽ trên mặt bằng (toạ độ m): mũ gối (cạnh chung 2 ô chỉ ghi ở MỘT ô) và lưới trên liên tục (ghi ở ô đầu dải).
+    /// Các ô gộp (Quantity &gt; 1) nối thêm hình của từng ô.</summary>
+    public List<SlabEdgeBar> EdgeBars { get; set; } = new();
+    public List<SlabTopMesh> TopMeshes { get; set; } = new();
     /// <summary>Đỉnh ô (m) để vẽ mặt bằng thép sàn</summary>
     public List<(double x, double y)> Outline { get; set; } = new();
     public double Elevation { get; set; }
+}
+
+/// <summary>Một thanh mũ trên một cạnh sàn để vẽ: đoạn cạnh (X1,Y1)–(X2,Y2), pháp tuyến đơn vị (NX, NY) hướng về phía 1,
+/// đoạn vươn Ext1 (phía 1) và Ext2 (phía 2) tính từ trục cạnh (m).</summary>
+public class SlabEdgeBar
+{
+    public double X1 { get; set; }
+    public double Y1 { get; set; }
+    public double X2 { get; set; }
+    public double Y2 { get; set; }
+    public double NX { get; set; }
+    public double NY { get; set; }
+    public double Ext1 { get; set; }
+    public double Ext2 { get; set; }
+    /// <summary>Cạnh chung hai ô (thanh vắt qua dầm)</summary>
+    public bool Shared { get; set; }
+    public BarMark Bar { get; set; }
+}
+
+/// <summary>Lưới trên liên tục một dải ô (vẽ một thanh đại diện): hình chữ nhật dải (m), thép chạy theo X (AlongX) hoặc Y.</summary>
+public class SlabTopMesh
+{
+    public bool AlongX { get; set; }
+    public double X1 { get; set; }
+    public double Y1 { get; set; }
+    public double X2 { get; set; }
+    public double Y2 { get; set; }
+    public BarMark Bar { get; set; }
 }
 
 // ---------------------------------------------------------------------

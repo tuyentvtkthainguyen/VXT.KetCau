@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KetCauVXT.App", "src\KetCau
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KetCauVXT.Tests", "tests\KetCauVXT.Tests\KetCauVXT.Tests.csproj", "{0875A90E-01FE-5A09-BAB7-651058C03FD7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KetCauVXT.Dwg", "src\KetCauVXT.Dwg\KetCauVXT.Dwg.csproj", "{356096D7-300A-492E-99B8-FD422E84AE36}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{0875A90E-01FE-5A09-BAB7-651058C03FD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0875A90E-01FE-5A09-BAB7-651058C03FD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0875A90E-01FE-5A09-BAB7-651058C03FD7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{356096D7-300A-492E-99B8-FD422E84AE36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{356096D7-300A-492E-99B8-FD422E84AE36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{356096D7-300A-492E-99B8-FD422E84AE36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{356096D7-300A-492E-99B8-FD422E84AE36}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -172,7 +172,7 @@ public partial class ArchImportDialog : Window
     {
         var dlg = new OpenFileDialog
         {
-            Filter = "Bản vẽ CAD (*.dxf;*.dwg)|*.dxf;*.dwg",
+            Filter = KetCauVXT.Import.CadFileReaders.OpenFilter,
             Title = "Chọn bản vẽ kiến trúc (có thể chọn nhiều file)",
             Multiselect = true
         };

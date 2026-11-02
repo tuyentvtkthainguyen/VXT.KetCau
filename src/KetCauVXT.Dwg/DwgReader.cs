@@ -639,14 +639,14 @@ public static class DwgReader
                     r.Pts.Add((Flipped(cir.Normal) ? -x : x, y));
                     return One(r);
                 }
-                case AttributeDefinition:
+                case AttributeDefinition _:
                     return null;   // ATTDEF: bỏ (giá trị thật nằm ở ATTRIB của INSERT)
                 case TextEntity te:
                 {
                     var r = new Raw { Type = DxfEntityType.Text, Source = "TEXT", Height = te.Height, Style = StyleName(te.Style) };
                     var p = TextPoint(te);
                     r.Pts.Add((Flipped(te.Normal) ? -p.X : p.X, p.Y));
-                    r.Text = KetCauVXT.Import.DxfReader.CleanMText(te.Value ?? "");
+                    r.Text = CleanText(te.Value);
                     return r.Text.Length > 0 ? One(r) : null;
                 }
                 case MText mt:
@@ -656,7 +656,7 @@ public static class DwgReader
                     string raw = mt.Value ?? "";
                     var fm = MTextFontRx.Match(raw);
                     if (fm.Success) r.FontHint = KetCauVXT.Import.DxfReader.FontHintOfName(fm.Groups[1].Value);
-                    r.Text = KetCauVXT.Import.DxfReader.CleanMText(raw);
+                    r.Text = CleanText(raw);
                     return r.Text.Length > 0 ? One(r) : null;
                 }
                 case Solid so:
@@ -681,6 +681,15 @@ public static class DwgReader
 
         private static List<Raw> One(Raw r) => new() { r };
 
+        /// <summary>Bỏ mã định dạng MTEXT / %%c… (như bộ đọc DXF), chuẩn hoá Unicode dựng sẵn (DWG cũ mã cp1258 ghi dấu tổ hợp).</summary>
+        private static string CleanText(string s)
+        {
+            s = KetCauVXT.Import.DxfReader.CleanMText(s ?? "");
+            try { if (!s.IsNormalized(NormalizationForm.FormC)) s = s.Normalize(NormalizationForm.FormC); }
+            catch (ArgumentException) { /* giữ nguyên */ }
+            return s;
+        }
+
         private static string StyleName(TextStyle s)
         {
             try { return s?.Name ?? ""; } catch (Exception) { return ""; }
@@ -701,7 +710,7 @@ public static class DwgReader
             r.Pts.Add((Flipped(a.Normal) ? -p.X : p.X, p.Y));
             string v = a.Value ?? "";
             if (a.AttributeType != AttributeType.SingleLine && a.MText != null && !string.IsNullOrEmpty(a.MText.Value)) v = a.MText.Value;
-            r.Text = KetCauVXT.Import.DxfReader.CleanMText(v);
+            r.Text = CleanText(v);
             return r.Text.Length > 0 ? r : null;
         }
 

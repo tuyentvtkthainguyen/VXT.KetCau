@@ -37,7 +37,7 @@
                 <MenuItem Header="_Lưu" Click="MnuSave_Click" InputGestureText="Ctrl+S"/>
                 <MenuItem Header="Lưu _thành..." Click="MnuSaveAs_Click"/>
                 <Separator/>
-                <MenuItem Header="Nhập _DXF..." Click="MnuImportDxf_Click"/>
+                <MenuItem Header="Nhập mặt bằng kết cấu _DWG/DXF..." Click="MnuImportDxf_Click"/>
                 <MenuItem Header="Nhập bản vẽ _kiến trúc (triển khai kết cấu)..." Click="MnuImportArch_Click"/>
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
@@ -98,7 +98,7 @@
                 <Button Content="Mở" Click="MnuOpen_Click" Style="{StaticResource ToolButton}"/>
                 <Button Content="Lưu" Click="MnuSave_Click" Style="{StaticResource ToolButton}"/>
                 <Separator/>
-                <Button Content="Nhập DXF" Click="MnuImportDxf_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Nhập DWG/DXF" Click="MnuImportDxf_Click" Style="{StaticResource ToolButton}"/>
                 <Button Content="Từ bản vẽ KT" Click="MnuImportArch_Click" Style="{StaticResource ToolButton}" ToolTip="Nhập bản vẽ kiến trúc sơ bộ → tự triển khai kết cấu"/>
                 <Button Content="Nhập Revit" Click="MnuImportRevit_Click" Style="{StaticResource ToolButton}"/>
                 <Separator/>

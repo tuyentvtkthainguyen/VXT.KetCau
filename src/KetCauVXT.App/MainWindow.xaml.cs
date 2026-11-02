@@ -194,7 +194,7 @@ public partial class MainWindow : Window
     private void MnuImportDxf_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
-        var dlg = new OpenFileDialog { Filter = "Bản vẽ DXF (*.dxf)|*.dxf", Title = "Chọn mặt bằng kết cấu DXF" };
+        var dlg = new OpenFileDialog { Filter = KetCauVXT.Import.CadFileReaders.OpenFilter, Title = "Chọn mặt bằng kết cấu (DWG/DXF)" };
         if (dlg.ShowDialog(this) != true) return;
         ApplyUiToProject(false);
         var opt = new DxfImportOptions
@@ -220,11 +220,11 @@ public partial class MainWindow : Window
             MarkDirty();
             LoadUiFromProject();
             RefreshAll(true);
-            SetStatus($"Đã nhập DXF: {rep.Columns} cột, {rep.Beams} dầm, {rep.Slabs} ô sàn.");
-            MessageBox.Show(rep.ToString(), "Kết quả nhập DXF", MessageBoxButton.OK,
+            SetStatus($"Đã nhập bản vẽ {System.IO.Path.GetFileName(dlg.FileName)}: {rep.Columns} cột, {rep.Beams} dầm, {rep.Slabs} ô sàn.");
+            MessageBox.Show(rep.ToString(), "Kết quả nhập bản vẽ", MessageBoxButton.OK,
                 rep.Warnings.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
         }
-        catch (Exception ex) { ShowError("Lỗi nhập DXF", ex); }
+        catch (Exception ex) { ShowError("Lỗi nhập bản vẽ DWG/DXF", ex); }
     }
 
     private void MnuImportRevit_Click(object sender, RoutedEventArgs e)

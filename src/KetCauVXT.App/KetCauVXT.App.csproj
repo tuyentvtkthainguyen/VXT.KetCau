@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../KetCauVXT.Core/KetCauVXT.Core.csproj" />
+    <!-- đọc DWG (ACadSharp, MIT) – đăng ký vào lõi trong App.xaml.cs -->
+    <ProjectReference Include="../KetCauVXT.Dwg/KetCauVXT.Dwg.csproj" />
   </ItemGroup>
 
 </Project>

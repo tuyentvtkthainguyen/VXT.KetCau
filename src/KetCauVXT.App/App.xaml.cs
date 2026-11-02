@@ -17,6 +17,8 @@ public partial class App : Application
         Thread.CurrentThread.CurrentCulture = ci;
         FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement),
             new FrameworkPropertyMetadata(XmlLanguage.GetLanguage("en-US")));
+        // Bộ đọc DWG tích hợp (KetCauVXT.Dwg – ACadSharp): nhập kiến trúc, quét layer, nhập mặt bằng kết cấu đọc thẳng file .dwg
+        global::KetCauVXT.Dwg.DwgReader.Register();
         base.OnStartup(e);
     }
 

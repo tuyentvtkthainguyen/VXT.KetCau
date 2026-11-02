@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\KetCauVXT.Core\KetCauVXT.Core.csproj" />
+    <ProjectReference Include="..\..\src\KetCauVXT.Dwg\KetCauVXT.Dwg.csproj" />
   </ItemGroup>
 
 </Project>

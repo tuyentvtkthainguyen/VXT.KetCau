@@ -1,7 +1,7 @@
 <Window x:Class="KetCauVXT.App.DxfImportDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Nhập mặt bằng kết cấu DXF" Width="520" SizeToContent="Height"
+        Title="Nhập mặt bằng kết cấu (DWG/DXF)" Width="520" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
     <StackPanel Margin="10">
         <GroupBox Header="Lớp (layer) – có thể ghi nhiều lớp cách nhau dấu phẩy">
@@ -24,7 +24,7 @@
                     </ComboBox>
                 </DockPanel>
                 <DockPanel Style="{StaticResource Field}"><TextBlock Text="Sai số bắt điểm (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtTol"/></DockPanel>
-                <CheckBox x:Name="chkGrids" Content="Thay lưới trục của dự án bằng trục trong DXF" Margin="2"/>
+                <CheckBox x:Name="chkGrids" Content="Thay lưới trục của dự án bằng trục trong bản vẽ" Margin="2"/>
                 <CheckBox x:Name="chkOrigin" Content="Dời gốc toạ độ về giao trục đầu tiên" Margin="2"/>
                 <CheckBox x:Name="chkSnap" Content="Đưa tâm cột về giao điểm trục" Margin="2"/>
                 <CheckBox x:Name="chkDouble" Content="Nhận dạng dầm vẽ 2 nét (lấy bề rộng dầm)" Margin="2"/>

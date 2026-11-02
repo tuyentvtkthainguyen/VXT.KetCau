@@ -7,7 +7,7 @@ namespace KetCauVXT.Design.Concrete;
 /// <summary>Thiết kế ô sàn BTCT chữ nhật toàn khối theo dải bản 1 m (TCVN 5574:2018 mục 8.1.2.2 cho uốn, mục 10.3 cấu tạo).
 /// Bản dầm (ly/lx &gt; 2) tính như dải một phương; bản kê bốn cạnh dùng phương pháp Marcus: chia tải theo điều kiện
 /// võng bằng nhau tại giữa ô, bỏ qua giảm mô men do xoắn – thiên về an toàn.</summary>
-public static class SlabDesigner
+public static partial class SlabDesigner
 {
     /// <summary>Hệ số độ cứng khi nứt dùng ước lượng độ võng: tham khảo; độ võng dải sàn tính theo độ cứng tiết diện có vết nứt.</summary>
     public const double CrackedStiffnessFactor = 0.3;
@@ -21,25 +21,39 @@ public static class SlabDesigner
     {
         warnings ??= new List<string>();
         var list = new List<(SlabDesign d, string sig)>();
+        // lượt 1: nội lực, lớp dưới, yêu cầu thép trên từng ô
+        var panels = new List<SlabPanel>();
         foreach (var slab in p.Slabs)
         {
             try
             {
-                var d = DesignSlab(p, slab);
-                if (d == null) { warnings.Add("Sàn " + slab.Label + " không phải ô chữ nhật – bỏ qua thiết kế"); continue; }
-                string sig = Signature(d);
-                int k = list.FindIndex(x => x.sig == sig);
-                if (k >= 0)
-                {
-                    list[k].d.Quantity++;
-                    list[k].d.RebarKeys.AddRange(d.RebarKeys.Where(x => !list[k].d.RebarKeys.Contains(x)));
-                }
-                else list.Add((d, sig));
+                var pn = DesignSlab(p, slab);
+                if (pn == null) { warnings.Add("Sàn " + slab.Label + " không phải ô chữ nhật – bỏ qua thiết kế"); continue; }
+                panels.Add(pn);
             }
             catch (Exception ex)
             {
                 warnings.Add("LỖI thiết kế sàn " + slab.Label + ": " + ex.Message);
             }
+        }
+        // lượt 2: thép trên theo phương án (mũ cạnh chung tính MỘT lần, lưới trên liên tục) – SlabDesigner.Top.cs
+        try { TopReinforcement(p, panels); }
+        catch (Exception ex) { warnings.Add("LỖI bố trí thép trên sàn: " + ex.Message); }
+        foreach (var pn in panels)
+        {
+            var d = pn.D;
+            RebarNumbering.Renumber(d.Bars);
+            string sig = Signature(d);
+            int k = list.FindIndex(x => x.sig == sig);
+            if (k >= 0)
+            {
+                var keep = list[k].d;
+                keep.Quantity++;
+                keep.RebarKeys.AddRange(d.RebarKeys.Where(x => !keep.RebarKeys.Contains(x)));
+                keep.EdgeBars.AddRange(d.EdgeBars);
+                keep.TopMeshes.AddRange(d.TopMeshes);
+            }
+            else list.Add((d, sig));
         }
         // đặt tên S{n} theo tầng, giữ thứ tự khai báo
         var result = new List<SlabDesign>();
@@ -56,7 +70,7 @@ public static class SlabDesigner
         return result;
     }
 
-    private static SlabDesign DesignSlab(Project p, Slab slab)
+    private static SlabPanel DesignSlab(Project p, Slab slab)
     {
         var pts = slab.Nodes.Select(id => p.Node(id).P).ToList();
         if (!SlabLoadDistributor.IsRectangle(pts, out double la, out double lb)) return null;
@@ -183,8 +197,7 @@ public static class SlabDesigner
 
         AddCheck(d, "Uốn nhịp phương ngắn", m1, bx, t, c, 0, conc, SteelOf(bx.Dia));
         if (d.TwoWay) AddCheck(d, "Uốn nhịp phương dài", m2, by, t, c, bx.Dia / 1000.0, conc, SteelOf(by.Dia));
-        if (tx != null) AddCheck(d, "Uốn gối phương ngắn", -mI, tx, t, c, 0, conc, SteelOf(tx.Dia));
-        if (ty != null) AddCheck(d, "Uốn gối phương dài", -mII, ty, t, c, 0, conc, SteelOf(ty.Dia));
+        // kiểm tra uốn gối: sau khi bố trí thép trên (mũ cạnh chung / lưới) – SlabDesigner.Top.cs
 
         // ---- võng (TTGH II) ----
         double qxs = q > 1e-9 ? qx * qs / q : 0;
@@ -204,10 +217,16 @@ public static class SlabDesigner
         double tMin = d.TwoWay ? lx / 45 : lx / 35;
         if (t < tMin - 1e-6) d.Messages.Add("Chiều dày sàn " + DesignUtil.F(t * 1000, "0") + " mm nhỏ hơn khuyến nghị " + DesignUtil.F(tMin * 1000, "0") + " mm");
 
-        // ---- bố trí thép ----
+        // ---- bố trí thép lớp dưới (thép trên ở lượt 2) ----
         Detail(d, pts, aShort, shortIsX, bx, by, tx, ty, edges, longEdges, shortEdges, c, t, lx, ly);
-        RebarNumbering.Renumber(d.Bars);
-        return d;
+        d.FixedEdgeLenShort = longEdges.Count(i => edges[i] == EdgeKind.Fixed) * ly;
+        d.FixedEdgeLenLong = shortEdges.Count(i => edges[i] == EdgeKind.Fixed) * lx;
+        return new SlabPanel
+        {
+            Slab = slab, D = d, Pts = pts, Edges = edges, LongEdges = longEdges, ShortEdges = shortEdges, ShortIsX = shortIsX,
+            Lx = lx, Ly = ly, T = t, C = c, Conc = conc, SteelOf = SteelOf, MI = mI, MII = mII, Tx = tx, Ty = ty, Dias = dias, SMax = sMax,
+            Key = key, Basis = basis, OneWay = !d.TwoWay
+        };
     }
 
     /// <summary>Hệ số độ võng giữa dải: 5 (khớp–khớp), 2,08 (ngàm–khớp), 1 (ngàm–ngàm), từ f = c·q·l⁴/(384·EI).</summary>
@@ -256,9 +275,8 @@ public static class SlabDesigner
         return (d - u * t).Length < 0.01;
     }
 
-    /// <summary>Bố trí thép sàn: lớp dưới hai phương chạy suốt ô (neo vào dầm 10d mỗi đầu);
-    /// mũ gối vươn ra ¼ nhịp phương ngắn tính từ mép gối (TCVN 5574:2018 mục 10.3), bẻ móc xuống chạm lớp dưới.
-    /// Cạnh khớp đặt mũ cấu tạo nếu chưa có mũ tính toán (bỏ qua – ghi chú).</summary>
+    /// <summary>Bố trí thép sàn lớp dưới: hai phương chạy suốt ô (neo vào dầm 10d mỗi đầu).
+    /// Thép trên (mũ gối vươn ¼ nhịp phương ngắn từ mép dầm, lưới trên) bố trí ở TopReinforcement.</summary>
     private static void Detail(SlabDesign d, List<Vec3> pts, bool aShort, bool shortIsX, SpacingChoice bx, SpacingChoice by,
         SpacingChoice tx, SpacingChoice ty, EdgeKind[] edges, int[] longEdges, int[] shortEdges, double c, double t, double lx, double ly)
     {
@@ -266,23 +284,7 @@ public static class SlabDesigner
         // lớp dưới phương ngắn: thanh dài lx, rải theo ly
         d.Bars.Add(Spread("Lớp dưới phương " + dirS, bx, lx + 2 * Anchor(bx.Dia), ly, false, new List<double>()));
         d.Bars.Add(Spread("Lớp dưới phương " + dirL, by, ly + 2 * Anchor(by.Dia), lx, false, new List<double>()));
-        double hook = DesignUtil.R10(Math.Max(t - 2 * c, 0.05));
-        // mũ gối trên các cạnh dài (thép theo phương ngắn)
-        if (tx != null)
-            foreach (int _e in longEdges.Where(i => edges[i] == EdgeKind.Fixed))
-            {
-                // mũ gối giữa 2 ô: vươn lx/4 vào ô này; phần sang ô bên được tính khi thiết kế ô kề (đối xứng)
-                double len = DesignUtil.R10(2 * lx / 4);
-                d.Bars.Add(Spread("Lớp trên mũ gối phương " + dirS, tx, len, ly, true,
-                    new List<double> { DesignUtil.Mm(hook), DesignUtil.Mm(len), DesignUtil.Mm(hook) }, hook * 2));
-            }
-        if (ty != null)
-            foreach (int _e in shortEdges.Where(i => edges[i] == EdgeKind.Fixed))
-            {
-                double len = DesignUtil.R10(2 * lx / 4);
-                d.Bars.Add(Spread("Lớp trên mũ gối phương " + dirL, ty, len, lx, true,
-                    new List<double> { DesignUtil.Mm(hook), DesignUtil.Mm(len), DesignUtil.Mm(hook) }, hook * 2));
-            }
+        // thép trên (mũ gối, lưới trên) bố trí ở lượt 2 – TopReinforcement (SlabDesigner.Top.cs)
     }
 
     private static double Anchor(int dia) => Math.Max(10 * dia / 1000.0, 0.10);
