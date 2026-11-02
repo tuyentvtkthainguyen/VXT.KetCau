@@ -427,7 +427,7 @@ public sealed class DxfTextScan
         return s;
     }
 
-    private sealed class BlockInfo { public double Bx, By; public List<TextInfo> AttDefs = new(); }
+    private sealed class BlockInfo { public double Bx, By; public List<TextInfo> AttDefs = new(); public List<TextInfo> Texts = new(); }
 
     private void Parse(List<(int Code, string Val)> p)
     {
@@ -460,6 +460,11 @@ public sealed class DxfTextScan
                 {
                     var a = ReadText(type, body);
                     if (a != null && (I(body, 70) & 1) == 0) curBlock.AttDefs.Add(a);
+                }
+                else if ((type == "TEXT" || type == "MTEXT") && curBlock != null)
+                {
+                    var a = ReadText(type, body);
+                    if (a != null) curBlock.Texts.Add(a);
                 }
                 continue;
             }
@@ -494,17 +499,28 @@ public sealed class DxfTextScan
                     break;
             }
         }
+        // chữ trong block được chèn (cấp ngoài cùng) → toạ độ model space (để lấy góc xoay/căn lề);
         // INSERT không có ATTRIB nhưng block có ATTDEF → đặt ATTDEF theo phép biến đổi của INSERT
         foreach (var ins in inserts)
         {
-            if (ins.HasAttribs || !blocks.TryGetValue(ins.Name, out var b) || b.AttDefs.Count == 0) continue;
+            if (!blocks.TryGetValue(ins.Name, out var b)) continue;
             double a = ins.Rot * Math.PI / 180, c = Math.Cos(a), s = Math.Sin(a);
+            foreach (var d in b.Texts)
+            {
+                double lx = (d.X - b.Bx) * ins.Sx, ly = (d.Y - b.By) * ins.Sy;
+                ModelTexts.Add(new TextInfo
+                {
+                    Type = d.Type, X = ins.X + lx * c - ly * s, Y = ins.Y + lx * s + ly * c, Height = d.Height * Math.Sqrt(Math.Abs(ins.Sx * ins.Sy)),
+                    Rot = d.Rot + ins.Rot, Ha = d.Ha, Va = d.Va, Tag = d.Tag, Text = d.Text, Layer = d.Layer, Block = ins.Name
+                });
+            }
+            if (ins.HasAttribs) continue;
             foreach (var d in b.AttDefs)
             {
                 double lx = (d.X - b.Bx) * ins.Sx, ly = (d.Y - b.By) * ins.Sy;
                 ModelAttDefs.Add(new TextInfo
                 {
-                    Type = "ATTDEF", X = ins.X + lx * c - ly * s, Y = ins.Y + lx * s + ly * c, Height = d.Height * Math.Abs(ins.Sy),
+                    Type = "ATTDEF", X = ins.X + lx * c - ly * s, Y = ins.Y + lx * s + ly * c, Height = d.Height * Math.Sqrt(Math.Abs(ins.Sx * ins.Sy)),
                     Rot = d.Rot + ins.Rot, Ha = d.Ha, Va = d.Va, Tag = d.Tag, Text = d.Text, Layer = d.Layer, Block = ins.Name
                 });
             }

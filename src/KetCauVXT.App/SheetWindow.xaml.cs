@@ -76,7 +76,8 @@ public partial class SheetWindow : Window
         foreach (var k in SheetBuilder.PaletteKinds) cbKind.Items.Add(new ComboBoxItem { Content = SheetBuilder.KindName(k), Tag = k });
         cbKind.SelectedIndex = 0;
         cbVScale.Items.Add(FitScaleText);
-        foreach (double sc in SheetLayoutMath.ScaleList) cbVScale.Items.Add(sc.ToString("0", Inv));
+        // danh sách tỷ lệ: tỷ lệ chuẩn của Thiết lập bản vẽ (1/10 … 1/250) + tỷ lệ dàn trang
+        foreach (double sc in Model.DrawingStyle.StandardScales.Concat(SheetLayoutMath.ScaleList).Distinct().OrderBy(x => x)) cbVScale.Items.Add(sc.ToString("0", Inv));
         InitEditUi();
         if (_d == null)
         {
@@ -667,7 +668,9 @@ public partial class SheetWindow : Window
             if (_drag == DragMode.None)
             {
                 var lay = SheetBuilder.Layout(FiguresOf(v), v);
+                double styleSc = SheetBuilder.StyleScale(v.Kind, _p);   // tỷ lệ mặc định theo Thiết lập bản vẽ
                 txtVInfo.Text = $"Tỷ lệ thực: 1/{Math.Round(lay.EffectiveScale).ToString("0", Inv)}" +
+                                (styleSc > 0 ? $" (theo Thiết lập bản vẽ: 1/{styleSc.ToString("0.##", Inv)})" : "") +
                                 (lay.Overflow ? " – hình lớn hơn khung (bị cắt), tăng kích thước khung hoặc giảm tỷ lệ" : "") +
                                 (SheetBuilder.NeedsClip(v, lay) ? "\nPhần hình ngoài khung bị cắt (cả khi in và xuất DXF)." : "") +
                                 (v.Kind == SheetViewKind.Notes ? "\nTham số = nội dung ghi chú, xuống dòng bằng \" | \" (để trống: ghi chú mặc định)." : "");

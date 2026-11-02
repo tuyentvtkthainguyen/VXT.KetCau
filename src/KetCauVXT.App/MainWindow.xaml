@@ -42,6 +42,7 @@
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
                 <MenuItem Header="Chuẩn _layer CAD…" Click="MnuCadStandard_Click"/>
+                <MenuItem Header="Thiết lập _bản vẽ (tỷ lệ, cỡ chữ)…" Click="MnuDrawingStyle_Click"/>
                 <Separator/>
                 <MenuItem Header="T_hoát" Click="MnuExit_Click"/>
             </MenuItem>
@@ -359,6 +360,9 @@
                                 <DataGrid x:Name="dgFootings" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
                             </DockPanel>
                         </TabItem>
+                        <TabItem Header="Cầu thang">
+                            <DataGrid x:Name="dgStairs" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                        </TabItem>
                         <TabItem Header="Thép">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,2,0,0">
@@ -429,6 +433,7 @@
                                     <TextBox x:Name="txtBalconyDepth" Text="1.20" Width="42" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Độ vươn ban công (0,5 – 3,0 m)"/>
                                     <TextBlock Text="Lan can (kN/m):" VerticalAlignment="Center" Margin="0,0,4,2"/>
                                     <TextBox x:Name="txtRailing" Text="1.0" Width="38" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Tải lan can trên dầm biên ban công"/>
+                                    <Button x:Name="btnStair" Content="Khai báo cầu thang…" Click="BtnStair_Click" Padding="7,2,7,2" Margin="0,0,3,2" ToolTip="Khai báo cầu thang cho ô cầu thang đang chọn: dạng thang, bậc, bản thang, dầm cốn, bậc xây gạch / BTCT, ốp granite / gỗ (MainWindow.Stair.cs)"/>
                                     <Button x:Name="btnUndo" Content="↶ Hoàn tác" Click="BtnUndo_Click" Padding="7,2,7,2" Margin="0,0,0,2" IsEnabled="False" ToolTip="Hoàn tác thao tác sửa mặt bằng (Ctrl+Z)"/>
                                     <!-- dầm / tường / cấu tạo sàn (MainWindow.Edit.cs) -->
                                     <TextBlock Text="Tiết diện dầm:" VerticalAlignment="Center" Margin="10,0,4,2"/>

@@ -336,7 +336,7 @@ public static class RebarShopTests
             }
             var figs = SheetBuilder.Figures(p, r, dsS, new SheetView { Kind = SheetViewKind.RebarShop, Param = "Dầm" });
             check("Tờ in: khung nhìn Gia công thép có hình", B(figs.Count >= 2 && figs.All(f => f.Name != "placeholder")), 1, 0);
-            check("SheetViewKind.RebarShop thêm cuối enum", (int)SheetViewKind.RebarShop, Enum.GetValues<SheetViewKind>().Max(k => (int)k), 0);
+            check("SheetViewKind.RebarShop giữ số thứ tự 11 (JSON cũ)", (int)SheetViewKind.RebarShop, 11, 0);
         }
 
         // ---------------- tuỳ chọn Ø ưu tiên ----------------

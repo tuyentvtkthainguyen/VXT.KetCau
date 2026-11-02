@@ -295,7 +295,7 @@ internal sealed class StairDialog : Window
         void Poly(IEnumerable<(double, double)> pts, Brush stroke, Brush fill = null, double t = 1)
         {
             var pg = new Shapes.Polygon { Stroke = stroke, StrokeThickness = t, Fill = fill };
-            foreach (var (a, b) in pts) pg.Points.Add(P(a, b));
+            foreach (var (pa, pb) in pts) pg.Points.Add(P(pa, pb));
             Add(_sec, pg);
         }
         double b = L.Tread, h = L.Riser, t = L.WaistT, cos = f.CosA;

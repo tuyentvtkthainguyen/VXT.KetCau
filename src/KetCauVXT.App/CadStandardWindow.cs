@@ -521,7 +521,9 @@ internal sealed class CadStandardWindow : Window
         if (MessageBox.Show(this, "Trở về chuẩn mặc định của chương trình (layer Kết cấu VXT, font Arial, quy tắc nhận diện mặc định)?\n" +
                                   "File mặc định của người dùng cũng bị xoá.", Title, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         CadStandard.ResetUserDefault();
+        var keepDrawing = _std.Drawing;   // giữ Thiết lập bản vẽ (tỷ lệ, cỡ chữ) – khôi phục riêng trong cửa sổ "Thiết lập bản vẽ"
         _std = CadStandard.Default();
+        if (keepDrawing != null) _std.Drawing = keepDrawing;
         LoadAll();
         SetStatus("Đã khôi phục mặc định của chương trình.");
     }

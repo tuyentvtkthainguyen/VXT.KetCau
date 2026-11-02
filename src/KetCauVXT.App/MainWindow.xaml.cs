@@ -890,6 +890,7 @@ public partial class MainWindow : Window
     private void RefreshDesign()
     {
         RedrawSecondaryViews(); // móng 3D + mô hình móng (vẽ trễ, gộp lần gọi)
+        RefreshStairGrid();     // cầu thang (MainWindow.Stair.cs)
         if (_design == null)
         {
             dgBeams.ItemsSource = null; dgColumns.ItemsSource = null; dgSlabs.ItemsSource = null;

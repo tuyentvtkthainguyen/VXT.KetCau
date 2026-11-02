@@ -80,6 +80,65 @@ internal sealed class StyleSizeRow : RowBase
     public void Refresh() => RaiseAll();
 }
 
+/// <summary>Dòng bảng kiểu kích thước theo tỷ lệ (VXT_1-25…). Ô trống = theo thông số chung.</summary>
+internal sealed class DimStyleRow : RowBase
+{
+    private readonly Func<DrawingStyle> _style;
+    private readonly Action _changed;
+    public DimStyleDef D { get; }
+
+    public DimStyleRow(DimStyleDef d, Func<DrawingStyle> style, Action changed) { D = d; _style = style; _changed = changed; }
+
+    public static readonly string[] ArrowLabels = { "(theo chung)", "Gạch xiên", "Mũi tên đặc" };
+
+    private static string S(double? v) => v.HasValue ? DialogUi.F(v.Value) : "";
+    private void Set(string text, Action<double?> set, double min, double max)
+    {
+        string t = (text ?? "").Trim();
+        if (t.Length == 0) set(null);
+        else
+        {
+            double v = DialogUi.ParseNum(t, double.NaN);
+            if (!double.IsNaN(v) && v >= min && v <= max) set(v);
+        }
+        _changed?.Invoke();
+        RaiseAll();
+    }
+
+    public string Name => _style().DimStyleName(D.Scale);
+    public string ScaleText => "1/" + DialogUi.F(D.Scale);
+    public string TextHeight { get => S(D.TextHeight); set => Set(value, v => D.TextHeight = v, 0.5, 20); }
+    public string TickSize { get => S(D.TickSize); set => Set(value, v => D.TickSize = v, 0.2, 20); }
+    public string Arrow
+    {
+        get => D.Arrow == null ? ArrowLabels[0] : D.Arrow == DimArrow.ClosedArrow ? ArrowLabels[2] : ArrowLabels[1];
+        set
+        {
+            D.Arrow = value == ArrowLabels[1] ? DimArrow.Tick : value == ArrowLabels[2] ? DimArrow.ClosedArrow : null;
+            _changed?.Invoke(); RaiseAll();
+        }
+    }
+    public string ExtOffset { get => S(D.ExtOffset); set => Set(value, v => D.ExtOffset = v, 0, 20); }
+    public string ExtBeyond { get => S(D.ExtBeyond); set => Set(value, v => D.ExtBeyond = v, 0, 20); }
+    public string LineExtend { get => S(D.LineExtend); set => Set(value, v => D.LineExtend = v, 0, 20); }
+    public string TextGap { get => S(D.TextGap); set => Set(value, v => D.TextGap = v, 0, 20); }
+    public string Decimals { get => D.Decimals.HasValue ? D.Decimals.Value.ToString() : ""; set => Set(value, v => D.Decimals = v.HasValue ? (int)Math.Round(v.Value) : null, 0, 4); }
+    public string LinearFactor { get => S(D.LinearFactor); set => Set(value, v => D.LinearFactor = v, 1e-4, 1e4); }
+
+    /// <summary>Thông số hiệu lực (sau khi lấy theo chung).</summary>
+    public string Effective
+    {
+        get
+        {
+            var p = _style().DimFor(D.Scale);
+            return $"chữ {DialogUi.F(p.TextHeight)} mm (mô hình {DialogUi.F(p.TextHeight * p.Scale)}), " +
+                   (p.Arrow == DimArrow.Tick ? $"gạch {DialogUi.F(p.TickSize)}" : $"mũi tên {DialogUi.F(p.TickSize)}") + $", DIMSCALE {DialogUi.F(p.Scale)}";
+        }
+    }
+
+    public void Refresh() => RaiseAll();
+}
+
 /// <summary>Cửa sổ "Thiết lập bản vẽ (tỷ lệ, cỡ chữ)": tỷ lệ theo loại bản vẽ, cỡ chữ kích thước / ghi chú / nhãn thép / tên hình /
 /// đầu trục / bảng thống kê, hệ số rộng chữ, bật/tắt chú thích tuỳ chọn; xem trước mẫu (kích thước + nhãn + ghi chú) ở đúng cỡ in.
 /// Lưu trong chuẩn CAD (CadStandard.Drawing): mặc định người dùng hoặc riêng dự án.</summary>
@@ -89,12 +148,18 @@ internal sealed class DrawingStyleWindow : Window
     private DrawingStyle _st;
     private readonly ObservableCollection<StyleScaleRow> _scales = new();
     private readonly ObservableCollection<StyleSizeRow> _sizes = new();
-    private readonly DataGrid _gScale, _gSize;
+    private readonly DataGrid _gScale, _gSize, _gDim;
+    private readonly ObservableCollection<DimStyleRow> _dims = new();
+    private readonly StackPanel _dimPreviews = new() { Margin = new Thickness(4) };
+    private readonly TextBox _txtPrefix = new() { Width = 90, VerticalContentAlignment = VerticalAlignment.Center };
     private readonly List<(CheckBox Box, Func<DrawingStyle, bool> Get, Action<DrawingStyle, bool> Set)> _checks = new();
     private readonly CheckBox _chkProject;
     private readonly TextBlock _txtStatus;
     private readonly DrawingHost _preview = new() { Background = Brushes.White, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
     private bool _loading;
+    private readonly TabControl _tabs = new() { Margin = new Thickness(0, 0, 0, 4) };
+
+    public void SelectTab(int i) { if (i >= 0 && i < _tabs.Items.Count) _tabs.SelectedIndex = i; }
 
     /// <summary>Đã áp dụng hoặc lưu ít nhất một lần.</summary>
     public bool Changed { get; private set; }
@@ -185,9 +250,49 @@ internal sealed class DrawingStyleWindow : Window
         DockPanel.SetDock(bl, Dock.Left); DockPanel.SetDock(br, Dock.Right);
         bottom.Children.Add(bl); bottom.Children.Add(br); bottom.Children.Add(_txtStatus);
 
+        // ---------------- tab kiểu kích thước ----------------
+        _gDim = DialogUi.NewGrid();
+        _gDim.Columns.Add(DialogUi.Text("Tên kiểu", nameof(DimStyleRow.Name), true, 95));
+        _gDim.Columns.Add(DialogUi.Text("Tỷ lệ", nameof(DimStyleRow.ScaleText), true, 55));
+        _gDim.Columns.Add(DialogUi.Text("Chữ (mm)", nameof(DimStyleRow.TextHeight), false, 62));
+        _gDim.Columns.Add(DialogUi.Text("Gạch/mũi tên", nameof(DimStyleRow.TickSize), false, 80));
+        _gDim.Columns.Add(DialogUi.Combo("Đầu kích thước", nameof(DimStyleRow.Arrow), DimStyleRow.ArrowLabels, 105));
+        _gDim.Columns.Add(DialogUi.Text("Hở gióng", nameof(DimStyleRow.ExtOffset), false, 60));
+        _gDim.Columns.Add(DialogUi.Text("Gióng vượt", nameof(DimStyleRow.ExtBeyond), false, 68));
+        _gDim.Columns.Add(DialogUi.Text("Kéo dài", nameof(DimStyleRow.LineExtend), false, 56));
+        _gDim.Columns.Add(DialogUi.Text("Chữ cách", nameof(DimStyleRow.TextGap), false, 60));
+        _gDim.Columns.Add(DialogUi.Text("Số lẻ", nameof(DimStyleRow.Decimals), false, 45));
+        _gDim.Columns.Add(DialogUi.Text("Hệ số dài", nameof(DimStyleRow.LinearFactor), false, 62));
+        _gDim.Columns.Add(DialogUi.Text("Hiệu lực", nameof(DimStyleRow.Effective), true, 330));
+        _gDim.ItemsSource = _dims;
+        _txtPrefix.LostFocus += (s, e) => { if (_loading) return; _st.DimStylePrefix = DrawingStyle.SafePrefix(_txtPrefix.Text); _txtPrefix.Text = _st.DimStylePrefix; Edited(); };
+        var dimTop = new StackPanel();
+        dimTop.Children.Add(DialogUi.Hint("Mỗi tỷ lệ một kiểu kích thước (DIMSTYLE) – ghi vào bảng DIMSTYLE của file DXF và tạo trong AutoCAD bằng lệnh VXT_LAYER của add-in. " +
+                                          "Thông số tính bằng mm trên giấy, DIMSCALE = mẫu số tỷ lệ. Ô trống = theo thông số chung (bảng \"Cỡ chữ và ký hiệu\"). " +
+                                          "Kích thước trên mỗi hình dùng kiểu đúng tỷ lệ thể hiện của hình (mặt cắt 1/25 → VXT_1-25); tỷ lệ chưa có trong bảng được tạo tự động."));
+        dimTop.Children.Add(DialogUi.Row(DialogUi.Label("Tiền tố tên"), _txtPrefix,
+            DialogUi.Btn("＋ Thêm tỷ lệ…", (s, e) => AddDimStyle()), DialogUi.Btn("Xoá", (s, e) => DeleteDimStyles()),
+            DialogUi.Btn("Xoá ô sửa riêng (theo chung)", (s, e) => ClearDimOverrides()),
+            DialogUi.Btn("7 tỷ lệ mặc định", (s, e) => { DialogUi.Commit(_gDim); _st.DimStyles = DrawingStyle.DefaultDimStyles(); LoadDims(); Edited(); })));
+        var dimTab = new DockPanel { Margin = new Thickness(6) };
+        DockPanel.SetDock(dimTop, Dock.Top); dimTab.Children.Add(dimTop);
+        var pvBox = new DockPanel { Height = 250 };
+        var pvLb = DialogUi.Label("Xem trước kích thước ở từng tỷ lệ (đúng cỡ in, phóng ×2): đoạn 60 mm giấy", double.NaN, true);
+        DockPanel.SetDock(pvLb, Dock.Top); pvBox.Children.Add(pvLb);
+        pvBox.Children.Add(new Border
+        {
+            BorderBrush = Brushes.Silver, BorderThickness = new Thickness(1), Background = Brushes.White,
+            Child = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _dimPreviews }
+        });
+        DockPanel.SetDock(pvBox, Dock.Bottom); dimTab.Children.Add(pvBox);
+        dimTab.Children.Add(_gDim);
+
+        _tabs.Items.Add(new TabItem { Header = "Tỷ lệ, cỡ chữ, chú thích", Content = body });
+        _tabs.Items.Add(new TabItem { Header = "Kiểu kích thước (Dimension)", Content = dimTab });
+
         var root = new DockPanel { Margin = new Thickness(8) };
         DockPanel.SetDock(bottom, Dock.Bottom);
-        root.Children.Add(bottom); root.Children.Add(body);
+        root.Children.Add(bottom); root.Children.Add(_tabs);
         Content = root;
 
         LoadAll();
@@ -234,9 +339,89 @@ internal sealed class DrawingStyleWindow : Window
             Size("Vòng tròn đầu trục", "mm đường kính", s => s.AxisBubbleDiameter, (s, v) => s.AxisBubbleDiameter = v, 2, 40);
             Size("Hệ số rộng chữ", "× (1 = chuẩn)", s => s.WidthFactor, (s, v) => s.WidthFactor = v, 0.3, 2);
             foreach (var (box, get, _) in _checks) box.IsChecked = get(_st);
+            _txtPrefix.Text = _st.DimStylePrefix;
+            LoadDims();
         }
         finally { _loading = false; }
         RefreshPreview();
+    }
+
+    private void LoadDims()
+    {
+        _dims.Clear();
+        foreach (var d in _st.DimStyles) _dims.Add(new DimStyleRow(d, () => _st, Edited));
+        RefreshDimPreviews();
+    }
+
+    private void AddDimStyle()
+    {
+        DialogUi.Commit(_gDim);
+        string t = DialogUi.InputBox(this, "Thêm kiểu kích thước", "Tỷ lệ (vd. 1/40 hoặc 40):", "1/40");
+        if (t == null) return;
+        if (!DrawingStyle.TryParseScale(t, out double v) || v <= 0) { SetStatus("Tỷ lệ không hợp lệ: " + t); return; }
+        if (_st.FindDimStyle(v) != null) { SetStatus("Đã có kiểu " + _st.DimStyleName(v)); return; }
+        _st.DimStyles.Add(new DimStyleDef { Scale = Math.Round(v, 2) });
+        _st.DimStyles = _st.DimStyles.OrderBy(x => x.Scale).ToList();
+        LoadDims();
+        Edited();
+    }
+
+    private void DeleteDimStyles()
+    {
+        DialogUi.Commit(_gDim);
+        foreach (var r in _gDim.SelectedItems.OfType<DimStyleRow>().ToList()) { _st.DimStyles.Remove(r.D); _dims.Remove(r); }
+        Edited();
+    }
+
+    private void ClearDimOverrides()
+    {
+        DialogUi.Commit(_gDim);
+        var sel = _gDim.SelectedItems.OfType<DimStyleRow>().ToList();
+        if (sel.Count == 0) sel = _dims.ToList();
+        foreach (var r in sel)
+        {
+            var d = r.D;
+            d.TextHeight = d.TickSize = d.ExtOffset = d.ExtBeyond = d.LineExtend = d.TextGap = d.BaselineSpacing = d.LinearFactor = null;
+            d.Arrow = null; d.Decimals = null;
+        }
+        Edited();
+    }
+
+    /// <summary>Mẫu kích thước một tỷ lệ: chuỗi 2 đoạn dài tổng 60 mm giấy + tổng, vẽ ở mô hình (mm thật) tỷ lệ 1/scale.</summary>
+    internal static DxfWriter DimSample(DrawingStyle st, double scale)
+    {
+        var w = new DxfWriter(scale) { Style = st };
+        var dp = st.DimFor(scale);
+        double L = Math.Round(60 * scale / 10) * 10, a = Math.Round(L * 0.4 / 10) * 10, th = w.Th;
+        w.Line(Lay.BeTong, 0, 0, L, 0);
+        w.Line(Lay.BeTong, 0, 0, 0, 6 * th); w.Line(Lay.BeTong, a, 0, a, 6 * th); w.Line(Lay.BeTong, L, 0, L, 6 * th);
+        w.Dim(0, 6 * th, a, 6 * th, 3 * th, 1, null, dp);
+        w.Dim(a, 6 * th, L, 6 * th, 3 * th, 1, null, dp);
+        w.Dim(0, 6 * th, L, 6 * th, 3 * th + Math.Max(dp.BaselineSpacing, 4 * dp.TextHeight) * scale, 1, null, dp);
+        w.Text(Lay.Chu, L + 3 * th, 0, th, dp.Name + "  (1/" + DialogUi.F(scale) + ")");
+        return w;
+    }
+
+    private void RefreshDimPreviews()
+    {
+        _dimPreviews.Children.Clear();
+        try
+        {
+            foreach (var d in _st.DimStyles)
+            {
+                var w = DimSample(_st, d.Scale);
+                var e = w.Extents;
+                double K = 1 / d.Scale, pad = 3, zoom = 2;
+                var dg = SheetRender.Render(new[] { (w, K, 0.0, 0.0) }, e.X1 * K - pad, e.Y2 * K + pad, 0.12, x => x.GetPrimitives());
+                _dimPreviews.Children.Add(new DrawingHost
+                {
+                    Drawing = dg, Scale = SheetRender.DipPerMm * zoom, Background = Brushes.White,
+                    Width = (e.W * K + 2 * pad) * SheetRender.DipPerMm * zoom, Height = (e.H * K + 2 * pad) * SheetRender.DipPerMm * zoom,
+                    HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 4)
+                });
+            }
+        }
+        catch (Exception ex) { SetStatus("Lỗi xem trước kích thước: " + ex.Message); }
     }
 
     private void Edited()
@@ -244,7 +429,9 @@ internal sealed class DrawingStyleWindow : Window
         if (_loading) return;
         foreach (var r in _scales) r.Refresh();
         foreach (var r in _sizes) r.Refresh();
+        foreach (var r in _dims) r.Refresh();
         RefreshPreview();
+        RefreshDimPreviews();
         SetStatus("Đã sửa – bấm \"Áp dụng\" để dùng cho các bản vẽ xuất ra / tờ in, hoặc \"Lưu làm mặc định\".");
     }
 
@@ -296,7 +483,8 @@ internal sealed class DrawingStyleWindow : Window
     // ------------------------------------------------------------------ lưu
     private void Commit()
     {
-        DialogUi.Commit(_gScale); DialogUi.Commit(_gSize);
+        DialogUi.Commit(_gScale); DialogUi.Commit(_gSize); DialogUi.Commit(_gDim);
+        _st.DimStylePrefix = DrawingStyle.SafePrefix(_txtPrefix.Text);
         _st.Normalize();
     }
 

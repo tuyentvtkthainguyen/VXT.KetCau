@@ -42,7 +42,7 @@ public static class TemplateTests
             Library(check, tmp);
             TitleImport(check, dir, tmp);
             ImageTitle(check, tmp);
-            Dwg(check, dir, tmp);
+            DwgTitle(check, dir, tmp);
         }
         catch (Exception ex)
         {
@@ -459,7 +459,7 @@ public static class TemplateTests
     // ==================================================================
     // DWG (ACadSharp)
     // ==================================================================
-    private static void Dwg(Action<string, double, double, double> check, string outDir, string tmp)
+    private static void DwgTitle(Action<string, double, double, double> check, string outDir, string tmp)
     {
         try
         {
