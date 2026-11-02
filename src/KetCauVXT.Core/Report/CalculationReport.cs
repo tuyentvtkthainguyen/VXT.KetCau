@@ -1,6 +1,7 @@
 using System.Globalization;
 using KetCauVXT.Analysis;
 using KetCauVXT.Design;
+using KetCauVXT.Design.Foundation;
 using KetCauVXT.Loads;
 using KetCauVXT.Model;
 
@@ -33,7 +34,9 @@ public static class CalculationReport
         BeamsSection(p, s, d, sec++);
         ColumnsSection(p, s, d, sec++);
         SlabsSection(p, s, d, sec++);
-        FootingsSection(p, s, d, sec++);
+        if (s.Footings.Count > 0 || (s.PileCaps.Count == 0 && s.StripFootings.Count == 0)) FootingsSection(p, s, d, sec++);
+        if (s.PileCaps.Count > 0) PileCapsSection(p, s, d, sec++);
+        if (s.StripFootings.Count > 0) StripFootingsSection(p, s, d, sec++);
         if (s.Steel.Count > 0) SteelSection(p, s, d, sec++);
         Conclusion(s, d, sec++);
         Appendix(r, s, d);
@@ -596,6 +599,85 @@ public static class CalculationReport
     }
 
     // ------------------------------------------------------------------
+    private static void PileCapsSection(Project p, DesignSummary s, DocxWriter d, int n)
+    {
+        d.Heading($"{n}. THIẾT KẾ MÓNG CỌC – ĐÀI CỌC", 1);
+        var fs = p.Foundation ?? new FoundationSettings();
+        string pile = (fs.PileRound ? "cọc tròn D" : "cọc vuông ") + Mm(fs.PileSize) + (fs.PileRound ? "" : "×" + Mm(fs.PileSize)) + " mm";
+        d.Paragraph($"Móng cọc BTCT: {pile}, chiều dài cọc {N(fs.PileLength, "0.0")} m, sức chịu tải cho phép của cọc [P] = {N(fs.PileCapacity, "0")} kN (theo TCVN 10304:2014 / thí nghiệm nén tĩnh – do người thiết kế cung cấp), sức chịu nhổ [Pk] = {N(fs.PileTension, "0")} kN. Khoảng cách tim cọc ≥ {N(fs.PileSpacingFactor, "0.#")}d, mép đài cách mép cọc {Mm(fs.CapEdge)} mm, cọc ngàm vào đài {Mm(fs.PileEmbed)} mm, chiều cao đài tối thiểu {Mm(fs.CapMinHeight)} mm.");
+        d.Paragraph("Đài được coi là tuyệt đối cứng; phản lực cọc tính cho từng tổ hợp TTGH I, kể cả trọng lượng đài và đất trên đài (hệ số 1,1). Chiều cao đài chọn theo chọc thủng của cột (tháp 45°) và của cọc góc, cắt trên tiết diện nghiêng tại mép cột (TCVN 5574:2018 mục 8.1.3, 8.1.6 – dạng đơn giản hoá); cốt thép đáy theo mô men tại mép cột.");
+        d.Equation("n ≥ 1,2·Nmax/[P];   Pi = (N + G)/n ± My'·xi/Σxi² ± Mx'·yi/Σyi² ≤ [P],  Pmin ≥ −[Pk];   My' = My + Qx·H, Mx' = Mx − Qy·H");
+        d.Equation("F = Σ Pi (cọc ngoài tháp chọc thủng) ≤ Rbt·u·h0,  u = 2(hc + bc + 2h0);   M = Σ Pi·(xi − hc/2);   h0 = H − lngàm − 50 mm");
+        var c0 = s.PileCaps.OrderByDescending(x => x.PMax).First();
+        d.Heading($"{n}.1. Ví dụ tính toán: đài {c0.Name} ({c0.Piles.Count} cọc, nút {string.Join(", ", c0.NodeIds.Take(6))})", 2);
+        d.Paragraph($"Nội lực tính toán tại chân cột (tổ hợp {c0.Combo}): N = {N(c0.N)} kN; Mx = {N(c0.Mx)} kN.m; My = {N(c0.My)} kN.m; Qx = {N(c0.Qx)} kN; Qy = {N(c0.Qy)} kN; trọng lượng đài + đất G = {N(c0.Weight)} kN.");
+        d.Equation($"Đài L × B × H = {N(c0.L)} × {N(c0.B)} × {N(c0.H)} m;  h0 = {N(c0.H0, "0.000")} m;  khoảng cách cọc s = {Mm(c0.Spacing)} mm");
+        if (c0.Reactions.Count > 0)
+            d.Equation("Phản lực cọc (kN): " + string.Join("; ", c0.Reactions.Select((v, i) => $"P{i + 1} = {N(v, "0.0")}")) + $";  ΣP = {N(c0.Reactions.Sum(), "0.0")} = N + G");
+        d.Equation($"Mô men mép cột: ML = {N(c0.MomentL)} kN.m → As = {Cm2(c0.AsL)} cm² → {c0.BarsL};  MB = {N(c0.MomentB)} kN.m → As = {Cm2(c0.AsB)} cm² → {c0.BarsB};  lớp trên {c0.BarsTop}");
+        d.Table(new[] { "Hạng mục", "Giá trị", "Giới hạn", "Đơn vị", "Tỷ số", "Kết luận" },
+            c0.Checks.Select(c => new[] { c.Name, N(c.Demand, "0.0"), N(c.Capacity, "0.0"), c.Unit, N(c.Ratio, "0.000"), OkText(c.Ok) }),
+            new[] { 6.0, 1.8, 1.8, 1.3, 1.4, 1.8 }, 9);
+        foreach (var msg in c0.Messages.Where(m => !m.StartsWith("Gộp"))) d.Paragraph(msg, false, true);
+
+        d.Heading($"{n}.2. Bảng tổng hợp thiết kế đài cọc", 2);
+        d.Table(new[] { "Đài", "SL", "Số cọc", "N (kN)", "L×B×H (m)", "Pmax", "Pmin", "[P]", "Thép L", "Thép B", "Lớp trên", "KL" },
+            s.PileCaps.Select(x => new[]
+            {
+                x.Name, x.Quantity.ToString(Inv), x.Piles.Count.ToString(Inv), N(x.N, "0.0"), $"{N(x.L)}×{N(x.B)}×{N(x.H)}",
+                N(x.PMax, "0"), N(x.PMin, "0"), N(x.PileCapacity, "0"), x.BarsL, x.BarsB, x.BarsTop, OkText(x.Ok)
+            }), new[] { 1.1, 0.8, 1.0, 1.3, 2.6, 1.1, 1.1, 1.0, 1.6, 1.6, 1.8, 1.7 }, 9);
+        d.Paragraph("Phản lực cọc đơn vị kN (nén dương).", false, true);
+    }
+
+    // ------------------------------------------------------------------
+    private static void StripFootingsSection(Project p, DesignSummary s, DocxWriter d, int n)
+    {
+        d.Heading($"{n}. THIẾT KẾ MÓNG BĂNG", 1);
+        var so = p.Soil; var fs = p.Foundation ?? new FoundationSettings();
+        string dir = fs.StripDirection switch { 1 => "dọc trục X", 2 => "dọc trục Y", 3 => "giao thoa 2 phương", _ => "tự chọn theo phương có nhiều cột thẳng hàng" };
+        d.Paragraph($"Móng băng BTCT dưới dãy cột, tiết diện chữ T ngược (bản đáy + sườn), phương dải: {dir}. Nền: φ = {N(so.Phi, "0.#")}°, c = {N(so.C, "0.##")} kN/m², Df = {N(so.Depth)} m{(so.ROverride > 0 ? ", R = " + N(so.ROverride, "0") + " kN/m² (nhập trực tiếp)" : "")}. Đầu dải vươn {Mm(fs.StripOverhang)} mm ra ngoài tim cột biên.");
+        d.Paragraph("Nội lực dải tính theo mô hình dầm trên nền đàn hồi Winkler (phần tử dầm ~0,25 m, lò xo k·B·a tại nút), giải cho từng tổ hợp; áp lực nền kiểm tra với tổ hợp tiêu chuẩn, nội lực thiết kế lấy theo bao các tổ hợp TTGH I. Mô men dương làm căng thớ dưới.");
+        d.Equation("R = (m1·m2/ktc)·(A·b·γ + B·Df·γ' + D·c);   ptb = (ΣNtc + γtb·Df·B·L)/(B·L) ≤ R;   pmax = k·wmax ≤ 1,2R");
+        d.Equation("EI·d⁴w/dx⁴ + k·B·w = q(x);   k = hệ số nền (≈ 120·R nếu không khai báo);   bản cánh: M = pnet·c²/2, Q = pnet·(c − h0), c = (B − b)/2");
+        var s0 = s.StripFootings.OrderByDescending(x => x.PMax / Math.Max(x.R, 1)).First();
+        d.Heading($"{n}.1. Ví dụ tính toán: dải {s0.Name} ({s0.Grid}, dài {N(s0.Length)} m, {s0.NodeIds.Count} cột)", 2);
+        d.Paragraph($"Tổng lực nén chân cột (tổ hợp tiêu chuẩn {s0.ComboService}): ΣN = {N(s0.SumN, "0.0")} kN; trọng lượng móng + đất G = {N(s0.SelfWeight, "0.0")} kN; hệ số nền k = {N(s0.K, "0")} kN/m³.");
+        d.Equation($"B = {N(s0.Width)} m;  sườn b × h = {Mm(s0.RibB)} × {Mm(s0.RibH)} mm;  bản cánh {Mm(s0.FlangeEdge)}…{Mm(s0.FlangeRoot)} mm;  R = {N(s0.R, "0.0")} kN/m²");
+        d.Equation($"ptb = {N(s0.PAvg, "0.0")} kN/m² {(s0.PAvg <= s0.R ? "≤" : ">")} R = {N(s0.R, "0.0")};  pmax = {N(s0.PMax, "0.0")} {(s0.PMax <= 1.2 * s0.R ? "≤" : ">")} 1,2R = {N(1.2 * s0.R, "0.0")} kN/m²");
+        d.Equation($"Sườn (tổ hợp {s0.Combo}): M+ = {N(s0.MPos)} kN.m → As = {Cm2(s0.AsBottom)} cm² → {s0.BottomBars};  M− = {N(s0.MNeg)} kN.m → As = {Cm2(s0.AsTop)} cm² → {s0.TopBars};  Q = {N(s0.VDesign)} kN → đai {s0.Stirrups}");
+        if (s0.Width > s0.RibB + 1e-6)
+            d.Equation($"Bản cánh: M = {N(s0.FlangeM)} kN.m/m, Q = {N(s0.FlangeV)} kN/m → As = {Cm2(s0.AsFlange)} cm²/m → {s0.FlangeBars}");
+        d.Table(new[] { "Hạng mục", "Giá trị", "Giới hạn", "Đơn vị", "Tỷ số", "Kết luận" },
+            s0.Checks.Select(c => new[] { c.Name, N(c.Demand, "0.0"), N(c.Capacity, "0.0"), c.Unit, N(c.Ratio, "0.000"), OkText(c.Ok) }),
+            new[] { 6.0, 1.8, 1.8, 1.3, 1.4, 1.8 }, 9);
+        foreach (var msg in s0.Messages) d.Paragraph(msg, false, true);
+        if (s0.Stations.Count > 1)
+        {
+            int step = Math.Max(1, s0.Stations.Count / 16);
+            var idx = Enumerable.Range(0, s0.Stations.Count).Where(i => i % step == 0 || i == s0.Stations.Count - 1).ToList();
+            d.Paragraph("Biểu đồ nội lực và áp lực nền dọc dải (trích):", false, true);
+            d.Table(new[] { "x (m)", "M (kN.m)", "Mmax bao", "Mmin bao", "|Q|max bao (kN)", "p tiêu chuẩn (kN/m²)" },
+                idx.Select(i => new[]
+                {
+                    N(s0.Stations[i] - s0.Start), N(At(s0.M, i), "0.0"), N(At(s0.MMax, i), "0.0"), N(At(s0.MMin, i), "0.0"),
+                    N(At(s0.VMax, i), "0.0"), N(At(s0.Pressure, i), "0.0")
+                }), new[] { 1.6, 2.2, 2.2, 2.2, 2.6, 3.0 }, 9);
+        }
+
+        d.Heading($"{n}.2. Bảng tổng hợp thiết kế móng băng", 2);
+        d.Table(new[] { "Dải", "Trục", "Dài (m)", "B (m)", "b×h (mm)", "R", "ptb", "pmax", "Thép dưới", "Thép trên", "Đai", "Bản cánh", "KL" },
+            s.StripFootings.Select(x => new[]
+            {
+                x.Name, x.Grid, N(x.Length), N(x.Width), $"{Mm(x.RibB)}×{Mm(x.RibH)}", N(x.R, "0"), N(x.PAvg, "0"), N(x.PMax, "0"),
+                x.BottomBars, x.TopBars, x.Stirrups, x.FlangeBars, OkText(x.Ok)
+            }), new[] { 1.0, 1.4, 1.1, 1.0, 1.8, 0.9, 0.9, 0.9, 1.6, 1.6, 1.4, 1.5, 1.6 }, 9);
+        d.Paragraph("Áp lực nền đơn vị kN/m².", false, true);
+    }
+
+    private static double At(List<double> l, int i) => l != null && i >= 0 && i < l.Count ? l[i] : double.NaN;
+
+    // ------------------------------------------------------------------
     private static void SteelSection(Project p, DesignSummary s, DocxWriter d, int n)
     {
         d.Heading($"{n}. KẾT CẤU THÉP", 1);
@@ -632,7 +714,7 @@ public static class CalculationReport
         int fail = all.Count(m => !m.Ok);
         d.Table(new[] { "Loại cấu kiện", "Số lượng", "Không đạt", "Tỷ số lớn nhất" }, new[]
         {
-            Row("Dầm", s.Beams), Row("Cột", s.Columns), Row("Sàn", s.Slabs), Row("Móng", s.Footings), Row("Kết cấu thép", s.Steel)
+            Row("Dầm", s.Beams), Row("Cột", s.Columns), Row("Sàn", s.Slabs), Row("Móng", s.Footings), Row("Đài cọc", s.PileCaps), Row("Móng băng", s.StripFootings), Row("Kết cấu thép", s.Steel)
         }.Where(x => x != null), new[] { 5.0, 3.5, 3.5, 4.5 });
         if (all.Count == 0) d.Paragraph("Chưa có kết quả thiết kế cấu kiện.");
         else if (fail == 0)

@@ -15,17 +15,19 @@ public partial class MainWindow
     private Slab _selSlab;
     private FloorOpening _selOpening;
     private int _selFooting;
+    /// <summary>Đoạn tường đang chọn (MainWindow.Walls.cs)</summary>
+    private WallLine _selWall;
 
     /// <summary>Đặt lựa chọn (chỉ một đối tượng tại một thời điểm) rồi cập nhật mọi khung nhìn.</summary>
-    private void Select(FrameElement frame = null, Slab slab = null, FloorOpening opening = null, int footingNode = 0)
+    private void Select(FrameElement frame = null, Slab slab = null, FloorOpening opening = null, int footingNode = 0, WallLine wall = null)
     {
-        _sel = frame; _selSlab = slab; _selOpening = opening; _selFooting = footingNode;
+        _sel = frame; _selSlab = slab; _selOpening = opening; _selFooting = footingNode; _selWall = wall;
         OnSelectionChanged();
     }
 
     private void ClearSelection() => Select();
 
-    private bool HasSelection => _sel != null || _selSlab != null || _selOpening != null || _selFooting != 0;
+    private bool HasSelection => _sel != null || _selSlab != null || _selOpening != null || _selFooting != 0 || _selWall != null;
 
     private void OnSelectionChanged()
     {

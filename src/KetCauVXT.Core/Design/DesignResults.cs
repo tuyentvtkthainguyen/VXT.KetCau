@@ -263,9 +263,13 @@ public class DesignSummary
     public List<ColumnDesign> Columns { get; set; } = new();
     public List<SlabDesign> Slabs { get; set; } = new();
     public List<FootingDesign> Footings { get; set; } = new();
+    /// <summary>Đài cọc (khi Project.Foundation.Type = Pile hoặc chân cột chọn móng cọc)</summary>
+    public List<KetCauVXT.Design.Foundation.PileCapDesign> PileCaps { get; set; } = new();
+    /// <summary>Móng băng (dải móng dưới dãy cột)</summary>
+    public List<KetCauVXT.Design.Foundation.StripFootingDesign> StripFootings { get; set; } = new();
     public List<SteelMemberCheck> Steel { get; set; } = new();
     public List<string> Warnings { get; set; } = new();
 
     public IEnumerable<MemberDesignBase> All =>
-        Beams.Cast<MemberDesignBase>().Concat(Columns).Concat(Slabs).Concat(Footings).Concat(Steel);
+        Beams.Cast<MemberDesignBase>().Concat(Columns).Concat(Slabs).Concat(Footings).Concat(PileCaps).Concat(StripFootings).Concat(Steel);
 }

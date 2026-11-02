@@ -135,13 +135,37 @@ public static class ModelEdit
         return s;
     }
 
+    /// <summary>Tên cấu tạo sàn mặc định ứng với công năng.</summary>
+    public static string BuildUpName(SlabUse u) => u switch
+    {
+        SlabUse.WC => "Sàn vệ sinh", SlabUse.Balcony => "Ban công, lô gia", SlabUse.Corridor => "Sảnh, hành lang",
+        SlabUse.Storage => "Kho", SlabUse.Roof => "Mái BTCT", _ => "Sàn phòng ở",
+    };
+
     private static void SetLoads(Project p, Slab s, SlabUse use)
     {
         ImportGeometry.EnsurePatterns(p);
-        p.AreaLoads.RemoveAll(a => a.Slab == s.Id && (a.Pattern == "HTHT" || a.Pattern == "HT"));
+        string bu = BuildUpName(use);
+        if (p.FloorBuildUps.Any(b => b.Name == bu)) { SetBuildUp(p, s, bu); return; }
+        s.BuildUp = "";
+        p.AreaLoads.RemoveAll(a => a.Slab == s.Id && (a.Pattern == "HTHT" || a.Pattern == "HT") && a.Source != "WALL");
         var (fin, live, name) = Loads(use);
         p.AreaLoads.Add(new AreaLoad { Slab = s.Id, Pattern = "HTHT", Q = fin, Note = "Hoàn thiện – " + name });
         p.AreaLoads.Add(new AreaLoad { Slab = s.Id, Pattern = "HT", Q = live, Note = "Hoạt tải – " + name });
+    }
+
+    /// <summary>Gán cấu tạo sàn (theo tên trong Project.FloorBuildUps) cho ô sàn: thay tải hoàn thiện + hoạt tải của ô.</summary>
+    public static EditResult SetBuildUp(Project p, Slab s, string buildUp)
+    {
+        if (s == null) return EditResult.Fail("Chưa chọn ô sàn.");
+        var bu = p.FloorBuildUps.FirstOrDefault(b => b.Name == buildUp);
+        if (bu == null) return EditResult.Fail("Không có cấu tạo sàn \"" + buildUp + "\".");
+        ImportGeometry.EnsurePatterns(p);
+        s.BuildUp = bu.Name;
+        p.AreaLoads.RemoveAll(a => a.Slab == s.Id && (a.Pattern == "HTHT" || a.Pattern == "HT") && a.Source != "WALL");
+        if (bu.Finish > 0) p.AreaLoads.Add(new AreaLoad { Slab = s.Id, Pattern = "HTHT", Q = Math.Round(bu.Finish, 4), Note = "Cấu tạo: " + bu.Name, Source = "BUILDUP" });
+        if (bu.Live > 0) p.AreaLoads.Add(new AreaLoad { Slab = s.Id, Pattern = "HT", Q = bu.Live, Note = "Hoạt tải: " + bu.Name, Source = "BUILDUP" });
+        return new EditResult { Ok = true, Message = $"{s.Label}: cấu tạo \"{bu.Name}\" – hoàn thiện {bu.Finish:0.00} kN/m², hoạt tải {bu.Live:0.##} kN/m²." };
     }
 
     /// <summary>Đổi công năng ô sàn (vd. sàn vệ sinh: hoàn thiện 2,0 kN/m² gồm lớp chống thấm và vữa tạo dốc/hạ cốt).</summary>
@@ -155,6 +179,9 @@ public static class ModelEdit
 
     public static SlabUse UseOf(Project p, Slab s)
     {
+        if (!string.IsNullOrEmpty(s.BuildUp))
+            foreach (SlabUse u in Enum.GetValues(typeof(SlabUse)))
+                if (BuildUpName(u) == s.BuildUp) return u;
         var live = p.AreaLoads.Where(a => a.Slab == s.Id && a.Pattern == "HT").Sum(a => a.Q);
         var fin = p.AreaLoads.Where(a => a.Slab == s.Id && a.Pattern == "HTHT").Sum(a => a.Q);
         foreach (SlabUse u in Enum.GetValues(typeof(SlabUse)))
@@ -342,5 +369,111 @@ public static class ModelEdit
         if (depth > 2.0) r.Message = "Lưu ý: công xôn > 2,0 m – kiểm tra kỹ võng và rung. ";
         r.Message += $"Đã thêm ban công vươn {depth:0.00} m dài {hi - lo:0.00} m: {stations.Count} dầm công xôn {secC}, dầm biên {secE}, {r.NewSlabs.Count} ô sàn, lan can {railing:0.##} kN/m.";
         return r;
+    }
+
+    // ------------------------------------------------------------------
+    // Dầm
+    // ------------------------------------------------------------------
+    /// <summary>Thêm dầm giữa 2 điểm trên cao trình tầng (đầu dầm bắt vào nút/trục gần trong 0,15 m).
+    /// Dầm mới chia tại các nút nằm trên dầm; dầm cũ bị dầm mới cắt qua cũng được chia (nút giao).</summary>
+    public static EditResult AddBeam(Project p, string story, double x1, double y1, double x2, double y2, string section)
+    {
+        double z = StoryZ(p, story);
+        (x1, y1) = Snap(p, story, x1, y1); (x2, y2) = Snap(p, story, x2, y2);
+        double L = Math.Sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+        if (L < 0.3) return EditResult.Fail("Dầm quá ngắn (< 0,3 m).");
+        if (string.IsNullOrEmpty(section) || !p.FrameSections.Any(f => f.Name == section)) return EditResult.Fail("Chưa chọn tiết diện dầm.");
+        var a = p.GetOrAddNode(x1, y1, z, story); var b = p.GetOrAddNode(x2, y2, z, story);
+        // nút giao với dầm có sẵn cùng cao trình
+        var seg = new Seg2(x1, y1, x2, y2);
+        foreach (var f in StoryBeams(p, story))
+        {
+            var ni = p.Node(f.NodeI); var nj = p.Node(f.NodeJ);
+            if (ImportGeometry.Intersect(seg, new Seg2(ni.X, ni.Y, nj.X, nj.Y), out double ix, out double iy, 0.02))
+                p.GetOrAddNode(Math.Round(ix, 4), Math.Round(iy, 4), z, story);
+        }
+        int k = 1;
+        while (p.Frames.Any(f => f.DesignGroup == $"D{story}-T{k}")) k++;
+        var fr = ImportGeometry.AddFrame(p, a, b, FrameKind.Beam, section, story, $"D{story}-T{k}", $"D{story}-T{k}");
+        if (fr == null) return EditResult.Fail("Đã có dầm nối đúng hai điểm này.");
+        var r = new EditResult { Ok = true };
+        r.NewFrames.Add(fr.Id);
+        r.Message = $"Đã thêm dầm {section} dài {L:0.00} m tại tầng {story}" + (ModelBuilder.SplitFramesAtNodes(p) > 0 ? " (đã chia tại các nút giao)." : ".");
+        p.InvalidateIndex();
+        return r;
+    }
+
+    /// <summary>Bắt điểm vào nút có sẵn của tầng, giao trục, hoặc lưới 50 mm.</summary>
+    public static (double X, double Y) Snap(Project p, string story, double x, double y, double tol = 0.15)
+    {
+        double z = StoryZ(p, story);
+        var n = p.Nodes.Where(q => Math.Abs(q.Z - z) < 0.01).OrderBy(q => (q.X - x) * (q.X - x) + (q.Y - y) * (q.Y - y)).FirstOrDefault();
+        if (n != null && Math.Abs(n.X - x) <= tol && Math.Abs(n.Y - y) <= tol) return (n.X, n.Y);
+        var gx = p.Grids.Where(g => g.Dir == GridDir.X).OrderBy(g => Math.Abs(g.Coord - x)).FirstOrDefault();
+        var gy = p.Grids.Where(g => g.Dir == GridDir.Y).OrderBy(g => Math.Abs(g.Coord - y)).FirstOrDefault();
+        double sx = gx != null && Math.Abs(gx.Coord - x) <= tol ? gx.Coord : Math.Round(x / 0.05) * 0.05;
+        double sy = gy != null && Math.Abs(gy.Coord - y) <= tol ? gy.Coord : Math.Round(y / 0.05) * 0.05;
+        return (Math.Round(sx, 4), Math.Round(sy, 4));
+    }
+
+    public static EditResult DeleteFrame(Project p, FrameElement f)
+    {
+        if (f == null) return EditResult.Fail("Chưa chọn thanh.");
+        p.Frames.Remove(f);
+        p.FrameLoads.RemoveAll(l => l.Element == f.Id);
+        p.InvalidateIndex();
+        return new EditResult { Ok = true, Message = $"Đã xoá {(f.IsVerticalKind ? "cột" : "dầm")} {f.Label}." };
+    }
+
+    // ------------------------------------------------------------------
+    // Tường
+    // ------------------------------------------------------------------
+    /// <summary>Khai báo tường theo vị trí (2 điểm, bắt nút/trục) trên cao trình tầng.</summary>
+    public static EditResult AddWall(Project p, string story, double x1, double y1, double x2, double y2, string type, double height = 0, double openingArea = -1)
+    {
+        StoryZ(p, story);
+        if (!p.WallTypes.Any(t => t.Name == type)) return EditResult.Fail("Chưa chọn loại tường.");
+        (x1, y1) = Snap(p, story, x1, y1); (x2, y2) = Snap(p, story, x2, y2);
+        var w = new WallLine { Id = p.Walls.Select(q => q.Id).DefaultIfEmpty(0).Max() + 1, Story = story, X1 = x1, Y1 = y1, X2 = x2, Y2 = y2, Type = type, Height = height, OpeningArea = openingArea };
+        if (w.Length < 0.2) return EditResult.Fail("Tường quá ngắn.");
+        p.Walls.Add(w);
+        var wt = p.WallTypes.First(t => t.Name == type);
+        var under = KetCauVXT.Loads.WallLoadGenerator.BeamsUnder(p, w, StoryZ(p, story), wt.Thickness);
+        double cov = under.Sum(u => u.len);
+        return new EditResult { Ok = true, Message = $"Đã khai báo {type} dài {w.Length:0.00} m tại tầng {story}" + (cov >= w.Length - 0.05 ? " – nằm trên dầm." : cov > 0 ? $" – {cov:0.00} m trên dầm, phần còn lại tải lên sàn." : " – không có dầm đỡ, tải quy về sàn.") };
+    }
+
+    /// <summary>Gán tường lên suốt chiều dài dầm đã chọn.</summary>
+    public static EditResult AssignWallToBeam(Project p, FrameElement beam, string type, double height = 0, double openingArea = -1)
+    {
+        if (beam == null || beam.IsVerticalKind) return EditResult.Fail("Chọn một dầm trước.");
+        var a = p.Node(beam.NodeI); var b = p.Node(beam.NodeJ);
+        var st = p.Stories.FirstOrDefault(s => Math.Abs(s.Elevation - a.Z) < 0.01);
+        if (st == null) return EditResult.Fail("Dầm không nằm ở cao trình tầng nào.");
+        // bỏ tường cũ trùng vị trí
+        p.Walls.RemoveAll(w => w.Story == st.Name && ((Near(w.X1, w.Y1, a) && Near(w.X2, w.Y2, b)) || (Near(w.X1, w.Y1, b) && Near(w.X2, w.Y2, a))));
+        return AddWall(p, st.Name, a.X, a.Y, b.X, b.Y, type, height, openingArea);
+    }
+
+    private static bool Near(double x, double y, Node n) => Math.Abs(x - n.X) < 0.01 && Math.Abs(y - n.Y) < 0.01;
+
+    public static EditResult DeleteWall(Project p, WallLine w)
+    {
+        if (w == null) return EditResult.Fail("Chưa chọn tường.");
+        p.Walls.Remove(w);
+        return new EditResult { Ok = true, Message = $"Đã xoá tường #{w.Id} ({w.Type})." };
+    }
+
+    /// <summary>Tường gần điểm (x, y) trên tầng (khoảng cách ≤ tol).</summary>
+    public static WallLine WallAt(Project p, string story, double x, double y, double tol)
+    {
+        WallLine best = null; double bd = tol;
+        foreach (var w in p.Walls.Where(w => w.Story == story))
+        {
+            var (t, d) = ImportGeometry.ProjectPoint(new Seg2(w.X1, w.Y1, w.X2, w.Y2), x, y);
+            if (t < 0 || t > 1 || d > bd) continue;
+            bd = d; best = w;
+        }
+        return best;
     }
 }

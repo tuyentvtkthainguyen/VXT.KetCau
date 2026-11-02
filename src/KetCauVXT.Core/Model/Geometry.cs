@@ -111,6 +111,8 @@ public class Slab
     /// <summary>Điều kiện biên mỗi cạnh (cạnh i nối Nodes[i]→Nodes[i+1]): true = ngàm (liên tục), false = khớp (biên).
     /// Rỗng = tự xác định (cạnh có ô sàn kề bên là ngàm).</summary>
     public List<bool> EdgeFixed { get; set; } = new();
+    /// <summary>Cấu tạo sàn (tên trong Project.FloorBuildUps); rỗng = tải nhập tay</summary>
+    public string BuildUp { get; set; } = "";
 }
 
 /// <summary>Móng (gán tại nút chân cột).</summary>
@@ -122,4 +124,6 @@ public class Footing
     public double L { get; set; }
     public double B { get; set; }
     public double Height { get; set; }
+    /// <summary>Loại móng riêng cho chân cột này; null = theo Project.Foundation.Type</summary>
+    public FoundationType? Type { get; set; }
 }

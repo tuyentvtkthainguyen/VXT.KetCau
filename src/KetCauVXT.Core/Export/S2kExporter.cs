@@ -22,6 +22,7 @@ public static class S2kExporter
     public static void Export(Project p, string path)
     {
         // đảm bảo tải sàn / tải ngang đã được sinh như khi phân tích
+        WallLoadGenerator.Apply(p);
         SlabLoadDistributor.Apply(p);
         LateralLoadGenerator.Apply(p, null);
         p.InvalidateIndex();

@@ -66,6 +66,8 @@ public class AreaLoad
     public string Pattern { get; set; } = "";
     public double Q { get; set; }
     public string Note { get; set; } = "";
+    /// <summary>"" = nhập tay; "BUILDUP" = từ cấu tạo sàn; "WALL" = tường không có dầm đỡ (tự sinh lại mỗi lần phân tích)</summary>
+    public string Source { get; set; } = "";
 }
 
 public enum ComboType { ULS, SLS, Envelope }

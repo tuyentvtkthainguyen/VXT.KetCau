@@ -19,7 +19,7 @@ public static class FootingDesigner
         public double N, Mx, My, Qx, Qy;
     }
 
-    /// <summary>Thiết kế móng đơn dưới mọi chồng cột BTCT có nút chân là gối tựa.</summary>
+    /// <summary>Thiết kế móng đơn dưới mọi chồng cột BTCT có nút chân là gối tựa và loại móng hiệu lực là móng đơn.</summary>
     public static List<FootingDesign> Design(Project p, AnalysisResults r, List<string> warnings)
     {
         warnings ??= new List<string>();
@@ -31,7 +31,9 @@ public static class FootingDesigner
         foreach (var f in p.Frames.Where(f => f.Kind == FrameKind.Column))
         {
             var lo = DesignUtil.LowerNode(p, f);
-            if (lo.IsSupport && baseCols.All(x => x.n.Id != lo.Id)) baseCols.Add((lo, f));
+            // chỉ chân cột có loại móng hiệu lực là móng đơn (Footing.Type ?? Project.Foundation.Type)
+            if (lo.IsSupport && KetCauVXT.Design.Foundation.FoundationUtil.TypeOf(p, lo.Id) == FoundationType.Isolated
+                && baseCols.All(x => x.n.Id != lo.Id)) baseCols.Add((lo, f));
         }
         baseCols = baseCols.OrderBy(x => Math.Round(x.n.Y, 2)).ThenBy(x => Math.Round(x.n.X, 2)).ToList();
 

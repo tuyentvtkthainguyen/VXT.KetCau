@@ -137,6 +137,7 @@ public partial class MainWindow
         UpdateUndoButton();
         if (_p == null) return;
         if (_fitPending) { FitPlan(); if (_fitPending) return; }
+        RefreshEditCombos();
         bool labels = chkLabels.IsChecked == true;
         double w = planHost.ActualWidth, h = planHost.ActualHeight;
 
@@ -204,6 +205,9 @@ public partial class MainWindow
                 AddText($"{f.Label} {f.Section}", vertical ? new Point(m.X + 6, m.Y) : new Point(m.X, m.Y - 12), LabelBrush, 9, !vertical);
             }
         }
+
+        // ---- tường (MainWindow.Walls.cs) ----
+        DrawWalls(labels);
 
         // ---- cột ----
         foreach (var f in PlanFrames().Where(q => q.IsVerticalKind))
@@ -318,7 +322,8 @@ public partial class MainWindow
     private void DrawSelectionHighlight()
     {
         if (_p == null) return;
-        if (_selOpening != null && _p.Openings.Contains(_selOpening)) DrawHighlight(planCanvas, _selOpening, false);
+        if (_selWall != null && _p.Walls.Contains(_selWall)) DrawHighlight(planCanvas, _selWall, false);
+        else if (_selOpening != null && _p.Openings.Contains(_selOpening)) DrawHighlight(planCanvas, _selOpening, false);
         else if (_selSlab != null && _p.Slabs.Contains(_selSlab)) DrawHighlight(planCanvas, _selSlab, false);
         else if (_sel != null) DrawHighlight(planCanvas, _p.Frames.FirstOrDefault(f => f.Id == _sel.Id), false);
         else if (_selFooting != 0)
@@ -347,7 +352,9 @@ public partial class MainWindow
     private void DrawHover()
     {
         planOverlay.Children.Clear();
+        if (_p != null && !_panning && IsLineMode) { DrawLineToolOverlay(); return; }
         if (_p == null || _hover == null || _panning) return;
+        if (ReferenceEquals(_hover, _selWall)) return;
         if (ReferenceEquals(_hover, _selSlab) || ReferenceEquals(_hover, _selOpening) || (_hover is FrameElement hf && _sel != null && hf.Id == _sel.Id)) return;
         DrawHighlight(planOverlay, _hover, true);
     }
@@ -399,6 +406,9 @@ public partial class MainWindow
                 target.Children.Add(r);
                 break;
             }
+            case WallLine w:
+                DrawWallHighlight(target, w, hover);
+                break;
         }
     }
 
@@ -468,7 +478,13 @@ public partial class MainWindow
 
     private void PlanHost_MouseMove(object sender, MouseEventArgs e)
     {
-        if (!_panning) { UpdateHover(e.GetPosition(planHost)); return; }
+        if (!_panning)
+        {
+            _lastMouse = e.GetPosition(planHost);
+            if (IsLineMode) { DrawHover(); return; }   // dây chun + điểm bắt (MainWindow.Edit.cs)
+            UpdateHover(_lastMouse.Value);
+            return;
+        }
         var p = e.GetPosition(planHost);
         double dx = p.X - _panStart.X, dy = p.Y - _panStart.Y;
         if (!_dragged && Math.Abs(dx) + Math.Abs(dy) < 4) return;
@@ -487,7 +503,9 @@ public partial class MainWindow
 
     private void PlanHost_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (_panning || _hover == null) return;
+        if (_panning) return;
+        if (_lastMouse != null) { _lastMouse = null; if (IsLineMode) DrawHover(); }
+        if (_hover == null) return;
         _hover = null;
         DrawHover();
     }
@@ -511,12 +529,20 @@ public partial class MainWindow
 
     private void ChkLabels_Changed(object sender, RoutedEventArgs e) { if (IsLoaded) RedrawPlan(); }
 
-    /// <summary>Chế độ "Chọn": ưu tiên cột > dầm (≤ 8 px) > lỗ sàn > ô sàn; chỗ trống → bỏ chọn.</summary>
+    /// <summary>Chế độ "Chọn": ưu tiên cột > dầm (≤ 8 px) > tường > lỗ sàn > ô sàn; chỗ trống → bỏ chọn.
+    /// Bấm lại vào dầm đang chọn mà có tường trên dầm → chọn tường (bấm tiếp → lại chọn dầm).</summary>
     private void SelectAt(Point s)
     {
         if (_p == null) return;
-        switch (HitTest(s))
+        var hit = HitTest(s);
+        if (hit is FrameElement hb && !hb.IsVerticalKind && _sel != null && _sel.Id == hb.Id)
         {
+            var w = WallAtScreen(s);
+            if (w != null) hit = w;
+        }
+        switch (hit)
+        {
+            case WallLine w: Select(wall: w); break;
             case FrameElement f: Select(frame: f); break;
             case FloorOpening o: Select(opening: o); break;
             case Slab sl: Select(slab: sl); break;
@@ -524,7 +550,7 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Đối tượng tại điểm màn hình theo thứ tự ưu tiên cột > dầm > lỗ sàn > ô sàn.</summary>
+    /// <summary>Đối tượng tại điểm màn hình theo thứ tự ưu tiên cột > dầm > tường > lỗ sàn > ô sàn.</summary>
     private object HitTest(Point s)
     {
         if (_p == null) return null;
@@ -532,6 +558,8 @@ public partial class MainWindow
         if (col != null) return col;
         var beam = NearestBeam(s, 8);
         if (beam != null) return beam;
+        var wall = WallAtScreen(s);
+        if (wall != null) return wall;
         var (x, y) = S2W(s);
         var op = OpeningAt(x, y);
         if (op != null) return op;
@@ -600,12 +628,13 @@ public partial class MainWindow
     // ------------------------------------------------------------------
     private void ShowSelection()
     {
+        if (_p != null && _selWall != null && _p.Walls.Contains(_selWall)) { txtInfo.Text = WallInfo(_selWall); DrawDiagram(); return; }
         if (_p != null && _selOpening != null && _p.Openings.Contains(_selOpening)) { txtInfo.Text = OpeningInfo(_selOpening); DrawDiagram(); return; }
         if (_p != null && _selSlab != null && _p.Slabs.Contains(_selSlab)) { txtInfo.Text = SlabInfo(_selSlab); DrawDiagram(); return; }
         if (_p != null && _sel == null && _selFooting != 0) { txtInfo.Text = FootingInfo(_selFooting); DrawDiagram(); return; }
         if (_sel == null || _p == null)
         {
-            txtInfo.Text = "Bấm chọn cột, dầm, ô sàn hoặc lỗ sàn trên mặt bằng để xem thông tin.";
+            txtInfo.Text = "Bấm chọn cột, dầm, tường, ô sàn hoặc lỗ sàn trên mặt bằng để xem thông tin.";
             DrawDiagram();
             return;
         }
@@ -664,6 +693,11 @@ public partial class MainWindow
         var sec = _p.SlabSections.FirstOrDefault(q => q.Name == s.Section);
         sb.AppendLine(sec != null ? $"Tiết diện: {s.Section}  dày {sec.Thickness * 1000:0} mm, {sec.Material}" : $"Tiết diện: {s.Section}");
         sb.AppendLine($"Công năng: {ModelEdit.Loads(use).Name}");
+        if (!string.IsNullOrEmpty(s.BuildUp))
+        {
+            var bu = _p.FloorBuildUps.FirstOrDefault(b => b.Name == s.BuildUp);
+            sb.AppendLine(bu != null ? $"Cấu tạo sàn: {bu.Name} ({bu.Layers.Count} lớp, {bu.Finish:0.00} kN/m²)" : $"Cấu tạo sàn: {s.BuildUp} (KHÔNG CÓ trong thư viện)");
+        }
         double fin = _p.AreaLoads.Where(a => a.Slab == s.Id && a.Pattern == "HTHT").Sum(a => a.Q);
         double live = _p.AreaLoads.Where(a => a.Slab == s.Id && a.Pattern == "HT").Sum(a => a.Q);
         sb.AppendLine($"Hoàn thiện (HTHT): {fin:0.##} kN/m²");
@@ -692,7 +726,23 @@ public partial class MainWindow
         var ft = _p.Footings.FirstOrDefault(f => f.NodeId == nodeId);
         var sb = new System.Text.StringBuilder();
         sb.AppendLine($"Móng {(ft != null ? ft.Label : "")} tại nút {nodeId}  {n?.P}");
+        var type = ft?.Type ?? _p.Foundation.Type;
+        sb.AppendLine($"Loại móng: {FoundationTypeName(type)}{(ft?.Type != null ? " (riêng chân cột này)" : " (theo công trình)")}");
         if (ft != null && ft.L > 0) sb.AppendLine($"Đáy móng: {ft.L:0.00} × {ft.B:0.00} m, cao {ft.Height:0.00} m");
+        var pc = _design?.PileCaps?.FirstOrDefault(c => c.NodeIds.Contains(nodeId));
+        if (pc != null)
+        {
+            sb.AppendLine($"Đài {pc.Name}: {pc.L:0.00}×{pc.B:0.00}×{pc.H:0.00} m, {pc.Piles.Count} cọc {PileText(pc.PileRound, pc.PileSize)}");
+            sb.AppendLine($"Pmax = {pc.PMax:0.0}, Pmin = {pc.PMin:0.0} kN; [P] = {pc.PileCapacity:0} kN");
+            sb.AppendLine(pc.Ok ? "Kết quả: ĐẠT" : "Kết quả: KHÔNG ĐẠT");
+        }
+        var sf = _design?.StripFootings?.FirstOrDefault(c => c.NodeIds.Contains(nodeId));
+        if (sf != null)
+        {
+            sb.AppendLine($"Móng băng {sf.Name} ({(sf.AlongX ? "dọc X" : "dọc Y")}): B = {sf.Width:0.00} m, sườn {sf.RibB * 1000:0}×{sf.RibH * 1000:0}");
+            sb.AppendLine($"Pmax = {sf.PMax:0.0} kN/m², R = {sf.R:0.0} kN/m²");
+            sb.AppendLine(sf.Ok ? "Kết quả: ĐẠT" : "Kết quả: KHÔNG ĐẠT");
+        }
         return sb.ToString();
     }
 

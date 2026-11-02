@@ -113,6 +113,21 @@ public partial class MainWindow
             tabView.SelectedItem = ViewTab("Mặt bằng"); Select(slab: _p.Slabs.LastOrDefault(s => s.Story == story.Name)); await Pause(); Shot($"{tag}_8_SauKhiSua");
             if (!await RunAnalysis()) throw new Exception("Phân tích lại lỗi");
             tabView.SelectedItem = ViewTab("3D"); await Pause(2000); Shot($"{tag}_9_3D_SauKhiSua");
+            await SelfTestWallsFoundation(tag, story); // dầm, tường, cấu tạo sàn, móng cọc, móng băng – MainWindow.SelfTestFoundation.cs
+            // dàn trang: bộ tờ mặc định → DXF từng tờ + PDF, mở cửa sổ dàn trang và chụp ảnh
+            {
+                var dsg = _design ?? (_res != null ? ConcreteDesigner.Design(_p, _res) : null);
+                _p.Sheets = KetCauVXT.Drawing.SheetBuilder.DefaultSet(_p, dsg, _res);
+                var sheetDxf = KetCauVXT.Drawing.SheetBuilder.ExportAllDxf(_p, _res, dsg, Path.Combine(SelfTestOut, tag + "_DanTrang"));
+                StLog($"dàn trang: {_p.Sheets.Count} tờ, {sheetDxf.Count} file DXF");
+                var sw = new SheetWindow(_p, _res, dsg, () => MarkDirty(false)) { Owner = this, Width = 1500, Height = 900 };
+                sw.Show();
+                sw.SelectSheet(0); await Pause(1500); ShotWindow(sw, $"{tag}_10_DanTrang_1");
+                if (_p.Sheets.Count > 3) { sw.SelectSheet(_p.Sheets.Count / 2); await Pause(1500); ShotWindow(sw, $"{tag}_11_DanTrang_2"); }
+                sw.ExportPdf(Path.Combine(SelfTestOut, tag + "_DanTrang.pdf"), _p.Sheets.Take(3).ToList(), 100);
+                StLog("dàn trang: PDF " + tag + "_DanTrang.pdf");
+                sw.Close();
+            }
             StLog("XONG – không lỗi");
         }
         catch (Exception ex)

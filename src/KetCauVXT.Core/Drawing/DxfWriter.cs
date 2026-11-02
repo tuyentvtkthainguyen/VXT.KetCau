@@ -63,7 +63,7 @@ internal sealed class DxfEnt
 /// chữ in cao 2,5 mm ⇒ chiều cao chữ trong mô hình Th = 2,5 × Scale.
 /// Có thể dùng làm "mảnh hình" rồi ghép vào bản vẽ khác bằng <see cref="Append"/>.
 /// </summary>
-public sealed class DxfWriter
+public sealed partial class DxfWriter
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private readonly List<DxfEnt> _ents = new();

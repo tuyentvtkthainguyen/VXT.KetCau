@@ -35,6 +35,8 @@ public static class ExcelReport
         SheetColumns(s, x.AddSheet("Cot"));
         SheetSlabs(s, x.AddSheet("San"));
         SheetFootings(s, x.AddSheet("Mong"));
+        if (s.PileCaps.Count > 0) SheetPileCaps(s, x.AddSheet("Dai coc"));
+        if (s.StripFootings.Count > 0) SheetStrips(s, x.AddSheet("Mong bang"));
         SheetSteel(s, x.AddSheet("Thep"));
         SheetRebarSchedule(s, x.AddSheet("Thong ke thep"));
         if (s.Warnings.Count > 0 || (r != null && r.Warnings.Count > 0))
@@ -231,6 +233,62 @@ public static class ExcelReport
         AddMessages(sh, s.Footings);
     }
 
+    private static void SheetPileCaps(DesignSummary s, XlsxSheet sh)
+    {
+        sh.AddRow("Đài", "Số lượng", "Nút", "X (m)", "Y (m)", "Cột b×h (mm)", "Số cọc", "Cọc (mm)", "[P] (kN)", "N (kN)", "Mx (kN.m)", "My (kN.m)",
+            "Qx (kN)", "Qy (kN)", "G (kN)", "Tổ hợp", "L (m)", "B (m)", "H (m)", "h0 (m)", "s cọc (mm)", "Pmax (kN)", "Pmin (kN)",
+            "ML (kN.m)", "As L (cm²)", "Thép L", "MB (kN.m)", "As B (cm²)", "Thép B", "Lớp trên", "Tỷ số max", "Kết luận");
+        foreach (var c in s.PileCaps)
+            sh.AddRow(c.Name, c.Quantity, string.Join(",", c.NodeIds), c.X, c.Y, $"{Mm(c.ColumnB):0}×{Mm(c.ColumnH):0}", c.Piles.Count,
+                (c.PileRound ? "D" : "") + Mm(c.PileSize).ToString("0", Inv), c.PileCapacity, c.N, c.Mx, c.My, c.Qx, c.Qy, c.Weight, c.Combo,
+                c.L, c.B, c.H, c.H0, Mm(c.Spacing), c.PMax, c.PMin, c.MomentL, Cm2(c.AsL), c.BarsL, c.MomentB, Cm2(c.AsB), c.BarsB, c.BarsTop,
+                c.MaxRatio, OkCell(c.Ok));
+        sh.SetColumnWidths(7, 7, 12, 7, 7, 10, 7, 8, 8, 9, 9, 9, 8, 8, 8, 8, 6, 6, 6, 7, 8, 9, 9, 9, 9, 10, 9, 9, 10, 10, 8, 12);
+        // phản lực từng cọc
+        sh.AddEmptyRow();
+        sh.AddBoldRow("PHẢN LỰC CỌC – TỔ HỢP BẤT LỢI");
+        sh.AddHeaderRow("Đài", "Cọc", "x (m)", "y (m)", "P (kN)", "Tổ hợp");
+        foreach (var c in s.PileCaps)
+            for (int i = 0; i < c.Piles.Count; i++)
+                sh.AddRow(c.Name, i + 1, c.Piles[i].X, c.Piles[i].Y, i < c.Reactions.Count ? c.Reactions[i] : 0.0, c.Combo);
+        AddChecks(sh, s.PileCaps);
+        AddMessages(sh, s.PileCaps);
+    }
+
+    private static void SheetStrips(DesignSummary s, XlsxSheet sh)
+    {
+        sh.AddRow("Dải", "Trục", "Phương", "Số cột", "Từ (m)", "Đến (m)", "Dài (m)", "B (m)", "b sườn (mm)", "h sườn (mm)", "Bản mép (mm)", "Bản gốc (mm)",
+            "Df (m)", "R (kN/m²)", "k (kN/m³)", "ptb (kN/m²)", "pmax (kN/m²)", "Tổ hợp TC", "M+ (kN.m)", "M− (kN.m)", "Q (kN)", "Tổ hợp TT",
+            "As dưới (cm²)", "Thép dưới", "As trên (cm²)", "Thép trên", "Đai", "As bản (cm²/m)", "Thép bản", "Tỷ số max", "Kết luận");
+        foreach (var m in s.StripFootings)
+            sh.AddRow(m.Name, m.Grid, m.AlongX ? "X" : "Y", m.NodeIds.Count, m.Start, m.End, m.Length, m.Width, Mm(m.RibB), Mm(m.RibH), Mm(m.FlangeEdge), Mm(m.FlangeRoot),
+                m.Depth, m.R, m.K, m.PAvg, m.PMax, m.ComboService, m.MPos, m.MNeg, m.VDesign, m.Combo,
+                Cm2(m.AsBottom), m.BottomBars, Cm2(m.AsTop), m.TopBars, m.Stirrups, Cm2(m.AsFlange), m.FlangeBars, m.MaxRatio, OkCell(m.Ok));
+        sh.SetColumnWidths(7, 9, 7, 7, 7, 7, 7, 6, 9, 9, 9, 9, 6, 9, 9, 9, 9, 9, 9, 9, 8, 9, 10, 10, 10, 10, 9, 10, 10, 8, 12);
+        foreach (var m in s.StripFootings)
+        {
+            sh.AddEmptyRow();
+            sh.AddBoldRow("BIỂU ĐỒ DỌC DẢI " + m.Name + " (" + m.Grid + ")");
+            sh.AddHeaderRow("x (m)", "M (kN.m)", "Q (kN)", "Mmax bao", "Mmin bao", "|Q|max bao", "p tiêu chuẩn (kN/m²)");
+            for (int i = 0; i < m.Stations.Count; i++)
+                sh.AddRow(m.Stations[i] - m.Start, At(m.M, i), At(m.V, i), At(m.MMax, i), At(m.MMin, i), At(m.VMax, i), At(m.Pressure, i));
+        }
+        AddChecks(sh, s.StripFootings);
+        AddMessages(sh, s.StripFootings);
+    }
+
+    private static double At(List<double> l, int i) => l != null && i >= 0 && i < l.Count ? l[i] : 0.0;
+
+    private static void AddChecks<T>(XlsxSheet sh, IEnumerable<T> members) where T : MemberDesignBase
+    {
+        sh.AddEmptyRow();
+        sh.AddBoldRow("KIỂM TRA");
+        sh.AddHeaderRow("Cấu kiện", "Hạng mục", "Giá trị", "Giới hạn", "Đơn vị", "Tỷ số", "Đánh giá", "Ghi chú");
+        foreach (var m in members)
+            foreach (var c in m.Checks)
+                sh.AddRow(m.Name, c.Name, c.Demand, c.Capacity, c.Unit, c.Ratio, OkCell(c.Ok), c.Note);
+    }
+
     private static void SheetSteel(DesignSummary s, XlsxSheet sh)
     {
         sh.AddRow("Cấu kiện", "Phần tử", "Tiết diện", "Tổ hợp", "Vị trí (m)", "N nén (kN)", "M3 (kN.m)", "V2 (kN)", "λmax",
@@ -305,6 +363,8 @@ public static class ExcelReport
         foreach (var m in s.Columns) Add(m, "Cột");
         foreach (var m in s.Slabs) Add(m, "Sàn");
         foreach (var m in s.Footings) Add(m, "Móng");
+        foreach (var m in s.PileCaps) Add(m, "Đài cọc");
+        foreach (var m in s.StripFootings) Add(m, "Móng băng");
         foreach (var m in s.Steel) Add(m, "Thép");
         return rows;
     }

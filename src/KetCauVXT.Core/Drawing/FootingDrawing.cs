@@ -3,7 +3,7 @@ using KetCauVXT.Model;
 
 namespace KetCauVXT.Drawing;
 
-/// <summary>Bản vẽ móng đơn: mặt bằng bố trí móng (tl 1/100) + chi tiết từng loại móng
+/// <summary>Bản vẽ móng đơn (và đài cọc, móng băng qua FoundationDrawing): mặt bằng bố trí móng (tl 1/100) + chi tiết từng loại móng
 /// (mặt bằng thép + mặt cắt, tl 1/25 thể hiện trên tờ 1/50 bằng hệ số phóng k = 2).</summary>
 public static class FootingDrawing
 {
@@ -14,7 +14,7 @@ public static class FootingDrawing
     public static List<Figure> BuildAll(Project p, DesignSummary s)
     {
         var res = new List<Figure>();
-        if (s == null || s.Footings.Count == 0) return res;
+        if (s == null || (s.Footings.Count == 0 && s.PileCaps.Count == 0 && s.StripFootings.Count == 0)) return res;
         try
         {
             // mặt bằng vẽ ở 1/100 rồi thu nhỏ hình học ×0.5 để ghép lên tờ 1/50: dựng trực tiếp với hệ số k
@@ -33,6 +33,9 @@ public static class FootingDrawing
             catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(g.Key, ex, SheetScale), g.Key, true)); }
             first = false;
         }
+        // đài cọc, móng băng
+        try { res.AddRange(FoundationDrawing.BuildDetails(p, s, SheetScale)); }
+        catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure("Đài cọc / móng băng", ex, SheetScale), "ĐC", true)); }
         return res;
     }
 
@@ -59,6 +62,7 @@ public static class FootingDrawing
             w.Text(Lay.Chu, cx + hl * 0.15, cy + hb - 1.5 * th, th, f.Name, 0, 0, 0);
             box = box.Union(new Rect2(cx - hl, cy - hb, cx + hl, cy + hb));
         }
+        FoundationDrawing.AddToLayout(w, s, k, ref box);
         // trục
         var gx = p.GridsX.ToList(); var gy = p.GridsY.ToList();
         foreach (var g in gx) box = box.Union(g.Coord * 1000 * k, box.Cy);

@@ -97,6 +97,14 @@ public class Project
     public List<Footing> Footings { get; set; } = new();
     /// <summary>Lỗ sàn: cầu thang, giếng trời (ô không có sàn)</summary>
     public List<FloorOpening> Openings { get; set; } = new();
+    /// <summary>Thư viện loại tường và các đoạn tường khai báo theo vị trí</summary>
+    public List<WallType> WallTypes { get; set; } = WallType.Defaults();
+    public List<WallLine> Walls { get; set; } = new();
+    /// <summary>Thư viện cấu tạo sàn (lớp hoàn thiện + hoạt tải); Slab.BuildUp tham chiếu theo tên</summary>
+    public List<FloorBuildUp> FloorBuildUps { get; set; } = FloorBuildUp.Defaults();
+    public FoundationSettings Foundation { get; set; } = new();
+    /// <summary>Bộ bản vẽ in (dàn trang)</summary>
+    public List<Sheet> Sheets { get; set; } = new();
 
     public List<LoadPattern> Patterns { get; set; } = new();
     public List<FrameLoad> FrameLoads { get; set; } = new();

@@ -47,6 +47,10 @@
                 <MenuItem Header="Tạo khung BTCT từ lưới trục" Click="MnuBuildGrid_Click"/>
                 <MenuItem Header="Tạo khung thép tiền chế..." Click="MnuBuildPortal_Click"/>
                 <MenuItem Header="Chia thanh tại nút" Click="MnuSplit_Click"/>
+                <Separator/>
+                <MenuItem Header="Loại tường…" Click="MnuWallTypes_Click"/>
+                <MenuItem Header="Tường đã khai báo…" Click="MnuWallList_Click"/>
+                <MenuItem Header="Cấu tạo sàn…" Click="MnuBuildUps_Click"/>
             </MenuItem>
             <MenuItem Header="_Phân tích">
                 <MenuItem Header="Tạo tổ hợp tải" Click="MnuCombos_Click"/>
@@ -56,6 +60,8 @@
                 <MenuItem Header="Thiết kế BTCT" Click="MnuDesignConcrete_Click"/>
                 <MenuItem Header="Kiểm tra thép" Click="MnuCheckSteel_Click"/>
                 <MenuItem Header="Tự tăng tiết diện đến khi đạt" Click="MnuAutoResize_Click"/>
+                <Separator/>
+                <MenuItem Header="Thiết kế móng…" Click="MnuDesignFoundation_Click"/>
             </MenuItem>
             <MenuItem Header="_Xuất">
                 <MenuItem Header="Bản vẽ DXF..." Click="MnuExpDxf_Click"/>
@@ -67,6 +73,7 @@
                 <MenuItem Header="Mô hình SAP2000 .s2k..." Click="MnuExpS2k_Click"/>
                 <Separator/>
                 <MenuItem Header="Xuất tất cả vào thư mục..." Click="MnuExpAll_Click"/>
+                <MenuItem Header="Dàn trang &amp; in bản vẽ…" Click="MnuSheets_Click"/>
             </MenuItem>
             <MenuItem Header="T_rợ giúp">
                 <MenuItem Header="Giới thiệu" Click="MnuAbout_Click"/>
@@ -349,7 +356,11 @@
                                     <RadioButton Content="＋ Cầu thang" Tag="Stair" Checked="PlanMode_Checked" ToolTip="Bấm vào ô để biến thành ô cầu thang"/>
                                     <RadioButton Content="＋ Giếng trời" Tag="Void" Checked="PlanMode_Checked" ToolTip="Bấm vào ô để biến thành giếng trời / thông tầng"/>
                                     <RadioButton Content="Sàn vệ sinh" Tag="WC" Checked="PlanMode_Checked" ToolTip="Bấm vào ô sàn để đổi thành sàn vệ sinh (bấm lại để trả về phòng ở)"/>
-                                    <RadioButton Content="Xoá" Tag="Delete" Checked="PlanMode_Checked" ToolTip="Bấm vào ô sàn / lỗ sàn để xoá (Delete)"/>
+                                    <RadioButton Content="＋ Dầm" Tag="AddBeam" Checked="PlanMode_Checked" ToolTip="Bấm 2 điểm để thêm dầm (bắt nút, giao trục, lưới 50 mm); Esc để dừng"/>
+                                    <RadioButton Content="＋ Tường" Tag="AddWall" Checked="PlanMode_Checked" ToolTip="Bấm 2 điểm để khai báo tường (tải tường dồn vào dầm bên dưới)"/>
+                                    <RadioButton Content="Gán tường" Tag="AssignWall" Checked="PlanMode_Checked" ToolTip="Bấm vào dầm để đặt tường suốt chiều dài dầm"/>
+                                    <RadioButton Content="Gán cấu tạo" Tag="AssignBuildUp" Checked="PlanMode_Checked" ToolTip="Bấm vào ô sàn để gán cấu tạo sàn đang chọn"/>
+                                    <RadioButton Content="Xoá" Tag="Delete" Checked="PlanMode_Checked" ToolTip="Bấm vào tường, dầm, cột, ô sàn / lỗ sàn để xoá (Delete)"/>
                                     <TextBlock Text="Công năng:" VerticalAlignment="Center" Margin="8,0,4,2"/>
                                     <ComboBox x:Name="cbNewSlabUse" Width="96" Margin="0,0,6,2" SelectedIndex="0" ToolTip="Công năng của ô sàn thêm mới">
                                         <ComboBoxItem Content="Phòng ở" Tag="Normal"/>
@@ -364,6 +375,17 @@
                                     <TextBlock Text="Lan can (kN/m):" VerticalAlignment="Center" Margin="0,0,4,2"/>
                                     <TextBox x:Name="txtRailing" Text="1.0" Width="38" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Tải lan can trên dầm biên ban công"/>
                                     <Button x:Name="btnUndo" Content="↶ Hoàn tác" Click="BtnUndo_Click" Padding="7,2,7,2" Margin="0,0,0,2" IsEnabled="False" ToolTip="Hoàn tác thao tác sửa mặt bằng (Ctrl+Z)"/>
+                                    <!-- dầm / tường / cấu tạo sàn (MainWindow.Edit.cs) -->
+                                    <TextBlock Text="Tiết diện dầm:" VerticalAlignment="Center" Margin="10,0,4,2"/>
+                                    <ComboBox x:Name="cbEditBeamSec" Width="84" Margin="0,0,6,2" ToolTip="Tiết diện dầm thêm mới (chế độ ＋ Dầm)"/>
+                                    <TextBlock Text="Loại tường:" VerticalAlignment="Center" Margin="0,0,4,2"/>
+                                    <ComboBox x:Name="cbEditWallType" Width="150" Margin="0,0,6,2" ToolTip="Loại tường (Mô hình → Loại tường…)"/>
+                                    <TextBlock Text="Cao (m):" VerticalAlignment="Center" Margin="0,0,4,2"/>
+                                    <TextBox x:Name="txtEditWallH" Text="0" Width="36" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Chiều cao tường; 0 = tự động (chiều cao tầng trên − chiều cao dầm)"/>
+                                    <TextBlock Text="Diện tích cửa (m²):" VerticalAlignment="Center" Margin="0,0,4,2"/>
+                                    <TextBox x:Name="txtEditWallOpen" Text="" Width="36" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Để trống hoặc −1 = theo tỷ lệ cửa của loại tường; 0 = không có cửa"/>
+                                    <TextBlock Text="Cấu tạo sàn:" VerticalAlignment="Center" Margin="0,0,4,2"/>
+                                    <ComboBox x:Name="cbEditBuildUp" Width="130" Margin="0,0,6,2" ToolTip="Cấu tạo sàn gán khi bấm ô sàn (chế độ Gán cấu tạo) – Mô hình → Cấu tạo sàn…"/>
                                 </WrapPanel>
                             </Border>
                             <Border x:Name="planHost" ClipToBounds="True" Background="White"
@@ -447,12 +469,20 @@
                     <!-- ===== MÔ HÌNH MÓNG (MainWindow.Foundation.cs) ===== -->
                     <TabItem Header="Mô hình móng">
                         <DockPanel>
-                            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4,3,4,3">
+                            <WrapPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4,3,4,3">
                                 <Button Content="Vừa màn hình" Click="BtnFndFit_Click" Style="{StaticResource SmallButton}"/>
                                 <CheckBox x:Name="chkFndLabels" Content="Ghi kích thước móng" IsChecked="True" VerticalAlignment="Center" Margin="0,0,10,0"
                                           Checked="FndOption_Changed" Unchecked="FndOption_Changed"/>
+                                <!-- loại móng, thông số, thiết kế (MainWindow.Foundation.cs) -->
+                                <TextBlock Text="Loại móng:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <ComboBox x:Name="cbFndType" Width="100" Margin="0,0,4,0" SelectionChanged="CbFndType_SelectionChanged" ToolTip="Phương án móng cho cả công trình"/>
+                                <Button Content="Thông số…" Click="MnuDesignFoundation_Click" Style="{StaticResource SmallButton}" ToolTip="Thông số móng cọc, móng băng"/>
+                                <Button Content="Thiết kế móng" Click="BtnFndDesign_Click" Style="{StaticResource SmallButton}" FontWeight="Bold"/>
+                                <TextBlock Text="Tại chân cột này:" VerticalAlignment="Center" Margin="4,0,4,0"/>
+                                <ComboBox x:Name="cbFndNodeType" Width="120" Margin="0,0,10,0" IsEnabled="False" SelectionChanged="CbFndNodeType_SelectionChanged"
+                                          ToolTip="Loại móng tại chân cột này – chọn một móng / chân cột trên mặt bằng móng trước"/>
                                 <TextBlock x:Name="txtFndInfo" VerticalAlignment="Center" Foreground="Gray"/>
-                            </StackPanel>
+                            </WrapPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" MinWidth="200"/>

@@ -250,6 +250,8 @@ public class PropBeam
     public string Grid = "";
     /// <summary>Nhịp tính toán dùng chọn tiết diện (dầm chính: khoảng cách 2 cột; khác: chiều dài đoạn), m</summary>
     public double Span;
+    /// <summary>Dầm biên mái mang tường chắn mái</summary>
+    public bool Parapet;
     public string Note = "";
     public bool Include = true;
     public double Length => Math.Sqrt((Bx - Ax) * (Bx - Ax) + (By - Ay) * (By - Ay));
@@ -261,6 +263,8 @@ public class PropSlab
     public double Thickness;
     public RoomKind Kind;
     public string RoomName = "";
+    /// <summary>Phần tải hoàn thiện quy đổi từ tường không có dầm đỡ (chỉ để xem trước; khi ghi mô hình tường được khai báo thành WallLine)</summary>
+    public double WallExtra;
     public double Finish, Live;
     public bool Include = true;
 }

@@ -57,6 +57,7 @@ public class FrameAnalysis
         if (err.Count > 0) throw new InvalidOperationException("Mô hình chưa hợp lệ:\n- " + string.Join("\n- ", err));
 
         progress?.Report("Dồn tải sàn về dầm...");
+        _res.Warnings.AddRange(WallLoadGenerator.Apply(_p));
         _res.Warnings.AddRange(SlabLoadDistributor.Apply(_p));
         progress?.Report("Sinh tải gió / động đất...");
         _res.Warnings.AddRange(LateralLoadGenerator.Apply(_p, _res.LateralForces));

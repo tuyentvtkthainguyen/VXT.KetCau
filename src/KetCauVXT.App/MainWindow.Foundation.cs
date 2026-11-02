@@ -8,8 +8,9 @@ using Shapes = System.Windows.Shapes;
 
 namespace KetCauVXT.App;
 
-/// <summary>Tab "Mô hình móng": mặt bằng móng (lưới trục, cột chân, móng đơn L×B theo kết quả thiết kế)
-/// và mặt cắt móng đang chọn (bản đế vát, cổ móng, cốt đất ±0.000, thép lớp dưới, kích thước).</summary>
+/// <summary>Tab "Mô hình móng": mặt bằng móng (lưới trục, cột chân, móng đơn L×B, đài cọc, móng băng theo kết quả thiết kế)
+/// và mặt cắt móng đang chọn (bản đế vát, cổ móng, cốt đất ±0.000, thép lớp dưới, kích thước).
+/// Đài cọc, móng băng, chọn loại móng: MainWindow.FoundationTypes.cs.</summary>
 public partial class MainWindow
 {
     private double _fScale = 40, _fOx = 60, _fOy = 400;
@@ -17,7 +18,7 @@ public partial class MainWindow
     private Point _fPanStart;
     private double _fPanOx, _fPanOy;
     private Project _fndProj;
-    private readonly List<(Rect r, int node, FrameElement col)> _fndHits = new();
+    private readonly List<(Rect r, int node, FrameElement col, object item)> _fndHits = new();
 
     private static readonly Brush FootOkFill = Frozen(Color.FromArgb(55, 30, 160, 60));
     private static readonly Brush FootBadFill = Frozen(Color.FromArgb(55, 220, 30, 30));
@@ -62,7 +63,10 @@ public partial class MainWindow
         foreach (var n in _p.Nodes) { xs.Add(n.X); ys.Add(n.Y); }
         foreach (var g in _p.Grids) { if (g.Dir == GridDir.X) xs.Add(g.Coord); else ys.Add(g.Coord); }
         if (_design != null)
+        {
             foreach (var f in _design.Footings) { xs.Add(f.X - f.L / 2); xs.Add(f.X + f.L / 2); ys.Add(f.Y - f.B / 2); ys.Add(f.Y + f.B / 2); }
+            AddPileStripExtents(xs, ys);
+        }
         if (xs.Count == 0) xs.AddRange(new[] { 0.0, 10.0 });
         if (ys.Count == 0) ys.AddRange(new[] { 0.0, 10.0 });
         double x0 = xs.Min(), x1 = xs.Max(), y0 = ys.Min(), y1 = ys.Max();
@@ -83,8 +87,12 @@ public partial class MainWindow
         if (_fFitPending) FitFoundation();
         bool labels = chkFndLabels.IsChecked == true;
         var nodes = NodeMap(); var secs = SectionMap();
+        SyncFoundationUi();
 
         DrawPlanGrids(fndCanvas, FW2S, true);
+
+        // ---- móng băng, đài cọc (vẽ dưới móng đơn và cột) ----
+        int nOther = DrawStripsAndPileCaps(labels, out int badOther);
 
         // ---- móng ----
         var foots = _design?.Footings ?? new List<FootingDesign>();
@@ -119,7 +127,7 @@ public partial class MainWindow
                 CLine(fndCanvas, new Point(p1.X, p0.Y), new Point(t1.X, t0.Y), ok ? FootOkStroke : FootBadStroke, 0.6, false);
                 CLine(fndCanvas, new Point(p0.X, p1.Y), new Point(t0.X, t1.Y), ok ? FootOkStroke : FootBadStroke, 0.6, false);
             }
-            _fndHits.Add((new Rect(p0, p1), fd.NodeId, null));
+            _fndHits.Add((new Rect(p0, p1), fd.NodeId, null, fd));
             if (labels || sel)
             {
                 string name = string.IsNullOrEmpty(fd.Name) ? "M" : fd.Name;
@@ -132,6 +140,8 @@ public partial class MainWindow
 
         // ---- cột chân + gối ----
         var bases = BaseColumns(nodes);
+        int nAll = foots.Count + nOther;
+        var covered = CoveredFoundationNodes();
         foreach (var (n, col, top) in bases)
         {
             var (dx, dy) = ColSizeXY(col, n, top, secs);
@@ -145,19 +155,19 @@ public partial class MainWindow
             };
             Canvas.SetLeft(r, c.X - rw / 2); Canvas.SetTop(r, c.Y - rh / 2);
             fndCanvas.Children.Add(r);
-            if (foots.Count == 0) DrawSupport(fndCanvas, new Point(c.X, c.Y + rh / 2 + 1));
-            if (!foots.Any(f => f.NodeId == n.Id)) _fndHits.Add((new Rect(c.X - rw / 2 - 3, c.Y - rh / 2 - 3, rw + 6, rh + 6), 0, col));
-            if (labels && foots.Count == 0) CText(fndCanvas, col.Label, new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 12), Brushes.Black, 9, false);
+            if (nAll == 0) DrawSupport(fndCanvas, new Point(c.X, c.Y + rh / 2 + 1));
+            if (!covered.Contains(n.Id)) _fndHits.Add((new Rect(c.X - rw / 2 - 3, c.Y - rh / 2 - 3, rw + 6, rh + 6), 0, col, null));
+            if (labels && nAll == 0) CText(fndCanvas, col.Label, new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 12), Brushes.Black, 9, false);
         }
 
-        int bad = foots.Count(f => !f.Ok);
-        CText(fndCanvas, $"Mặt bằng móng – cao độ chân cột {Elev(_p.BaseElevation)}" +
-                         (foots.Count > 0 ? $"   •   {foots.Count} móng, {bad} không đạt (đỏ)" : ""), new Point(8, 6), Brushes.Black, 12, false);
-        txtFndInfo.Text = foots.Count > 0
+        int bad = foots.Count(f => !f.Ok) + badOther;
+        CText(fndCanvas, $"Mặt bằng móng ({FoundationTypeName(_p.Foundation.Type).ToLowerInvariant()}) – cao độ chân cột {Elev(_p.BaseElevation)}" +
+                         (nAll > 0 ? $"   •   {nAll} móng, {bad} không đạt (đỏ)" : ""), new Point(8, 6), Brushes.Black, 12, false);
+        txtFndInfo.Text = nAll > 0
             ? "Bấm vào móng để xem mặt cắt. Xanh: đạt, đỏ: không đạt."
             : $"{bases.Count} chân cột – chưa có kết quả thiết kế móng.";
-        if (foots.Count == 0)
-            CenterHint(fndCanvas, w, h, bases.Count == 0 ? "Mô hình chưa có chân cột (nút gối)" : "Chạy Thiết kế BTCT để có kích thước móng");
+        if (nAll == 0)
+            CenterHint(fndCanvas, w, h, bases.Count == 0 ? "Mô hình chưa có chân cột (nút gối)" : "Bấm 'Thiết kế móng' để có kích thước móng");
     }
 
     // ------------------------------------------------------------------
@@ -168,15 +178,20 @@ public partial class MainWindow
         fndSecCanvas.Children.Clear();
         double w = fndSecHost.ActualWidth, h = fndSecHost.ActualHeight;
         if (w < 60 || h < 60) return;
-        var foots = _design?.Footings?.Where(f => f.L > 0 && f.B > 0).ToList() ?? new List<FootingDesign>();
-        if (foots.Count == 0)
+        var item = SectionItem(out bool auto);
+        switch (item)
         {
-            CenterHint(fndSecCanvas, w, h, "Chưa có kết quả thiết kế móng");
-            return;
+            case null:
+                CenterHint(fndSecCanvas, w, h, "Chưa có kết quả thiết kế móng – bấm 'Thiết kế móng'");
+                return;
+            case KetCauVXT.Design.Foundation.PileCapDesign pc: DrawPileCapSection(pc, auto, w, h); return;
+            case KetCauVXT.Design.Foundation.StripFootingDesign sf: DrawStripSection(sf, auto, w, h); return;
+            case FootingDesign fd0: DrawIsolatedSection(fd0, auto, w, h); return;
         }
-        var fd = foots.FirstOrDefault(f => f.NodeId == _selFooting);
-        bool auto = fd == null;
-        fd ??= foots[0];
+    }
+
+    private void DrawIsolatedSection(FootingDesign fd, bool auto, double w, double h)
+    {
         var g = FootingGeom(fd, NodeMap());
         double L = g.L, zb = g.ZBot, zTop = zb + g.H, zEdge = zb + g.Hb, zN = g.ZNode;
         double colTop = zN + 0.5;
@@ -368,8 +383,10 @@ public partial class MainWindow
         if (_fDragged) return;
         var s = e.GetPosition(fndHost);
         // ưu tiên ô nhỏ nhất chứa điểm bấm (cột nằm trong móng)
-        var hit = _fndHits.Where(x => x.r.Contains(s)).OrderBy(x => x.r.Width * x.r.Height).Select(x => ((int node, FrameElement col)?)(x.node, x.col)).FirstOrDefault();
-        if (hit == null) { if (HasSelection) ClearSelection(); return; }
+        var hit = _fndHits.Where(x => x.r.Contains(s)).OrderBy(x => x.r.Width * x.r.Height)
+            .Select(x => ((int node, FrameElement col, object item)?)(x.node, x.col, x.item)).FirstOrDefault();
+        if (hit == null) { _fndSelItem = null; if (HasSelection) ClearSelection(); return; }
+        _fndSelItem = hit.Value.item;
         if (hit.Value.node != 0) Select(footingNode: hit.Value.node);
         else if (hit.Value.col != null) Select(frame: hit.Value.col);
     }

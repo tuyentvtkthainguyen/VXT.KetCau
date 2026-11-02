@@ -346,7 +346,10 @@ string archDxf = Path.Combine(Path.GetTempPath(), "KienTrucMau.dxf");
 
     var rep = ArchToStructure.Apply(archProj, dwg, prop, ao);
     Console.WriteLine("   " + rep.ToString().Replace("\n", "\n   "));
-    double applied = archProj.FrameLoads.Where(l => l.Pattern == "HTHT").Sum(fl =>
+    var sw = Stopwatch.StartNew();
+    ar = FrameAnalysis.Run(archProj);
+    Console.WriteLine($"   Phân tích: {archProj.Nodes.Count} nút, {archProj.Frames.Count} thanh, {ar.Equations} phương trình, {sw.ElapsedMilliseconds} ms");
+    double applied = archProj.FrameLoads.Where(l => l.Pattern == "HTHT" && l.Source != "SLAB").Sum(fl =>
     {
         double L = archProj.Length(archProj.Frame(fl.Element)), sm = 0;
         for (int i = 0; i + 1 < fl.Points.Count; i++) sm += (fl.Points[i][1] + fl.Points[i + 1][1]) / 2 * (fl.Points[i + 1][0] - fl.Points[i][0]) * L;
@@ -358,9 +361,7 @@ string archDxf = Path.Combine(Path.GetTempPath(), "KienTrucMau.dxf");
         var pts = sl.Nodes.Select(id => (archProj.Node(id).X, archProj.Node(id).Y)).ToList();
         applied += al.Q * Math.Abs(ImportGeometry.SignedArea(pts));
     }
-    var sw = Stopwatch.StartNew();
-    ar = FrameAnalysis.Run(archProj);
-    Console.WriteLine($"   Phân tích: {archProj.Nodes.Count} nút, {archProj.Frames.Count} thanh, {ar.Equations} phương trình, {sw.ElapsedMilliseconds} ms");
+    Check("Tường từ bản vẽ được khai báo thành đoạn tường", archProj.Walls.Count > 10 ? 1 : 0, 1, 0);
     Check("HTHT (tường + hoàn thiện + cầu thang): ΣFZ phản lực = Σ tải", ar.Get("HTHT").Reactions.Values.Sum(r => r[2]), applied, 1e-6);
     Check("Mọi chuyển vị hữu hạn", archProj.Combinations.Where(c => c.Type != ComboType.Envelope).All(c => ar.Get(c.Name).Disp.Values.All(v => v.All(double.IsFinite))) ? 1 : 0, 1, 0);
     var rz = AutoResize.Run(archProj, 12);
@@ -420,6 +421,54 @@ Console.WriteLine("14. Sửa mô hình trên mặt bằng: cầu thang, giếng 
     var eds = ConcreteDesigner.Design(ed, er);
     Check("Thiết kế chạy được sau khi sửa (có dầm công xôn ban công)", eds.Beams.Any(b => b.Frames.Any(id => r3.NewFrames.Contains(id))) ? 1 : 0, 1, 0);
 }
+
+Console.WriteLine("15. Tường khai báo theo vị trí (110/220, trát/không trát, có/không cửa) và cấu tạo sàn");
+{
+    var wp = ModelBuilder.NewProject("Tường + cấu tạo sàn");
+    ModelBuilder.SetGrid(wp, new[] { 5.0 }, new[] { 4.5, 4.5, 4.5 });
+    ModelBuilder.SetStories(wp, new[] { 3.9, 3.3, 3.3, 3.3 }, -0.6);
+    ModelBuilder.BuildFromGrid(wp, new ModelBuilder.GridFrameOptions { ColumnSection = "C22x30", BeamSectionX = "D22x30", BeamSectionY = "D22x40" });
+    string st = "T3";
+    var b0 = ModelEdit.StoryBeams(wp, st).First(f => Math.Abs(wp.Node(f.NodeI).Y) < 1e-6 && Math.Abs(wp.Node(f.NodeJ).Y) < 1e-6);
+    Console.WriteLine("   · " + ModelEdit.AssignWallToBeam(wp, b0, "Tường 220 trát 2 mặt").Message);
+    var b1 = ModelEdit.StoryBeams(wp, st).First(f => Math.Abs(wp.Node(f.NodeI).Y - 13.5) < 1e-6 && Math.Abs(wp.Node(f.NodeJ).Y - 13.5) < 1e-6);
+    Console.WriteLine("   · " + ModelEdit.AssignWallToBeam(wp, b1, "Tường 110 không trát", 0, 3.0).Message);
+    Console.WriteLine("   · " + ModelEdit.AddWall(wp, st, 2.5, 0, 2.5, 4.5, "Tường 110 trát 2 mặt").Message);
+    Console.WriteLine("   · " + ModelEdit.AddWall(wp, "MAI", 0, 0, 5, 0, "Tường 110 trát 2 mặt").Message);
+    var slWc = ModelEdit.SlabAt(wp, st, 2.5, 6.75);
+    Console.WriteLine("   · " + ModelEdit.SetBuildUp(wp, slWc, "Sàn vệ sinh").Message);
+    var wr = FrameAnalysis.Run(wp);
+    var fl0 = wp.FrameLoads.First(l => l.Source == "WALL" && l.Element == b0.Id);
+    double h0 = 3.3 - 0.35;
+    Check("Tường 220 trát 2 mặt trên dầm: q = (0,22·18 + 2·0,015·18)·H", fl0.Points[0][1], (0.22 * 18 + 2 * 0.015 * 18) * h0, 1e-6);
+    var fl1 = wp.FrameLoads.First(l => l.Source == "WALL" && l.Element == b1.Id);
+    Check("Tường 110 không trát, trừ 3 m² cửa", fl1.Points[0][1], 0.11 * 18 * h0 * (1 - 3.0 / (5.0 * h0)), 1e-6);
+    Check("Tường không có dầm đỡ → tải lên ô sàn", wp.AreaLoads.Count(a => a.Source == "WALL") >= 1 ? 1 : 0, 1, 0);
+    var flp = wp.FrameLoads.First(l => l.Source == "WALL" && wp.Frame(l.Element).Story == "MAI");
+    Check("Tường trên mái tự lấy cao 0,9 m (tường chắn mái)", flp.Points[0][1], (0.11 * 18 + 2 * 0.015 * 18) * 0.9, 1e-6);
+    Check("Cấu tạo sàn vệ sinh: Σ lớp = 2,01 kN/m²", wp.AreaLoads.Where(a => a.Slab == slWc.Id && a.Pattern == "HTHT").Sum(a => a.Q), 2.01, 1e-6);
+    double appl = wp.FrameLoads.Where(l => l.Pattern == "HTHT" && l.Source != "SLAB").Sum(fl =>
+    {
+        double L = wp.Length(wp.Frame(fl.Element)), sm = 0;
+        for (int i = 0; i + 1 < fl.Points.Count; i++) sm += (fl.Points[i][1] + fl.Points[i + 1][1]) / 2 * (fl.Points[i + 1][0] - fl.Points[i][0]) * L;
+        return sm;
+    });
+    foreach (var al in wp.AreaLoads.Where(a => a.Pattern == "HTHT"))
+    {
+        var sl = wp.Slabs.First(q => q.Id == al.Slab);
+        appl += al.Q * Math.Abs(ImportGeometry.SignedArea(sl.Nodes.Select(id => (wp.Node(id).X, wp.Node(id).Y)).ToList()));
+    }
+    Check("Tường + cấu tạo sàn: ΣFZ phản lực = Σ tải", wr.Get("HTHT").Reactions.Values.Sum(r => r[2]), appl, 1e-6);
+    var bAdd = ModelEdit.AddBeam(wp, st, 0, 2.25, 5, 2.25, "D22x30");
+    Console.WriteLine("   · " + bAdd.Message);
+    Check("Thêm dầm chia ô sàn: mô hình phân tích được", FrameAnalysis.Run(wp).Get("TT").Disp.Values.All(v => v.All(double.IsFinite)) ? 1 : 0, 1, 0);
+}
+
+Console.WriteLine("16. Móng cọc, móng băng, móng đơn (thiết kế trực tiếp)");
+FoundationTests.Run(Check);
+
+Console.WriteLine("17. Dàn trang bản vẽ (sheet), xuất DXF theo tờ");
+SheetTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

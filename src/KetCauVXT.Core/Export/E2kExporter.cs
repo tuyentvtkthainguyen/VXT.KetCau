@@ -30,6 +30,7 @@ public static class E2kExporter
 
     public static void Export(Project p, string path, bool slabsAsAreas)
     {
+        WallLoadGenerator.Apply(p);
         SlabLoadDistributor.Apply(p);
         LateralLoadGenerator.Apply(p, null);
         p.InvalidateIndex();

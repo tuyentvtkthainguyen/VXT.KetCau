@@ -1,13 +1,14 @@
 using KetCauVXT.Analysis;
+using KetCauVXT.Design.Foundation;
 using KetCauVXT.Model;
 
 namespace KetCauVXT.Design.Concrete;
 
-/// <summary>Điểm vào thiết kế BTCT: dầm, cột, sàn, móng đơn theo TCVN 5574:2018 và TCVN 9362:2012.</summary>
+/// <summary>Điểm vào thiết kế BTCT: dầm, cột, sàn, móng đơn, đài cọc, móng băng theo TCVN 5574:2018, TCVN 9362:2012 và TCVN 10304:2014.</summary>
 public static class ConcreteDesigner
 {
     /// <summary>Thiết kế toàn bộ cấu kiện BTCT của dự án từ kết quả phân tích r.
-    /// Nếu s được truyền vào, các danh sách Beams/Columns/Slabs/Footings của s được thay mới, Warnings được nối thêm.
+    /// Nếu s được truyền vào, các danh sách Beams/Columns/Slabs/Footings/PileCaps/StripFootings của s được thay mới, Warnings được nối thêm.
     /// Lỗi từng cấu kiện không làm dừng chương trình mà ghi vào s.Warnings với tiền tố "LỖI".</summary>
     public static DesignSummary Design(Project p, AnalysisResults r, DesignSummary s = null)
     {
@@ -20,6 +21,8 @@ public static class ConcreteDesigner
         s.Columns = Run(s, "cột", () => ColumnDesigner.Design(p, r, s.Warnings));
         s.Slabs = Run(s, "sàn", () => SlabDesigner.Design(p, r, s.Warnings));
         s.Footings = Run(s, "móng", () => FootingDesigner.Design(p, r, s.Warnings));
+        s.PileCaps = Run(s, "đài cọc", () => PileCapDesigner.Design(p, r, s.Warnings));
+        s.StripFootings = Run(s, "móng băng", () => StripFootingDesigner.Design(p, r, s.Warnings));
 
         foreach (var m in s.All.Where(x => !x.Ok).ToList())
         {

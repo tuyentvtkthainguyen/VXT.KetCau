@@ -348,6 +348,7 @@ public static class ArchToStructure
                 {
                     double area = (sl.X1 - sl.X0) * (sl.Y1 - sl.Y0);
                     sl.Finish += q * rest / area;
+                    sl.WallExtra += q * rest / area;
                     sl.RoomName += $" (+tường {w.Thickness * 1000:0} dài {rest:0.0} m quy đổi {q * rest / area:0.00} kN/m²)";
                 }
             }
@@ -360,7 +361,7 @@ public static class ArchToStructure
             foreach (var pb in beams.Where(pb => OnOutline(lv.Outline, pb)))
             {
                 if (above != null && ArchPlanReader.PointInPoly(above.Outline, (pb.Ax + pb.Bx) / 2, (pb.Ay + pb.By) / 2, 0.05)) continue;
-                pb.WallLoad += unit * o.ParapetHeight; np++;
+                pb.WallLoad += unit * o.ParapetHeight; pb.Parapet = true; np++;
             }
             if (np > 0) s.Notes.Add($"{lv.Name}: tường chắn mái 110 cao {o.ParapetHeight:0.0} m trên {np} đoạn dầm biên.");
         }
@@ -720,10 +721,10 @@ public static class ArchToStructure
                 var f = ImportGeometry.AddFrame(p, a, b, FrameKind.Beam, sec, lv.Name, $"D{bi++}", group);
                 if (f == null) continue;
                 rep.Beams++;
-                double dead = pb.WallLoad + pb.OtherDead;
+                double dead = pb.OtherDead;   // tải tường: khai báo thành WallLine bên dưới, sinh tải khi phân tích
                 if (dead > 1e-6)
                 {
-                    var fl = FrameLoad.Uniform(f.Id, "HTHT", Math.Round(dead, 3), LoadDir.Gravity, pb.WallLoad > 0 ? "Tường xây" : "Cầu thang");
+                    var fl = FrameLoad.Uniform(f.Id, "HTHT", Math.Round(dead, 3), LoadDir.Gravity, "Cầu thang");
                     fl.Source = "ARCH";
                     p.FrameLoads.Add(fl);
                 }
@@ -754,10 +755,38 @@ public static class ArchToStructure
                     Nodes = new List<int> { n1.Id, n2.Id, n3.Id, n4.Id }
                 };
                 p.Slabs.Add(slab); rep.Slabs++;
-                if (sl.Finish > 0) p.AreaLoads.Add(new AreaLoad { Slab = slab.Id, Pattern = "HTHT", Q = Math.Round(sl.Finish, 3), Note = "Hoàn thiện – " + sl.RoomName });
+                double fin = sl.Finish - sl.WallExtra;
+                if (fin > 0) p.AreaLoads.Add(new AreaLoad { Slab = slab.Id, Pattern = "HTHT", Q = Math.Round(fin, 3), Note = "Hoàn thiện – " + sl.RoomName });
                 if (sl.Live > 0) p.AreaLoads.Add(new AreaLoad { Slab = slab.Id, Pattern = "HT", Q = sl.Live, Note = "Hoạt tải – " + sl.RoomName });
             }
         }
+
+        // tường: khai báo theo vị trí (sửa được trên mặt bằng), tải sinh khi phân tích
+        p.Walls.Clear();
+        string TypeFor(double t)
+        {
+            var wt = p.WallTypes.FirstOrDefault(q => Math.Abs(q.Thickness - t) < 0.006 && q.Finish == WallFinish.Plaster2Sides && q.OpeningRatio == 0 && Math.Abs(q.UnitWeight - o.WallUnitWeight) < 1e-6);
+            if (wt != null) return wt.Name;
+            string tt = (t * 1000).ToString("0", CultureInfo.InvariantCulture);
+            wt = new WallType { Name = $"Tường {tt} trát 2 mặt" + (Math.Abs(o.WallUnitWeight - 18) > 1e-6 ? $" (γ={o.WallUnitWeight:0.#})" : ""), Thickness = Math.Round(t, 3), UnitWeight = o.WallUnitWeight, PlasterThickness = o.PlasterThickness };
+            if (p.WallTypes.Any(q => q.Name == wt.Name)) wt.Name += $" {p.WallTypes.Count + 1}";
+            p.WallTypes.Add(wt);
+            return wt.Name;
+        }
+        int wid = 1;
+        for (int i = 0; i < s.Levels.Count; i++)
+        {
+            var lv = s.Levels[i];
+            var plan = d?.Floors.FirstOrDefault(f => f.Title == lv.FromPlan);
+            // mặt bằng phía trên cao trình này: tầng có FromPlan khác mặt bằng tầng dưới (mái trên cùng không có)
+            bool isTop = i == s.Levels.Count - 1;
+            if (plan != null && !isTop)
+                foreach (var w in plan.Walls.Where(w => w.Thickness >= 0.08 && w.Length >= 0.5))
+                    p.Walls.Add(new WallLine { Id = wid++, Story = lv.Name, X1 = w.Ax, Y1 = w.Ay, X2 = w.Bx, Y2 = w.By, Type = TypeFor(w.Thickness), OpeningArea = Math.Round(w.OpeningLength * 2.0, 2), Note = "Từ bản vẽ kiến trúc" });
+            foreach (var pb in lv.Beams.Where(b => b.Include && b.Parapet))
+                p.Walls.Add(new WallLine { Id = wid++, Story = lv.Name, X1 = pb.Ax, Y1 = pb.Ay, X2 = pb.Bx, Y2 = pb.By, Type = TypeFor(0.11), Height = o.ParapetHeight, OpeningArea = 0, Note = "Tường chắn mái" });
+        }
+        rep.Info.Add($"Đã khai báo {p.Walls.Count} đoạn tường (sửa được trên mặt bằng: Xoá / Gán tường / Loại tường).");
 
         p.InvalidateIndex();
         rep.SplitCount = ModelBuilder.SplitFramesAtNodes(p);

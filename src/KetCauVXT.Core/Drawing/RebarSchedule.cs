@@ -7,7 +7,7 @@ namespace KetCauVXT.Drawing;
 public class ScheduleRow
 {
     public string Member { get; set; } = "";
-    /// <summary>Loại cấu kiện: "Dầm", "Cột", "Sàn", "Móng"</summary>
+    /// <summary>Loại cấu kiện: "Dầm", "Cột", "Sàn", "Móng", "Đài cọc", "Móng băng"</summary>
     public string Category { get; set; } = "";
     public string Story { get; set; } = "";
     public int Mark { get; set; }
@@ -52,7 +52,7 @@ public static class RebarSchedule
     // ------------------------------------------------------------------
     // Dữ liệu
     // ------------------------------------------------------------------
-    /// <summary>Lập danh sách hàng thống kê từ toàn bộ cấu kiện (dầm, cột, sàn, móng; theo thứ tự đó).</summary>
+    /// <summary>Lập danh sách hàng thống kê từ toàn bộ cấu kiện (dầm, cột, sàn, móng đơn, đài cọc, móng băng; theo thứ tự đó).</summary>
     public static List<ScheduleRow> BuildRows(DesignSummary s)
     {
         var rows = new List<ScheduleRow>();
@@ -79,6 +79,8 @@ public static class RebarSchedule
         foreach (var m in s.Columns) AddMember(m, "Cột");
         foreach (var m in s.Slabs) AddMember(m, "Sàn");
         foreach (var m in s.Footings) AddMember(m, "Móng");
+        foreach (var m in s.PileCaps) AddMember(m, "Đài cọc");
+        foreach (var m in s.StripFootings) AddMember(m, "Móng băng");
         return rows;
     }
 
