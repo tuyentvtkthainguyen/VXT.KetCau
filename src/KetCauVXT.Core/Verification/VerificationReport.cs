@@ -126,16 +126,44 @@ public static class VerificationReport
             }
         }
 
-        // ---- 5. so với tài liệu ----
-        d.Heading("5. Kiểm chứng độc lập – so sánh với tài liệu, bên thứ ba (sách, ví dụ mẫu, đơn vị thẩm tra)", 1);
+        // ---- 5. kiểm chứng độc lập ----
+        d.Heading("5. Kiểm chứng độc lập – so sánh với tài liệu, bên thứ ba (sách, ví dụ mẫu, phần mềm khác, đơn vị thẩm tra)", 1);
+        d.Paragraph("Mục này tách riêng khỏi phần tự kiểm chứng (mục 4): giá trị so sánh do bên ngoài nhà phát triển cung cấp hoặc xác nhận – "
+                    + "giá trị trích từ sách/giáo trình, ví dụ mẫu của tiêu chuẩn, kết quả phần mềm khác (ETABS, SAP2000, SAFE…), hoặc do kỹ sư/đơn vị thẩm tra độc lập tính và ký xác nhận. "
+                    + "Ngưỡng chấp nhận khi so với tài liệu = max(ngưỡng bài toán; 3%) do tài liệu thường làm tròn.");
+        d.Heading("5.1. Bảng so sánh", 2);
         var book = r.Cases.Where(c => c.UserBookValue.HasValue).ToList();
         if (book.Count == 0)
-            d.Paragraph("Chưa có giá trị theo tài liệu nào được nhập. Người dùng nhập tại Trợ giúp → Kiểm chứng phần mềm (cột \"Giá trị theo tài liệu\" và \"Nguồn tài liệu\"), "
-                        + "sau đó xuất lại báo cáo. Các giá trị tham chiếu ở mục 4 là lời giải giải tích / tính tay độc lập, chưa phải giá trị trích từ sách.", false, true);
+            d.Paragraph("Chưa có giá trị kiểm chứng độc lập. Cách bổ sung: xem mục 5.2.", false, true);
         else
-            d.Table(new[] { "Mã", "Đại lượng", "Nguồn tài liệu", "Theo tài liệu", "Kết cấu VXT", "Sai số %" },
-                book.Select(c => new[] { c.Id, c.Quantity + (string.IsNullOrEmpty(c.Unit) ? "" : " (" + c.Unit + ")"), c.UserBookSource ?? "", F(c.UserBookValue.Value), F(c.Computed), c.BookErrorPercent is double e ? Pct(e) : "-" }),
-                new[] { 1.4, 4.0, 5.1, 2.0, 2.0, 2.0 }, 9);
+        {
+            d.Table(new[] { "Mã", "Đại lượng", "Nguồn tài liệu", "Loại nguồn", "Theo tài liệu", "Kết cấu VXT", "Sai số %", "Kết luận", "Người/đơn vị xác nhận, ngày" },
+                book.Select(c => new[]
+                {
+                    c.Id, c.Quantity + (string.IsNullOrEmpty(c.Unit) ? "" : " (" + c.Unit + ")"), c.UserBookSource ?? "", c.UserKind ?? "",
+                    F(c.UserBookValue.Value), F(c.Computed), c.BookErrorPercent is double e ? Pct(e) : "-",
+                    c.BookPass == true ? "Đạt" : c.BookPass == false ? "Không đạt" : "-",
+                    string.Join(", ", new[] { c.UserVerifier, c.UserDate }.Where(x => !string.IsNullOrWhiteSpace(x)))
+                }),
+                new[] { 1.2, 2.8, 3.2, 2.0, 1.6, 1.6, 1.3, 1.4, 2.6 }, 8);
+            int okB = book.Count(c => c.BookPass == true);
+            d.Paragraph($"Tổng hợp: {book.Count} đại lượng có giá trị kiểm chứng độc lập, {okB} đạt, {book.Count - okB} không đạt; "
+                        + $"{book.Select(c => c.UserVerifier).Where(v => !string.IsNullOrWhiteSpace(v)).Distinct().Count()} người/đơn vị xác nhận.", true);
+        }
+        d.Heading("5.2. Quy trình kiểm chứng độc lập", 2);
+        d.Bullet("Gửi file Excel báo cáo này (sheet \"Kết quả\") cho kỹ sư hoặc đơn vị kiểm chứng KHÔNG tham gia phát triển phần mềm.");
+        d.Bullet("Bên kiểm chứng tự tính (tay, Excel, ETABS/SAP/SAFE…) hoặc trích từ sách/ví dụ mẫu, điền các cột: Giá trị theo tài liệu, Nguồn tài liệu (tên tài liệu, trang/ví dụ), Loại nguồn, Người/đơn vị xác nhận, Ngày xác nhận.");
+        d.Bullet("Nhập lại file đã điền vào phần mềm (Trợ giúp → Kiểm chứng phần mềm → Nhập kết quả kiểm chứng độc lập từ Excel), xuất lại báo cáo; bên kiểm chứng ký mục 5.3.");
+        d.Bullet("Có thể dùng thêm chức năng Phân tích → So sánh với ETABS/SAP/SAFE trên công trình thật; đính kèm báo cáo so sánh làm phụ lục.");
+        d.Heading("5.3. Xác nhận của bên kiểm chứng độc lập", 2);
+        d.Table(new[] { "Nội dung", "Thông tin" }, new[]
+        {
+            new[] { "Đơn vị / cá nhân kiểm chứng", "" },
+            new[] { "Người thực hiện (họ tên, chứng chỉ hành nghề số)", "" },
+            new[] { "Phạm vi đã kiểm chứng (mã bài toán)", "" },
+            new[] { "Kết luận của bên kiểm chứng", "" },
+            new[] { "Ngày, chữ ký, đóng dấu (nếu có)", "\n\n\n" },
+        }, new[] { 6.0, 11.0 }, 10);
 
         // ---- 6. kết luận ----
         d.Heading("6. Kết luận", 1);
@@ -216,9 +244,10 @@ public static class VerificationReport
         sum.AddRow("Giá trị tham chiếu: lời giải giải tích (nhóm A) và tính tay độc lập theo công thức tiêu chuẩn (nhóm B, C, D). Cột \"Giá trị theo tài liệu\" do người dùng nhập (chưa có = chờ nhập).");
 
         var sh = x.AddSheet("Kết quả");
-        sh.SetColumnWidths(5, 8, 30, 36, 48, 30, 9, 14, 14, 10, 9, 12, 14, 30, 12, 50, 60);
+        sh.SetColumnWidths(5, 8, 30, 36, 48, 30, 9, 14, 14, 10, 9, 12, 16, 30, 22, 24, 12, 12, 50, 60);
         sh.AddRow("STT", "Mã", "Nhóm", "Bài toán", "Nguồn lời giải tham chiếu", "Đại lượng", "Đơn vị", "Giá trị tham chiếu", "Kết cấu VXT",
-            "Sai số %", "Ngưỡng %", "Kết luận", "Giá trị theo tài liệu (sách/ví dụ)", "Nguồn tài liệu", "Sai số so với tài liệu %", "Mô tả bài toán", "Ghi chú");
+            "Sai số %", "Ngưỡng %", "Kết luận", "Giá trị theo tài liệu (sách/ví dụ/bên thứ ba)", "Nguồn tài liệu", "Loại nguồn", "Người/đơn vị xác nhận", "Ngày xác nhận",
+            "Sai số so với tài liệu %", "Mô tả bài toán", "Ghi chú");
         int stt = 1;
         foreach (var c in r.Cases)
         {
@@ -231,7 +260,7 @@ public static class VerificationReport
                 new XlCell(c.ErrorPercent, XlStyle.Number3), new XlCell(c.Tolerance, XlStyle.Default),
                 new XlCell(c.Verdict, c.Pass ? XlStyle.Ok : XlStyle.Fail),
                 c.UserBookValue.HasValue ? (object)new XlCell(c.UserBookValue.Value, XlStyle.Default) : null,
-                c.UserBookSource ?? "", bookErr, c.Description, c.Error != null ? "LỖI: " + c.Error : c.Notes);
+                c.UserBookSource ?? "", c.UserKind ?? "", c.UserVerifier ?? "", c.UserDate ?? "", bookErr, c.Description, c.Error != null ? "LỖI: " + c.Error : c.Notes);
         }
 
         var lim = x.AddSheet("Giới hạn đã biết");

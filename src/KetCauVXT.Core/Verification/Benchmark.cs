@@ -46,6 +46,19 @@ public sealed class BenchmarkCase
     public double? UserBookValue { get; set; }
     /// <summary>Tên tài liệu, trang/ví dụ của giá trị theo tài liệu.</summary>
     public string UserBookSource { get; set; } = "";
+    /// <summary>Loại nguồn kiểm chứng độc lập: "Sách/giáo trình", "Ví dụ mẫu tiêu chuẩn", "Phần mềm khác (ETABS/SAP…)", "Đơn vị thẩm tra/kỹ sư độc lập", "Tính tay độc lập".</summary>
+    public string UserKind { get; set; } = "";
+    /// <summary>Người / đơn vị xác nhận (kiểm chứng độc lập).</summary>
+    public string UserVerifier { get; set; } = "";
+    /// <summary>Ngày xác nhận (dd/MM/yyyy).</summary>
+    public string UserDate { get; set; } = "";
+
+    /// <summary>Ngưỡng khi so với tài liệu = max(ngưỡng bài toán, 3%) – tài liệu thường làm tròn 2–3 chữ số.</summary>
+    [JsonIgnore]
+    public double BookTolerance => Math.Max(Tolerance, 3.0);
+    /// <summary>Kết luận so với tài liệu: null = chưa nhập.</summary>
+    [JsonIgnore]
+    public bool? BookPass => BookErrorPercent is double e ? e <= BookTolerance + 1e-12 : null;
 
     /// <summary>Sai số tương đối (%) của Kết cấu VXT so với tham chiếu: |VXT − TC| / max(|TC|, Scale)·100; NaN nếu lỗi.</summary>
     [JsonIgnore]
@@ -153,6 +166,9 @@ public sealed class VerificationUserData
     {
         public double? Value { get; set; }
         public string Source { get; set; } = "";
+        public string Kind { get; set; } = "";
+        public string Verifier { get; set; } = "";
+        public string Date { get; set; } = "";
     }
 
     public const string FileName = "KiemChung.json";
@@ -202,6 +218,40 @@ public sealed class VerificationUserData
 
     public void Save() => Save(UserFilePath);
 
+    /// <summary>Loại nguồn kiểm chứng độc lập gợi ý.</summary>
+    public static readonly string[] Kinds = { "Sách/giáo trình", "Ví dụ mẫu tiêu chuẩn", "Phần mềm khác (ETABS/SAP…)", "Đơn vị thẩm tra/kỹ sư độc lập", "Tính tay độc lập" };
+
+    /// <summary>Nhập lại file Excel báo cáo kiểm chứng (sheet "Kết quả") do bên kiểm chứng độc lập đã điền các cột
+    /// "Giá trị theo tài liệu", "Nguồn tài liệu", "Loại nguồn", "Người/đơn vị xác nhận", "Ngày xác nhận". Trả về số dòng nhận được.</summary>
+    public int ImportXlsx(string path, out string message)
+    {
+        message = "";
+        var sheets = KetCauVXT.Import.Csi.ExternalTableReader.ReadXlsxSheets(path);
+        var sh = sheets.FirstOrDefault(x => x.Name == "Kết quả");
+        if (sh.Rows == null) { message = "Không thấy sheet \"Kết quả\" trong " + Path.GetFileName(path) + "."; return 0; }
+        int hi = sh.Rows.FindIndex(r => r.Any(c => (c ?? "").Trim() == "Mã"));
+        if (hi < 0) { message = "Không thấy dòng tiêu đề (cột \"Mã\")."; return 0; }
+        var h = sh.Rows[hi].Select(c => (c ?? "").Trim()).ToList();
+        int Col(string prefix) => h.FindIndex(c => c.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        int cId = Col("Mã"), cVal = Col("Giá trị theo tài liệu"), cSrc = Col("Nguồn tài liệu"), cKind = Col("Loại nguồn"), cVer = Col("Người/đơn vị xác nhận"), cDate = Col("Ngày xác nhận");
+        if (cId < 0 || cVal < 0) { message = "Thiếu cột \"Mã\" hoặc \"Giá trị theo tài liệu\"."; return 0; }
+        string Cell(string[] r, int i) => i >= 0 && i < r.Length ? (r[i] ?? "").Trim() : "";
+        int n = 0;
+        foreach (var r in sh.Rows.Skip(hi + 1))
+        {
+            string id = Cell(r, cId);
+            if (id.Length == 0) continue;
+            string v = Cell(r, cVal).Replace(',', '.');
+            double? val = double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out double dv) ? dv : null;
+            string src = Cell(r, cSrc), kind = Cell(r, cKind), ver = Cell(r, cVer), date = Cell(r, cDate);
+            if (!val.HasValue && src.Length == 0 && ver.Length == 0) continue;
+            Entries[id] = new Entry { Value = val, Source = src, Kind = kind, Verifier = ver, Date = date };
+            n++;
+        }
+        message = n == 0 ? "File không có giá trị kiểm chứng độc lập nào." : $"Đã nhận {n} giá trị kiểm chứng độc lập.";
+        return n;
+    }
+
     /// <summary>Gán giá trị đã lưu vào các bài toán (theo Id).</summary>
     public void ApplyTo(IEnumerable<BenchmarkCase> cases)
     {
@@ -212,6 +262,9 @@ public sealed class VerificationUserData
             {
                 c.UserBookValue = e.Value;
                 c.UserBookSource = e.Source ?? "";
+                c.UserKind = e.Kind ?? "";
+                c.UserVerifier = e.Verifier ?? "";
+                c.UserDate = e.Date ?? "";
             }
         }
     }
@@ -222,8 +275,12 @@ public sealed class VerificationUserData
         foreach (var c in cases)
         {
             if (c == null || string.IsNullOrEmpty(c.Id)) continue;
-            if (!c.UserBookValue.HasValue && string.IsNullOrWhiteSpace(c.UserBookSource)) { Entries.Remove(c.Id); continue; }
-            Entries[c.Id] = new Entry { Value = c.UserBookValue, Source = (c.UserBookSource ?? "").Trim() };
+            if (!c.UserBookValue.HasValue && string.IsNullOrWhiteSpace(c.UserBookSource) && string.IsNullOrWhiteSpace(c.UserVerifier)) { Entries.Remove(c.Id); continue; }
+            Entries[c.Id] = new Entry
+            {
+                Value = c.UserBookValue, Source = (c.UserBookSource ?? "").Trim(), Kind = (c.UserKind ?? "").Trim(),
+                Verifier = (c.UserVerifier ?? "").Trim(), Date = (c.UserDate ?? "").Trim()
+            };
         }
     }
 }

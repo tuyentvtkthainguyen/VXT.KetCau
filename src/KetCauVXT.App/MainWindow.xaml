@@ -95,6 +95,7 @@
             <MenuItem Header="T_rợ giúp">
                 <MenuItem Header="Phụ lục tính toán &amp; hướng dẫn…" Click="MnuAppendix_Click" InputGestureText="F1"/>
                 <MenuItem Header="Văn bản pháp lý &amp; tiêu chuẩn áp dụng…" Click="MnuRegulations_Click"/>
+                <MenuItem Header="Kiểm chứng phần mềm…" Click="MnuVerification_Click"/>
                 <Separator/>
                 <MenuItem Header="Giới thiệu" Click="MnuAbout_Click"/>
             </MenuItem>
