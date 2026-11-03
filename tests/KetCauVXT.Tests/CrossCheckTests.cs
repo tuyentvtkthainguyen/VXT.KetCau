@@ -99,6 +99,8 @@ public static class CrossCheckTests
             int cl = beams.Col("Beam");
             var extra = (string[])beams.Rows[0].Clone();
             extra[cl] = "BX1";
+            int cu = beams.Col("Unique Name");   // ETABS khớp theo Unique Name trước – đổi luôn để là thanh lạ thật
+            if (cu >= 0) extra[cu] = "BX1";
             beams.Rows.Add(extra);
             CrossCheckSession ses = null;
             rep0 = Compare(p, r, tabs, csv, s => ses = s);

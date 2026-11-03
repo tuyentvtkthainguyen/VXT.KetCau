@@ -100,6 +100,7 @@ public static class ModalTests
                 p.Nodes.Add(new Node { Id = i + 1, Z = L * i / nEl, Restraint = rs });
             }
             for (int i = 0; i < nEl; i++) p.Frames.Add(new FrameElement { Id = i + 1, NodeI = i + 1, NodeJ = i + 2, Section = "C30x30", Kind = FrameKind.Column });
+            p.Modal.NumModes = nEl;   // lấy đủ mọi dạng để kiểm Σ tỷ lệ khối lượng = 100 %
             var mr = FrameAnalysis.Run(p).Modal;
             var sp = p.Section("C30x30").Props(); var mat = p.Material("B25");
             double mbar = mat.UnitWeight * sp.A / g;

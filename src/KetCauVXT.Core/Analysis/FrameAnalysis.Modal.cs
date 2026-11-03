@@ -433,7 +433,7 @@ public partial class FrameAnalysis
                 ? "H ≥ 40 m, f1 ≥ fL: cần xét thành phần động của gió – chỉ kể xung vận tốc gió (cách tính đơn giản)"
                 : "H ≥ 40 m, f1 < fL: cần xét thành phần động của gió với các dạng dao động có f < fL (chương trình chưa tính – người dùng tính bổ sung)";
         mr.Notes.Add($"Gió: f1 = {m1.Frequency.ToString("0.000", Inv)} Hz; tần số giới hạn fL = {fL.ToString("0.0", Inv)} Hz (vùng áp lực gió {z}, δ = {(steel ? "0,15" : "0,3")}; "
-            + $"bảng 9 TCVN 2737:1995 – đối chiếu {Std.Loads}). {dyn}.");
+            + $"giá trị bảng 9 của TCVN 2737:1995, tiêu chuẩn đã được thay thế bởi {Std.Loads} – cần đối chiếu). {dyn}.");
     }
 
     // ------------------------------------------------------------------
