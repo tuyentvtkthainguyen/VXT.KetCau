@@ -15,13 +15,13 @@ public partial class MainWindow
     /// <summary>Tự kiểm tra: mở cửa sổ, chạy, chụp ảnh, xuất báo cáo (không ghi đè dữ liệu người dùng).</summary>
     private async Task SelfTestVerification(string tag)
     {
-        VerificationUserData.UserFolderOverride = Path.Combine(SelfTestOut, "KiemChung_User");
+        VerificationUserData.UserFolderOverride = System.IO.Path.Combine(SelfTestOut, "KiemChung_User");
         var w = new VerificationWindow { Owner = this };
         w.Show();
         await w.RunAsync();
         await Pause(1200);
         ShotWindow(w, $"{tag}_41_KiemChung");
-        var (d, x) = w.Export(Path.Combine(SelfTestOut, tag + "_KiemChung"));
+        var (d, x) = w.Export(System.IO.Path.Combine(SelfTestOut, tag + "_KiemChung"));
         StLog($"kiểm chứng: {w.Result?.Summary} → {d}");
         w.Close();
         VerificationUserData.UserFolderOverride = null;
