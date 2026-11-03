@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VXT Giải Kết Cấu</title>
+<style>
+:root{--ink:#1c262b;--mute:#5a6a70;--line:#d4dcdd;--bg:#eef1f0;--paper:#fff;--acc:#0f4c5c;--acc2:#e3eef0;--ok:#1b7a3e;--bad:#b71c1c;--warn:#8a5a00;--warnbg:#fff3d6}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+#app{display:grid;grid-template-columns:262px 400px 1fr;height:100vh}
+aside,#form,#out{overflow:auto;min-height:0}
+aside{background:var(--acc);color:#e6f1f2;padding:14px 10px}
+.brand{font-weight:700;font-size:17px;padding:2px 8px 10px;color:#fff}
+.brand small{display:block;font-weight:400;font-size:12px;color:#bfe0e4}
+#search{width:100%;padding:7px 9px;border:0;border-radius:6px;margin-bottom:10px;font:inherit;color:var(--ink)}
+.mod{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#a8d2d8;padding:12px 8px 4px;font-weight:600}
+.pb{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;padding:6px 8px;border-radius:6px;font:inherit;cursor:pointer}
+.pb:hover{background:#ffffff1c}.pb.on{background:#fff;color:var(--acc);font-weight:600}
+#form{background:var(--paper);border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column}
+#form h2{margin:0 0 4px;font-size:18px;line-height:1.25}
+#desc{color:var(--mute);margin:0 0 12px;font-size:13px}
+.f{margin-bottom:9px}
+.f label{display:block;font-size:13px;margin-bottom:2px}
+.f .u{color:var(--mute);font-size:12px}
+.row{display:flex;gap:6px;align-items:center}
+input,select{font:inherit;padding:6px 8px;border:1px solid #b9c5c7;border-radius:5px;background:#fff;color:var(--ink);width:100%;min-width:0}
+input:focus,select:focus{outline:2px solid #3b8d9f;outline-offset:0;border-color:#3b8d9f}
+.help{font-size:12px;color:var(--mute);margin-top:2px}
+.tb{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+.tb table{border-collapse:collapse;width:100%}
+.tb th{font-size:11.5px;font-weight:600;background:var(--acc2);padding:4px;text-align:left;border-bottom:1px solid var(--line);min-width:64px}
+.tb td{padding:2px}.tb td input,.tb td select{padding:4px 5px;border-color:transparent;min-width:58px}
+.tb td input:hover{border-color:#b9c5c7}
+.del{background:none;border:0;color:var(--bad);cursor:pointer;font-size:15px;padding:2px 5px}
+.add{background:none;border:0;color:var(--acc);cursor:pointer;font:inherit;font-weight:600;padding:5px 2px}
+.bar{position:sticky;bottom:-16px;background:var(--paper);margin:auto -16px -16px;padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:7px;flex-wrap:wrap}
+button.pri,button.sec{font:inherit;border-radius:6px;padding:8px 13px;cursor:pointer;font-weight:600}
+button.pri{background:var(--acc);color:#fff;border:1px solid var(--acc);flex:1 1 100%}
+button.pri:hover{background:#0c3f4c}
+button.sec{background:#fff;color:var(--acc);border:1px solid #9db8bd;flex:1}
+button.sec:hover{background:var(--acc2)}button:disabled{opacity:.55;cursor:default}
+#out{padding:18px 22px}
+#toolbar{position:sticky;top:-18px;z-index:2;background:var(--bg);padding:10px 0;margin-top:-18px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+#toolbar .lbl{color:var(--mute);margin-right:3px}
+#toolbar button{flex:0 0 auto}
+#msg{margin-left:auto;font-size:13px;color:var(--mute)}
+#report{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:26px 30px;max-width:900px;font:15.5px/1.5 "Cambria","Times New Roman",serif;overflow-wrap:anywhere}
+#report h1{font-size:24px;margin:2px 0 4px}
+#report h2{font-size:18px;color:var(--acc);margin:22px 0 7px;border-bottom:1px solid var(--line);padding-bottom:3px}
+#report h3{font-size:16px;color:var(--acc);margin:14px 0 5px}#report h4{font-size:15.5px;font-style:italic;margin:10px 0 4px}
+.rep-mod{font:600 12px/1.3 "Segoe UI",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--acc)}
+.rep-std{color:var(--mute);font-style:italic}
+.verdict{display:inline-block;margin-top:9px;padding:3px 10px;border-radius:5px;font:600 13.5px "Segoe UI",sans-serif}
+.verdict.ok{background:#e2f3e7;color:var(--ok)}.verdict.bad{background:#fbe3e3;color:var(--bad)}
+.eq{margin:7px 0 7px 14px;overflow-x:auto;padding-bottom:2px}
+.eqb{white-space:nowrap}
+.fnote{display:block;color:var(--mute);font-style:italic;font-size:14px}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px}
+.fr .nu{border-bottom:1px solid currentColor;padding:0 4px}.fr .de{padding:0 4px}
+.rt .ov{border-top:1px solid currentColor;padding:0 2px}
+sub,sup{font-size:.72em;line-height:0}
+.ss{display:inline-flex;flex-direction:column;vertical-align:middle;font-size:.72em;line-height:1.05}.ss sub,.ss sup{font-size:1em;line-height:1.05;position:static}
+.tw{overflow-x:auto;margin:8px 0}
+#report table{border-collapse:collapse;width:100%;font-size:14px}
+#report th{background:var(--acc2);font-weight:600}
+#report th,#report td{border:1px solid #bcc9cb;padding:3px 7px}
+.cap,figcaption{font-style:italic;color:var(--mute);font-size:13.5px;text-align:center}
+figure{margin:12px 0;text-align:center}figure img{width:100%;height:auto}
+.chk{margin:6px 0 6px 14px;overflow-x:auto}
+.chk .tag{font:600 11.5px "Segoe UI",sans-serif;padding:1px 7px;border-radius:4px;margin-right:6px}
+.chk.ok .tag{background:#e2f3e7;color:var(--ok)}.chk.bad .tag{background:#fbe3e3;color:var(--bad)}
+.note,.warn{padding:7px 11px;border-radius:5px;margin:9px 0;font-size:14px}
+.note{background:#f1f3f4}.warn{background:var(--warnbg);color:#5c3d00}
+.res{font-weight:700;margin:4px 0 4px 2px;padding-left:12px;border-left:3px solid var(--acc)}
+#err{background:#fbe3e3;color:var(--bad);border-radius:6px;padding:9px 13px;margin-bottom:12px;display:none;max-width:900px}
+.empty{color:var(--mute);padding:60px 12px;text-align:center}
+@media(max-width:1100px){#app{grid-template-columns:230px 1fr;height:auto;min-height:100vh}#out{grid-column:1/-1}aside,#form{max-height:70vh}}
+@media(max-width:720px){#app{grid-template-columns:1fr}aside,#form{max-height:none}.bar{position:static;margin:10px 0 0;padding:10px 0 0}#report{padding:16px}#out{padding:12px}}
+</style></head><body>
+<div id="app">
+<aside><div class="brand">VXT Giải Kết Cấu<small>Lời giải chi tiết, xuất CAD, Word, slide, PDF</small></div>
+<input id="search" placeholder="Tìm dạng bài..." aria-label="Tìm dạng bài"><nav id="nav"></nav></aside>
+<section id="form"></section>
+<main id="out">
+<div id="toolbar"><span class="lbl">Xuất:</span>
+<button class="sec" data-f="dxf" disabled>CAD (.dxf)</button><button class="sec" data-f="docx" disabled>Word</button><button class="sec" data-f="pptx" disabled>Slide</button><button class="sec" data-f="pdf" disabled>PDF</button><span id="msg" role="status"></span></div>
+<div id="err" role="alert"></div>
+<div id="report"><div class="empty">Chọn dạng bài bên trái, sửa số liệu rồi bấm <b>Giải bài toán</b>.</div></div>
+</main></div>
+<script>
+const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
+let cat=null,cur=null,solved=false,store={};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num=v=>typeof v==="number"?String(v):v;
+async function init(){
+  const r=await fetch("/api/catalog");cat=await r.json();drawNav();
+  let last=null;try{last=localStorage.getItem("vxt.last")}catch(e){}
+  pick(cat.problems.find(p=>p.id===last)||cat.problems[0]);
+}
+function drawNav(q=""){
+  const n=$("#nav");n.innerHTML="";q=q.trim().toLowerCase();
+  for(const[k,name]of Object.entries(cat.modules)){
+    const list=cat.problems.filter(p=>p.module===k&&(!q||p.title.toLowerCase().includes(q)||p.desc.toLowerCase().includes(q)||name.toLowerCase().includes(q)));
+    if(!list.length)continue;
+    n.insertAdjacentHTML("beforeend",`<div class="mod">${esc(name)}</div>`);
+    for(const p of list){const b=document.createElement("button");b.className="pb"+(cur&&cur.id===p.id?" on":"");b.textContent=p.title;b.onclick=()=>pick(p);n.append(b)}
+  }
+}
+function pick(p){
+  if(cur)store[cur.id]=values();
+  cur=p;try{localStorage.setItem("vxt.last",p.id)}catch(e){}
+  drawNav($("#search").value);drawForm(store[p.id]||null);setSolved(false);
+  $("#err").style.display="none";
+  $("#report").innerHTML='<div class="empty">Sửa số liệu rồi bấm <b>Giải bài toán</b>.</div>';
+}
+function drawForm(vals){
+  const F=$("#form");F.innerHTML=`<h2>${esc(cur.title)}</h2><p id="desc">${esc(cur.desc)}</p><div id="fields"></div>
+  <div class="bar"><button class="pri" id="go">Giải bài toán</button><button class="sec" id="rst">Số liệu mẫu</button><button class="sec" id="sv">Lưu đề</button><button class="sec" id="op">Mở đề</button></div>`;
+  const box=$("#fields");
+  for(const f of cur.fields){
+    const v=vals&&f.key in vals?vals[f.key]:f.default,d=document.createElement("div");d.className="f";d.dataset.k=f.key;d.dataset.t=f.type;
+    const help=f.help?`<div class="help">${esc(f.help)}</div>`:"";
+    if(f.type==="num"){d.innerHTML=`<label for="i_${f.key}">${esc(f.label)}${f.unit?` <span class="u">(${esc(f.unit)})</span>`:""}</label><input id="i_${f.key}" inputmode="decimal" value="${esc(num(v))}">${help}`}
+    else if(f.type==="sel"){d.innerHTML=`<label for="i_${f.key}">${esc(f.label)}</label><select id="i_${f.key}">${f.options.map(o=>`<option value="${esc(o.value)}" ${String(o.value)===String(v)?"selected":""}>${esc(o.label)}</option>`).join("")}</select>${help}`}
+    else{d.innerHTML=`<label>${esc(f.label)}</label><div class="tb"><table><thead><tr>${f.cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}<th style="min-width:24px"></th></tr></thead><tbody></tbody></table></div><button type="button" class="add">+ Thêm dòng</button>${help}`;
+      const tb=$("tbody",d);(v||[]).forEach(r=>addRow(tb,f,r));$(".add",d).onclick=()=>{const blank={};f.cols.forEach(c=>blank[c.key]=Array.isArray(c.kind)?c.kind[0]:"");addRow(tb,f,blank);$("input,select",tb.lastChild).focus()}}
+    box.append(d);
+  }
+  $("#go").onclick=solve;
+  $("#rst").onclick=()=>{drawForm(null);setSolved(false)};
+  $("#sv").onclick=saveProblem;$("#op").onclick=openProblem;
+  box.addEventListener("input",()=>setSolved(false));
+  box.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.tagName==="INPUT"){e.preventDefault();solve()}});
+}
+function addRow(tb,f,r){
+  const tr=document.createElement("tr");
+  tr.innerHTML=f.cols.map(c=>Array.isArray(c.kind)?`<td><select data-c="${c.key}" aria-label="${esc(c.label)}">${c.kind.map(o=>`<option ${o===r[c.key]?"selected":""}>${esc(o)}</option>`).join("")}</select></td>`:`<td><input data-c="${c.key}" aria-label="${esc(c.label)}" value="${esc(num(r[c.key]??""))}"></td>`).join("")+`<td><button type="button" class="del" title="Xoá dòng" aria-label="Xoá dòng">×</button></td>`;
+  $(".del",tr).onclick=()=>{tr.remove();setSolved(false)};tb.append(tr);
+}
+function values(){
+  const o={};
+  for(const d of $$("#fields .f")){
+    if(d.dataset.t==="tbl"){o[d.dataset.k]=$$("tbody tr",d).map(tr=>{const r={};$$("[data-c]",tr).forEach(i=>r[i.dataset.c]=i.value);return r})}
+    else o[d.dataset.k]=$("input,select",d).value;
+  }
+  return o;
+}
+function setSolved(v){solved=v;$$("#toolbar button").forEach(b=>b.disabled=!v);if(!v)$("#msg").textContent=""}
+async function solve(){
+  const btn=$("#go");btn.disabled=true;btn.textContent="Đang giải...";$("#err").style.display="none";
+  try{
+    const r=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:cur.id,params:values()})});
+    const j=await r.json();
+    if(!r.ok){showErr(j.error);setSolved(false);return}
+    $("#report").innerHTML=j.html;setSolved(true);$("#out").scrollTop=0;
+  }catch(e){showErr("Không kết nối được với bộ giải: "+e)}
+  finally{btn.disabled=false;btn.textContent="Giải bài toán"}
+}
+function showErr(t){const e=$("#err");e.textContent=t;e.style.display="block";$("#out").scrollTop=0}
+const hasNative=()=>window.pywebview&&window.pywebview.api;
+async function exportFile(fmt,btn){
+  const m=$("#msg");btn.disabled=true;m.textContent="Đang tạo file...";
+  try{
+    if(hasNative()){
+      const r=await window.pywebview.api.save_export(fmt,cur.id,values());
+      m.textContent=r.path?"Đã lưu: "+r.path:(r.error?"Lỗi: "+r.error:"");if(r.error)showErr(r.error);return;
+    }
+    const r=await fetch("/api/export/"+fmt,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:cur.id,params:values()})});
+    if(!r.ok){const j=await r.json();showErr(j.error);m.textContent="";return}
+    const b=await r.blob(),cd=r.headers.get("Content-Disposition")||"";
+    const name=(/filename="?([^";]+)"?/.exec(cd)||[])[1]||("LoiGiai."+fmt);
+    download(b,name);m.textContent="Đã tải: "+name;
+  }catch(e){showErr("Không xuất được file: "+e);m.textContent=""}
+  finally{btn.disabled=false}
+}
+function download(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+async function saveProblem(){
+  const data=JSON.stringify({vxt:1,id:cur.id,title:cur.title,params:values()},null,1);
+  if(hasNative()){const r=await window.pywebview.api.save_text(data,cur.id+".vxtde");if(r.path)$("#msg").textContent="Đã lưu: "+r.path;return}
+  download(new Blob([data],{type:"application/json"}),cur.id+".vxtde");
+}
+async function openProblem(){
+  if(hasNative()){const r=await window.pywebview.api.open_text();if(r.text)loadProblem(r.text);return}
+  const i=document.createElement("input");i.type="file";i.accept=".vxtde,.json";i.onchange=async()=>{if(i.files[0])loadProblem(await i.files[0].text())};i.click();
+}
+function loadProblem(t){
+  try{const q=JSON.parse(t),p=cat.problems.find(x=>x.id===q.id);if(!p)throw 0;store[p.id]=q.params;cur=null;pick(p);}
+  catch(e){showErr("File đề không đọc được.")}
+}
+$$("#toolbar button").forEach(b=>b.onclick=()=>exportFile(b.dataset.f,b));
+$("#search").addEventListener("input",e=>drawNav(e.target.value));
+init();
+</script></body></html>
