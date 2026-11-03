@@ -30,6 +30,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         Materials(p, d, sec++);
         ModelSection(p, r, d, sec++);
         LoadsSection(p, r, d, sec++);
+        if (r?.Modal != null && r.Modal.Modes.Count > 0) ModalChapter(p, r, d, sec++);   // [Dao động riêng] CalculationReport.Modal.cs
         if (r != null) ForcesSummary(p, r, d, sec++);
         BeamsSection(p, s, d, sec++);
         ColumnsSection(p, s, d, sec++);
@@ -242,7 +243,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         {
             d.Heading($"{n}.5. Tải trọng động đất", 2);
             var sm = p.Seismic;
-            d.Paragraph($"Theo {Std.Seismic}, phương pháp phân tích tĩnh lực ngang tương đương: agR = {N(sm.AgR, "0.0000")}g, nền loại {sm.Soil}, γI = {N(sm.ImportanceFactor, "0.##")}, hệ số ứng xử q = {N(sm.Q, "0.##")}, ψE = {N(sm.PsiLive, "0.##")}.");
+            d.Paragraph($"Theo {Std.Seismic}, {SeismicMethodText(p)}: agR = {N(sm.AgR, "0.0000")}g, nền loại {sm.Soil}, γI = {N(sm.ImportanceFactor, "0.##")}, hệ số ứng xử q = {N(sm.Q, "0.##")}, ψE = {N(sm.PsiLive, "0.##")}.");
             d.Paragraph(Std.SeismicMethodNote, false, true);
             d.Equation("Fb = Sd(T1)·W·λ;   Fi = Fb·zi·Wi / Σ(zj·Wj);   T1 = Ct·H^(3/4)");
             var el = r?.LateralForces.Where(x => eqPats.Contains(x.Pattern)).ToList() ?? new List<StoryLateralForce>();
@@ -252,6 +253,8 @@ public static partial class CalculationReport   // thuyết minh tự động: C
                     new[] { 2.2, 1.8, 1.8, 1.8, 1.8, 7.1 }, 10);
             var eqw = r?.Warnings.FirstOrDefault(x => x.StartsWith("Động đất"));
             if (eqw != null) d.Paragraph(eqw);
+            if (p.Seismic.IsResponseSpectrum && r?.Modal != null && r.Modal.Spectrum.Count > 0)   // [Dao động riêng]
+                d.Paragraph("Lực ngang tầng ở bảng trên (tĩnh lực ngang tương đương) chỉ để tham khảo/so sánh; nội lực động đất dùng thiết kế lấy theo phân tích phổ phản ứng – xem chương Phân tích dao động riêng.", false, true);
         }
 
         d.Heading($"{n}.{(!lateralOn ? 4 : p.Seismic.Enabled && eqPats.Count > 0 ? 6 : 5)}. Tổ hợp tải trọng", 2);   // [AutoReport] !lateralOn

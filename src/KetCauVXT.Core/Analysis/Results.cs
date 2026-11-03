@@ -87,7 +87,7 @@ public class CaseResult
 }
 
 /// <summary>Toàn bộ kết quả phân tích: các trường hợp tải và tổ hợp.</summary>
-public class AnalysisResults
+public partial class AnalysisResults   // dao động riêng: Analysis/ModalResults.cs
 {
     public Project Project { get; }
     public Dictionary<string, CaseResult> Cases { get; } = new();

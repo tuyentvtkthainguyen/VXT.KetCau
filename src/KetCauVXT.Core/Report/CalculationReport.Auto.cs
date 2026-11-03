@@ -59,6 +59,7 @@ public static partial class CalculationReport
             if (c.Materials) Materials(p, d, sec++);
             if (c.Loads) { ModelSection(p, r, d, sec++); LoadsSection(p, r, d, sec++); }
             else if (c.WindSeismic) LateralOnlySection(p, r, d, sec++);
+            if ((c.Loads || c.WindSeismic) && r?.Modal != null && r.Modal.Modes.Count > 0) ModalChapter(p, r, d, sec++);   // [Dao động riêng] CalculationReport.Modal.cs
             if (c.Forces && r != null)
             {
                 int fn = sec++;

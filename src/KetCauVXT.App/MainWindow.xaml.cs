@@ -58,6 +58,7 @@ public partial class MainWindow : Window
         txtBaseElev.Text = "-1.0";
         txtFinish.Text = "1.2"; txtLive.Text = "1.5"; txtRoofLive.Text = "0.75"; txtWall.Text = "0";
 
+        InitModalUi();   // khung nhìn "Dao động" – MainWindow.Modal.cs
         SetProject(ModelBuilder.NewProject(), null);
         SetStatus("Sẵn sàng – nhập lưới trục, chiều cao tầng rồi bấm 'Tạo mô hình', hoặc mở/nhập mô hình có sẵn.");
         HandleCommandLine();
@@ -835,6 +836,7 @@ public partial class MainWindow : Window
     {
         UpdateResultSourceStatus();   // "Nội lực: nhập từ ETABS (file…)" – MainWindow.ResultImport.cs
         RedrawSecondaryViews(); // biểu đồ nội lực, móng, 3D (vẽ trễ, gộp lần gọi)
+        RefreshModalView();     // khung nhìn "Dao động" – MainWindow.Modal.cs
         lstWarnings.ItemsSource = null;
         dgForces.ItemsSource = null;
         dgReactions.ItemsSource = null;

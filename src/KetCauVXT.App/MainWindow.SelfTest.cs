@@ -137,6 +137,7 @@ public partial class MainWindow
                 StLog("dàn trang: PDF " + tag + "_DanTrang.pdf");
                 sw.Close();
             }
+            await SelfTestModal(tag); // dao động riêng – MainWindow.SelfTestModal.cs
             await SelfTestResultImport(tag);
             await SelfTestCrossCheck(tag); // so sánh ETABS/SAP – MainWindow.SelfTestCrossCheck.cs // nhập kết quả ETABS/SAP – MainWindow.SelfTestResultImport.cs
             await SelfTestRebar(tag); // chọn bố trí thép, shop drawing – MainWindow.SelfTestRebar.cs

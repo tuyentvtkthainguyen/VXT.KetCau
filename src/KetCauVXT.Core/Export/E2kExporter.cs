@@ -349,6 +349,7 @@ public static class E2kExporter
             }
             L("");
         }
+        foreach (var ml in MassSourceExport.E2kLines(p)) L(ml);   // [Dao động riêng] nguồn khối lượng – Export/MassSourceExport.cs
         L("$ LOAD CASES");
         foreach (var pat in p.Patterns)
         {

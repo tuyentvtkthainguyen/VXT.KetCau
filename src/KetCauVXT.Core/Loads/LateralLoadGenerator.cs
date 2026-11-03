@@ -39,7 +39,9 @@ public static class LateralLoadGenerator
         return v;
     }
 
-    public static List<string> Apply(Project p, List<StoryLateralForce> report)
+    /// <param name="t1X">Chu kỳ T1 theo phân tích dao động riêng cho động đất phương X (s); 0 = dùng Ct·H^0,75 (mặc định).</param>
+    /// <param name="t1Y">Như t1X, cho phương Y.</param>
+    public static List<string> Apply(Project p, List<StoryLateralForce> report, double t1X = 0, double t1Y = 0)
     {
         var warn = new List<string>();
         p.NodeLoads.RemoveAll(l => l.Source == "WIND" || l.Source == "EQ");
@@ -111,10 +113,20 @@ public static class LateralLoadGenerator
             foreach (var pat in eqPats)
             {
                 bool y = IsY(pat.Name);
+                // [Dao động riêng] T1 theo phân tích dao động riêng (ModalSettings.UseModalT1, Analysis/FrameAnalysis.Modal.cs)
+                double t1m = y ? t1Y : t1X;
+                double T1p = T1, sdp = sd, Fbp = Fb;
+                if (t1m > 0)
+                {
+                    T1p = t1m; sdp = Sd(T1p, p.Seismic);
+                    double lam = (T1p <= 2 * TC && stories.Count > 2) ? 0.85 : 1.0;
+                    Fbp = sdp * Wtot * lam;
+                    warn.Add($"Động đất {pat.Name}: T1 theo dao động riêng = {T1p:0.000} s (Ct·H^0,75 = {T1:0.000} s), Sd={sdp:0.0000}g, λ={lam}, Fb={Fbp:0.0} kN");
+                }
                 foreach (var st in stories)
                 {
-                    double F = sumZW > 0 ? Fb * (st.Elevation - p.BaseElevation) * W[st.Name] / sumZW : 0;
-                    Distribute(pat.Name, "EQ", st, y ? 0 : F, y ? F : 0, $"W={W[st.Name]:0.0} kN; T1={T1:0.000} s; Sd={sd:0.0000}g");
+                    double F = sumZW > 0 ? Fbp * (st.Elevation - p.BaseElevation) * W[st.Name] / sumZW : 0;
+                    Distribute(pat.Name, "EQ", st, y ? 0 : F, y ? F : 0, $"W={W[st.Name]:0.0} kN; T1={T1p:0.000} s; Sd={sdp:0.0000}g");
                 }
             }
         }

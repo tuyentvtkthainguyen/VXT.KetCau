@@ -539,6 +539,9 @@ RegulationTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.B
 Console.WriteLine("40. So sánh với ETABS/SAP/SAFE (không thay nội lực), báo cáo chênh lệch");
 CrossCheckTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("41. Phân tích dao động riêng, phổ phản ứng (CQC/SRSS), khối lượng tham gia");
+ModalTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

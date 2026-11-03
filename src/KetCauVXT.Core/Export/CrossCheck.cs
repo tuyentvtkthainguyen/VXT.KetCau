@@ -167,6 +167,12 @@ public class CrossModal
     public double OurPeriod { get; set; } = double.NaN;
     public double Percent { get; set; } = double.NaN;
     public string Note { get; set; } = "";
+    // ---- [Dao động riêng – Analysis/FrameAnalysis.Modal.cs] tỷ lệ khối lượng tham gia (0..1), NaN = không có ----
+    public double ExtUX { get; set; } = double.NaN;
+    public double ExtUY { get; set; } = double.NaN;
+    public double OurUX { get; set; } = double.NaN;
+    public double OurUY { get; set; } = double.NaN;
+    // ---- [hết] ----
 }
 
 /// <summary>Thống kê một nhóm đại lượng.</summary>
@@ -743,16 +749,35 @@ public class CrossCheckSession
             if (!(n.Contains("MODAL") && n.Contains("PERIOD")) && !(n.Contains("MODAL") && t.Has("Period"))) continue;
             int cm = t.Col("Mode", "StepNum", "Step Num"), cp = t.Col("Period");
             if (cp < 0) continue;
+            int cux = t.Col("UX"), cuy = t.Col("UY");   // [Dao động riêng] bảng Modal Participating Mass Ratios
             foreach (var r in t.Rows)
             {
                 if (!ExtTable.TryNum(ExtTable.Cell(r, cp), out double T)) continue;
                 int mode = ExtTable.TryNum(ExtTable.Cell(r, cm), out double md) ? (int)Math.Round(md) : rep.Modal.Count + 1;
-                if (rep.Modal.Any(x => x.Mode == mode)) continue;
-                rep.Modal.Add(new CrossModal { Mode = mode, ExtPeriod = T });
+                var ex = rep.Modal.FirstOrDefault(x => x.Mode == mode);
+                if (ex == null) rep.Modal.Add(ex = new CrossModal { Mode = mode, ExtPeriod = T });
+                if (cux >= 0 && double.IsNaN(ex.ExtUX) && ExtTable.TryNum(ExtTable.Cell(r, cux), out double ux)) ex.ExtUX = ux;
+                if (cuy >= 0 && double.IsNaN(ex.ExtUY) && ExtTable.TryNum(ExtTable.Cell(r, cuy), out double uy)) ex.ExtUY = uy;
             }
         }
         if (rep.Modal.Count == 0) return;
         rep.Modal.Sort((a, b) => a.Mode.CompareTo(b.Mode));
+        // ---- [Dao động riêng] có kết quả phân tích dao động riêng của chương trình → so sánh từng dạng ----
+        var om = Ours?.Modal;
+        if (om != null && om.Modes.Count > 0)
+        {
+            foreach (var m in rep.Modal)
+            {
+                var mine = om.Modes.FirstOrDefault(x => x.Index == m.Mode);
+                if (mine == null) { m.Note = "chương trình không tính dạng này (tăng số dạng dao động)"; continue; }
+                m.OurPeriod = mine.Period; m.OurUX = mine.Ratio[0]; m.OurUY = mine.Ratio[1];
+                m.Percent = Math.Abs(m.OurPeriod - m.ExtPeriod) / Math.Max(Math.Max(m.OurPeriod, m.ExtPeriod), 1e-6) * 100;
+                string R(double v) => double.IsNaN(v) ? "-" : (v * 100).ToString("0.0", Inv) + " %";
+                m.Note = $"phương {mine.Dominant}; UX {R(m.ExtUX)} / {R(m.OurUX)}, UY {R(m.ExtUY)} / {R(m.OurUY)} (ngoài / chương trình)";
+            }
+            return;
+        }
+        // ---- [hết] ----
         // chương trình không phân tích dao động riêng: ước lượng T1 = Ct·H^(3/4) (TCVN 9386:2012) để tham khảo
         var p = Project;
         var top = p.Stories.OrderBy(s => s.Elevation).LastOrDefault();
@@ -854,7 +879,9 @@ public class CrossCheckSession
         int memBad = rep.Members.Count(m => bad(m.Level));
         if (disp.Count > 0 && memBad <= Math.Max(1, rep.Members.Count / 20))
             H.Add("Chuyển vị lệch trong khi nội lực khớp – độ cứng khác nhau: mô đun đàn hồi bê tông, hệ số giảm độ cứng tiết diện (0,35I dầm, 0,7I cột…), biến dạng cắt, đoạn cứng đầu thanh.");
-        if (rep.Modal.Count > 0) H.Add("Chu kỳ dao động: chương trình không phân tích dao động riêng (lực động đất theo phương pháp tĩnh lực ngang tương đương, T1 = Ct·H^0,75); chu kỳ ETABS chỉ để tham khảo, nên kiểm tra khối lượng tham gia dao động (mass source).");
+        if (rep.Modal.Count > 0 && Ours?.Modal != null && Ours.Modal.Modes.Count > 0)   // [Dao động riêng]
+            H.Add("Chu kỳ dao động: so sánh với phân tích dao động riêng của chương trình – nếu lệch, kiểm tra nguồn khối lượng (mass source: tĩnh tải + ψE·hoạt tải), sàn cứng, hệ số giảm độ cứng tiết diện và khối lượng sàn (shell) trong ETABS.");
+        else if (rep.Modal.Count > 0) H.Add("Chu kỳ dao động: chương trình không phân tích dao động riêng (lực động đất theo phương pháp tĩnh lực ngang tương đương, T1 = Ct·H^0,75); chu kỳ ETABS chỉ để tham khảo, nên kiểm tra khối lượng tham gia dao động (mass source).");
         if (memBad == 0 && rep.Reactions.All(r => !bad(r.Level)) && rep.BaseReactions.All(b => !bad(b.Level)))
             H.Add($"Toàn bộ sai lệch trong ngưỡng {o.WarnPercent:0.#} % – mô hình hai phần mềm tương đương.");
     }

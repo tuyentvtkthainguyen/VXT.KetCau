@@ -124,4 +124,10 @@ public class SeismicSettings
     public double Q { get; set; } = 3.9;
     /// <summary>Hệ số tổ hợp hoạt tải khi tính khối lượng ψE = φ.ψ2</summary>
     public double PsiLive { get; set; } = 0.3;
+    // ---- [Dao động riêng – Model/ModalSettings.cs] ----
+    /// <summary>Phương pháp: SeismicMethods.Static (mặc định, tĩnh lực ngang tương đương) | SeismicMethods.ResponseSpectrum (phổ phản ứng dạng dao động).</summary>
+    public string Method { get; set; } = SeismicMethods.Static;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsResponseSpectrum => Method == SeismicMethods.ResponseSpectrum;
+    // ---- [hết] ----
 }

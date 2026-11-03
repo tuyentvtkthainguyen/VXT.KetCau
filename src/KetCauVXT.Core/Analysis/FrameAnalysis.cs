@@ -12,7 +12,7 @@ namespace KetCauVXT.Analysis;
 ///   chuyển về hệ trục tiếp tuyến của cung (e1 theo tiếp tuyến) → M3 uốn đứng, T xoắn, liên tục qua các nút trung gian.
 /// – Sàn tuyệt đối cứng trong mặt phẳng (diaphragm) bằng ràng buộc nút chủ – nút phụ.
 /// – Tải sàn dồn về dầm theo đường phân giác 45°; tải gió/động đất sinh tự động theo tầng.</summary>
-public class FrameAnalysis
+public partial class FrameAnalysis   // dao động riêng + phổ phản ứng: FrameAnalysis.Modal.cs
 {
     private readonly Project _p;
     private readonly AnalysisResults _res;
@@ -78,12 +78,14 @@ public class FrameAnalysis
         _res.Equations = _neq;
         progress?.Report("Phân tích ma trận...");
         _K.Factor();
+        ModalBeforeCases(progress);   // [Dao động riêng – FrameAnalysis.Modal.cs]
 
         foreach (var pat in _p.Patterns)
         {
             progress?.Report("Giải trường hợp " + pat.Name);
             _res.Cases[pat.Name] = SolveCase(pat);
         }
+        ModalAfterCases(progress);    // [Phổ phản ứng – FrameAnalysis.Modal.cs]
         progress?.Report("Hoàn tất");
         return _res;
     }
@@ -312,6 +314,7 @@ public class FrameAnalysis
                 s.Map[d] = _map[s.NI][d];
                 s.Map[6 + d] = _map[s.NJ][d];
             }
+        _dGroups = groups; _dMaster = master;   // [Dao động riêng – FrameAnalysis.Modal.cs]
         if (groups.Count > 0)
             _res.Warnings.Add($"Đã gán sàn cứng (diaphragm) cho {groups.Count} cao trình sàn.");
     }
@@ -374,8 +377,14 @@ public class FrameAnalysis
                     foreach (var (e, c) in s.Map[a]) F[e] += c * pg[a];
         }
         _K.Solve(F);
+        return Recover(F, pat.Name, applied);
+    }
 
-        var res = new CaseResult { Name = pat.Name };
+    /// <summary>Từ véc tơ chuyển vị theo phương trình U → chuyển vị nút, phản lực, nội lực mặt cắt.
+    /// pat: tên trường hợp có tải trên thanh (Segs/Pts/Pstar của các đoạn) – dạng dao động dùng tên rỗng ModalKey.</summary>
+    private CaseResult Recover(double[] F, string patName, Dictionary<int, double[]> applied)
+    {
+        var res = new CaseResult { Name = patName };
         foreach (var kv in _map)
         {
             var u = new double[6];
@@ -402,7 +411,7 @@ public class FrameAnalysis
             Array.Copy(DispOf(s.NJ), 0, dg, 6, 6);
             var dl = Dense.Mul(s.T, dg);
             var f = Dense.Mul(s.K, dl);
-            var ps = s.Pstar[pat.Name];
+            var ps = s.Pstar[patName];
             for (int i = 0; i < 12; i++) f[i] -= ps[i];
             endForces[s] = f;
             var fg = Dense.MulT(s.T, f);
@@ -434,14 +443,14 @@ public class FrameAnalysis
             int nseg = Math.Max(4, (int)Math.Ceiling(Lp / 0.5 - 1e-9));
             for (int i = 0; i <= nseg; i++) st.Add(Math.Round(Lp * i / nseg, 6));
             foreach (var s in subs) { st.Add(Math.Round(s.S0, 6)); st.Add(Math.Round(s.S1, 6)); }
-            foreach (var s in subs) foreach (var pt in s.Pts[pat.Name]) st.Add(Math.Round(s.S0 + pt[0] / s.Scale, 6));
+            foreach (var s in subs) foreach (var pt in s.Pts[patName]) st.Add(Math.Round(s.S0 + pt[0] / s.Scale, 6));
             var stations = st.ToArray();
             var ff = new FrameForces { Stations = stations, F = new double[stations.Length][] };
             for (int i = 0; i < stations.Length; i++)
             {
                 double x = stations[i];
                 var s = subs.FirstOrDefault(q => x <= q.S1 + 1e-9) ?? subs[^1];
-                ff.F[i] = SectionForce(s, endForces[s], (x - s.S0) * s.Scale, pat.Name);
+                ff.F[i] = SectionForce(s, endForces[s], (x - s.S0) * s.Scale, patName);
                 if (_arcs.TryGetValue(f.Id, out var arc)) ff.F[i] = ToArcAxes(s, ff.F[i], arc, x / Math.Max(Lp, 1e-12));
             }
             res.Frames[f.Id] = ff;

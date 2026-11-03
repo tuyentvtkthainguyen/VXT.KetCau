@@ -30,6 +30,7 @@ public static class ExcelReport
             var cv = x.AddSheet("Chuyen vi");
             ForceTables.AddDisplacements(r, cv);
             if (r.LateralForces.Count > 0) ForceTables.AddLateral(r, x.AddSheet("Luc ngang tang"));
+            if (r.Modal != null && r.Modal.Modes.Count > 0) ModalReport.AddSheet(p, r.Modal, x.AddSheet("Dao động riêng"));   // [Dao động riêng] Report/ModalReport.cs
         }
         SheetBeams(p, s, x.AddSheet("Dam"));
         SheetColumns(s, x.AddSheet("Cot"));

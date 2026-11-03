@@ -211,6 +211,7 @@ public static class S2kExporter
         T("LOAD PATTERN DEFINITIONS");
         foreach (var pat in p.Patterns)
             L($"   LoadPat={Q(pat.Name)}   DesignType={SapType(pat.Type)}   SelfWtMult={F(pat.SelfWeight)}");
+        foreach (var ml in MassSourceExport.S2kLines(p, Q)) L(ml);   // [Dao động riêng] nguồn khối lượng – Export/MassSourceExport.cs
         T("LOAD CASE DEFINITIONS");
         foreach (var pat in p.Patterns)
             L($"   Case={Q(pat.Name)}   Type=LinStatic   InitialCond=Zero   DesignType={SapType(pat.Type)}   DesignAct=Non-Composite   AutoType=None   RunCase=Yes");

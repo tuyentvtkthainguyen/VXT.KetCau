@@ -61,6 +61,7 @@
             <MenuItem Header="_Phân tích">
                 <MenuItem Header="Tạo tổ hợp tải" Click="MnuCombos_Click"/>
                 <MenuItem Header="Chạy phân tích" Click="MnuRun_Click" InputGestureText="F5"/>
+                <MenuItem Header="Dao động riêng…" Click="MnuModal_Click" ToolTip="Nguồn khối lượng, sàn cứng, số dạng dao động, phương pháp động đất (tĩnh lực ngang tương đương / phổ phản ứng) – MainWindow.Modal.cs"/>
                 <MenuItem Header="Nhập kết quả _nội lực (ETABS/SAP/SAFE/khác)…" Click="MnuImportResults_Click"/>
                 <MenuItem Header="So sánh với ETABS/SAP/SAFE…" Click="MnuCrossCheck_Click" ToolTip="Đối chiếu kết quả phân tích của chương trình với bảng kết quả xuất từ ETABS/SAP2000/SAFE – không thay kết quả hiện hành"/>
             </MenuItem>
