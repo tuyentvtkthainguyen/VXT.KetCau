@@ -53,7 +53,11 @@ public static class VerificationReport
         d.EmptyLine();
         d.Paragraph($"Kết quả: {r.ProblemCount} bài toán, {r.Count} đại lượng so sánh – {r.Passed} đạt, {r.Failed} không đạt.", true, false, ParaAlign.Center);
         d.Paragraph(r.AllPass ? "Mọi đại lượng nằm trong ngưỡng sai số cho phép." : "CÓ ĐẠI LƯỢNG VƯỢT NGƯỠNG – xem mục Kết luận.", true, false, ParaAlign.Center);
-        d.EmptyLine().EmptyLine();
+        d.EmptyLine();
+        d.Paragraph("BÁO CÁO TỰ KIỂM CHỨNG CỦA NHÀ PHÁT TRIỂN (Kết cấu VXT – Vũ Xuân Tuyến). Chưa được bên thứ ba độc lập xác nhận; "
+                    + "đáp số tham chiếu là lời giải giải tích hoặc tính lại độc lập theo công thức tiêu chuẩn. Kết quả kiểm chứng độc lập (nếu có) ghi tại mục 5.",
+            true, false, ParaAlign.Center);
+        d.EmptyLine();
         d.Paragraph("Tài liệu được lập tự động bởi chức năng Trợ giúp → Kiểm chứng phần mềm. Giá trị tham chiếu là lời giải giải tích hoặc tính tay độc lập; "
                     + "so sánh với ví dụ của sách / tài liệu đã xuất bản chờ người dùng nhập.", false, true, ParaAlign.Center);
         d.PageBreak();
@@ -123,7 +127,7 @@ public static class VerificationReport
         }
 
         // ---- 5. so với tài liệu ----
-        d.Heading("5. So sánh với tài liệu (sách, ví dụ mẫu)", 1);
+        d.Heading("5. Kiểm chứng độc lập – so sánh với tài liệu, bên thứ ba (sách, ví dụ mẫu, đơn vị thẩm tra)", 1);
         var book = r.Cases.Where(c => c.UserBookValue.HasValue).ToList();
         if (book.Count == 0)
             d.Paragraph("Chưa có giá trị theo tài liệu nào được nhập. Người dùng nhập tại Trợ giúp → Kiểm chứng phần mềm (cột \"Giá trị theo tài liệu\" và \"Nguồn tài liệu\"), "

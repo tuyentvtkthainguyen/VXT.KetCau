@@ -542,6 +542,9 @@ CrossCheckTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.B
 Console.WriteLine("41. Phân tích dao động riêng, phổ phản ứng (CQC/SRSS), khối lượng tham gia");
 ModalTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("42. Bộ kiểm chứng phần mềm – Báo cáo kiểm chứng (Word/Excel)");
+VerificationTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

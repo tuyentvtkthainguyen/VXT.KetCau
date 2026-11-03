@@ -224,6 +224,7 @@ jobs:
           git rm -rf --cached . | Out-Null
           git add -f dist/KetCauVXT-win-x64.zip
           if (Test-Path dist/setup) { git add -f dist/setup/* }
+          if (Test-Path KetQuaMau/KiemChung) { git add -f KetQuaMau/KiemChung/* }
           if (Test-Path ManHinh) { git add -f ManHinh/*.png ManHinh/selftest.log }
           git commit -m "Ban phat hanh tu $env:GITHUB_SHA"
           git push -f origin ketcau-vxt-dist
