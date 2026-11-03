@@ -62,6 +62,7 @@
                 <MenuItem Header="Tạo tổ hợp tải" Click="MnuCombos_Click"/>
                 <MenuItem Header="Chạy phân tích" Click="MnuRun_Click" InputGestureText="F5"/>
                 <MenuItem Header="Nhập kết quả _nội lực (ETABS/SAP/SAFE/khác)…" Click="MnuImportResults_Click"/>
+                <MenuItem Header="So sánh với ETABS/SAP/SAFE…" Click="MnuCrossCheck_Click" ToolTip="Đối chiếu kết quả phân tích của chương trình với bảng kết quả xuất từ ETABS/SAP2000/SAFE – không thay kết quả hiện hành"/>
             </MenuItem>
             <MenuItem Header="T_hiết kế">
                 <MenuItem Header="Thiết kế BTCT" Click="MnuDesignConcrete_Click"/>

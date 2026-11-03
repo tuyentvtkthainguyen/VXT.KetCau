@@ -536,6 +536,9 @@ PileSetbackCuTramTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppCo
 Console.WriteLine("39. Văn bản pháp lý & tiêu chuẩn hiện hành (Luật 135/2025, NĐ 217/2026, TT 34/38/2026, TCVN 9386-1:2025), nhập định mức Excel");
 RegulationTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("40. So sánh với ETABS/SAP/SAFE (không thay nội lực), báo cáo chênh lệch");
+CrossCheckTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

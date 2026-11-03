@@ -15,7 +15,12 @@ public enum XlStyle
     Integer = 5,
     Fail = 6,
     Ok = 7,
-    Title = 8
+    Title = 8,
+    // ---- [So sánh ETABS/SAP – ô số 0.00 có nền màu: xanh ≤ ngưỡng cảnh báo, cam cảnh báo, đỏ vượt ngưỡng] ----
+    FillOk = 9,
+    FillWarn = 10,
+    FillFail = 11
+    // ---- [hết] ----
 }
 
 /// <summary>Giá trị ô kèm định dạng riêng: <c>new XlCell("KHÔNG ĐẠT", XlStyle.Fail)</c>.</summary>
@@ -302,7 +307,7 @@ public class XlsxWriter
 
     // numFmt 164 = 0.00 ; 165 = 0.000 ; built-in 1 = 0
     // cellXfs: 0 mặc định; 1 tiêu đề (đậm, nền, viền, giữa, xuống dòng); 2 số 0.00; 3 đậm; 4 số 0.000; 5 số nguyên;
-    //          6 chữ đỏ đậm (không đạt); 7 chữ xanh (đạt); 8 tiêu đề lớn
+    //          6 chữ đỏ đậm (không đạt); 7 chữ xanh (đạt); 8 tiêu đề lớn; 9/10/11 nền xanh/cam/đỏ (so sánh ETABS)
     private const string StylesXml =
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
         "<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" +
@@ -314,13 +319,17 @@ public class XlsxWriter
         "<font><sz val=\"11\"/><color rgb=\"FF00703C\"/><name val=\"Times New Roman\"/><family val=\"1\"/></font>" +
         "<font><b/><sz val=\"14\"/><name val=\"Times New Roman\"/><family val=\"1\"/></font>" +
         "</fonts>" +
-        "<fills count=\"3\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill>" +
-        "<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFD9E2F3\"/><bgColor indexed=\"64\"/></patternFill></fill></fills>" +
+        "<fills count=\"6\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill>" +
+        "<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFD9E2F3\"/><bgColor indexed=\"64\"/></patternFill></fill>" +
+        // [So sánh ETABS/SAP] nền xanh / cam / đỏ (fillId 3, 4, 5)
+        "<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFC6EFCE\"/><bgColor indexed=\"64\"/></patternFill></fill>" +
+        "<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFD8A8\"/><bgColor indexed=\"64\"/></patternFill></fill>" +
+        "<fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFC7CE\"/><bgColor indexed=\"64\"/></patternFill></fill></fills>" +
         "<borders count=\"2\"><border><left/><right/><top/><bottom/><diagonal/></border>" +
         "<border><left style=\"thin\"><color auto=\"1\"/></left><right style=\"thin\"><color auto=\"1\"/></right>" +
         "<top style=\"thin\"><color auto=\"1\"/></top><bottom style=\"thin\"><color auto=\"1\"/></bottom><diagonal/></border></borders>" +
         "<cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs>" +
-        "<cellXfs count=\"9\">" +
+        "<cellXfs count=\"12\">" +
         "<xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"/>" +
         "<xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf>" +
         "<xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\"/>" +
@@ -330,6 +339,10 @@ public class XlsxWriter
         "<xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"/>" +
         "<xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"/>" +
         "<xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"/>" +
+        // [So sánh ETABS/SAP] 9 xanh, 10 cam, 11 đỏ – số 0.00, viền mảnh
+        "<xf numFmtId=\"164\" fontId=\"0\" fillId=\"3\" borderId=\"1\" xfId=\"0\" applyNumberFormat=\"1\" applyFill=\"1\" applyBorder=\"1\"/>" +
+        "<xf numFmtId=\"164\" fontId=\"0\" fillId=\"4\" borderId=\"1\" xfId=\"0\" applyNumberFormat=\"1\" applyFill=\"1\" applyBorder=\"1\"/>" +
+        "<xf numFmtId=\"164\" fontId=\"2\" fillId=\"5\" borderId=\"1\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\"/>" +
         "</cellXfs>" +
         "<cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles>" +
         "</styleSheet>";
