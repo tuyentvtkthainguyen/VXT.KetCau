@@ -60,6 +60,10 @@ public class FrameSection
     public double ModJ { get; set; } = 1.0;
     public double ModA { get; set; } = 1.0;
 
+    /// <summary>[BeamTools] Màu hiển thị trên mặt bằng, dạng "#RRGGBB"; null/rỗng = màu mặc định theo loại thanh.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string DisplayColor { get; set; }
+
     public bool IsTapered => Shape == SectionShape.WeldedI && Math.Abs(HEnd - HStart) > 1e-6;
 
     public override string ToString() => Name;

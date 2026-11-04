@@ -119,6 +119,7 @@ public partial class MainWindow
             await SelfTestPileLayout(tag); // bố trí cọc – MainWindow.SelfTestPileLayout.cs
             await SelfTestEccentricFooting(tag);
             await SelfTestCuTram(tag); // lùi cọc khỏi ranh, cừ tràm – MainWindow.SelfTestCuTram.cs // móng lệch tâm – MainWindow.SelfTestEccentric.cs
+            await SelfTestBeamTools(tag, story); // vẽ dầm kiểu ETABS – MainWindow.SelfTestBeamTools.cs
             await SelfTestCurvedBeam(tag, story); // dầm cong – MainWindow.SelfTestCurved.cs
             await SelfTestGeoAppendix(tag);
             await SelfTestRegulation(tag);

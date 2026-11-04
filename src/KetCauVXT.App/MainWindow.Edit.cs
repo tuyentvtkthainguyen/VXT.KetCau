@@ -16,7 +16,8 @@ namespace KetCauVXT.App;
 // =====================================================================
 public partial class MainWindow
 {
-    private enum PlanEditMode { Select, AddSlab, Balcony, Stair, Void, WC, Delete, AddBeam, AddWall, AssignWall, AssignBuildUp, AddCurvedBeam }
+    private enum PlanEditMode { Select, AddSlab, Balcony, Stair, Void, WC, Delete, AddBeam, AddWall, AssignWall, AssignBuildUp, AddCurvedBeam,
+        /* [BeamTools] MainWindow.BeamTools.cs */ QuickGridBeam, SecondaryBeam, CantileverBeam, MultiSelect }
 
     private PlanEditMode _mode = PlanEditMode.Select;
 
@@ -41,7 +42,8 @@ public partial class MainWindow
         PlanEditMode.Void => "Thêm giếng trời: bấm vào ô sàn / ô kín bởi dầm để biến thành giếng trời, thông tầng.",
         PlanEditMode.WC => "Sàn vệ sinh: bấm vào ô sàn để đổi thành sàn vệ sinh; bấm lại ô WC để trả về phòng ở.",
         PlanEditMode.Delete => "Xoá: bấm vào tường, dầm, cột (hỏi lại), ô sàn hoặc lỗ sàn (cầu thang, giếng trời) để xoá.",
-        PlanEditMode.AddBeam => "Thêm dầm: bấm điểm đầu rồi điểm cuối (bắt nút, giao trục, lưới 50 mm); bấm tiếp để vẽ nối; Esc để dừng.",
+        PlanEditMode.AddBeam => "Thêm dầm: bấm điểm đầu rồi điểm cuối (bắt đầu dầm, nút, giao trục, giao điểm, trung điểm, vuông góc, điểm trên dầm – bật/tắt ở thanh 'Bắt điểm'); gõ số để nhập toạ độ x,y | @dx,dy | L<góc | L; bấm tiếp để vẽ nối; chuột phải / Esc để dừng.",
+        PlanEditMode.QuickGridBeam or PlanEditMode.SecondaryBeam or PlanEditMode.CantileverBeam or PlanEditMode.MultiSelect => BeamToolHint(m),   // [BeamTools]
         PlanEditMode.AddCurvedBeam => "Thêm dầm cong: bấm điểm đầu, điểm cuối rồi một điểm bất kỳ trên cung (định độ vồng); bấm tiếp để vẽ nối; Esc để dừng.",
         PlanEditMode.AddWall => "Thêm tường: bấm điểm đầu rồi điểm cuối (loại tường, chiều cao, diện tích cửa theo ô nhập); Esc để dừng.",
         PlanEditMode.AssignWall => "Gán tường: bấm vào dầm để đặt tường suốt chiều dài dầm (thay tường cũ trùng vị trí).",
@@ -101,7 +103,8 @@ public partial class MainWindow
     private void PlanClick(Point s)
     {
         if (_p == null) return;
-        if (_mode == PlanEditMode.Select) { SelectAt(s); return; }
+        if (_mode == PlanEditMode.Select) { _multiSel.Clear(); SelectAt(s); return; }
+        if (_mode == PlanEditMode.MultiSelect) { MultiSelectClick(s); return; }   // [BeamTools]
         if (_busy) { SetStatus("Chương trình đang tính toán – chờ xong rồi sửa mô hình."); return; }
         string st = CurrentStory;
         if (st == AllStories || _p.Stories.All(q => q.Name != st))
@@ -109,6 +112,7 @@ public partial class MainWindow
             SetStatus("Chọn một tầng cụ thể ở ô 'Tầng đang xem' trước khi sửa mặt bằng.");
             return;
         }
+        if (BeamToolClick(s, st)) return;   // [BeamTools] vẽ nhanh theo lưới, dầm phụ, công xôn – MainWindow.BeamTools.cs
         var (x, y) = S2W(s);
         // dầm / tường: bấm điểm đầu (chưa sửa mô hình)
         (double X, double Y) pEnd = default, pStart = default;
@@ -145,7 +149,7 @@ public partial class MainWindow
                 {
                     string sec = cbEditBeamSec.SelectedItem as string;
                     if (string.IsNullOrEmpty(sec)) { SetStatus("Chọn tiết diện dầm ở ô 'Tiết diện dầm' trước."); return; }
-                    r = ModelEdit.AddBeam(_p, st, pStart.X, pStart.Y, pEnd.X, pEnd.Y, sec);
+                    r = AddBeamScoped(st, pStart, pEnd, sec);   // [BeamTools] đúng toạ độ đã bắt + phạm vi tầng (thay ModelEdit.AddBeam)
                     if (r.Ok) _lineStart = pEnd; // vẽ nối tiếp
                     break;
                 }
@@ -305,6 +309,7 @@ public partial class MainWindow
             SetStatus(ModeHint(_mode));
             return true;
         }
+        if (esc && CancelBeamTool()) return true;   // [BeamTools] khung chọn / chọn nhiều
         if (esc)
         {
             if (rbModeSelect.IsChecked != true) rbModeSelect.IsChecked = true;
@@ -333,6 +338,7 @@ public partial class MainWindow
     private void DeleteSelection()
     {
         if (_busy) return;
+        if (DeleteMultiSelection()) return;   // [BeamTools] xoá nhiều dầm đã chọn
         string snap;
         EditResult r;
         object select = null;
@@ -440,6 +446,7 @@ public partial class MainWindow
     private (double X, double Y) SnapPlan(string story, double x, double y)
     {
         double tol = Math.Clamp(10 / Math.Max(_scale, 1e-6), 0.15, 0.5);
+        if (UseEtabsSnap) return EtabsSnap(story, x, y, tol);   // [BeamTools] bắt điểm kiểu ETABS cho ＋ Dầm
         return ModelEdit.Snap(_p, story, x, y, tol);
     }
 
@@ -504,6 +511,7 @@ public partial class MainWindow
     /// <summary>Ký hiệu điểm bắt: ô vuông = nút có sẵn, dấu × = giao trục, chấm tròn = lưới 50 mm.</summary>
     private void DrawSnapMarker(string story, (double X, double Y) pt, Brush br, bool filled)
     {
+        if (!filled && DrawEtabsSnapGlyph(pt)) return;   // [BeamTools] ký hiệu điểm bắt kiểu ETABS
         var c = W2S(pt.X, pt.Y);
         double z = ModelEdit.StoryZ(_p, story);
         bool onNode = _p.Nodes.Any(n => Math.Abs(n.Z - z) < 0.01 && Math.Abs(n.X - pt.X) < 1e-4 && Math.Abs(n.Y - pt.Y) < 1e-4);

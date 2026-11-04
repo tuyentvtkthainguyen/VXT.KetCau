@@ -172,6 +172,10 @@ public static class FramingPlan
             if (len < 1) continue;
             var si = DrawUtil.SectionOf(p, f.Section);
             double hw = si.B * 500, ux = (x2 - x1) / len, uy = (y2 - y1) / len, nx = -uy * hw, ny = ux * hw;
+            {   // [BeamTools] điểm chèn / dời ngang: tim tiết diện lệch khỏi đường nút (dương = trái hướng I→J)
+                double off = BeamTools.LateralOffset(p, f) * 1000;
+                if (Math.Abs(off) > 0.01) { x1 -= uy * off; y1 += ux * off; x2 -= uy * off; y2 += ux * off; }
+            }
             string lt = dashedBeams ? "DASHED" : null;
             w.Line(Lay.BeTong, x1 + nx, y1 + ny, x2 + nx, y2 + ny, lt);
             w.Line(Lay.BeTong, x1 - nx, y1 - ny, x2 - nx, y2 - ny, lt);

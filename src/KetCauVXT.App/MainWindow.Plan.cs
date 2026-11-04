@@ -195,11 +195,12 @@ public partial class MainWindow
         {
             var ni = _p.Nodes.FirstOrDefault(n => n.Id == f.NodeI); var nj = _p.Nodes.FirstOrDefault(n => n.Id == f.NodeJ);
             if (ni == null || nj == null) continue;
-            var a = W2S(ni.X, ni.Y); var b = W2S(nj.X, nj.Y);
+            var (a, b) = BeamPlanEnds(f, ni, nj);   // [BeamTools] dời theo điểm chèn / dời ngang
             double width = BeamPlanWidth(f);
+            var beamBr = SectionBrush(f) ?? (f.IsConcrete ? BeamBrush : SteelBrush);   // [BeamTools] màu theo tiết diện
             var arcB = SafeArc(f);
-            if (arcB != null) { DrawCurvedBeamPlan(f, arcB, f.IsConcrete ? BeamBrush : SteelBrush, width, labels); continue; } // dầm cong (MainWindow.CurvedBeam.cs)
-            AddLine(a, b, f.IsConcrete ? BeamBrush : SteelBrush, width, false);
+            if (arcB != null) { DrawCurvedBeamPlan(f, arcB, beamBr, width, labels); continue; } // dầm cong (MainWindow.CurvedBeam.cs)
+            AddLine(a, b, beamBr, width, false);
             if (labels)
             {
                 var m = new Point((a.X + b.X) / 2, (a.Y + b.Y) / 2);
@@ -354,6 +355,7 @@ public partial class MainWindow
     private void DrawHover()
     {
         planOverlay.Children.Clear();
+        if (DrawBeamToolOverlay()) return;   // [BeamTools] chọn nhiều, khung chọn, công cụ dầm – MainWindow.BeamTools.cs
         if (_p != null && !_panning && IsLineMode) { DrawLineToolOverlay(); return; }
         if (_p == null || _hover == null || _panning) return;
         if (ReferenceEquals(_hover, _selWall)) return;
@@ -382,7 +384,7 @@ public partial class MainWindow
                     });
                     break;
                 }
-                var a = W2S(ni.X, ni.Y); var b = W2S(nj.X, nj.Y);
+                var (a, b) = BeamPlanEnds(f, ni, nj);   // [BeamTools]
                 target.Children.Add(new Shapes.Line
                 {
                     X1 = a.X, Y1 = a.Y, X2 = b.X, Y2 = b.Y, Stroke = stroke, StrokeThickness = BeamPlanWidth(f) + (hover ? 3 : 5),
@@ -485,6 +487,7 @@ public partial class MainWindow
         _panStart = e.GetPosition(planHost);
         _panOx = _ox; _panOy = _oy;
         planHost.CaptureMouse();
+        BeginBeamWindow();   // [BeamTools] khung chọn (Vẽ nhanh theo lưới / Chọn nhiều)
     }
 
     private void PlanHost_MouseMove(object sender, MouseEventArgs e)
@@ -492,7 +495,7 @@ public partial class MainWindow
         if (!_panning)
         {
             _lastMouse = e.GetPosition(planHost);
-            if (IsLineMode) { DrawHover(); return; }   // dây chun + điểm bắt (MainWindow.Edit.cs)
+            if (IsLineMode || IsBeamToolMode) { DrawHover(); return; }   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
             UpdateHover(_lastMouse.Value);
             return;
         }
@@ -500,6 +503,7 @@ public partial class MainWindow
         double dx = p.X - _panStart.X, dy = p.Y - _panStart.Y;
         if (!_dragged && Math.Abs(dx) + Math.Abs(dy) < 4) return;
         _dragged = true;
+        if (_winDrag) { _winEnd = p; DrawHover(); return; }   // [BeamTools] kéo khung chọn thay vì di chuyển
         _ox = _panOx + dx; _oy = _panOy + dy;
         RedrawPlan();
     }
@@ -509,6 +513,7 @@ public partial class MainWindow
         if (!_panning) return;
         _panning = false;
         planHost.ReleaseMouseCapture();
+        if (EndBeamWindow(e.GetPosition(planHost))) return;   // [BeamTools]
         if (!_dragged) PlanClick(e.GetPosition(planHost));
     }
 

@@ -103,6 +103,17 @@ public class FrameElement
     public string ExternalName { get; set; } = "";
     /// <summary>Tầng của đối tượng trong ETABS (nhãn ETABS lặp lại ở mỗi tầng: khoá khớp = tầng + nhãn). Rỗng với SAP2000.</summary>
     public string ExternalStory { get; set; } = "";
+    // ---- [BeamTools: điểm chèn + dời ngang trên mặt bằng – Model/BeamTools.cs] ----
+    /// <summary>Điểm chèn tiết diện (như "Cardinal point" của ETABS): điểm nào của tiết diện nằm trên đường nối nút I–J.
+    /// Mặc định trọng tâm. Mép trái/phải tính theo hướng I→J nhìn từ trên xuống. Chỉ dùng cho bản vẽ/mặt bằng và xuất ETABS
+    /// (CARDINALPT); phân tích của chương trình bỏ qua (đường trục thanh vẫn qua hai nút).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public BeamInsertion Insertion { get; set; }
+    /// <summary>Dời ngang tiết diện trên mặt bằng, m, vuông góc trục thanh (dương = sang trái hướng I→J). Cộng thêm với dời do
+    /// <see cref="Insertion"/> (mép trái/phải = ∓b/2). Chỉ dùng cho bản vẽ; phân tích bỏ qua.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public double PlanOffset { get; set; }
+    // ---- [hết BeamTools] ----
 
     /// <summary>Thanh có khai báo độ cong (|f| &gt; 0,1 mm). Hình học cung: <see cref="CurvedBeam.Arc(Project, FrameElement)"/>.</summary>
     [System.Text.Json.Serialization.JsonIgnore]

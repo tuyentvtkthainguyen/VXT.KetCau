@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         txtFinish.Text = "1.2"; txtLive.Text = "1.5"; txtRoofLive.Text = "0.75"; txtWall.Text = "0";
 
         InitModalUi();   // khung nhìn "Dao động" – MainWindow.Modal.cs
+        InitBeamToolsUi();   // thanh công cụ dầm kiểu ETABS – MainWindow.BeamTools.cs
         SetProject(ModelBuilder.NewProject(), null);
         SetStatus("Sẵn sàng – nhập lưới trục, chiều cao tầng rồi bấm 'Tạo mô hình', hoặc mở/nhập mô hình có sẵn.");
         HandleCommandLine();

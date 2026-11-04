@@ -545,6 +545,9 @@ ModalTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDi
 Console.WriteLine("42. Bộ kiểm chứng phần mềm – Báo cáo kiểm chứng (Word/Excel)");
 VerificationTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("43. Khai báo tiết diện, vẽ dầm kiểu ETABS (toạ độ, ô lưới, dầm phụ theo khoảng cách, công xôn, sao chép, phạm vi tầng)");
+BeamToolsTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

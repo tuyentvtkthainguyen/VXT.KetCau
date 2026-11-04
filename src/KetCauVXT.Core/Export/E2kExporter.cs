@@ -235,7 +235,7 @@ public static class E2kExporter
             for (int i = 0; i < 6; i++) if ((flip ? f.ReleaseJ : f.ReleaseI)[i]) rel.Add(rn[i] + "I");
             for (int i = 0; i < 6; i++) if ((flip ? f.ReleaseI : f.ReleaseJ)[i]) rel.Add(rn[i] + "J");
             if (rel.Count > 0) sb2.Append($"  RELEASE \"{string.Join(" ", rel)}\"");
-            if (f.Kind == FrameKind.Column || f.Kind == FrameKind.Beam) sb2.Append("  CARDINALPT 10");
+            if (f.Kind == FrameKind.Column || f.Kind == FrameKind.Beam) sb2.Append($"  CARDINALPT {(f.Kind == FrameKind.Beam ? BeamTools.EtabsCardinal(f.Insertion) : 10)}");   // [BeamTools] điểm chèn dầm
             sb2.Append("  MAXSTASPC 0.5  AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
             if (curved.TryGetValue(f.Id, out var csegs))
             {
@@ -248,7 +248,7 @@ public static class E2kExporter
                     if (sg.K == 0) for (int i = 0; i < 6; i++) if (f.ReleaseI[i]) relc.Add(rn[i] + "I");
                     if (sg.K == sg.Count - 1) for (int i = 0; i < 6; i++) if (f.ReleaseJ[i]) relc.Add(rn[i] + "J");
                     if (relc.Count > 0) sb3.Append($"  RELEASE \"{string.Join(" ", relc)}\"");
-                    if (f.Kind == FrameKind.Beam) sb3.Append("  CARDINALPT 10");
+                    if (f.Kind == FrameKind.Beam) sb3.Append($"  CARDINALPT {BeamTools.EtabsCardinal(f.Insertion)}");   // [BeamTools]
                     sb3.Append("  MAXSTASPC 0.5  AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
                     L(sb3.ToString());
                 }

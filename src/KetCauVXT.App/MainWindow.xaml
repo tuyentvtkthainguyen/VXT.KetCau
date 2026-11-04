@@ -52,6 +52,7 @@
                 <MenuItem Header="Tạo khung BTCT từ lưới trục" Click="MnuBuildGrid_Click"/>
                 <MenuItem Header="Tạo khung thép tiền chế..." Click="MnuBuildPortal_Click"/>
                 <MenuItem Header="Chia thanh tại nút" Click="MnuSplit_Click"/>
+                <MenuItem Header="Khai báo tiết diện dầm/cột…" Click="MnuSectionManager_Click" ToolTip="Thêm / sao chép / sửa / đổi tên / xoá tiết diện, nhập từ dự án khác (như Define → Frame Sections của ETABS) – MainWindow.BeamTools.cs"/>
                 <Separator/>
                 <MenuItem Header="Loại tường…" Click="MnuWallTypes_Click"/>
                 <MenuItem Header="Tường đã khai báo…" Click="MnuWallList_Click"/>
