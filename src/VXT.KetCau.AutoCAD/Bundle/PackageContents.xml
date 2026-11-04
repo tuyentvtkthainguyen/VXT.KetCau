@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ApplicationPackage SchemaVersion="1.0" AutodeskProduct="AutoCAD" ProductType="Application"
                     Name="VXT Kết cấu" AppVersion="1.0.0" Author="Vũ Xuân Tuyến"
-                    Description="Triển khai hồ sơ kết cấu BTCT từ kiến trúc: sinh khung, ETABS/SAP2000, thiết kế TCVN 5574:2018, shop drawing thép tự động"
+                    Description="Tự động triển khai hồ sơ thiết kế kiến trúc và kết cấu BTCT: đọc mặt bằng DWG, nhập thông số hoặc ETABS/SAP2000, thiết kế TCVN 5574:2018, vẽ tờ bản vẽ có khung tên"
                     ProductCode="{70B25BD3-B26E-4688-A965-6A9A2AB79593}" UpgradeCode="{E43127D0-7E64-44E1-A1E7-074AE71A57A3}">
   <CompanyDetails Name="VXT" />
   <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R24.1" SeriesMax="R25.9" />

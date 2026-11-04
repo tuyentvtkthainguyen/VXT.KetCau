@@ -11,7 +11,7 @@ namespace VXT.KetCau.Dwg
     /// Ghi DXF R12 ASCII tối giản (mở được bằng mọi phiên bản AutoCAD/BricsCAD/ZWCAD).
     /// Chữ tiếng Việt mã hoá \U+XXXX, font Arial; đơn vị mm.
     /// </summary>
-    public class DxfWriter : IDraw2D
+    public class DxfWriter : IDraw2DEx
     {
         readonly StringBuilder ent = new StringBuilder();
         readonly Dictionary<string, int> layers = new Dictionary<string, int>();
@@ -22,6 +22,9 @@ namespace VXT.KetCau.Dwg
             // Lớp theo quy ước Kết cấu Soft: mỗi loại nét một lớp
             AddLayer("BE_TONG", 7); AddLayer("THEP", 1); AddLayer("DAI", 3); AddLayer("KICH_THUOC", 4);
             AddLayer("CHU", 2); AddLayer("KY_HIEU", 6); AddLayer("TRUC", 8); AddLayer("BANG", 7);
+            // Lớp hồ sơ kiến trúc, khung tên
+            AddLayer("TUONG", 7); AddLayer("COT", 7); AddLayer("CUA", 3); AddLayer("HATCH", 8); AddLayer("THANG", 5); AddLayer("PHONG", 2);
+            AddLayer("KHUNG", 7); AddLayer("GIANG", 7); AddLayer("LATNEN", 9); AddLayer("THIETBI", 5); AddLayer("VXT_NHANDIEN", 6);
         }
 
         public void AddLayer(string name, int color) { layers[name] = color; }
@@ -55,6 +58,26 @@ namespace VXT.KetCau.Dwg
             if (Math.Abs(rotDeg) > 1e-6) G(50, rotDeg);
             if (h != 0 || v != 0) { G(72, h.ToString()); G(11, x); G(21, y); G(31, 0); G(73, v.ToString()); }
         }
+
+        public void Arc(string layer, double cx, double cy, double r, double startDeg, double endDeg)
+        {
+            G(0, "ARC"); G(8, layer); G(10, cx); G(20, cy); G(30, 0); G(40, r); G(50, startDeg); G(51, endDeg);
+        }
+
+        /// <summary>DXF R12 không có HATCH: tứ giác tô đặc dùng SOLID, còn lại tô bằng nét.</summary>
+        public void Hatch(string layer, IList<(double x, double y)> poly, string pattern, double spacing)
+        {
+            if (pattern == "SOLID" && poly.Count == 4)
+            {
+                G(0, "SOLID"); G(8, layer);
+                G(10, poly[0].x); G(20, poly[0].y); G(30, 0); G(11, poly[1].x); G(21, poly[1].y); G(31, 0);
+                G(12, poly[3].x); G(22, poly[3].y); G(32, 0); G(13, poly[2].x); G(23, poly[2].y); G(33, 0);
+                return;
+            }
+            Draw2DEx.HatchLines(this, layer, poly, pattern == "SOLID" ? spacing * 0.25 : spacing);
+        }
+
+        public void SetScale(double scale) { }
 
         /// <summary>DXF R12: không tạo DIMENSION thật — để bộ dựng hình vẽ bằng nét + chữ.</summary>
         public bool Dimension(double x0, double y0, double x1, double y1, double lineY, bool vertical, string overrideText) => false;

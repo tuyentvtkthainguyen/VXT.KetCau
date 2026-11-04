@@ -52,6 +52,7 @@ namespace CSiAPIv1
         cAnalyze Analyze { get; }
         cAnalysisResults Results { get; }
         cView View { get; }
+        cDesignConcrete DesignConcrete { get; }
     }
     public interface cFile { int NewBlank(); int Save(string fileName = ""); }
     public interface cView { int RefreshView(int window = 0, bool zoom = true); }
@@ -62,6 +63,9 @@ namespace CSiAPIv1
         int GetPoints(string name, ref string point1, ref string point2);
         int SetInsertionPoint(string name, int cardinalPoint, bool mirror2, bool stiffTransform, ref double[] offset1, ref double[] offset2, string cSys = "Local", eItemType itemType = eItemType.Objects);
         int SetLoadDistributed(string name, string loadPat, int myType, int dir, double dist1, double dist2, double val1, double val2, string cSys = "Global", bool relDist = true, bool replace = true, eItemType itemType = eItemType.Objects);
+        int GetNameList(ref int numberNames, ref string[] myName);
+        int GetSection(string name, ref string propName, ref string sAuto);
+        int GetLocalAxes(string name, ref double ang, ref bool advanced);
     }
     public interface cAreaObj
     {
@@ -69,6 +73,9 @@ namespace CSiAPIv1
         int SetDiaphragm(string name, string diaphragmName, eItemType itemType = eItemType.Objects);
         int SetAutoMesh(string name, int meshType, int n1 = 2, int n2 = 2, double maxSize1 = 0, double maxSize2 = 0, bool pointOnEdgeFromLine = false, bool pointOnEdgeFromPoint = false, bool extendCookieCutLines = false, double rotation = 0, double maxSizeGeneral = 0, bool localAxesOnEdge = false, bool localAxesOnFace = false, bool restraintsOnEdge = false, bool restraintsOnFace = false, string group = "ALL", bool subMesh = false, double subMeshSize = 0, eItemType itemType = eItemType.Objects);
         int SetLoadUniform(string name, string loadPat, double value, int dir, bool replace = true, string cSys = "Global", eItemType itemType = eItemType.Objects);
+        int GetNameList(ref int numberNames, ref string[] myName);
+        int GetPoints(string name, ref int numberPoints, ref string[] point);
+        int GetProperty(string name, ref string propName);
     }
     public interface cPointObj
     {
@@ -76,6 +83,7 @@ namespace CSiAPIv1
         int AddCartesian(double x, double y, double z, ref string name, string userName = "", string cSys = "Global", bool mergeOff = false, int mergeNumber = 0);
         int SetDiaphragm(string name, eDiaphragmOption diaphragmOption, string diaphragmName = "");
         int SetLoadForce(string name, string loadPat, ref double[] value, bool replace = false, string cSys = "Global", eItemType itemType = eItemType.Objects);
+        int GetCoordCartesian(string name, ref double x, ref double y, ref double z, string cSys = "Global");
     }
     public interface cDiaphragm { int SetDiaphragm(string name, bool semiRigid); }
     public interface cPropMaterial
@@ -93,11 +101,13 @@ namespace CSiAPIv1
         int SetRebarBeam(string name, string matPropLong, string matPropConfine, double coverTop, double coverBot, double topLeftArea, double topRightArea, double botLeftArea, double botRightArea);
         int SetRebarColumn(string name, string matPropLong, string matPropConfine, int pattern, int confineType, double cover, int numberCBars, int numberR3Bars, int numberR2Bars, string rebarSize, string tieSize, double tieSpacingLongit, int number2DirTieBars, int number3DirTieBars, bool toBeDesigned);
         int SetModifiers(string name, ref double[] value);
+        int GetRectangle(string name, ref string fileName, ref string matProp, ref double t3, ref double t2, ref int color, ref string notes, ref string guid);
     }
     public interface cPropArea
     {
         int SetSlab(string name, eSlabType slabType, eShellType shellType, string matProp, double thickness, int color = -1, string notes = "", string guid = "");
         int SetShell_1(string name, int shellType, bool includeDrillingDOF, string matProp, double matAng, double thickness, double bending, int color = -1, string notes = "", string guid = "");
+        int GetSlab(string name, ref eSlabType slabType, ref eShellType shellType, ref string matProp, ref double thickness, ref int color, ref string notes, ref string guid);
     }
     public interface cStory
     {
@@ -117,6 +127,12 @@ namespace CSiAPIv1
     {
         int Add(string name, int comboType);
         int SetCaseList(string name, ref eCNameType cNameType, string cName, double sf);
+        int GetNameList(ref int numberNames, ref string[] myName);
+    }
+    public interface cDesignConcrete
+    {
+        int GetSummaryResultsBeam(string name, ref int numberItems, ref string[] frameName, ref double[] location, ref string[] topCombo, ref double[] topArea, ref string[] botCombo, ref double[] botArea, ref string[] vMajorCombo, ref double[] vMajorArea, ref string[] tlCombo, ref double[] tlArea, ref string[] ttCombo, ref double[] ttArea, ref string[] errorSummary, ref string[] warningSummary, eItemType itemType = eItemType.Objects);
+        int GetSummaryResultsColumn(string name, ref int numberItems, ref string[] frameName, ref int[] myOption, ref double[] location, ref string[] pmmCombo, ref double[] pmmArea, ref double[] pmmRatio, ref string[] vMajorCombo, ref double[] avMajor, ref string[] vMinorCombo, ref double[] avMinor, ref string[] errorSummary, ref string[] warningSummary, eItemType itemType = eItemType.Objects);
     }
     public interface cAnalyze { int RunAnalysis(); }
     public interface cAnalysisResultsSetup { int DeselectAllCasesAndCombosForOutput(); int SetComboSelectedForOutput(string name, bool selected = true); }

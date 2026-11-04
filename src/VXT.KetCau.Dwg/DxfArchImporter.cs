@@ -38,6 +38,13 @@ namespace VXT.KetCau.Dwg
         /// <summary>Dịch gốc toạ độ để các tầng trùng nhau (mm).</summary>
         public double OffsetX { get; set; }
         public double OffsetY { get; set; }
+        /// <summary>Khung chọn tầng khi nhiều tầng vẽ chung một bản vẽ (đơn vị bản vẽ). Null = cả bản vẽ.</summary>
+        public double[] Window { get; set; }
+        /// <summary>Điểm gốc của tầng trong bản vẽ (thường là giao trục đầu) — trừ đi để các tầng trùng nhau.</summary>
+        public double BaseX { get; set; }
+        public double BaseY { get; set; }
+        /// <summary>Chỉ khai cao độ, không đọc hình (vd cốt mái không có mặt bằng riêng).</summary>
+        public bool LevelOnly { get; set; }
     }
 
     /// <summary>
@@ -53,23 +60,49 @@ namespace VXT.KetCau.Dwg
         public double MinWallThickness { get; set; } = 90;
         public double MaxWallThickness { get; set; } = 450;
         public List<string> Log { get; } = new List<string>();
+        /// <summary>Hệ số đổi đơn vị đã dùng ở lần đọc gần nhất.</summary>
+        public double ScaleUsed { get; private set; } = 1;
+
+        static P2 Anchor(DxfEntity e)
+        {
+            switch (e)
+            {
+                case DxfLine l: return (l.A + l.B) * 0.5;
+                case DxfPolyline p when p.Points.Count > 0: return new P2(p.Points.Average(q => q.X), p.Points.Average(q => q.Y));
+                case DxfCircle c: return c.Center;
+                case DxfArc a: return a.Center;
+                case DxfText t: return t.At;
+            }
+            return default;
+        }
+
+        static bool InWindow(DxfEntity e, double[] w)
+        {
+            if (w == null || w.Length != 4) return true;
+            var p = Anchor(e);
+            return p.X >= Math.Min(w[0], w[2]) && p.X <= Math.Max(w[0], w[2]) && p.Y >= Math.Min(w[1], w[3]) && p.Y <= Math.Max(w[1], w[3]);
+        }
 
         public ArchModel Import(IList<FloorPlanInput> plans, string odaExe = null)
         {
             if (plans.Count == 0) throw new ArgumentException("Chưa chọn mặt bằng nào");
-            var a = new ArchModel { Source = "DWG/DXF", ProjectName = Path.GetFileNameWithoutExtension(plans[0].Path) };
+            var a = new ArchModel { Source = "DWG/DXF", ProjectName = Path.GetFileNameWithoutExtension(plans.First(p => !p.LevelOnly).Path) };
             var ordered = plans.OrderBy(p => p.Elevation).ToList();
             foreach (var p in ordered) a.Levels.Add(new ArchLevel { Name = p.LevelName, Elevation = p.Elevation, IsRoof = p.IsRoof });
 
             for (int i = 0; i < ordered.Count; i++)
             {
                 var plan = ordered[i];
+                if (plan.LevelOnly) continue;
                 string file = plan.Path;
                 if (file.EndsWith(".dwg", StringComparison.OrdinalIgnoreCase)) file = DwgConverter.ToDxf(file, odaExe);
                 var dxf = DxfReader.Load(file);
+                if (plan.Window != null) dxf.Entities.RemoveAll(e => !InWindow(e, plan.Window));
                 double k = UnitScale > 0 ? UnitScale : GuessScale(dxf);
+                ScaleUsed = k;
                 var off = new P2(plan.OffsetX, plan.OffsetY);
-                Func<P2, P2> T = q => new P2(q.X * k, q.Y * k) + off;
+                var bas = new P2(plan.BaseX, plan.BaseY);
+                Func<P2, P2> T = q => new P2((q.X - bas.X) * k, (q.Y - bas.Y) * k) + off;
                 double height = i + 1 < ordered.Count ? ordered[i + 1].Elevation - plan.Elevation : 0;
                 string top = i + 1 < ordered.Count ? ordered[i + 1].LevelName : null;
 
@@ -99,9 +132,14 @@ namespace VXT.KetCau.Dwg
                     }
                 }
                 int wn = 0;
-                foreach (var (center, thick) in PairWalls(wallSegs.Where(s => s.Length > 200).ToList()))
-                    a.Walls.Add(new ArchWall { Id = $"{plan.LevelName}-W{++wn}", Line = center, Thickness = thick, BaseLevel = plan.LevelName, TopLevel = top,
+                var wallGaps = new List<(P2 center, double width, string wallId)>();
+                foreach (var (center, thick, gaps) in PairWalls(wallSegs.Where(s => s.Length > 200).ToList()))
+                {
+                    string wid = $"{plan.LevelName}-W{++wn}";
+                    a.Walls.Add(new ArchWall { Id = wid, Line = center, Thickness = thick, BaseLevel = plan.LevelName, TopLevel = top,
                                                BaseElevation = plan.Elevation, Height = height, Material = thick >= 200 ? "Gạch đặc" : "Gạch rỗng" });
+                    foreach (var g in gaps) wallGaps.Add((g.center, g.width, wid));
+                }
 
                 // ----- Cột
                 int cn = 0;
@@ -114,6 +152,51 @@ namespace VXT.KetCau.Dwg
                     a.Columns.Add(new ArchColumn { Id = $"{plan.LevelName}-C{++cn}", Center = ctr, B = b, H = h, RotationDeg = rot, BaseLevel = plan.LevelName, TopLevel = top });
                 }
 
+                // ----- Cửa đi: cung mở cửa — tâm cung là bản lề, bán kính là bề rộng cánh
+                var hinges = new List<(P2 hinge, double r, ArchWall host, P2 onWall, int side, DxfArc arc)>();
+                foreach (var arc in dxf.Entities.OfType<DxfArc>().Where(x => LayerMap.Match(x.Layer, Layers.Door)))
+                {
+                    var c = T(arc.Center);
+                    double r = arc.R * k;
+                    if (r < 400 || r > 1800) continue;
+                    var host = a.Walls.Where(w => w.BaseLevel == plan.LevelName && w.Line.DistanceTo(c) <= w.Thickness)
+                                      .OrderBy(w => w.Line.DistanceTo(c)).FirstOrDefault();
+                    if (host == null) continue;
+                    double mid = (arc.StartDeg + (((arc.EndDeg - arc.StartDeg) % 360 + 360) % 360) / 2) * Math.PI / 180;
+                    var tip = new P2(Math.Cos(mid), Math.Sin(mid));
+                    var d = host.Line.Dir; var n = new P2(-d.Y, d.X);
+                    var onWall = host.Line.A + d * (c - host.Line.A).Dot(d);
+                    hinges.Add((c, r, host, onWall, tip.Dot(n) >= 0 ? 1 : -1, arc));
+                }
+                var usedArc = new HashSet<int>();
+                for (int h1 = 0; h1 < hinges.Count; h1++)
+                {
+                    if (usedArc.Contains(h1)) continue;
+                    var h = hinges[h1];
+                    var d = h.host.Line.Dir;
+                    double mid = (h.arc.StartDeg + (((h.arc.EndDeg - h.arc.StartDeg) % 360 + 360) % 360) / 2) * Math.PI / 180;
+                    double along = new P2(Math.Cos(mid), Math.Sin(mid)).Dot(d);
+                    // hai cánh đối đầu trên cùng tường → một cửa hai cánh
+                    int mate = -1;
+                    for (int h2 = h1 + 1; h2 < hinges.Count; h2++)
+                        if (!usedArc.Contains(h2) && hinges[h2].host == h.host && Math.Abs(hinges[h2].onWall.DistanceTo(h.onWall) - (hinges[h2].r + h.r)) < 60) { mate = h2; break; }
+                    P2 center; double width; int hingeEnd;
+                    if (mate >= 0)
+                    {
+                        usedArc.Add(mate);
+                        center = (h.onWall + hinges[mate].onWall) * 0.5;
+                        width = h.r + hinges[mate].r;
+                        hingeEnd = 0;
+                    }
+                    else
+                    {
+                        center = h.onWall + d * (along >= 0 ? h.r / 2 : -h.r / 2);
+                        width = h.r;
+                        hingeEnd = along >= 0 ? 0 : 1;
+                    }
+                    a.Openings.Add(new ArchOpening { HostWallId = h.host.Id, Level = plan.LevelName, Location = center, Width = Math.Round(width / 10) * 10, Height = 2200, SillHeight = 0, Kind = "Cửa đi", HingeEnd = hingeEnd, SwingSide = h.side });
+                }
+
                 // ----- Cửa → lỗ trên tường gần nhất
                 foreach (var g in dxf.Entities.Where(x => LayerMap.Match(x.Layer, Layers.Door)).GroupBy(x => x.Layer))
                 {
@@ -124,17 +207,26 @@ namespace VXT.KetCau.Dwg
                         if (s.Length < 600 || s.Length > 3000) continue;
                         var host = a.Walls.Where(w => w.BaseLevel == plan.LevelName && Parallel(w.Line, s) && w.Line.DistanceTo(s.Mid) < w.Thickness).FirstOrDefault();
                         if (host == null) continue;
-                        if (a.Openings.Any(o => o.HostWallId == host.Id && o.Location.DistanceTo(s.Mid) < 300)) continue;
+                        // nét nằm trong bề rộng một cửa đã có (khung, cánh) thì bỏ qua
+                        if (a.Openings.Any(o => o.HostWallId == host.Id && (o.Location - s.Mid).Length < o.Width / 2 + 100)) continue;
                         bool door = g.Key.ToUpperInvariant().Contains("CUA DI") || g.Key.ToUpperInvariant().Contains("DOOR");
-                        a.Openings.Add(new ArchOpening { HostWallId = host.Id, Location = s.Mid, Width = s.Length, Height = door ? 2200 : 1400, SillHeight = door ? 0 : 900, Kind = door ? "Cửa đi" : "Cửa sổ" });
+                        a.Openings.Add(new ArchOpening { HostWallId = host.Id, Level = plan.LevelName, Location = s.Mid, Width = s.Length, Height = door ? 2200 : 1400, SillHeight = door ? 0 : 900, Kind = door ? "Cửa đi" : "Cửa sổ" });
                     }
                 }
 
-                // ----- Tên phòng (đánh dấu bằng ô vuông nhỏ quanh chữ; FramingGenerator nhận theo điểm)
-                var roomRx = new Regex("(P\\.?|PHÒNG|WC|VỆ SINH|BẾP|KHÁCH|NGỦ|SẢNH|HÀNH LANG|BAN CÔNG|LÔ GIA|KHO|GARA|THỜ|SÂN|MÁI|LÀM VIỆC|ĂN|SINH HOẠT)", RegexOptions.IgnoreCase);
-                foreach (var t in dxf.Entities.OfType<DxfText>().Where(x => LayerMap.Match(x.Layer, Layers.Room) || roomRx.IsMatch(x.Text)))
+                // ----- Khe trên tường mà chưa có cửa nào: ghi nhận là lỗ mở, chờ người dùng xác nhận loại
+                foreach (var gp in wallGaps)
                 {
-                    if (!roomRx.IsMatch(t.Text) || t.Text.Length > 40) continue;
+                    var host = a.Walls.First(w => w.Id == gp.wallId);
+                    if (a.Openings.Any(o => o.HostWallId == host.Id && o.Location.DistanceTo(gp.center) < Math.Max(o.Width, gp.width) / 2)) continue;
+                    a.Openings.Add(new ArchOpening { HostWallId = host.Id, Level = plan.LevelName, Location = gp.center, Width = Math.Round(gp.width / 10) * 10, Height = 1400, SillHeight = 900, Kind = "Cửa sổ" });
+                    Log.Add($"{plan.LevelName}: khe tường rộng {gp.width:0} tại {gp.center} tạm coi là cửa sổ — kiểm tra lại");
+                }
+
+                // ----- Tên phòng (đánh dấu bằng ô vuông nhỏ quanh chữ; FramingGenerator nhận theo điểm)
+                foreach (var t in dxf.Entities.OfType<DxfText>())
+                {
+                    if (!IsRoomName(t.Text)) continue;
                     var c = T(t.At);
                     a.Rooms.Add(new ArchRoom { Name = t.Text, Usage = t.Text, Level = plan.LevelName,
                         Boundary = { new P2(c.X - 50, c.Y - 50), new P2(c.X + 50, c.Y - 50), new P2(c.X + 50, c.Y + 50), new P2(c.X - 50, c.Y + 50) } });
@@ -161,6 +253,13 @@ namespace VXT.KetCau.Dwg
             Log.Add($"Tổng: {a.Grids.Count} trục, {a.Walls.Count} tường, {a.Columns.Count} cột");
             return a;
         }
+
+        static readonly Regex RoomRx = new Regex(@"(^P\.|^PN\d*$|^PK$|\bPHÒNG\b|^WC\b|\bVỆ SINH\b|\bBẾP\b|\bKHÁCH\b|\bNGỦ\b|\bSẢNH\b|\bHÀNH LANG\b|\bBAN CÔNG\b|\bLÔ GIA\b|\bKHO\b|\bGARA\b|\bTHỜ\b|\bSÂN\b|\bLÀM VIỆC\b|\bĂN\b|\bSINH HOẠT\b|\bTẮM\b)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        static readonly Regex NotRoomRx = new Regex(@"(MẶT BẰNG|MẶT ĐỨNG|MẶT CẮT|CHI TIẾT|TỈ LỆ|TỶ LỆ|\bTL\b|GHI CHÚ|BẢN VẼ|CÔNG TRÌNH)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        /// <summary>Chữ có phải tên phòng không: phải khớp từ khoá nguyên từ, không phải tên hình hay ghi chú.</summary>
+        public static bool IsRoomName(string text)
+            => !string.IsNullOrWhiteSpace(text) && text.Length <= 40 && RoomRx.IsMatch(text) && !NotRoomRx.IsMatch(text);
 
         /// <summary>Tự nhận biết đơn vị: kích thước bao &lt; 500 → mét (×1000), &lt; 5000 → cm (×10), còn lại mm.</summary>
         static double GuessScale(DxfReader dxf)
@@ -197,8 +296,8 @@ namespace VXT.KetCau.Dwg
             return res;
         }
 
-        /// <summary>Ghép cặp đường biên tường song song cách nhau trong [MinWall, MaxWall] → tim tường + chiều dày.</summary>
-        IEnumerable<(Seg2 center, double thick)> PairWalls(List<Seg2> segs)
+        /// <summary>Ghép cặp đường biên tường song song cách nhau trong [MinWall, MaxWall] → tim tường + chiều dày + các khe (lỗ cửa).</summary>
+        IEnumerable<(Seg2 center, double thick, List<(P2 center, double width)> gaps)> PairWalls(List<Seg2> segs)
         {
             var used = new HashSet<int>();
             var result = new List<(Seg2, double)>();
@@ -228,30 +327,50 @@ namespace VXT.KetCau.Dwg
                 double t = Math.Round(bestD / 10) * 10;
                 if (!result.Any(r => r.Item1.DistanceTo(c0) < Tol.Snap && r.Item1.DistanceTo(c1) < Tol.Snap)) result.Add((new Seg2(c0, c1), t));
             }
-            // nối các đoạn tim tường thẳng hàng liền nhau (tường bị cắt bởi cột/cửa)
-            var merged = new List<(Seg2, double)>();
+            // nối các đoạn tim tường thẳng hàng liền nhau (tường bị cắt bởi cột/cửa); khe ≥ 500 mm giữa hai đoạn là lỗ mở
+            var merged = new List<(Seg2, double, List<(P2, double)>)>();
             foreach (var g in result.GroupBy(r => r.Item2))
             {
-                var segsT = g.Select(r => r.Item1).ToList();
+                var pieces = g.Select(r => new List<Seg2> { r.Item1 }).ToList();
                 bool changed = true;
                 while (changed)
                 {
                     changed = false;
-                    for (int i = 0; i < segsT.Count && !changed; i++)
-                        for (int j = i + 1; j < segsT.Count && !changed; j++)
+                    for (int i = 0; i < pieces.Count && !changed; i++)
+                        for (int j = i + 1; j < pieces.Count && !changed; j++)
                         {
-                            var s1 = segsT[i]; var s2 = segsT[j];
+                            var s1 = Span(pieces[i]); var s2 = Span(pieces[j]);
                             if (!Parallel(s1, s2) || Math.Abs((s2.A - s1.A).Cross(s1.Dir)) > Tol.Snap) continue;
                             double gap = Math.Min(Math.Min(s1.A.DistanceTo(s2.A), s1.A.DistanceTo(s2.B)), Math.Min(s1.B.DistanceTo(s2.A), s1.B.DistanceTo(s2.B)));
                             bool overlap = s1.DistanceTo(s2.A) < Tol.Mm || s1.DistanceTo(s2.B) < Tol.Mm;
                             if (gap > 2500 && !overlap) continue; // khe ≤ 2.5 m (lỗ cửa) coi là cùng tường
-                            var pts = new[] { s1.A, s1.B, s2.A, s2.B }.OrderBy(p => (p - s1.A).Dot(s1.Dir)).ToList();
-                            segsT[i] = new Seg2(pts.First(), pts.Last()); segsT.RemoveAt(j); changed = true;
+                            pieces[i].AddRange(pieces[j]); pieces.RemoveAt(j); changed = true;
                         }
                 }
-                merged.AddRange(segsT.Select(s => (s, g.Key)));
+                foreach (var list in pieces)
+                {
+                    var whole = Span(list);
+                    var dir = whole.Dir;
+                    var iv = list.Select(q => (a: Math.Min((q.A - whole.A).Dot(dir), (q.B - whole.A).Dot(dir)), b: Math.Max((q.A - whole.A).Dot(dir), (q.B - whole.A).Dot(dir)))).OrderBy(q => q.a).ToList();
+                    var gaps = new List<(P2, double)>();
+                    double reach = iv[0].b;
+                    for (int i = 1; i < iv.Count; i++)
+                    {
+                        if (iv[i].a - reach >= 500) gaps.Add((whole.A + dir * ((reach + iv[i].a) / 2), iv[i].a - reach));
+                        reach = Math.Max(reach, iv[i].b);
+                    }
+                    merged.Add((whole, g.Key, gaps));
+                }
             }
             return merged;
+        }
+
+        /// <summary>Đoạn bao các đoạn thẳng hàng.</summary>
+        static Seg2 Span(List<Seg2> list)
+        {
+            var d = list[0].Dir; var o = list[0].A;
+            var pts = list.SelectMany(q => new[] { q.A, q.B }).OrderBy(p => (p - o).Dot(d)).ToList();
+            return new Seg2(pts.First(), pts.Last());
         }
 
         /// <summary>Hình chữ nhật bao nhỏ nhất của đa giác (gần đúng theo cạnh dài nhất).</summary>

@@ -47,6 +47,9 @@ namespace VXT.KetCau.AutoCAD
             try { ModelIo.Save(Get(doc), StateFile(doc)); } catch { }
         }
 
+        /// <summary>Dữ liệu đầu vào đổi: phải thiết kế lại.</summary>
+        public static void ClearResult(Document doc) { results.Remove(Key(doc)); }
+
         public static WorkflowResult Result(Document doc) => results.TryGetValue(Key(doc), out var r) ? r : null;
 
         public static WorkflowResult Detail(Document doc)

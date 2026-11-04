@@ -5,6 +5,7 @@ using VXT.KetCau.Core.Codes;
 using VXT.KetCau.Core.Design;
 using VXT.KetCau.Core.Detailing;
 using VXT.KetCau.Core.Geometry;
+using VXT.KetCau.Core.Input;
 using VXT.KetCau.Core.Model;
 
 namespace VXT.KetCau.Core.Workflow
@@ -101,8 +102,10 @@ namespace VXT.KetCau.Core.Workflow
             {
                 var sec = m.Section(b.Section);
                 var f = b.Forces;
-                if (f == null) { warnings.Add($"Dầm {b.Label ?? b.Id} chưa có nội lực"); f = new BeamForces(); }
+                bool manual = !string.IsNullOrWhiteSpace(b.ManualTop) && !string.IsNullOrWhiteSpace(b.ManualBottom) && !string.IsNullOrWhiteSpace(b.ManualStirrupSupport);
+                if (f == null) { if (!manual) warnings.Add($"Dầm {b.Label ?? b.Id} chưa có nội lực"); f = new BeamForces(); }
                 b.Design = bd.Design(sec.B, sec.H, f.MnegLeft, f.MposSpan, f.MnegRight, f.VmaxLeft, f.VmaxRight, set.BeamBarDiameters, set.StirrupDiameters, f.Tmax);
+                ApplyManual(b, warnings);
                 foreach (var w in b.Design.Warnings) warnings.Add($"Dầm {b.Label ?? b.Id} ({b.Story}): {w}");
             }
 
@@ -111,6 +114,7 @@ namespace VXT.KetCau.Core.Workflow
             {
                 var sec = m.Section(c.Section);
                 c.Design = cd.Design(sec.B, sec.H, c.Length, c.Forces?.Sets, set.ColumnBarDiameters, set.StirrupDiameters);
+                ApplyManual(c, sec, warnings);
                 foreach (var w in c.Design.Warnings) warnings.Add($"Cột tại {c.Location} ({c.BaseStory}→{c.TopStory}): {w}");
             }
 
@@ -123,7 +127,56 @@ namespace VXT.KetCau.Core.Workflow
                 double extra = m.AreaLoads.Where(a => a.SlabId == s.Id && a.Pattern == "HTHT").Sum(a => a.Value);
                 double q = 1.1 * 25 * t / 1000 + Tcvn2737.SuperDeadFactor * extra + Tcvn2737.LiveFactor(s.LiveLoad) * s.LiveLoad;
                 s.Design = sd.Design(t, l1, l2, q, set.SlabBarDiameters, s.Forces);
+                if (!string.IsNullOrWhiteSpace(s.ManualBottom)) { s.Design.Bottom1 = RebarText.ParseSlab(s.ManualBottom); s.Design.Bottom2 = RebarText.ParseSlab(s.ManualBottom); }
+                if (!string.IsNullOrWhiteSpace(s.ManualTop)) { s.Design.Top1 = RebarText.ParseSlab(s.ManualTop); s.Design.Top2 = RebarText.ParseSlab(s.ManualTop); }
                 foreach (var w in s.Design.Warnings) warnings.Add($"Sàn {s.Label}: {w}");
+            }
+        }
+
+        /// <summary>Thép người dùng đặt thay kết quả tự chọn; nếu nội lực có sẵn thì so với diện tích cần để cảnh báo.</summary>
+        static void ApplyManual(BeamElem b, List<string> warnings)
+        {
+            var d = b.Design;
+            string who = $"Dầm {b.Label ?? b.Id} ({b.Story})";
+            void Check(FlexureResult req, BarGroup g, string where)
+            {
+                if (req != null && req.AsReq > g.Area * 1.001)
+                    warnings.Add($"{who}: thép đặt {where} {g.Text()} ({g.Area:0} mm²) nhỏ hơn yêu cầu {req.AsReq:0} mm²");
+            }
+            if (!string.IsNullOrWhiteSpace(b.ManualTop))
+            {
+                var g = RebarText.ParseBars(b.ManualTop);
+                Check(d.TopLeft, g, "trên gối trái"); Check(d.TopRight, g, "trên gối phải");
+                d.TopLeftBars = g; d.TopRightBars = g;
+            }
+            if (!string.IsNullOrWhiteSpace(b.ManualBottom))
+            {
+                var g = RebarText.ParseBars(b.ManualBottom);
+                Check(d.Bottom, g, "dưới");
+                d.BottomBars = g;
+            }
+            if (!string.IsNullOrWhiteSpace(b.ManualStirrupSupport)) d.StirrupSupport = RebarText.ParseStirrup(b.ManualStirrupSupport);
+            if (!string.IsNullOrWhiteSpace(b.ManualStirrupSpan)) d.StirrupSpan = RebarText.ParseStirrup(b.ManualStirrupSpan);
+            else if (!string.IsNullOrWhiteSpace(b.ManualStirrupSupport)) d.StirrupSpan = RebarText.ParseStirrup(b.ManualStirrupSupport);
+        }
+
+        static void ApplyManual(ColumnElem c, ConcreteSection sec, List<string> warnings)
+        {
+            var d = c.Design;
+            if (!string.IsNullOrWhiteSpace(c.ManualBars))
+            {
+                var g = RebarText.ParseBars(c.ManualBars);
+                double asAuto = d.As;
+                var (nb, nh) = RebarText.SplitColumnBars(g.N, sec.B, sec.H);
+                d.Nb = nb; d.Nh = nh; d.D = g.D;
+                if (c.Forces != null && d.As < asAuto * 0.999)
+                    warnings.Add($"Cột tại {c.Location} ({c.BaseStory}→{c.TopStory}): thép đặt {g.Text()} ({d.As:0} mm²) ít hơn thép tự chọn ({asAuto:0} mm²)");
+            }
+            if (!string.IsNullOrWhiteSpace(c.ManualStirrup))
+            {
+                var st = RebarText.ParseStirrup(c.ManualStirrup);
+                d.Stirrup = st;
+                d.StirrupDense = new StirrupSpec { D = st.D, Legs = st.Legs, S = Math.Max(100, st.S / 2) };
             }
         }
 
@@ -201,6 +254,11 @@ namespace VXT.KetCau.Core.Workflow
             res.Elements.AddRange(RebarSchedule.MergeIdentical(slabEls));
             var foots = RebarSchedule.MergeIdentical(footEls).ToList();
             for (int i = 0; i < foots.Count; i++) Relabel(foots[i], $"M{i + 1}");
+            foreach (var f in m.Footings)
+            {
+                var owner = foots.FirstOrDefault(e => e.SourceIds.Contains(f.Id));
+                if (owner != null) f.Label = owner.Label;
+            }
             res.Elements.AddRange(foots);
 
             foreach (var e in res.Elements)

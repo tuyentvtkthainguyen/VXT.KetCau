@@ -156,6 +156,10 @@ namespace VXT.KetCau.Core.Model
         public double Length => TopZ - BaseZ;
         public ColumnForces Forces { get; set; }
         public Design.ColumnDesignResult Design { get; set; }
+        /// <summary>Thép người dùng đặt (bỏ qua chọn thép tự động), vd "8Ø20". Trống = tự chọn.</summary>
+        public string ManualBars { get; set; }
+        /// <summary>Đai người dùng đặt, vd "Ø8a150" (giữa cột; vùng đầu cột giảm một nửa, tối thiểu 100).</summary>
+        public string ManualStirrup { get; set; }
     }
 
     public class BeamElem : StructElem
@@ -172,6 +176,11 @@ namespace VXT.KetCau.Core.Model
         public double Length => Start.DistanceTo(End);
         public BeamForces Forces { get; set; }
         public Design.BeamDesignResult Design { get; set; }
+        /// <summary>Thép người dùng đặt, vd "3Ø20". Trống = tự chọn theo tính toán.</summary>
+        public string ManualTop { get; set; }
+        public string ManualBottom { get; set; }
+        public string ManualStirrupSupport { get; set; }
+        public string ManualStirrupSpan { get; set; }
     }
 
     public class SlabElem : StructElem
@@ -187,6 +196,9 @@ namespace VXT.KetCau.Core.Model
         public string Usage { get; set; }
         public SlabForces Forces { get; set; }
         public Design.SlabDesignResult Design { get; set; }
+        /// <summary>Thép người dùng đặt cả hai phương, vd "Ø8a200". Trống = tự chọn.</summary>
+        public string ManualBottom { get; set; }
+        public string ManualTop { get; set; }
     }
 
     public class WallElem : StructElem

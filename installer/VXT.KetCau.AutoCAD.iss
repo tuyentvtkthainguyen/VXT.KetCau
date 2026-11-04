@@ -28,5 +28,5 @@ WizardStyle=modern
 Source: "..\dist\VXTKetCau.bundle\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Messages]
-WelcomeLabel2=Cài đặt [name/ver] cho AutoCAD 2022–2026.%n%nHãy đóng AutoCAD trước khi cài. Sau khi cài, mở AutoCAD và gõ lệnh VXTKC.
-FinishedLabel=Đã cài xong [name]. Mở AutoCAD và gõ lệnh VXTKC để bắt đầu.
+WelcomeLabel2=Cài đặt [name/ver] cho AutoCAD 2022–2026.%n%nHãy đóng AutoCAD trước khi cài. Sau khi cài, mở AutoCAD và gõ lệnh VXTHS.
+FinishedLabel=Đã cài xong [name]. Mở AutoCAD và gõ lệnh VXTHS để bắt đầu.

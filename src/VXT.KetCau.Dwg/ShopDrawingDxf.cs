@@ -13,6 +13,14 @@ namespace VXT.KetCau.Dwg
     /// </summary>
     public static class ShopDrawingDxf
     {
+        /// <summary>Xuất toàn bộ hồ sơ (khung tên, các tờ) ra một file DXF.</summary>
+        public static void WriteDocumentSet(Core.Documentation.DocumentSet set, string path)
+        {
+            var w = new DxfWriter();
+            set.Render(w);
+            w.Save(path);
+        }
+
         public static void Write(WorkflowResult res, DesignSettings set, string path)
         {
             var w = new DxfWriter();

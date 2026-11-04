@@ -317,19 +317,30 @@ namespace VXT.KetCau.Core.Drawing
         }
 
         // ================================================================== BẢNG THỐNG KÊ
+        /// <summary>Chiều cao hàng bảng thống kê (mm ở chữ 125 mm) — hồ sơ khổ A3 dùng hàng thấp hơn để đỡ tốn tờ.</summary>
+        public double ScheduleRowHeight { get; set; } = 900;
+
         /// <summary>Bảng thống kê cốt thép + tổng hợp. (ox, oy) = góc trên trái. Trả về chiều cao bảng.</summary>
         public double DrawSchedule(RebarSchedule s, double ox, double oy, double txtH)
         {
             if (s == null) return 0;
+            double h = DrawScheduleTable(s, ox, oy, txtH);
+            double u = txtH / 125.0;
+            return h + 900 * u + DrawScheduleSummary(s, ox, oy - h - 900 * u, txtH);
+        }
+
+        /// <summary>Chỉ bảng thống kê. Trả về chiều cao đã vẽ.</summary>
+        public double DrawScheduleTable(RebarSchedule s, double ox, double oy, double txtH)
+        {
             double u = txtH / 125.0; // tỉ lệ kích thước bảng theo chiều cao chữ (chuẩn 125 mm ở 1/50)
             double th = txtH * 0.9;
             double[] cw = new double[] { 1800, 900, 4200, 900, 1500, 1000, 1000, 1200, 1400, 1600 }.Select(v => v * u).ToArray();
             string[] hd = { "TÊN CẤU KIỆN", "SỐ HIỆU", "HÌNH DẠNG & KÍCH THƯỚC (mm)", "Ø (mm)", "C.DÀI 1 THANH (mm)", "SỐ C.KIỆN", "SỐ THANH 1 CK", "SỐ THANH TOÀN BỘ", "TỔNG C.DÀI (m)", "TỔNG T.LƯỢNG (kg)" };
             hd[3] = Sym + " (mm)";
-            double W = cw.Sum(), rh = 900 * u;
+            double W = cw.Sum(), rh = ScheduleRowHeight * u;
             w.Text("CHU", ox + W / 2, oy + 600 * u, txtH * 1.6, "BẢNG THỐNG KÊ CỐT THÉP", 1, 0, 0);
             double y = oy;
-            Row(hd, ox, y, cw, rh * 1.3, th * 0.75); y -= rh * 1.3;
+            Row(hd, ox, y, cw, 900 * u * 1.3, th * 0.75); y -= 900 * u * 1.3;
             foreach (var grp in s.Rows.GroupBy(r => r.Element))
             {
                 double yStart = y;
@@ -344,10 +355,18 @@ namespace VXT.KetCau.Core.Drawing
                 w.Rect("BANG", ox, y, ox + cw[0], yStart);
                 w.Text("CHU", ox + cw[0] / 2, (y + yStart) / 2, th, grp.Key, 1, 2, (yStart - y) > cw[0] * 1.2 ? 90 : 0);
             }
-            y -= 900 * u;
-            w.Text("CHU", ox + W / 2, y + 300 * u, txtH * 1.4, "TỔNG HỢP CỐT THÉP", 1, 0, 0);
+            return oy - y;
+        }
+
+        /// <summary>Chỉ bảng tổng hợp theo đường kính và nhóm. Trả về chiều cao đã vẽ.</summary>
+        public double DrawScheduleSummary(RebarSchedule s, double ox, double oy, double txtH)
+        {
+            double u = txtH / 125.0;
+            double th = txtH * 0.9;
+            double rh = 900 * u, y = oy;
             var byD = s.ByDiameter().ToList();
             var cw2 = new[] { 2600.0 * u }.Concat(byD.Select(_ => 1400.0 * u)).ToArray();
+            w.Text("CHU", ox + cw2.Sum() / 2, y + 300 * u, txtH * 1.4, "TỔNG HỢP CỐT THÉP", 1, 0, 0);
             Row(new[] { "Đường kính (mm)" }.Concat(byD.Select(d => Sym + d.D)).ToArray(), ox, y, cw2, rh, th); y -= rh;
             Row(new[] { "Chiều dài (m)" }.Concat(byD.Select(d => d.LengthM.ToString("0.00", Ci))).ToArray(), ox, y, cw2, rh, th); y -= rh;
             Row(new[] { "Trọng lượng (kg)" }.Concat(byD.Select(d => d.Kg.ToString("0.00", Ci))).ToArray(), ox, y, cw2, rh, th); y -= rh;

@@ -83,6 +83,14 @@ namespace VXT.KetCau.Core.Model
         public double SillHeight { get; set; }
         /// <summary>"Cửa đi" / "Cửa sổ".</summary>
         public string Kind { get; set; }
+        /// <summary>Tầng chứa cửa.</summary>
+        public string Level { get; set; }
+        /// <summary>Ký hiệu trên bản vẽ (D1, S1…) — gán khi lập hồ sơ.</summary>
+        public string Mark { get; set; }
+        /// <summary>Đầu đặt bản lề theo chiều tường: 0 đầu đầu, 1 đầu cuối.</summary>
+        public int HingeEnd { get; set; }
+        /// <summary>Phía mở so với pháp tuyến trái của tường: +1 / −1; 0 = tự chọn mở vào trong nhà.</summary>
+        public int SwingSide { get; set; }
     }
 
     public class ArchRoom

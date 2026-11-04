@@ -14,6 +14,7 @@ namespace VXT.KetCau.Dwg
     public class DxfLine : DxfEntity { public P2 A, B; }
     public class DxfPolyline : DxfEntity { public List<P2> Points = new List<P2>(); public bool Closed; }
     public class DxfCircle : DxfEntity { public P2 Center; public double R; }
+    public class DxfArc : DxfEntity { public P2 Center; public double R, StartDeg, EndDeg; }
     public class DxfText : DxfEntity { public P2 At; public string Text; public double Height; }
 
     /// <summary>
@@ -116,6 +117,9 @@ namespace VXT.KetCau.Dwg
                     case "CIRCLE":
                         target.Add(new DxfCircle { Layer = layer, Center = new P2(D(p, 10), D(p, 20)), R = D(p, 40) });
                         break;
+                    case "ARC":
+                        target.Add(new DxfArc { Layer = layer, Center = new P2(D(p, 10), D(p, 20)), R = D(p, 40), StartDeg = D(p, 50), EndDeg = D(p, 51) });
+                        break;
                     case "TEXT":
                     case "MTEXT":
                     case "ATTRIB":
@@ -150,6 +154,15 @@ namespace VXT.KetCau.Dwg
                             case DxfLine l: ins.target.Add(new DxfLine { Layer = lay, A = T(l.A), B = T(l.B) }); break;
                             case DxfPolyline pl: ins.target.Add(new DxfPolyline { Layer = lay, Closed = pl.Closed, Points = pl.Points.Select(T).ToList() }); break;
                             case DxfCircle c: ins.target.Add(new DxfCircle { Layer = lay, Center = T(c.Center), R = c.R * Math.Abs(ins.sx) }); break;
+                            case DxfArc ar:
+                            {
+                                // tỉ lệ âm (khối lật) đảo chiều cung
+                                double a0 = ar.StartDeg, a1 = ar.EndDeg;
+                                if (ins.sx < 0) { double t0 = 180 - a1, t1 = 180 - a0; a0 = t0; a1 = t1; }
+                                if (ins.sy < 0) { double t0 = -a1, t1 = -a0; a0 = t0; a1 = t1; }
+                                ins.target.Add(new DxfArc { Layer = lay, Center = T(ar.Center), R = ar.R * Math.Abs(ins.sx), StartDeg = a0 + ins.rot, EndDeg = a1 + ins.rot });
+                                break;
+                            }
                             case DxfText t: ins.target.Add(new DxfText { Layer = lay, At = T(t.At), Text = t.Text, Height = t.Height * Math.Abs(ins.sy) }); break;
                         }
                     }

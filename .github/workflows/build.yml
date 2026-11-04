@@ -18,7 +18,14 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - name: Kiểm thử lõi
-        run: dotnet test tests/VXT.KetCau.Core.Tests -c Release --logger "trx;LogFileName=ketqua.trx" --results-directory TestResults
+        env:
+          VXT_SAMPLE_DIR: ${{ github.workspace }}/ho-so-mau
+        run: dotnet test tests/VXT.KetCau.Core.Tests -c Release --logger "trx;LogFileName=ketqua.trx" --logger "console;verbosity=normal" --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ho-so-mau
+          path: ho-so-mau
       - uses: actions/upload-artifact@v4
         if: always()
         with:

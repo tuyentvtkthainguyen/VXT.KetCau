@@ -7,6 +7,7 @@ using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 [assembly: ExtensionApplication(typeof(VXT.KetCau.AutoCAD.AcadApp))]
 [assembly: CommandClass(typeof(VXT.KetCau.AutoCAD.AcadCommands))]
+[assembly: CommandClass(typeof(VXT.KetCau.AutoCAD.HoSoCommands))]
 
 namespace VXT.KetCau.AutoCAD
 {
@@ -21,7 +22,7 @@ namespace VXT.KetCau.AutoCAD
             try
             {
                 var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
-                ed?.WriteMessage("\nVXT Kết cấu đã nạp. Gõ VXTKC để mở bảng điều khiển (hoặc VXTKC_KIENTRUC, VXTKC_PHANTICH, VXTKC_THIETKE, VXTKC_SHOP, VXTKC_THONGSO).\n");
+                ed?.WriteMessage("\nVXT đã nạp. Gõ VXTHS để triển khai hồ sơ kiến trúc + kết cấu, VXTKC để tính kết cấu.\n");
             }
             catch { }
         }

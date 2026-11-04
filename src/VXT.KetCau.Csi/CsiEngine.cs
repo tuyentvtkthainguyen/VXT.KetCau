@@ -4,7 +4,9 @@ using System.Linq;
 using CSiAPIv1;
 using VXT.KetCau.Core.Analysis;
 using VXT.KetCau.Core.Codes;
+using VXT.KetCau.Core.Design;
 using VXT.KetCau.Core.Geometry;
+using VXT.KetCau.Core.Input;
 using VXT.KetCau.Core.Model;
 
 namespace VXT.KetCau.Csi
@@ -353,6 +355,184 @@ namespace VXT.KetCau.Csi
                                             ref stepType, ref stepNum, ref P, ref V2, ref V3, ref T, ref M2, ref M3);
             if (ret != 0) { Log.Add($"Không đọc được nội lực phần tử {name}"); return; }
             for (int i = 0; i < n; i++) sink(objSta[i], lc[i], P[i], V2[i], V3[i], T[i], M2[i], M3[i]);
+        }
+
+        // =============================================================== Đọc mô hình có sẵn
+        /// <summary>
+        /// Đọc dầm, cột, sàn tiết diện chữ nhật từ mô hình đang mở (không do add-in tạo). Tầng suy từ cao độ phần tử,
+        /// trục suy từ vị trí cột. Tường, vách, tiết diện khác chữ nhật bỏ qua và ghi vào nhật ký.
+        /// </summary>
+        public StructModel ImportModel(DesignSettings set)
+        {
+            if (sm == null) throw new InvalidOperationException("Chưa kết nối phần mềm phân tích");
+            Chk(sm.SetPresentUnits(eUnits.kN_m_C), "đặt đơn vị");
+            var m = new StructModel { Settings = set, ProjectName = Name + " đang mở" };
+
+            int n = 0; string[] names = null;
+            Chk(sm.FrameObj.GetNameList(ref n, ref names), "đọc danh sách phần tử thanh");
+            var cols = new List<(string name, P2 p, double z0, double z1, string sec)>();
+            var beams = new List<(string name, P2 a, P2 b, double z, string sec)>();
+            var rect = new Dictionary<string, (double b, double h)>();
+            int skippedSec = 0, skippedSkew = 0;
+            for (int i = 0; i < n; i++)
+            {
+                string prop = "", auto = "", p1 = "", p2 = "";
+                if (sm.FrameObj.GetSection(names[i], ref prop, ref auto) != 0) continue;
+                if (!rect.TryGetValue(prop, out var dim))
+                {
+                    string file = "", mat = "", notes = "", guid = ""; double t3 = 0, t2 = 0; int color = 0;
+                    if (sm.PropFrame.GetRectangle(prop, ref file, ref mat, ref t3, ref t2, ref color, ref notes, ref guid) != 0 || t3 <= 0 || t2 <= 0) { skippedSec++; continue; }
+                    dim = (Math.Round(t2 * 1000), Math.Round(t3 * 1000));
+                    rect[prop] = dim;
+                }
+                if (sm.FrameObj.GetPoints(names[i], ref p1, ref p2) != 0) continue;
+                var a = Coord(p1); var b = Coord(p2);
+                double dz = Math.Abs(a.Z - b.Z), dh = a.XY.DistanceTo(b.XY);
+                if (dz > 10 && dh < 10) cols.Add((names[i], a.XY, Math.Min(a.Z, b.Z), Math.Max(a.Z, b.Z), prop));
+                else if (dz < 10) beams.Add((names[i], a.XY, b.XY, a.Z, prop));
+                else skippedSkew++;
+            }
+            if (cols.Count == 0 && beams.Count == 0) throw new InvalidOperationException($"Mô hình {Name} không có dầm, cột tiết diện chữ nhật nào đọc được.");
+            if (skippedSec > 0) Log.Add($"Bỏ qua {skippedSec} phần tử tiết diện không phải chữ nhật");
+            if (skippedSkew > 0) Log.Add($"Bỏ qua {skippedSkew} phần tử xiên");
+
+            // Tầng: gom các cao độ đỉnh, đáy
+            var zs = GeomUtil.Cluster(cols.SelectMany(c => new[] { c.z0, c.z1 }).Concat(beams.Select(b => b.z)), Tol.Snap);
+            double prev = zs[0];
+            m.Stories.Add(new Story { Name = "Móng", Elevation = zs[0], Height = 0 });
+            for (int i = 1; i < zs.Count; i++)
+            {
+                m.Stories.Add(new Story { Name = i == zs.Count - 1 ? "Mái" : $"Tầng {i}", Elevation = zs[i], Height = zs[i] - prev, IsRoof = i == zs.Count - 1 });
+                prev = zs[i];
+            }
+            Story StoryAt(double z) => m.Stories.OrderBy(q => Math.Abs(q.Elevation - z)).First();
+
+            ConcreteSection Sec(string prefix, string prop)
+            {
+                var d = rect[prop];
+                var cs = m.Section(prop);
+                if (cs == null) { cs = new ConcreteSection { Name = prop, B = d.b, H = d.h, Kind = prefix == "C" ? SectionKind.Column : SectionKind.Beam }; m.Sections.Add(cs); }
+                return cs;
+            }
+            foreach (var c in cols)
+            {
+                double ang = 0; bool adv = false;
+                try { sm.FrameObj.GetLocalAxes(c.name, ref ang, ref adv); } catch { ang = 0; }
+                m.Columns.Add(new ColumnElem { CsiName = c.name, Location = c.p, BaseZ = c.z0, TopZ = c.z1, BaseStory = StoryAt(c.z0).Name, TopStory = StoryAt(c.z1).Name, Section = Sec("C", c.sec).Name, RotationDeg = ang });
+            }
+            foreach (var b in beams)
+                m.Beams.Add(new BeamElem { CsiName = b.name, Start = b.a, End = b.b, Story = StoryAt(b.z).Name, TopZ = b.z, Section = Sec("D", b.sec).Name });
+
+            ImportSlabs(m, StoryAt);
+            DeriveGrids(m);
+            int fn = 0;
+            foreach (var c in m.Columns.Where(c => c.BaseStory == m.Stories[0].Name))
+                m.Footings.Add(new FootingElem { Center = c.Location, ColumnId = c.Id, B = 1200, L = 1200, H = 400, BottomZ = c.BaseZ - 400, Label = $"M{++fn}" });
+
+            // Tổ hợp để đọc nội lực: bỏ tổ hợp bao
+            int cn = 0; string[] combos = null;
+            if (sm.RespCombo.GetNameList(ref cn, ref combos) == 0)
+                for (int i = 0; i < cn; i++)
+                {
+                    string u = combos[i].ToUpperInvariant();
+                    bool env = u.Contains("ENV") || u.Contains("BAO");
+                    m.Combos.Add(new LoadCombo { Name = combos[i], IsEnvelope = env });
+                }
+            if (!m.Combos.Any(c => !c.IsEnvelope)) Log.Add("Mô hình chưa có tổ hợp tải — chưa đọc được nội lực; nếu không có thép ETABS thì hãy nhập thép tay hoặc khai báo tổ hợp.");
+
+            Log.Add($"Đã đọc: {m.Stories.Count} cao độ, {m.Columns.Count} cột, {m.Beams.Count} dầm, {m.Slabs.Count} ô sàn, {m.Combos.Count} tổ hợp.");
+            Log.Add("Cao độ: " + string.Join(", ", m.Stories.Select(q => $"{q.Name} {q.Elevation / 1000:0.000}")));
+            return m;
+        }
+
+        P3 Coord(string point)
+        {
+            double x = 0, y = 0, z = 0;
+            Chk(sm.PointObj.GetCoordCartesian(point, ref x, ref y, ref z, "Global"), $"đọc toạ độ điểm {point}");
+            return new P3(x * 1000, y * 1000, z * 1000);
+        }
+
+        void ImportSlabs(StructModel m, Func<double, Story> storyAt)
+        {
+            int n = 0; string[] names = null;
+            try { if (sm.AreaObj.GetNameList(ref n, ref names) != 0) return; }
+            catch (Exception ex) { Log.Add("Không đọc được sàn: " + ex.Message); return; }
+            int no = 0, skipped = 0;
+            for (int i = 0; i < n; i++)
+            {
+                int np = 0; string[] pts = null; string prop = "";
+                if (sm.AreaObj.GetPoints(names[i], ref np, ref pts) != 0 || np < 3) continue;
+                var pp = pts.Take(np).Select(Coord).ToList();
+                if (pp.Max(q => q.Z) - pp.Min(q => q.Z) > 10) { skipped++; continue; } // vách, sàn dốc
+                sm.AreaObj.GetProperty(names[i], ref prop);
+                double t = 100;
+                try
+                {
+                    eSlabType st = eSlabType.Slab; eShellType sh = eShellType.ShellThin; string mat = "", notes = "", guid = ""; int color = 0; double th = 0;
+                    if (sm.PropArea.GetSlab(prop, ref st, ref sh, ref mat, ref th, ref color, ref notes, ref guid) == 0 && th > 0) t = Math.Round(th * 1000);
+                    else Log.Add($"Chưa đọc được chiều dày sàn {prop} — lấy tạm 100 mm");
+                }
+                catch { Log.Add($"Chưa đọc được chiều dày sàn {prop} — lấy tạm 100 mm"); }
+                var story = storyAt(pp[0].Z);
+                m.Slabs.Add(new SlabElem { CsiName = names[i], Boundary = pp.Select(q => q.XY).ToList(), Story = story.Name, TopZ = pp[0].Z, Section = m.GetOrAddSlab(t).Name, LiveLoad = story.IsRoof ? 0.75 : 2, SuperDead = 1.5, Usage = story.IsRoof ? "mái" : "phòng ở", Label = $"S{m.Stories.IndexOf(story)}-{++no}" });
+            }
+            if (skipped > 0) Log.Add($"Bỏ qua {skipped} phần tử tấm không nằm ngang (vách, sàn dốc)");
+        }
+
+        static void DeriveGrids(StructModel m)
+        {
+            var pts = m.Columns.Select(c => c.Location).ToList();
+            if (pts.Count == 0) pts = m.Beams.SelectMany(b => new[] { b.Start, b.End }).ToList();
+            var xs = GeomUtil.Cluster(pts.Select(p => p.X), Tol.Snap * 2);
+            var ys = GeomUtil.Cluster(pts.Select(p => p.Y), Tol.Snap * 2);
+            double x0 = xs.First() - 1000, x1 = xs.Last() + 1000, y0 = ys.First() - 1000, y1 = ys.Last() + 1000;
+            for (int i = 0; i < xs.Count; i++) m.Grids.Add(new GridLine { Name = (i + 1).ToString(), Line = new Seg2(new P2(xs[i], y0), new P2(xs[i], y1)) });
+            for (int j = 0; j < ys.Count; j++) m.Grids.Add(new GridLine { Name = ((char)('A' + j % 26)).ToString() + (j >= 26 ? "1" : ""), Line = new Seg2(new P2(x0, ys[j]), new P2(x1, ys[j])), IsXDir = true });
+        }
+
+        /// <summary>
+        /// Lấy diện tích thép từ kết quả thiết kế bê tông của ETABS/SAP2000 (phải chạy Design trước), đổi ra số thanh và đặt vào cấu kiện.
+        /// Trả về số phần tử lấy được; không có kết quả thì giữ nguyên để tính theo nội lực.
+        /// </summary>
+        public int ReadDesignedRebar(StructModel m)
+        {
+            Chk(sm.SetPresentUnits(eUnits.kN_m_C), "đặt đơn vị");
+            int got = 0;
+            var set = m.Settings;
+            try
+            {
+                foreach (var b in m.Beams.Where(x => x.CsiName != null))
+                {
+                    var sec = m.Section(b.Section);
+                    int n = 0; string[] fn = null, c1 = null, c2 = null, c3 = null, c4 = null, c5 = null, err = null, warn = null;
+                    double[] loc = null, top = null, bot = null, vm = null, tl = null, tt = null;
+                    if (sm.DesignConcrete.GetSummaryResultsBeam(b.CsiName, ref n, ref fn, ref loc, ref c1, ref top, ref c2, ref bot, ref c3, ref vm, ref c4, ref tl, ref c5, ref tt, ref err, ref warn) != 0 || n == 0) continue;
+                    double aTop = top.Take(n).Max() * 1e6, aBot = bot.Take(n).Max() * 1e6, aV = vm.Take(n).Max() * 1e6;
+                    int dsw = set.StirrupDiameters.Min();
+                    b.ManualTop = BeamDesigner.SelectBars(aTop, sec.B, set.CoverBeam, dsw, set.BeamBarDiameters).Text();
+                    b.ManualBottom = BeamDesigner.SelectBars(aBot, sec.B, set.CoverBeam, dsw, set.BeamBarDiameters).Text();
+                    b.ManualStirrupSupport = RebarText.StirrupFromArea(aV, set.StirrupDiameters, Math.Min(150, sec.H / 2)).Text();
+                    b.ManualStirrupSpan = RebarText.StirrupFromArea(aV * 0.6, set.StirrupDiameters, Math.Min(200, sec.H * 0.75)).Text();
+                    got++;
+                }
+                foreach (var c in m.Columns.Where(x => x.CsiName != null))
+                {
+                    int n = 0; string[] fn = null, c1 = null, c2 = null, c3 = null, err = null, warn = null; int[] opt = null;
+                    double[] loc = null, pmm = null, ratio = null, av2 = null, av3 = null;
+                    if (sm.DesignConcrete.GetSummaryResultsColumn(c.CsiName, ref n, ref fn, ref opt, ref loc, ref c1, ref pmm, ref ratio, ref c2, ref av2, ref c3, ref av3, ref err, ref warn) != 0 || n == 0) continue;
+                    var (total, d) = RebarText.ColumnBarsFromArea(pmm.Take(n).Max() * 1e6, set.ColumnBarDiameters);
+                    c.ManualBars = new BarGroup(total, d).Text();
+                    got++;
+                }
+            }
+            catch (Exception ex) when (ex is MissingMethodException || ex is NotImplementedException || ex is InvalidCastException)
+            {
+                Log.Add("Phiên bản này chưa đọc được kết quả thiết kế: " + ex.Message);
+            }
+            Log.Add(got > 0
+                ? $"Đã lấy diện tích thép ETABS/SAP cho {got} phần tử và đổi ra số thanh. Hệ số vật liệu theo tiêu chuẩn đã chọn trong phần mềm đó — cần đối chiếu với TCVN 5574."
+                : "Chưa có kết quả thiết kế bê tông trong mô hình — sẽ tính thép theo TCVN 5574 từ nội lực.");
+            return got;
         }
 
         public void Dispose()

@@ -1,3 +1,4 @@
+using VXT.KetCau.Core.Documentation;
 using VXT.KetCau.Core.Framing;
 using VXT.KetCau.Core.Model;
 
@@ -15,5 +16,7 @@ namespace VXT.KetCau.Core.Workflow
         public string OdaConverterPath { get; set; } = "";
         public StructModel Model { get; set; }
         public ArchModel Arch { get; set; }
+        /// <summary>Thông tin khung tên, khổ giấy, tỉ lệ khi lập hồ sơ.</summary>
+        public DocOptions Doc { get; set; } = new DocOptions();
     }
 }
