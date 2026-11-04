@@ -91,7 +91,8 @@ public static class ComboEditor
                 return $"Tổ hợp tuyến tính không chứa được tổ hợp bao {sub.Name} – đổi loại thành Bao.";
         }
         // vòng lặp tham chiếu
-        var map = p.Combinations.Where(x => x != self).ToDictionary(x => x.Name, x => x.Items.Select(i => i.Case).ToList());
+        var map = p.Combinations.Where(x => x != self).GroupBy(x => x.Name)
+                   .ToDictionary(g => g.Key, g => g.First().Items.Select(i => i.Case).ToList());
         map[test.Name] = test.Items.Select(i => i.Case).ToList();
         if (self != null && self.Name != test.Name)
             foreach (var k in map.Keys.ToList()) map[k] = map[k].Select(n => n == self.Name ? test.Name : n).ToList();

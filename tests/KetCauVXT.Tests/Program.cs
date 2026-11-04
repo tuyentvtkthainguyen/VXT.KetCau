@@ -548,6 +548,9 @@ VerificationTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext
 Console.WriteLine("43. Khai báo tiết diện, vẽ dầm kiểu ETABS (toạ độ, ô lưới, dầm phụ theo khoảng cách, công xôn, sao chép, phạm vi tầng)");
 BeamToolsTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("44. Mặt cắt dầm có cánh sàn (chữ T / L), thép sàn trong cánh, đường cắt lửng");
+BeamFlangeDrawingTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");
