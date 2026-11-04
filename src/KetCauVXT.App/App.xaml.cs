@@ -26,6 +26,8 @@ public partial class App : Application
         global::KetCauVXT.Dwg.DwgReader.Register();
         // [mẫu định dạng + khung tên người dùng] DWG → DXF để đọc ATTDEF/căn lề chữ khi tải khung tên; áp dụng mẫu mặc định cho dự án mới
         global::KetCauVXT.Import.CadFileReaders.DwgToDxf = global::KetCauVXT.Dwg.DwgReader.ConvertToDxf;
+        // Bộ ghi DXF 2018 / DWG 2018 có HATCH (KetCauVXT.Dwg – ACadSharp) cho Chuẩn layer CAD → Định dạng xuất
+        global::KetCauVXT.Dwg.CadDocWriter.Register();
         global::KetCauVXT.Model.TemplateService.AutoApplyDefault = true;
         base.OnStartup(e);
     }

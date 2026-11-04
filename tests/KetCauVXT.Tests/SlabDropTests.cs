@@ -197,8 +197,8 @@ public static class SlabDropTests
         else check("Thiết kế: tìm thấy dải dầm trục giữa tầng T2 (để vẽ mặt cắt)", 0, 1, 0);
 
         // ---------------- 9. khối lượng + thuyết minh ----------------
-        var q = QuantityCalculator.Compute(p, dsD);
-        var sheets = QuantityReport.BuildSheets(p, q);
+        var qty = QuantityCalculator.Compute(p, dsD);
+        var sheets = QuantityReport.BuildSheets(p, qty);
         var qt = sheets[5].Tables.FirstOrDefault(t => t.Title.StartsWith("Sàn hạ cốt"));
         check("Bảng khối lượng 'Hoàn thiện sàn': bảng ô sàn hạ cốt (1 ô + dòng tổng)", qt?.Rows.Count ?? 0, 2, 0);
         check("Bảng khối lượng: diện tích ô WC 4,0 × 4,5 = 18 m²", qt != null ? (double)qt.Rows[0][5] : 0, 18.0, 1e-9);

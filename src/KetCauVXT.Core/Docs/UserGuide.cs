@@ -113,6 +113,7 @@ public static partial class UserGuide
         M("importRevit", "Tệp", "Nhập từ Revit (JSON)..."),
         M("importCsi", "Tệp", "Nhập mô hình ETABS/SAP (.e2k/.s2k)…"),
         M("acad", "Tệp", "Nhận dữ liệu từ AutoCAD…"),
+        M("cadLinks", "Tệp", "Liên kết bản vẽ AutoCAD (DWG/DXF)…"),
         M("e2k", "Tệp", "Xuất mô hình", "Mô hình ETABS .e2k..."),
         M("s2k", "Tệp", "Xuất mô hình", "Mô hình SAP2000 .s2k..."),
         M("csv", "Tệp", "Xuất mô hình", "Nội lực CSV..."),

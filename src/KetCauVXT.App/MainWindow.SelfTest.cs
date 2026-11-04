@@ -120,6 +120,7 @@ public partial class MainWindow
             await SelfTestEccentricFooting(tag);
             await SelfTestCuTram(tag); // lùi cọc khỏi ranh, cừ tràm – MainWindow.SelfTestCuTram.cs // móng lệch tâm – MainWindow.SelfTestEccentric.cs
             await SelfTestBeamTools(tag, story); // vẽ dầm kiểu ETABS – MainWindow.SelfTestBeamTools.cs
+            await SelfTestSlabDrop(tag, story); // sàn hạ cốt – MainWindow.SelfTestSlabDrop.cs (khôi phục mô hình, bước sau chạy lại phân tích)
             await SelfTestCurvedBeam(tag, story); // dầm cong – MainWindow.SelfTestCurved.cs
             await SelfTestGeoAppendix(tag);
             await SelfTestRegulation(tag);

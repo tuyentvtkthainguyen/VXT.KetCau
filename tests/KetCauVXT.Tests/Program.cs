@@ -560,6 +560,9 @@ ModelWorkflowTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContex
 Console.WriteLine("47. Liên kết bản vẽ AutoCAD (DWG/DXF): nền mặt bằng, bắt điểm, cập nhật khi lưu, so khác biệt");
 CadLinkTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("48. Sàn hạ cốt: khai báo, mặc định theo công năng, kiểm tra chiều cao dầm, cạnh sàn không liên tục, bản vẽ");
+SlabDropTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

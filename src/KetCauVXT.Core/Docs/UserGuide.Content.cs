@@ -69,7 +69,7 @@ public static partial class UserGuide
                 "Phân tích tĩnh tuyến tính bậc nhất: chưa kể P-Delta, phi tuyến vật liệu, phân phối lại nội lực; chưa tính bề rộng vết nứt acrc.",
                 "Gió: chỉ thành phần tĩnh W = W0·k(z)·c (nhà thấp tầng); k(z) dạng hàm mũ – đối chiếu bảng của TCVN 2737:2023.",
                 "Động đất: tĩnh lực ngang tương đương (mặc định) hoặc phổ phản ứng sau phân tích dao động riêng; phổ loại 1 lập theo cơ sở EN 1998-1 như TCVN 9386:2012 – người dùng đối chiếu bản 2025 (phổ, hệ số tầm quan trọng, gia tốc nền).",
-                "Dầm tính theo tiết diện chữ nhật b×h (bỏ qua cánh sàn – thiên về an toàn); chịu cắt kiểm tra với c = 2h0 (đơn giản hoá) – kiểm tra lại dầm chịu lực tập trung lớn.",
+                "Thiết kế dầm (uốn, cắt, võng) theo tiết diện **chữ nhật b×h** – không kể cánh sàn chịu nén (thiên về an toàn); bản vẽ mặt cắt dầm vẫn thể hiện cánh sàn chữ T / L ({s:mo-hinh.canh-san}). Chịu cắt kiểm tra với c = 2h0 (đơn giản hoá) – kiểm tra lại dầm chịu lực tập trung lớn.",
                 "Ô sàn bị tường hoặc dầm xiên cắt vẫn tính như ô chữ nhật (Marcus theo hình bao); tự kiểm tra các ô sàn hình dạng đặc biệt.",
                 "Độ võng dùng độ cứng gần đúng (φb,cr = 2,5); lún dùng β = 0,8 cho mọi loại đất, ứng suất theo Boussinesq.",
                 "Kết quả nội lực nhập từ ETABS/SAP2000/SAFE chỉ dùng trong phiên làm việc, **không lưu vào file dự án** – mở lại dự án phải nhập lại.",
@@ -241,13 +241,12 @@ public static partial class UserGuide
                 "{m:quickStart}: bảng các bước làm việc, trạng thái từng bước tự nhận biết từ dự án, nút **Làm bước này** và **Xem hướng dẫn** ({s:quy-trinh.bat-dau-nhanh}).",
                 "{m:appendix} (Shift+F1): công thức, hệ số, hệ số an toàn và giải thích của mọi phép tính mà chương trình dùng ({s:ho-so.phu-luc}).");
 
-        c.Sec("giao-dien.cay-mo-hinh", "Cây mô hình, kiểm tra mô hình, hình biến dạng", true,
-                "Các công cụ kiểu ETABS này vừa được bổ sung cùng đợt sắp xếp lại menu; mô tả dưới đây theo thiết kế của tính năng – kiểm tra lại tên nút, hình minh hoạ khi tính năng hoàn thiện.")
-            .Bullets("{m:explorer} (Ctrl+E, nút **Cây mô hình**): cây thông tin dự án – lưới trục, tầng, vật liệu, tiết diện, tải trọng, đối tượng, kết quả; chọn trên cây đồng bộ với khung nhìn.",
-                "{m:modelCheck} (nút **Kiểm tra MH**): dò nút trùng, thanh trùng / chồng, thanh dài 0, dầm cắt nhau không có nút, nhóm thanh không nối gối, cạnh sàn không có dầm…; bấm đúp một dòng để chọn và phóng tới đối tượng; **Sửa mục đang chọn** / **Sửa tự động tất cả** (hoàn tác được). Nên chạy trước mỗi lần phân tích.",
-                "{m:mergeNodes}: gộp các nút cách nhau < 5 mm (Edit → Merge Joints).",
-                "{m:deformed}: hình biến dạng theo trường hợp / tổ hợp, 3D hoặc mặt bằng, tỉ lệ; {m:reactions}: phản lực gối; {m:showLoads}: vẽ tải gán trên mặt bằng (mũi tên + giá trị).",
-                "Thanh trạng thái bên phải: hệ đơn vị (kN, m, °C), tầng đang xem, toạ độ con trỏ trên mặt bằng, hệ trục tổng thể.");
+        c.Sec("giao-dien.cay-mo-hinh", "Cây mô hình, menu Xem / Sửa, thanh trạng thái")
+            .Bullets("{m:explorer} (**Ctrl+E**, nút **Cây mô hình**): khung neo bên trái (như Model Explorer của ETABS) gồm **Thông tin dự án**, **Lưới trục**, **Tầng**, **Vật liệu**, **Tiết diện**, **Tải trọng** (trường hợp tải, trường hợp phân tích, tổ hợp), **Đối tượng** (cột, dầm, sàn, tường, móng theo tầng – bấm để chọn và phóng tới), **Kết quả** (chu kỳ dao động, phản lực đáy) khi đã phân tích.",
+                "Bấm đúp một nút nhánh của cây để mở hộp thoại khai báo tương ứng. Chọn một trường hợp tải trên cây để lọc {m:showLoads}.",
+                "Menu **Xem**: {m:viewPlan}, {m:view3d}, {m:viewFnd}, {m:fit}, {m:labels}. Menu **Sửa**: {m:undo}, {m:deleteSel}, {m:replicate}, {m:split}, {m:mergeNodes} (gộp nút cách nhau < 5 mm).",
+                "Thanh trạng thái bên phải: hệ đơn vị (kN, m, °C – tiết diện hiển thị mm, ứng suất MPa), tầng đang xem, toạ độ con trỏ trên mặt bằng (m), hệ trục tổng thể (X sang phải, Y lên trên, Z hướng lên).")
+            .P("Kiểm tra mô hình: {s:phan-tich.kiem-tra-mo-hinh}; hình biến dạng: {s:phan-tich.bien-dang}.");
         return c;
     }
 
@@ -269,18 +268,18 @@ public static partial class UserGuide
             ["guide"] = "giao-dien.tro-giup", ["quickStart"] = "quy-trinh.bat-dau-nhanh", ["appendix"] = "ho-so.phu-luc", ["regs"] = "phap-ly.danh-muc",
             ["verify"] = "kiem-chung.bao-cao", ["about"] = "gioi-thieu",
             ["undo"] = "giao-dien.hoan-tac", ["deleteSel"] = "mo-hinh.chinh-sua", ["replicate"] = "mo-hinh.dam-etabs", ["mergeNodes"] = "giao-dien.cay-mo-hinh",
-            ["explorer"] = "giao-dien.cay-mo-hinh", ["viewPlan"] = "giao-dien.khung-nhin", ["view3d"] = "giao-dien.khung-nhin", ["viewFnd"] = "mong.loai",
+            ["explorer"] = "giao-dien.cay-mo-hinh", ["cadLinks"] = "khoi-tao.lien-ket-autocad", ["viewPlan"] = "giao-dien.khung-nhin", ["view3d"] = "giao-dien.khung-nhin", ["viewFnd"] = "mong.loai",
             ["fit"] = "giao-dien.khung-nhin", ["labels"] = "giao-dien.khung-nhin", ["materials"] = "mo-hinh.vat-lieu", ["loadPatterns"] = "tai-trong.truong-hop",
-            ["loadCases"] = "tai-trong.sua-to-hop", ["comboEditor"] = "tai-trong.sua-to-hop", ["spectrum"] = "tai-trong.dong-dat", ["diaphragms"] = "tai-trong.sua-to-hop",
+            ["loadCases"] = "mo-hinh.khai-bao", ["comboEditor"] = "tai-trong.sua-to-hop", ["spectrum"] = "mo-hinh.khai-bao", ["diaphragms"] = "mo-hinh.khai-bao",
             ["drawBeam"] = "mo-hinh.dam", ["drawCurved"] = "mo-hinh.dam-cong", ["drawQuick"] = "mo-hinh.dam-etabs", ["drawSecondary"] = "mo-hinh.dam-etabs",
             ["drawCantilever"] = "mo-hinh.dam-etabs", ["beamByPos"] = "mo-hinh.dam-etabs", ["drawSlab"] = "mo-hinh.san", ["drawBalcony"] = "mo-hinh.ban-cong",
             ["drawStair"] = "mo-hinh.cau-thang", ["drawVoid"] = "mo-hinh.gieng-troi", ["stairDecl"] = "mo-hinh.cau-thang", ["drawWall"] = "mo-hinh.tuong",
-            ["selOne"] = "mo-hinh.chinh-sua", ["selMulti"] = "mo-hinh.dam-etabs", ["selAll"] = "mo-hinh.gan", ["selBySection"] = "mo-hinh.gan", ["selClear"] = "mo-hinh.chinh-sua",
+            ["selOne"] = "mo-hinh.chinh-sua", ["selMulti"] = "mo-hinh.chon", ["selAll"] = "mo-hinh.chon", ["selBySection"] = "mo-hinh.chon", ["selClear"] = "mo-hinh.chinh-sua",
             ["assignFrameLoad"] = "mo-hinh.gan", ["assignAreaLoad"] = "mo-hinh.gan", ["assignJointLoad"] = "mo-hinh.gan", ["assignRestraint"] = "mo-hinh.gan",
             ["assignRelease"] = "mo-hinh.gan", ["assignSection"] = "mo-hinh.gan", ["assignModifiers"] = "mo-hinh.gan", ["insertion"] = "mo-hinh.dam-etabs",
             ["assignDiaphragm"] = "mo-hinh.gan", ["assignWall"] = "mo-hinh.tuong", ["assignBuildUp"] = "mo-hinh.san", ["assignWc"] = "mo-hinh.gieng-troi",
-            ["modelCheck"] = "giao-dien.cay-mo-hinh", ["deformed"] = "giao-dien.cay-mo-hinh", ["diagrams"] = "phan-tich.bieu-do", ["modes"] = "phan-tich.dao-dong",
-            ["reactions"] = "phan-tich.ket-qua", ["resultTables"] = "phan-tich.bang-ket-qua", ["showLoads"] = "giao-dien.cay-mo-hinh",
+            ["modelCheck"] = "phan-tich.kiem-tra-mo-hinh", ["deformed"] = "phan-tich.bien-dang", ["diagrams"] = "phan-tich.bieu-do", ["modes"] = "phan-tich.dao-dong",
+            ["reactions"] = "phan-tich.bang-ket-qua", ["resultTables"] = "phan-tich.bang-ket-qua", ["showLoads"] = "mo-hinh.gan",
         };
         return Menus.Where(m => !m.Planned && m.Id != "exit").Select(m => new[]
         {
@@ -389,7 +388,7 @@ public static partial class UserGuide
     private static GuideSection ChStart()
     {
         var c = Ch("khoi-tao", "Khởi tạo dự án");
-        c.P("Có sáu cách bắt đầu một dự án; chọn cách phù hợp với dữ liệu đang có.");
+        c.P("Có sáu cách bắt đầu một dự án; chọn cách phù hợp với dữ liệu đang có. Ngoài ra có thể gắn bản vẽ AutoCAD làm nền để vẽ theo ({s:khoi-tao.lien-ket-autocad}).");
 
         c.Sec("khoi-tao.luoi-truc", "Dự án mới từ lưới trục (tab Công trình)")
             .Steps("{m:new} (Ctrl+N) – mẫu định dạng mặc định (nếu đã đặt) được áp dụng tự động.",
@@ -444,6 +443,18 @@ public static partial class UserGuide
             .P("Trong chương trình: {m:acad} chọn file acad_*.json; hộp thoại **Nhập bản vẽ kiến trúc** mở với các tầng đã khai báo và phương án kết cấu đề xuất – tiếp tục như {s:khoi-tao.kien-truc}.")
             .Tip("Tường vẽ 2 nét song song (tường 1 nét lấy dày 110 mm); cột là đa tuyến kín, miền tô hoặc 4 nét rời 0,12–1,0 m; tên trục ≤ 4 ký tự gần đầu trục; cửa giữ dạng block. Elip, spline chưa hỗ trợ (bị bỏ qua, có báo số lượng).");
 
+        c.Sec("khoi-tao.lien-ket-autocad", "Liên kết bản vẽ AutoCAD (DWG/DXF) làm nền mặt bằng", true,
+                "Tính năng mới (MainWindow.CadLink.cs, CadLinkWindow.cs, CadLinkDiffDialog.cs) – kiểm tra lại thao tác, hình minh hoạ khi dùng thực tế.")
+            .P("Như Xref / \"Import DXF as background\" của ETABS: bản vẽ kiến trúc được gắn vào dự án làm **nền mờ** cho mặt bằng từng tầng, bắt điểm vào nét bản vẽ, tự cập nhật khi bản vẽ được lưu trong AutoCAD.")
+            .Steps("{m:cadLinks}: cửa sổ **Bản vẽ liên kết (AutoCAD DWG/DXF)** (không chặn) → **Thêm bản vẽ…**.",
+                "Thuộc tính từng bản vẽ: tầng, điểm gốc, điểm chèn, góc xoay, **Tỷ lệ ×**, đơn vị, độ đậm, màu, chữ, bắt điểm, tự cập nhật. **Căn theo 2 điểm** để khớp bản vẽ với lưới trục; **Đặt lại vị trí**; **Phóng tới bản vẽ**, **Vừa mô hình + bản vẽ**.",
+                "Bảng layer của bản vẽ: ẩn / hiện (**Ẩn layer đã chọn**, **Chỉ hiện layer đã chọn**, **Hiện tất cả**) và gán nhóm cấu kiện.",
+                "Bật **Bắt điểm bản vẽ link (đầu nét, trung điểm, giao nét, tâm)** – dùng cho ＋ Dầm, công cụ dầm kiểu ETABS, tường.",
+                "Sửa bản vẽ trong AutoCAD (**Mở bằng AutoCAD**) và lưu: chương trình tự đọc lại nền, báo \"Bản vẽ link đã thay đổi – đã cập nhật\" kèm nút **Cập nhật mô hình từ link…**.",
+                "**Cập nhật mô hình từ link…**: danh sách khác biệt bản vẽ ↔ mô hình của tầng (thêm / dời / không còn trên bản vẽ) – xanh = thêm, cam = dời, đỏ = xoá; mục xoá và dời cột mặc định không đánh dấu; **Chọn mọi mục thêm**, **Chọn tất cả**, **Bỏ chọn tất cả** → **Áp dụng** (hoàn tác được).")
+            .Bullets("Đường dẫn bản vẽ lưu tương đối theo file dự án; không thấy file khi mở dự án → thông báo chọn lại (**Chọn lại file…**). **Đọc lại**, **Mở thư mục**, **Bỏ liên kết**.",
+                "Add-in AutoCAD gửi dữ liệu có đường dẫn DWG → chương trình đề nghị tạo / làm mới liên kết cho bản vẽ đó.");
+
         c.Sec("khoi-tao.revit", "Từ Revit (JSON)")
             .Steps("Trong Revit: Add-Ins → External Tools → **Xuất sang Kết cấu VXT**, chọn nơi lưu file *.vxtrevit.json. Dữ liệu xuất: Levels, Grids (đường thẳng), Structural Columns, Structural Framing, Floors.",
                 "Trong Kết cấu VXT: {m:importRevit} (nút **Nhập Revit**), chọn file JSON.",
@@ -474,7 +485,9 @@ public static partial class UserGuide
                 "Bắt điểm **Giao trục**, **Trên trục** dùng lưới trục hiện có.");
 
         c.Sec("mo-hinh.vat-lieu", "Vật liệu")
-            .P("Tab Công trình → nhóm **Vật liệu**: cấp bê tông cột, dầm, sàn, móng; thép dọc (Ø ≥ 10) và thép đai, thép sàn (Ø < 10). Cường độ tính toán lấy theo TCVN 5574:2018 và TCVN 1651:2018 (xem bảng tra trong {m:appendix}). Bấm **Áp dụng thông số** sau khi đổi.");
+            .Bullets("Tab Công trình → nhóm **Vật liệu**: cấp bê tông cột, dầm, sàn, móng; thép dọc (Ø ≥ 10) và thép đai, thép sàn (Ø < 10). Bấm **Áp dụng thông số** sau khi đổi.",
+                "{m:materials}: hộp thoại **Khai báo vật liệu (Material Properties)** – các bảng **Bê tông**, **Cốt thép**, **Thép hình** (E, γ, Rb, Rbt, Rs…); **＋ Thêm**, **Xoá (không dùng)**, **Đặt lại theo thư viện**. Giá trị tính toán theo TCVN 5574:2018 (bê tông Bảng 7, 10; cốt thép Bảng 13) và TCVN 5575:2024 (thép hình f = fy/γM).",
+                "Bảng tra cường độ đầy đủ: {m:appendix}.");
 
         c.Sec("mo-hinh.tiet-dien", "Tiết diện dầm, cột, sàn")
             .P("Có hai nơi khai báo tiết diện:")
@@ -488,7 +501,7 @@ public static partial class UserGuide
                 new[] { "Hệ số I33, I22, J, A", "Hệ số điều chỉnh độ cứng như Property Modifiers của ETABS (vd. dầm I33 = 0,35, cột 0,7 khi phân tích kể nứt)." },
                 new[] { "Dùng làm tiết diện hiện hành (bấm đúp)", "Tiết diện dùng cho ＋ Dầm, Dầm phụ, Công xôn, Gán tiết diện (ô **Tiết diện dầm**)." },
                 new[] { "Tự đổi tên theo kích thước khi sửa b, h", "Bật thì sửa b, h sẽ đổi tên tương ứng." })
-            .Note("Tiết diện chữ T/L: chương trình tính dầm theo chữ nhật b×h (bỏ qua cánh sàn – thiên về an toàn); xem {s:mo-hinh.canh-san}.");
+            .Note("Tiết diện dầm khai báo là chữ nhật b×h. Cánh sàn chữ T / L chỉ được vẽ trên mặt cắt dầm (lấy theo ô sàn thực tế hai bên dầm); tính toán vẫn theo chữ nhật b×h – xem {s:mo-hinh.canh-san}.");
 
         c.Sec("mo-hinh.cot", "Cột")
             .Bullets("Cột được tạo tại mọi giao trục khi **Tạo mô hình**, hoặc theo bản vẽ kiến trúc (bảng **Cột** của hộp thoại nhập: vị trí, Bx, By, tầng lên đến), bản vẽ kết cấu, Revit, ETABS.",
@@ -552,6 +565,16 @@ public static partial class UserGuide
                 "**Sàn vệ sinh**: bấm vào ô sàn → hoàn thiện 2,0 kN/m² (chống thấm, hạ cốt); bấm lại để trả về phòng ở.",
                 "Xoá lỗ sàn (chế độ **Xoá**) sẽ đặt lại sàn.");
 
+        c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)", true,
+                "Lõi tính toán đã có (Model/SlabDrop.cs, Design/Concrete/SlabDropChecks.cs, Drawing/SlabDropDrawing.cs); nút giao diện \"Hạ cốt sàn…\" đang được hoàn thiện – kiểm tra lại tên nút, hộp thoại khi có.")
+            .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −0,50 … 0 m): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm 100…300 mm), ban công, lô gia, sân thượng, bếp…")
+            .Bullets("Khai báo: chọn ô sàn → **Hạ cốt sàn…** (nhập Δ và ghi chú lý do).",
+                "Mặc định theo công năng (chỉ áp dụng khi **đổi** công năng ô sàn – mở dự án cũ không đổi gì): Phòng ở 0; **Vệ sinh −50 mm**; **Ban công, lô gia −50 mm**; Hành lang, Kho, Mái 0.",
+                "Phân tích: tải sàn giữ nguyên, nút ô sàn vẫn ở cao độ tầng (Δ là thông tin hình học / cấu tạo).",
+                "Thiết kế sàn: cạnh chung giữa hai ô chênh cốt > 30 mm tính **khớp** (không liên tục mô men qua bậc); mỗi ô có thép mũ cấu tạo riêng neo vào dầm, không có thép mũ / lưới trên vắt liên tục qua bậc.",
+                "Dầm đỡ ô hạ cốt: kiểm tra **h ≥ hs1 + Δ + hs2** – không đạt thì cảnh báo và đề nghị chiều cao dầm.",
+                "Bản vẽ: mặt cắt dầm vẽ bậc sàn; mặt bằng kết cấu đánh dấu \"SÀN HẠ COS −50\".");
+
         c.Sec("mo-hinh.tuong", "Tường – loại tường, vẽ và gán tường")
             .Bullets("{m:wallTypes}: thư viện **Loại tường** – tên, chiều dày, γ xây, hoàn thiện, trát mỗi mặt, γ trát, tỷ lệ cửa (%), tải tường đặc (kN/m²). Tải 1 m² tường đặc = dày × γ xây + số mặt trát × dày trát × γ trát; tải lên dầm = tải 1 m² × chiều cao × (1 − tỷ lệ cửa). **Khôi phục thư viện mặc định** nếu lỡ xoá.",
                 "**＋ Tường**: chọn **Loại tường**, **Cao (m)** (0 = tự động: chiều cao tầng trên − chiều cao dầm), **Diện tích cửa (m²)** (trống = theo tỷ lệ cửa của loại tường; 0 = không có cửa) rồi bấm 2 điểm.",
@@ -565,22 +588,40 @@ public static partial class UserGuide
                 "{m:split}: chia các thanh tại nút trung gian nằm trên thanh (sau khi nhập mô hình từ nguồn khác).",
                 "Hoàn tác: Ctrl+Z (30 bước).");
 
-        c.Sec("mo-hinh.gan", "Gán tải trọng, liên kết, giải phóng, tiết diện (menu Gán)", true,
-                "Menu Gán kiểu ETABS vừa được bổ sung; mô tả theo thiết kế của tính năng – kiểm tra lại hộp thoại khi hoàn thiện.")
-            .P("Chọn đối tượng trước ({m:selOne}, {m:selMulti}, {m:selAll}, {m:selBySection}), rồi:")
-            .Bullets("{m:assignFrameLoad}: tải đều / hình thang / tập trung lên thanh đã chọn theo trường hợp tải.",
-                "{m:assignAreaLoad}: tải phân bố lên ô sàn đã chọn; {m:assignJointLoad}: lực / mô men tại nút.",
-                "{m:assignRestraint}: ngàm / khớp / tự do tại nút (chân cột, gối đặc biệt).",
-                "{m:assignRelease}: khớp đầu thanh (M2, M3, T…) – vd. dầm phụ gác khớp lên dầm chính.",
-                "{m:assignSection}, {m:assignModifiers} (hệ số độ cứng như Property Modifiers), {m:insertion}, {m:assignDiaphragm}.",
-                "{m:assignWall}, {m:assignBuildUp}, {m:assignWc}: các chế độ bấm trên mặt bằng như nút **Gán tường**, **Gán cấu tạo**, **Sàn vệ sinh**.")
-            .P("Tải nhập theo cách cũ vẫn dùng được ở tab **Tải trọng** ({s:tai-trong.nhap-tay}).");
+        c.Sec("mo-hinh.chon", "Chọn đối tượng (menu Chọn)")
+            .Bullets("{m:selOne} (Esc) và {m:selMulti} – bấm để thêm/bớt, kéo khung trái → phải chọn đối tượng nằm trọn, phải → trái chọn đối tượng chạm khung; giữ Ctrl để bỏ chọn.",
+                "Mọi dầm / mọi cột / {m:selAll} của tầng đang xem (**Ctrl+A** khi đang ở khung nhìn Mặt bằng và không gõ chữ trong ô nhập).",
+                "{m:selBySection}: chọn mọi thanh dùng một tiết diện; {m:selClear}.",
+                "Các lệnh menu **Gán** áp dụng cho đối tượng đang chọn; cột đang chọn nhiều được tô viền trên mặt bằng.");
 
-        c.Sec("mo-hinh.canh-san", "Dầm có cánh (kể sàn vào tiết diện dầm)", true,
-                "Tính năng kể cánh sàn vào tiết diện dầm (chữ T/L) đang được bổ sung; cập nhật cách khai báo và ảnh hưởng tới thiết kế khi hoàn thành.")
-            .P("Hiện tại dầm được tính theo tiết diện chữ nhật b×h, bỏ qua cánh sàn (thiên về an toàn).");
+        c.Sec("mo-hinh.gan", "Gán tải trọng, liên kết, giải phóng, tiết diện (menu Gán)")
+            .P("Chọn đối tượng trước ({s:mo-hinh.chon}) rồi dùng menu **Gán** (như Assign của ETABS). Mọi thao tác hoàn tác được bằng Ctrl+Z; tải gán là **tải nhập tay** (khác tải dồn từ sàn / tường được sinh lại mỗi lần phân tích).")
+            .Table(new[] { "Lệnh", "Nội dung" },
+                new[] { "{m:assignFrameLoad}", "Hộp **Gán tải trên thanh**: trường hợp tải; phương (Trọng lực −Z, dương hướng xuống; phương tổng thể hoặc địa phương: trục 1 dọc thanh I→J, trục 2 hướng lên, trục 3 = 1×2); dạng tải **Phân bố đều** (q1), **Hình thang / tam giác** (Điểm 1, Điểm 2: khoảng cách + q), **Lực tập trung** (P, khoảng cách); khoảng cách tương đối (0…1) hoặc tuyệt đối (m từ đầu I); cách gán **Cộng thêm vào tải đã có / Thay thế tải nhập tay cùng trường hợp / Xoá tải nhập tay cùng trường hợp**." },
+                new[] { "{m:assignAreaLoad}", "Tải phân bố đều lên **Ô sàn đang chọn / Mọi ô sàn tầng đang xem / Mọi ô sàn của công trình**; tải sàn được dồn về dầm theo đường phân giác 45° khi phân tích." },
+                new[] { "{m:assignJointLoad}", "Lực, mô men tại nút trong hệ toạ độ tổng thể (Fz dương hướng lên – tải trọng lực nhập số âm)." },
+                new[] { "{m:assignRestraint}", "Nút **Ngàm** (giữ 6 bậc tự do), **Khớp** (UX, UY, UZ), **Con lăn (UZ)**, **Tự do**; nút nhanh **Mọi nút chân cột thấp nhất**. Gối thật (chân cột / móng) cần giữ UZ." },
+                new[] { "{m:assignRelease}", "Giải phóng mô men đầu thanh: **Khớp đầu I**, **Khớp đầu J**, **Khớp hai đầu (M2, M3)**, **Không giải phóng** (vd. dầm phụ gác khớp lên dầm chính)." },
+                new[] { "{m:assignSection}", "Gán tiết diện cho mọi thanh đang chọn (dầm và cột)." },
+                new[] { "{m:assignModifiers}", "Hệ số độ cứng thanh (nhân thêm với hệ số của tiết diện): nút **Dầm nứt (I33 = 0,35)**, **Cột nứt (I = 0,7)**, **Đặt lại 1** – chỉ ảnh hưởng độ cứng khi phân tích." },
+                new[] { "{m:insertion}", "Điểm chèn / dời ngang tiết diện ({s:mo-hinh.dam-etabs})." },
+                new[] { "{m:assignDiaphragm}", "Đánh dấu sàn tuyệt đối cứng cho tầng ({s:mo-hinh.khai-bao})." },
+                new[] { "{m:assignWall}, {m:assignBuildUp}, {m:assignWc}", "Chế độ bấm trên mặt bằng như nút **Gán tường**, **Gán cấu tạo**, **Sàn vệ sinh**." })
+            .P("{m:showLoads}: vẽ tải nhập tay trên mặt bằng (đa giác tải + mũi tên + giá trị cho tải thanh, giá trị tại tâm ô cho tải sàn, mũi tên cho tải nút), lọc theo trường hợp tải chọn trên cây mô hình hoặc ở ô **Biểu đồ M3 theo**.");
 
-        // ---- địa chất & móng (thuộc giai đoạn lập mô hình) ----
+        c.Sec("mo-hinh.khai-bao", "Khai báo trường hợp tải, trường hợp phân tích, phổ phản ứng, sàn cứng (menu Khai báo)")
+            .Bullets("{m:loadPatterns}: hộp **Trường hợp tải (Load Patterns)** – tên, loại (Dead = tĩnh tải có trọng lượng bản thân hệ số 1, SuperDead = hoàn thiện / tường, Live / RoofLive = hoạt tải, Wind = gió, Seismic = động đất), hệ số trọng lượng bản thân, γf; thêm, đổi tên (cập nhật mọi tham chiếu), xoá.",
+                "{m:loadCases}: hộp **Trường hợp phân tích (Load Cases)** – mỗi trường hợp tải được giải bằng một trường hợp phân tích tĩnh tuyến tính cùng tên (như ETABS); tổ hợp cộng tuyến tính kết quả; nút **Nguồn khối lượng & dao động…** và **Phổ phản ứng / động đất…**.",
+                "{m:modal}: nguồn khối lượng và dao động riêng ({s:phan-tich.dao-dong}).",
+                "{m:spectrum}: hộp **Phổ phản ứng / động đất (TCVN 9386-1:2025)** – **Tính động đất (trường hợp DDX, DDY)**, gia tốc nền agR (g), loại nền, hệ số ứng xử q, hệ số tầm quan trọng γI, hệ số tổ hợp hoạt tải ψE, phương pháp; đồ thị phổ thiết kế Sd(T).",
+                "{m:diaphragms} / {m:assignDiaphragm}: **Dùng sàn tuyệt đối cứng trong mặt phẳng** (chung cho phân tích tĩnh và dao động); tầng được đánh dấu: các nút sàn cùng cao trình chuyển vị ngang và xoay quanh Z như một khối (nút chủ tại trọng tâm).",
+                "Tổ hợp tải trọng: {s:tai-trong.sua-to-hop}.");
+
+        c.Sec("mo-hinh.canh-san", "Dầm có cánh sàn (chữ T / L) trên bản vẽ")
+            .Bullets("Bản vẽ chi tiết dầm (KC-04) thể hiện **cánh sàn liền khối theo mô hình** (kiểu Kết cấu Soft / XSCad): chữ **T** khi có sàn hai bên, chữ **L** ở dầm biên, chữ nhật khi không có sàn (lỗ cầu thang, giếng trời); ghi kích thước hs, đường cắt ở đầu cánh; mặt đứng dầm có nét mép dưới sàn. Cánh lấy theo ô sàn thực tế hai bên từng mặt cắt (lỗ sàn, độ lệch tim dầm so với trục).",
+                "Tuỳ chọn ở {m:drawStyle} (tab **Tỷ lệ, cỡ chữ, chú thích**): **Cánh sàn trên mặt cắt dầm** (bật/tắt), **Thép sàn trong cánh** (thép lớp dưới, thép mũ vắt qua dầm, thép phân bố, nhãn \"Ø8a200 (thép sàn)\" theo kết quả thiết kế sàn; chưa thiết kế sàn thì vẽ quy ước nét đứt), **Chiều dài cánh sàn thể hiện (mỗi bên dầm)** (100…3000 mm, mặc định 400), **Đường cắt đầu cánh sàn**: Dích dắc / Nét thẳng.")
+            .Warn("**Thiết kế** dầm vẫn theo tiết diện chữ nhật b×h (tính uốn bằng tiết diện chữ nhật – không kể cánh chịu nén), thiên về an toàn. Cánh sàn chỉ là thể hiện bản vẽ.");
+
         c.Sec("mong.dia-chat", "Địa chất – hố khoan (tab Địa chất)")
             .Bullets("**Hố khoan khảo sát địa chất**: **+ Hố khoan**, **Nhân bản**, **Xoá**; tên, toạ độ X, Y, cao độ miệng, mực nước ngầm sâu (−1 = không gặp).",
                 "**Các lớp đất** (độ sâu tính từ miệng hố khoan): loại đất, chiều dày/độ sâu, γ, γsat, φ, c, IL (−1 = đất rời), SPT N…; **+ Lớp**, **Xoá lớp**, **Sắp xếp / nối liền**, **Chọn theo đất tham khảo…** (khoảng giá trị điển hình, giá trị đại diện, tương quan SPT).",
@@ -668,14 +709,12 @@ public static partial class UserGuide
                 "Bảng **Tổ hợp tải trọng** ở tab Tải trọng hiện công thức từng tổ hợp (vd. 1.1TT + 1.3HTHT + 1.2HT).")
             .Tip("Tạo lại tổ hợp sau khi thêm/xoá trường hợp tải hoặc bật/tắt gió, động đất.");
 
-        c.Sec("tai-trong.sua-to-hop", "Khai báo trường hợp tải, trường hợp phân tích, tổ hợp (menu Khai báo)", true,
-                "Các hộp thoại Khai báo kiểu ETABS vừa được bổ sung; mô tả theo thiết kế của tính năng – kiểm tra lại khi hoàn thiện.")
-            .Bullets("{m:loadPatterns}: tên, loại, hệ số trọng lượng bản thân, γf của trường hợp tải (như Define → Load Patterns).",
-                "{m:loadCases}: trường hợp phân tích (tĩnh tuyến tính, dao động, phổ phản ứng).",
-                "{m:comboEditor}: danh sách tổ hợp; sửa tên, loại (TTGH I / TTGH II / Bao), thành phần (trường hợp tải hoặc tổ hợp khác × hệ số); thêm / sao chép / xoá; tự sinh theo TCVN 2737:2023 (giữ hoặc bỏ tổ hợp tự đặt). Hoàn tác được.",
-                "{m:spectrum}: agR, loại nền, q, γI, ψE, phương pháp; đồ thị phổ thiết kế Sd(T) theo TCVN 9386-1:2025.",
-                "{m:diaphragms}: sàn cứng theo từng tầng.",
-                "{m:materials}: bê tông, cốt thép, thép hình (E, γ, Rb, Rbt, Rs…).");
+        c.Sec("tai-trong.sua-to-hop", "Sửa tổ hợp tải trọng (Load Combinations)")
+            .Steps("{m:comboEditor}: cửa sổ **Tổ hợp tải trọng (Load Combinations)** (không chặn) – danh sách tổ hợp bên trái.",
+                "**＋ Mới** / **Sao chép** / **Xoá** tổ hợp; sửa **Tên tổ hợp**, **Loại**: TTGH I (tổ hợp tính toán – thiết kế cường độ), TTGH II (tổ hợp tiêu chuẩn – võng, nứt, lún), Bao (max/min của các thành phần).",
+                "Thành phần: **＋ Dòng**, **Xoá dòng**, **Thêm mọi trường hợp tải** – mỗi dòng là một trường hợp tải hoặc một tổ hợp khác × hệ số.",
+                "**Lưu tổ hợp** / **Bỏ sửa**. **Tự sinh TCVN 2737:2023** sinh lại bộ tổ hợp chuẩn – tích **giữ tổ hợp tự đặt** để không mất tổ hợp do bạn thêm.")
+            .P("Chương trình kiểm tra tham chiếu (trường hợp / tổ hợp không còn tồn tại); mọi thao tác hoàn tác được. Lệnh nhanh {m:combos} chỉ tự sinh theo tiêu chuẩn ({s:tai-trong.to-hop}).");
 
         c.Sec("tai-trong.khoi-luong", "Nguồn khối lượng (cho dao động, động đất)")
             .P("{m:modal} → **Nguồn khối lượng (Mass Source)**: khối lượng = Σ hệ số × tải theo phương trọng lực / g. Mặc định: tĩnh tải × 1,0 + hoạt tải × ψE (ψE = φ·ψ2 = 0,8 × 0,3 = 0,24; mái 0). "
@@ -739,14 +778,27 @@ public static partial class UserGuide
                 "Tab **Phản lực, chuyển vị, dao động** và **Tổng hợp & nguyên nhân**; xuất báo cáo Excel + Word.")
             .P("Nguyên nhân lệch thường gặp: xem {s:hoi-dap.lech-etabs}.");
 
-        c.Sec("phan-tich.bang-ket-qua", "Bảng kết quả (Show Tables)", true,
-                "Cửa sổ bảng kết quả kiểu ETABS vừa được bổ sung; mô tả theo thiết kế của tính năng – kiểm tra lại khi hoàn thiện.")
-            .P("{m:resultTables} (Ctrl+T, nút **Bảng kết quả**): chọn bảng (chuyển vị nút, phản lực, nội lực dầm / cột, lệch tầng, chu kỳ và tỷ lệ khối lượng, phản lực đáy), lọc theo trường hợp / tổ hợp và tầng, xuất Excel (.xlsx) / CSV, sao chép. Ngoài ra vẫn có Bảng tính Excel và Nội lực CSV ({s:phan-tich.chuyen-vi}).");
+        c.Sec("phan-tich.bang-ket-qua", "Bảng kết quả (Show Tables)")
+            .Bullets("{m:resultTables} (**Ctrl+T**, nút **Bảng kết quả**): cửa sổ không chặn; tự chạy phân tích nếu chưa có kết quả. Tiêu đề ghi nguồn kết quả (tự tính hay nhập từ ETABS/SAP).",
+                "**Bảng**: Chuyển vị nút (Joint Displacements, mm / rad), Phản lực gối (Joint Reactions), Nội lực dầm (Element Forces – Beams), Nội lực cột (Element Forces – Columns), Chuyển vị lệch tầng (Story Drifts), Chu kỳ & tỷ lệ khối lượng (Modal Periods & Mass Ratios), Phản lực đáy (Base Reactions).",
+                "Lọc theo **Trường hợp / tổ hợp** và **Tầng**; **Xuất Excel…**, **Xuất CSV…**, **Sao chép** (dán vào Excel).",
+                "{m:reactions} mở thẳng bảng Phản lực gối.");
+
+        c.Sec("phan-tich.kiem-tra-mo-hinh", "Kiểm tra mô hình (Check Model)")
+            .Steps("{m:modelCheck} (nút **Kiểm tra MH**) trước khi phân tích: cửa sổ **Kiểm tra mô hình (Check Model)** (không chặn) liệt kê vấn đề theo mức độ, mã, tầng, nội dung.",
+                "Mục kiểm tra: nút trùng (theo **Dung sai nút (mm)**), thanh trùng / chồng, thanh dài 0, nút tự do, nhóm thanh không nối gối (biến hình), cột không có gối / móng ở chân, dầm cắt nhau không có nút, nút nằm giữa thanh chưa chia, **Cạnh sàn không có dầm**, tiết diện thiếu / không dùng, **Trường hợp tải rỗng**, tổ hợp tham chiếu thiếu, tải gán cho đối tượng / trường hợp không tồn tại. Tích **Hiện mục thông tin** để xem cả mục không phải lỗi.",
+                "Bấm đúp một dòng (hoặc **Phóng tới**) để chọn và phóng tới đối tượng trên mặt bằng.",
+                "**Sửa mục đang chọn** / **Sửa tự động tất cả**: gộp nút trùng, xoá thanh dài 0 / thanh trùng (chuyển tải sang thanh giữ lại), thêm nút tại giao điểm dầm và chia thanh, chia thanh tại nút nằm giữa, xoá nút tự do, xoá tải mồ côi, bỏ thành phần tổ hợp thiếu. Hoàn tác bằng Ctrl+Z; **Kiểm tra lại**.");
+
+        c.Sec("phan-tich.bien-dang", "Hình biến dạng (Deformed Shape)")
+            .Bullets("{m:deformed}: khung dây biến dạng theo **Trường hợp / tổ hợp** tuyến tính, **Khung nhìn** 3D (kéo chuột để xoay) hoặc mặt bằng **Tầng**; **Tỉ lệ** phóng tự động × hệ số; tuỳ chọn **Hình chưa biến dạng** mờ phía sau.",
+                "Đường đàn hồi mỗi thanh nội suy Hermite từ chuyển vị và góc xoay hai nút (đầu có giải phóng mô men bỏ góc xoay đầu đó) – dùng để phát hiện nhanh mô hình sai (thanh rời, gối thiếu, chuyển vị bất thường).",
+                "{m:diagrams}, {m:modes} chuyển sang khung nhìn Biểu đồ nội lực / Dao động.");
 
         c.Sec("phan-tich.on-dinh", "Mô hình không ổn định, lỗi phân tích")
             .Bullets("Thông báo kết cấu biến hình / ma trận suy biến: thường do cột không có liên kết chân, dầm treo không nối vào nút, thanh trùng, tất cả liên kết chân là khớp với khung một tầng không có giằng, hoặc giải phóng liên kết quá mức.",
                 "Cách xử lý: xem cảnh báo ở tab Kết quả; trên mặt bằng kiểm tra dầm có nối vào cột/dầm khác; chạy {m:split} sau khi nhập mô hình; kiểm tra **Liên kết chân cột**.",
-                "Kiểm tra mô hình tự động trước khi phân tích: {m:modelCheck} ({s:giao-dien.cay-mo-hinh}); gộp nút trùng: {m:mergeNodes}.");
+                "Kiểm tra mô hình tự động trước khi phân tích: {m:modelCheck} ({s:phan-tich.kiem-tra-mo-hinh}); gộp nút trùng: {m:mergeNodes}; xem hình biến dạng ({s:phan-tich.bien-dang}).");
         return c;
     }
 
@@ -856,6 +908,16 @@ public static partial class UserGuide
             .Bullets("Hộp **Tuỳ chọn xuất**: **Kiểu xuất** Gộp 1 file (các bản vẽ đặt cạnh nhau, mỗi bản giữ tỷ lệ trong khung bao riêng có tên ở trên; PDF: nhiều trang) hoặc Tách rời từng bản vẽ (mỗi bản một file).",
                 "**Tên file gộp** (mặc định {duan}_BoBanVe), **Mẫu tên từng file**: {so} số hiệu, {ten} tên bản vẽ, {duan} tên công trình, {stt} thứ tự 01, 02…, {ngay} ngày xuất. Để trống = tên mặc định (KC-01_MatBangKetCau…).",
                 "**Ghi nhớ lựa chọn cho lần sau** (XuatBanVe.json).");
+
+        c.Sec("trien-khai.hatch-dinh-dang", "Định dạng xuất DXF R12 / DXF 2018 / DWG 2018 và mẫu tô HATCH", true,
+                "Lõi đã có (Model/CadOutput.cs, Drawing/CadFileWriters.cs, Drawing/DxfWriter.Hatch.cs); ô chọn định dạng trong Chuẩn layer CAD / hộp Tuỳ chọn xuất đang được hoàn thiện – kiểm tra lại tên ô khi có.")
+            .Table(new[] { "Định dạng", "Đặc điểm" },
+                new[] { "DXF R12 (tương thích cũ) – mặc định", "Bộ ghi gốc của chương trình, mở được bằng mọi phần mềm CAD; mẫu tô HATCH được mô phỏng bằng LINE / SOLID; không lưu được nét in theo layer." },
+                new[] { "DXF 2018 (có HATCH)", "AC1032, UTF-8: HATCH thật, LWPOLYLINE, nét in theo layer (ghi qua thư viện ACadSharp)." },
+                new[] { "DWG 2018 (có HATCH)", "File .dwg AC1032 có HATCH thật (ghi qua ACadSharp)." })
+            .Bullets("Chọn định dạng trong chuẩn CAD ({m:cadStd} – mặc định người dùng và theo dự án) hoặc ở hộp **Tuỳ chọn xuất** trước mỗi lần xuất. File chuẩn cũ không có mục này → DXF R12.",
+                "Mẫu tô: SOLID, ANSI31…, mẫu kiến trúc AR-CONC, AR-SAND, EARTH, BRICK (bản rút gọn cùng dáng mẫu AutoCAD; định nghĩa nét ghi kèm trong HATCH nên mọi phần mềm CAD hiển thị giống nhau).",
+                "Phần mở rộng file theo định dạng: .dwg cho DWG 2018, .dxf cho hai loại còn lại.");
 
         c.Sec("ho-so.dan-trang", "Dàn trang và in bản vẽ")
             .Steps("{m:sheets}: cửa sổ **Dàn trang & in bản vẽ** – danh sách tờ bên trái (Thêm, Trang trắng, Tạo tờ từ mẫu, Lưu tờ làm mẫu, Nhân bản, Xoá, ▲▼, Đánh số lại, **Tạo bộ bản vẽ mặc định**).",
@@ -1011,7 +1073,9 @@ public static partial class UserGuide
                 new[] { "F1", "Hướng dẫn sử dụng tại mục của ngữ cảnh hiện tại (tab, khung nhìn, công cụ, hộp thoại)" },
                 new[] { "Shift+F1", "Phụ lục tính toán" },
                 new[] { "Ctrl+Z", "Hoàn tác thao tác sửa mô hình (30 bước)" },
-                new[] { "Ctrl+E / Ctrl+T / Ctrl+A", "Cây mô hình / Bảng kết quả / chọn mọi thanh tầng đang xem (theo menu Xem, Hiển thị, Chọn)" },
+                new[] { "Ctrl+E", "Hiện / ẩn cây mô hình" },
+                new[] { "Ctrl+T", "Bảng kết quả (tự phân tích nếu cần)" },
+                new[] { "Ctrl+A", "Chọn mọi thanh tầng đang xem (khi đang ở khung nhìn Mặt bằng, không gõ trong ô nhập)" },
                 new[] { "Delete", "Xoá đối tượng đang chọn trên mặt bằng" },
                 new[] { "Esc", "Dừng công cụ vẽ, về chế độ Chọn; đóng hộp thoại" },
                 new[] { "Chuột phải (khi vẽ dầm)", "Kết thúc chuỗi vẽ; lần nữa: thoát công cụ" },

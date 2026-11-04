@@ -39,8 +39,8 @@ public static partial class Benchmarks
     /// <summary>Bài toán trong danh sách đề xuất nhưng chưa có chức năng tương ứng trong chương trình (ghi vào báo cáo).</summary>
     public static List<string> SkippedProblems() => new()
     {
-        "Chu kỳ dao động riêng (phân tích dao động / modal) của cột công xôn một bậc tự do: chương trình chưa có phân tích dao động – "
-        + "chu kỳ T1 dùng cho động đất lấy theo công thức gần đúng T1 = Ct·H^(3/4); bỏ qua.",
+        "Chu kỳ dao động riêng (phân tích dao động / modal) của cột công xôn một bậc tự do: chương trình đã có phân tích dao động riêng và phổ phản ứng "
+        + "(được kiểm thử riêng trong bộ kiểm thử ModalTests) nhưng bài toán này chưa đưa vào bộ kiểm chứng của báo cáo; bỏ qua.",
         "Hiệu ứng P-delta (phân tích phi tuyến hình học): chương trình chỉ phân tích tĩnh tuyến tính bậc nhất; bỏ qua.",
         "Bề rộng vết nứt acrc: chương trình chưa tính bề rộng vết nứt (chỉ kiểm tra độ võng theo độ cứng có kể nứt); bỏ qua."
     };

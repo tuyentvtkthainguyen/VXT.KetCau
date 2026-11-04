@@ -107,14 +107,16 @@ public static class HelpContext
         ["RegulationWindow"] = "phap-ly.danh-muc",
         ["UserGuideWindow"] = "giao-dien.tro-giup",
         ["QuickStartWindow"] = "quy-trinh.bat-dau-nhanh",
-        ["ModelCheckWindow"] = "giao-dien.cay-mo-hinh",
-        ["DeformedShapeWindow"] = "giao-dien.cay-mo-hinh",
+        ["ModelCheckWindow"] = "phan-tich.kiem-tra-mo-hinh",
+        ["DeformedShapeWindow"] = "phan-tich.bien-dang",
         ["ResultTablesWindow"] = "phan-tich.bang-ket-qua",
         ["ComboEditorWindow"] = "tai-trong.sua-to-hop",
         ["LoadPatternsWindow"] = "tai-trong.truong-hop",
-        ["LoadCasesWindow"] = "tai-trong.sua-to-hop",
+        ["LoadCasesWindow"] = "mo-hinh.khai-bao",
         ["MaterialsWindow"] = "mo-hinh.vat-lieu",
-        ["SpectrumDialog"] = "tai-trong.dong-dat",
+        ["SpectrumDialog"] = "mo-hinh.khai-bao",
+        ["CadLinkWindow"] = "khoi-tao.lien-ket-autocad",
+        ["CadLinkDiffDialog"] = "khoi-tao.lien-ket-autocad",
     };
 
     private static string Get(IReadOnlyDictionary<string, string> map, string key) =>

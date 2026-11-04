@@ -18,7 +18,8 @@ public static class VerificationReport
     /// <summary>Giới hạn đã biết của chương trình (ghi trung thực trong báo cáo).</summary>
     public static List<string> KnownLimitations() => new()
     {
-        "Động đất: " + Std.SeismicMethodNote + " Chương trình chưa có phân tích dao động riêng (modal) – chu kỳ T1 lấy theo công thức gần đúng T1 = Ct·H^(3/4); "
+        "Động đất: " + Std.SeismicMethodNote + " Ngoài phương pháp tĩnh lực ngang tương đương (T1 = Ct·H^(3/4) hoặc T1 từ phân tích dao động riêng), "
+        + "chương trình có phân tích dao động riêng và phổ phản ứng (tổ hợp dạng CQC/SRSS – Khai báo → Nguồn khối lượng & dao động riêng…); "
         + "số điều khoản ghi theo bản TCVN 9386:2012 (cùng cơ sở EN 1998-1), người dùng đối chiếu bản 2025.",
         "Phân tích tĩnh tuyến tính bậc nhất: không kể hiệu ứng P-delta, phi tuyến vật liệu, phân phối lại nội lực; chưa tính bề rộng vết nứt acrc.",
         "Ô sàn bị tường hoặc dầm xiên (chéo) cắt vẫn được tính như ô chữ nhật (dải bản / phương pháp Marcus theo hình bao chữ nhật) – người dùng tự kiểm tra các ô sàn hình dạng đặc biệt.",
