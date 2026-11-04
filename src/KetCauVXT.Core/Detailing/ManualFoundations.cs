@@ -191,7 +191,7 @@ public class ManualStrip : IDetailMember
     [Field("Thép sườn trên – số thanh (0 = tự chọn)", Group = "Thép")] public int TopN { get; set; }
     [Field("Thép sườn trên – Ø", Unit = "mm", Group = "Thép")] public int TopD { get; set; } = 20;
     [Field("Đai – Ø", Unit = "mm", Group = "Thép")] public int StirD { get; set; } = 8;
-    [Field("Bước đai", Unit = "mm", Scale = 1000, Group = "Thép")] public double StirS { get; set; } = 0.15;
+    [Field("Bước đai (0 = tự chọn Ø, bước, số nhánh)", Unit = "mm", Scale = 1000, Group = "Thép")] public double StirS { get; set; }
     [Field("Số nhánh đai", Group = "Thép")] public int Legs { get; set; } = 2;
     [Field("Thép ngang bản đáy – Ø (0 = tự chọn)", Unit = "mm", Group = "Thép")] public int FlangeD { get; set; }
     [Field("Thép ngang bản đáy – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double FlangeS { get; set; }
@@ -283,8 +283,31 @@ public class ManualStrip : IDetailMember
         double muT = RcSection.MomentCapacity(Bs, h0t, nt * Dt.Area(TopD), nb * Dt.Area(BotD), c + BotD / 2000.0, conc, main);
         r.Checks.Add(Dt.Check("Sườn chịu M+ tại cột (thép dưới " + Dt.Bars(nb, BotD) + ")", mPos, muB, "kN.m"));
         r.Checks.Add(Dt.Check("Sườn chịu M− giữa nhịp (thép trên " + Dt.Bars(nt, TopD) + ")", mNeg, muT, "kN.m"));
-        double qu = RcSection.ShearCapacity(Bs, h0, conc, small, StirD, Math.Max(Legs, 2), StirS);
-        r.Checks.Add(Dt.Check("Sườn chịu cắt Q ≤ Qb + Qsw (đai " + Dt.Spaced(StirD, StirS) + ")", vMax, qu, "kN"));
+        int sD = StirD > 0 ? StirD : 8, sL = Math.Max(Legs, 2);
+        double sS = StirS;
+        if (sS <= 0)
+        {
+            // tự chọn: Ø8 → Ø10 → Ø12, bước 200 → 100, 2 → 4 nhánh; bước ≤ min(h0/2; 300)
+            double sMaxS = Math.Min(h0 / 2, 0.30);
+            bool found = false;
+            foreach (int legs in new[] { sL, 4 })
+            {
+                foreach (int dd in new[] { 8, 10, 12 })
+                {
+                    foreach (double ss in new[] { 0.20, 0.15, 0.10 })
+                    {
+                        if (ss > sMaxS + 1e-9) continue;
+                        if (RcSection.ShearCapacity(Bs, h0, conc, small, dd, legs, ss) >= vMax) { sD = dd; sS = ss; sL = legs; found = true; break; }
+                    }
+                    if (found) break;
+                }
+                if (found) break;
+            }
+            if (!found) { sD = 12; sS = 0.10; sL = 4; }
+        }
+        double qu = RcSection.ShearCapacity(Bs, h0, conc, small, sD, sL, sS);
+        r.Checks.Add(Dt.Check("Sườn chịu cắt Q ≤ Qb + Qsw (đai " + Dt.Spaced(sD, sS) + ", " + sL + " nhánh)", vMax, qu, "kN"));
+        if (sL > 2) r.Messages.Add("Đai sườn " + sL + " nhánh: đai kín ngoài + đai kín trong (thống kê 2 bộ đai)");
         if (!Dt.FitsInLayer(Bs, cb, StirD, nb, BotD, false)) r.Messages.Add("Thép dưới sườn " + Dt.Bars(nb, BotD) + " không đủ khe hở 1 lớp – đặt 2 lớp hoặc tăng bề rộng sườn");
         // ---- bản cánh: console từ mép sườn, M = p·l²/2 ----
         double lc = (b - Bs) / 2, pn = sumN / (b * Length) * (pMax - gD) / Math.Max(pTb - gD, 1e-9);
@@ -309,7 +332,7 @@ public class ManualStrip : IDetailMember
             r.Bars.Add(Dt.Straight("Giá", 12, 2 * pairs, lenRib));
         }
         double cs = Math.Max(cb - StirD / 1000.0, 0.015);
-        r.Bars.Add(Dt.Stirrup("Đai", StirD, (int)Math.Floor(lenRib / StirS) + 1, Bs - 2 * cs, hs - c - cs, StirS));
+        r.Bars.Add(Dt.Stirrup("Đai", sD, ((int)Math.Floor(lenRib / sS) + 1) * (sL > 2 ? 2 : 1), Bs - 2 * cs, hs - c - cs, sS));
         double hk = Dt.R10(Math.Max(Hf - 2 * c, 0.10));
         r.Bars.Add(Dt.Hooked("Lớp dưới phương ngang", fl.Item1, (int)Math.Floor(lenRib / fl.Item2) + 1, Dt.R10(b - 2 * c), hk, hk, false, fl.Item2));
         var dist = Dt.ChooseSpaced(0.2 * Dt.AreaPerM(fl.Item1, fl.Item2), new[] { 10, 12 }, 0.25, 0.15);

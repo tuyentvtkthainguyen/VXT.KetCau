@@ -33,7 +33,7 @@ public sealed class DetailingWindow : Window
     private readonly DataGrid _checks = DialogUi.NewGrid();
     private readonly ListBox _msgs = new() { MaxHeight = 220, BorderThickness = new Thickness(0) };
     private readonly TextBox _calc = new() { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, FontFamily = new FontFamily("Consolas"), BorderThickness = new Thickness(0) };
-    private readonly DrawingHost _preview = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+    private readonly DrawingHost _preview = new() { Background = Brushes.White, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
     private readonly ScrollViewer _previewScroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Background = Brushes.WhiteSmoke };
     private readonly DataGrid _qty = DialogUi.NewGrid();
     private readonly TabControl _tabs = new();
@@ -575,15 +575,27 @@ public sealed class DetailingWindow : Window
         {
             var figs = CurrentFigures();
             if (figs.Count == 0) { _preview.Drawing = null; _preview.InvalidateVisual(); return; }
-            var w = SheetComposer.Compose(figs, 100, Info(KindTitle(_cur).ToUpperInvariant() + " " + _cur.Name, "KC-01"), "A1");
-            var e = w.Extents;
-            double K = 1.0 / 100, pad = 4;
-            double fit = Math.Max(0.1, (_previewScroll.ActualWidth > 50 ? _previewScroll.ActualWidth - 24 : 700) / ((e.W * K + 2 * pad) * SheetRender.DipPerMm));
+            // các hình xếp hàng ngang theo tỷ lệ riêng (mm giấy), xuống dòng khi rộng > 420 mm; căn đỉnh
+            var items = new List<(DxfWriter W, double K, double Dx, double Dy)>();
+            double cx = 0, rowTop = 0, rowH = 0, maxW = 0, gap = 12;
+            foreach (var f in figs)
+            {
+                var e = f.W.Extents;
+                if (e.W <= 0 || e.H <= 0) continue;
+                double k = 1.0 / Math.Max(f.W.Scale, 1);
+                double fw = e.W * k, fh = e.H * k;
+                if (cx > 0 && cx + fw > 420) { rowTop -= rowH + gap; cx = 0; rowH = 0; }
+                items.Add((f.W, k, cx - e.X1 * k, rowTop - e.Y2 * k));
+                cx += fw + gap; rowH = Math.Max(rowH, fh); maxW = Math.Max(maxW, cx - gap);
+            }
+            if (items.Count == 0) { _preview.Drawing = null; _preview.InvalidateVisual(); return; }
+            double totW = maxW, totH = -(rowTop - rowH), pad = 6;
+            double fit = Math.Max(0.1, (_previewScroll.ActualWidth > 50 ? _previewScroll.ActualWidth - 24 : 700) / ((totW + 2 * pad) * SheetRender.DipPerMm));
             double zoom = fit * _zoom;
-            _preview.Drawing = SheetRender.Render(new[] { (w, K, 0.0, 0.0) }, e.X1 * K - pad, e.Y2 * K + pad, 0.12, x => x.GetPrimitives());
+            _preview.Drawing = SheetRender.Render(items, -pad, pad, 0.12, x => x.GetPrimitives());
             _preview.Scale = SheetRender.DipPerMm * zoom;
-            _preview.Width = (e.W * K + 2 * pad) * SheetRender.DipPerMm * zoom;
-            _preview.Height = (e.H * K + 2 * pad) * SheetRender.DipPerMm * zoom;
+            _preview.Width = (totW + 2 * pad) * SheetRender.DipPerMm * zoom;
+            _preview.Height = (totH + 2 * pad) * SheetRender.DipPerMm * zoom;
             _preview.InvalidateVisual();
         }
         catch (Exception ex) { SetStatus("Lỗi xem trước: " + ex.Message); }

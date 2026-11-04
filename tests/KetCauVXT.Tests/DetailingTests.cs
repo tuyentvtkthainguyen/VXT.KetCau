@@ -116,6 +116,9 @@ public static class DetailingTests
         var added = prj2.AddNew("Dam");
         check("Thêm dầm mới: tên D2 (không trùng)", B(added.Name == "D2"), 1, 0);
         var res = prj.RunAll();
+        foreach (var (mm, rr) in res.Where(x => !x.Result.Ok))
+            foreach (var msg in rr.Messages.Where(x => x.StartsWith("LỖI"))) Console.WriteLine("    [mẫu " + mm.Name + "] " + msg);
+        check("Hồ sơ mẫu: mọi cấu kiện đạt", res.Count(x => !x.Result.Ok), 0, 0);
         check("Tính toàn bộ hồ sơ mẫu: 9 kết quả, không ngoại lệ", B(res.Count == 9 && res.All(r => !r.Result.Messages.Any(m => m.StartsWith("LỖI tính toán")))), 1, 0);
         var sum = DetailingExport.Summary(res);
         var rows = RebarSchedule.BuildRows(sum);
