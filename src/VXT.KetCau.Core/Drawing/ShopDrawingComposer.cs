@@ -299,10 +299,19 @@ namespace VXT.KetCau.Core.Drawing
             // chuỗi vùng đai đứng bên phải
             var stir = e.Bars.FirstOrDefault(x => x.Role == BarRole.Stirrup);
             double xr = ox + b / 2 + TH * 7;
+            int zi = 0;
             foreach (var zn in g.StirrupZones)
             {
                 w.DimV(xr, Z(zn.X0), Z(zn.X1), TH);
-                if (stir != null) w.Text("CHU", xr + TH * 1.6, Z((zn.X0 + zn.X1) / 2), TH, $"{Sym}{zn.Spec.D}a{zn.Spec.S:0} ({stir.Mark})", 1, 0, 90);
+                if (stir != null)
+                {
+                    string zt2 = $"{Sym}{zn.Spec.D}a{zn.Spec.S:0} ({stir.Mark})";
+                    // vùng ngắn hơn chữ thì so le sang cột bên cạnh để chữ không đè nhau
+                    bool shortZone = Math.Abs(zn.X1 - zn.X0) < zt2.Length * TH * 0.62;
+                    double tx = xr + TH * 1.6 + (shortZone && zi % 2 == 1 ? TH * 1.5 : 0);
+                    w.Text("CHU", tx, Z((zn.X0 + zn.X1) / 2), TH, zt2, 1, 0, 90);
+                }
+                zi++;
             }
             // bên trái: chiều cao, neo móng, chờ nối
             double xl = ox - b / 2 - TH * 2;

@@ -191,8 +191,8 @@ namespace VXT.KetCau.Core.Documentation
                             double uu = rel.Dot(og.U), vv = rel.Dot(og.V);
                             return (u: uu, v: vv, z: p.Z);
                         }).ToList();
-                        // lấy thanh đại diện ở giữa dải rải
-                        double spread = (pl.Count - 1) * pl.Spacing / 2;
+                        // thanh đại diện: lớp dưới ở 35% dải rải, thép mũ ở 65% để hai loại không đè lên nhau
+                        double spread = (pl.Count - 1) * pl.Spacing * (bar.Role == BarRole.SlabTop ? 0.65 : 0.35);
                         bool alongU = Math.Abs(mapped.First().u - mapped.Last().u) > Math.Abs(mapped.First().v - mapped.Last().v);
                         var plan = mapped.Select(k => alongU ? g.ToGlobal(k.u, k.v + spread, 0).XY : g.ToGlobal(k.u + spread, k.v, 0).XY).ToList();
                         var clean = new List<P2>();

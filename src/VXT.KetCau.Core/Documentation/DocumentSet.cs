@@ -136,7 +136,7 @@ namespace VXT.KetCau.Core.Documentation
                     double TH = comp.PrintTextHeight * comp.ElevationScale;
                     var g = (ColumnGeometry)e.Geometry;
                     comp.DrawColumnElevation(e, TH * 12, 0);
-                    comp.DrawColumnSection(e, TH * 34, g.TopZ, 2, TH);
+                    comp.DrawColumnSection(e, TH * 36, g.TopZ, 2, TH);
                 });
             }
             // Bảng thống kê chia trang theo khổ giấy
