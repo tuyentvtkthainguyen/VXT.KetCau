@@ -61,6 +61,9 @@ public partial class MainWindow
     // ==================================================================
     // Khởi tạo thanh công cụ
     // ==================================================================
+    /// <summary>Khung mở/đóng chứa hàng công cụ dầm kiểu ETABS.</summary>
+    private Expander _beamToolsExpander;
+
     private void InitBeamToolsUi()
     {
         if (planEditBar?.Parent is not Border host || host.Parent is not DockPanel dock) return;
@@ -139,10 +142,20 @@ public partial class MainWindow
             ToolTip = "Trong chế độ ＋ Dầm, gõ số trên mặt bằng để mở ô nhập toạ độ: \"x,y\" tuyệt đối, \"@dx,dy\" tương đối điểm trước, \"L<góc\" toạ độ cực, \"L\" = khoảng cách theo hướng chuột; Enter để đặt điểm, Esc để huỷ."
         });
 
+        // gói trong khung mở/đóng (mặc định đóng) để không chiếm chỗ vùng vẽ mặt bằng trên màn hình nhỏ
+        var exp = new Expander
+        {
+            Header = new TextBlock { Text = "Dầm kiểu ETABS – khai báo tiết diện, vẽ nhanh theo lưới, dầm phụ, công xôn, sao chép, phạm vi tầng, bắt điểm, gõ toạ độ", FontWeight = FontWeights.SemiBold },
+            IsExpanded = false, Content = bar
+        };
+        bar.Children.Remove(bar.Children[0]);   // nhãn "Dầm (kiểu ETABS):" đã có ở tiêu đề khung
+        exp.Expanded += (s, e) => Dispatcher.BeginInvoke(new Action(FitPlan), System.Windows.Threading.DispatcherPriority.Background);
+        exp.Collapsed += (s, e) => Dispatcher.BeginInvoke(new Action(FitPlan), System.Windows.Threading.DispatcherPriority.Background);
+        _beamToolsExpander = exp;
         var border = new Border
         {
             Background = new SolidColorBrush(Color.FromRgb(236, 242, 249)), BorderBrush = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
-            BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(3), Child = bar
+            BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(3), Child = exp
         };
         DockPanel.SetDock(border, Dock.Top);
         dock.Children.Insert(dock.Children.IndexOf(host) + 1, border);

@@ -62,7 +62,9 @@ public partial class MainWindow
             foreach (var id in newIds) if (_p.Frames.Any(f => f.Id == id)) _multiSel.Add(id);
             Select(frame: _p.Frames.FirstOrDefault(f => newIds.Contains(f.Id)));
             await Pause(1500);
+            if (_beamToolsExpander != null) { _beamToolsExpander.IsExpanded = true; await Pause(600); }
             Shot($"{tag}_46_DamPhuTheoKhoangCach");
+            if (_beamToolsExpander != null) { _beamToolsExpander.IsExpanded = false; await Pause(300); }
         }
         finally
         {

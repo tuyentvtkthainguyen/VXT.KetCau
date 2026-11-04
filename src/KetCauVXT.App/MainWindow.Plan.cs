@@ -114,7 +114,7 @@ public partial class MainWindow
     {
         if (_p == null) return;
         double w = planHost.ActualWidth, h = planHost.ActualHeight;
-        if (w < 10 || h < 10) { _fitPending = true; return; }
+        if (w < 160 || h < 160) { _fitPending = true; return; }   // vùng vẽ chưa đủ chỗ (đang dựng giao diện) – vừa màn hình khi đủ chỗ
         var xs = new List<double>(); var ys = new List<double>();
         foreach (var n in _p.Nodes) { xs.Add(n.X); ys.Add(n.Y); }
         foreach (var g in _p.Grids) { if (g.Dir == GridDir.X) xs.Add(g.Coord); else ys.Add(g.Coord); }
@@ -538,7 +538,10 @@ public partial class MainWindow
 
     private void PlanHost_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (_fitPending) FitPlan(); else RedrawPlan();
+        // vùng vẽ đổi cỡ nhiều (mở/đóng thanh công cụ, đổi cỡ cửa sổ) khi người dùng chưa phóng to tay → vừa màn hình lại
+        bool big = e.PreviousSize.Width > 0 && (Math.Abs(e.NewSize.Height - e.PreviousSize.Height) > 0.25 * Math.Max(e.PreviousSize.Height, 1)
+                                                 || Math.Abs(e.NewSize.Width - e.PreviousSize.Width) > 0.25 * Math.Max(e.PreviousSize.Width, 1));
+        if (_fitPending || (big && _scale <= 1.01)) FitPlan(); else RedrawPlan();
     }
 
     private void BtnFit_Click(object sender, RoutedEventArgs e) => FitPlan();
