@@ -185,7 +185,7 @@ public static class ResultTables
             {
                 t.Columns.AddRange(new[] { "Dạng", "T (s)", "f (Hz)", "UX", "UY", "UZ", "RZ", "ΣUX", "ΣUY", "ΣUZ", "ΣRZ", "Phương" });
                 var m = r.Modal;
-                if (m == null || m.Modes.Count == 0) { t.Note = "Chưa có kết quả dao động riêng (Phân tích → Dao động riêng…)."; break; }
+                if (m == null || m.Modes.Count == 0) { t.Note = "Chưa có kết quả dao động riêng (Khai báo → Nguồn khối lượng & dao động riêng…)."; break; }
                 foreach (var md in m.Modes)
                     t.Rows.Add(new object[] { md.Index, md.Period, md.Frequency, md.Ratio[0], md.Ratio[1], md.Ratio[2], md.Ratio[3],
                                               md.Cumulative[0], md.Cumulative[1], md.Cumulative[2], md.Cumulative[3], md.Dominant });

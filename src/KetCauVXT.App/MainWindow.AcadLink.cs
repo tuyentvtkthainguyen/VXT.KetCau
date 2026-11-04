@@ -71,6 +71,7 @@ public partial class MainWindow
         try
         {
             if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            await OfferCadLinkFromAcad(x);   // [CadLink] JSON có "Dwg" → tạo / làm mới bản vẽ liên kết – MainWindow.CadLink.cs
             Activate();
             int n = x.Storeys?.Count ?? 0;
             var r = MessageBox.Show(this, $"Có dữ liệu mới từ AutoCAD ({n} tầng).\n{(string.IsNullOrEmpty(x.Dwg) ? "" : x.Dwg + "\n")}\nMở hộp thoại nhập?",

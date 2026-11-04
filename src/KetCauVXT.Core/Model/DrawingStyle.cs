@@ -167,6 +167,25 @@ public class DrawingStyle
     /// <summary>Kiểu đường cắt ở đầu cánh sàn</summary>
     public SlabBreakStyle SlabBreak { get; set; } = SlabBreakStyle.ZigZag;
 
+    // ---------------- tô vật liệu (hatch) mặt cắt – Drawing/DxfWriter.Hatch.cs ----------------
+    /// <summary>Tô vật liệu (hatch) mặt cắt: bê tông AR-CONC, bê tông lót ANSI31, đất EARTH, gạch xây… Tự động = bật khi xuất
+    /// DXF 2018 / DWG (HATCH thật), tắt khi xuất DXF R12 (file nhẹ, giữ đúng bản vẽ cũ); Bật = cả R12 (mô phỏng bằng LINE/SOLID).</summary>
+    public HatchMode HatchSections { get; set; } = HatchMode.Auto;
+    /// <summary>Hệ số tỷ lệ mẫu tô (1 = khoảng cách mẫu chuẩn trên giấy, vd. ANSI31 3,175 mm; 2 = thưa gấp đôi)</summary>
+    public double HatchScaleFactor { get; set; } = 1.0;
+
+    /// <summary>Có vẽ tô vật liệu không (theo HatchSections và định dạng xuất đang áp dụng – CadFileWriters.Current).</summary>
+    [JsonIgnore]
+    public bool HatchEnabled => HatchSections == HatchMode.On ||
+        (HatchSections == HatchMode.Auto && KetCauVXT.Drawing.CadFileWriters.Current != CadOutputFormat.DxfR12);
+
+    public static string HatchModeLabel(HatchMode m) => m switch
+    {
+        HatchMode.On => "Bật (cả DXF R12 – mô phỏng nét)",
+        HatchMode.Off => "Tắt",
+        _ => "Tự động (bật khi xuất DXF 2018 / DWG)"
+    };
+
     // ==================================================================
     public static DrawingStyle Default() => new();
 
@@ -385,6 +404,8 @@ public class DrawingStyle
         if (!Enum.IsDefined(typeof(DimArrow), DimArrowType)) DimArrowType = DimArrow.Tick;
         SlabFlangeLength = Clamp(SlabFlangeLength, 100, 3000, d.SlabFlangeLength);
         if (!Enum.IsDefined(typeof(SlabBreakStyle), SlabBreak)) SlabBreak = SlabBreakStyle.ZigZag;
+        if (!Enum.IsDefined(typeof(HatchMode), HatchSections)) HatchSections = HatchMode.Auto;
+        HatchScaleFactor = Clamp(HatchScaleFactor, 0.1, 20, 1.0);
         DimStylePrefix = SafePrefix(DimStylePrefix);
         DimStyles ??= DefaultDimStyles();
         DimStyles.RemoveAll(x => x == null || double.IsNaN(x.Scale) || x.Scale <= 0 || x.Scale > 2000);
@@ -403,6 +424,17 @@ public class DrawingStyle
         (JsonSerializer.Deserialize<DrawingStyle>(string.IsNullOrWhiteSpace(json) ? "{}" : json, CadStandard.JsonOptions) ?? new DrawingStyle()).Normalize();
 
     public DrawingStyle Clone() => FromJson(ToJson());
+}
+
+/// <summary>Tô vật liệu (hatch) mặt cắt.</summary>
+public enum HatchMode
+{
+    /// <summary>Bật khi xuất DXF 2018 / DWG, tắt khi xuất DXF R12</summary>
+    Auto,
+    /// <summary>Luôn bật (DXF R12: mô phỏng bằng LINE/SOLID)</summary>
+    On,
+    /// <summary>Tắt</summary>
+    Off
 }
 
 /// <summary>Đường cắt ở đầu cánh sàn trên mặt cắt dầm.</summary>

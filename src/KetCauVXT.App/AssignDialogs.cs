@@ -26,9 +26,10 @@ internal static class AssignDialogs
 
     private static Window NewWindow(Window owner, string title, double w, double h)
     {
-        var win = new Window { Owner = owner, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize };
+        var win = new Window { Owner = owner, ResizeMode = ResizeMode.NoResize };
         DialogUi.Setup(win, title, w, h);
         win.MinHeight = 0;
+        win.SizeToContent = SizeToContent.Height;   // sau Setup (đặt Height) để chiều cao theo nội dung
         return win;
     }
 

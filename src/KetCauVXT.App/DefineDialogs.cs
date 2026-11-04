@@ -156,7 +156,7 @@ internal sealed class MaterialsWindow : Window
             int i = _p.Materials.IndexOf(r.M);
             if (i >= 0) { _p.Materials[i] = lib; n++; }
         }
-        Changed = n > 0; Reload();
+        Changed |= n > 0; Reload();
         _status.Text = $"Đã đặt lại {n} vật liệu theo thư viện TCVN.";
     }
 

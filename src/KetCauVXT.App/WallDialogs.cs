@@ -141,7 +141,7 @@ internal sealed class WallTypesWindow : Window
         if (used.Count > 0)
         {
             MessageBox.Show(this, "Không xoá được loại tường đang dùng:\n" + string.Join("\n", used.Select(r => $"  • {r.Name} – {r.Uses} đoạn tường")) +
-                                  "\n\nĐổi loại cho các đoạn tường đó trước (Mô hình → Tường đã khai báo…).", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                                  "\n\nĐổi loại cho các đoạn tường đó trước (Vẽ → Tường đã khai báo…).", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (MessageBox.Show(this, $"Xoá {sel.Count} loại tường?", Title, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;

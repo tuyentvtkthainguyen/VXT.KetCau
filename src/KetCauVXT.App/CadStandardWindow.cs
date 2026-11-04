@@ -600,7 +600,7 @@ internal sealed class LayerExportDialog : Window
         }
         _grid = LayerNameCheck.NewGrid(false);
         _grid.ItemsSource = _rows;
-        _chkNoAsk = new CheckBox { Content = "Không hỏi lại (đổi lại trong Tệp → Chuẩn layer CAD…)", VerticalAlignment = VerticalAlignment.Center };
+        _chkNoAsk = new CheckBox { Content = "Không hỏi lại (đổi lại trong Tuỳ chọn → Chuẩn layer CAD…)", VerticalAlignment = VerticalAlignment.Center };
         _status = new TextBlock { Foreground = Brushes.DimGray, Margin = new Thickness(0, 2, 0, 2), TextWrapping = TextWrapping.Wrap };
 
         var top = new StackPanel();

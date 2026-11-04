@@ -152,7 +152,7 @@ public partial class MainWindow
         sb.AppendLine($"Tầng (cao trình đứng): {w.Story}");
         sb.AppendLine($"Từ ({w.X1:0.00}; {w.Y1:0.00}) đến ({w.X2:0.00}; {w.Y2:0.00})");
         sb.AppendLine($"Chiều dài: {w.Length:0.00} m");
-        if (c?.Type == null) { sb.AppendLine("LỖI: không có loại tường này – sửa ở Mô hình → Loại tường…"); return sb.ToString(); }
+        if (c?.Type == null) { sb.AppendLine("LỖI: không có loại tường này – sửa ở Khai báo → Loại tường…"); return sb.ToString(); }
         var t = c.Type;
         sb.AppendLine($"Dày {t.Thickness * 1000:0} mm, γ = {t.UnitWeight:0.#} kN/m³, {WallMath.FinishText(t.Finish).ToLowerInvariant()}");
         sb.AppendLine($"Tải 1 m² tường đặc: {t.WeightPerM2:0.00} kN/m²");

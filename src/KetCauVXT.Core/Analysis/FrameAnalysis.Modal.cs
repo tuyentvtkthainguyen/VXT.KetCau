@@ -159,7 +159,7 @@ public partial class FrameAnalysis
         };
         _res.Modal = mr;
         var src = ms.Effective(_p);
-        if (src.Count == 0) throw new InvalidOperationException("nguồn khối lượng trống (Phân tích → Dao động riêng… → Nguồn khối lượng).");
+        if (src.Count == 0) throw new InvalidOperationException("nguồn khối lượng trống (Khai báo → Nguồn khối lượng & dao động riêng…).");
 
         // --- khối lượng nút ---
         var W = NodeWeights(src);

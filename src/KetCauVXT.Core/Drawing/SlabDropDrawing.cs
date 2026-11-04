@@ -122,23 +122,24 @@ public static class SlabDropDrawing
     }
 
     /// <summary>Đoạn P→Q trừ phần nằm trong hình chữ nhật r.</summary>
-    private static IEnumerable<((double X, double Y) P, (double X, double Y) Q)> Cut((double X, double Y) p, (double X, double Y) q, Rect2? r)
+    private static List<((double X, double Y) P, (double X, double Y) Q)> Cut((double X, double Y) p, (double X, double Y) q, Rect2? r)
     {
-        if (r == null || r.Value.IsEmpty) { yield return (p, q); yield break; }
+        var res = new List<((double X, double Y) P, (double X, double Y) Q)>();
+        if (r == null || r.Value.IsEmpty) { res.Add((p, q)); return res; }
         var R = r.Value;
         double dx = q.X - p.X, dy = q.Y - p.Y, t0 = 0, t1 = 1;
-        bool Clip(double den, double num)
+        bool ok = true;
+        foreach (var (den, num) in new[] { (-dx, p.X - R.X1), (dx, R.X2 - p.X), (-dy, p.Y - R.Y1), (dy, R.Y2 - p.Y) })
         {
-            if (Math.Abs(den) < 1e-12) return num <= 0;
+            if (Math.Abs(den) < 1e-12) { if (num < 0) { ok = false; break; } continue; }
             double t = num / den;
-            if (den < 0) { if (t > t1) return false; if (t > t0) t0 = t; }
-            else { if (t < t0) return false; if (t < t1) t1 = t; }
-            return true;
+            if (den < 0) { if (t > t1) { ok = false; break; } if (t > t0) t0 = t; }
+            else { if (t < t0) { ok = false; break; } if (t < t1) t1 = t; }
         }
-        bool hit = Clip(-dx, p.X - R.X1) && Clip(dx, R.X2 - p.X) && Clip(-dy, p.Y - R.Y1) && Clip(dy, R.Y2 - p.Y) && t1 > t0;
-        if (!hit) { yield return (p, q); yield break; }
-        if (t0 > 1e-9) yield return (p, (p.X + dx * t0, p.Y + dy * t0));
-        if (t1 < 1 - 1e-9) yield return ((p.X + dx * t1, p.Y + dy * t1), q);
+        if (!ok || t1 <= t0) { res.Add((p, q)); return res; }
+        if (t0 > 1e-9) res.Add((p, (p.X + dx * t0, p.Y + dy * t0)));
+        if (t1 < 1 - 1e-9) res.Add(((p.X + dx * t1, p.Y + dy * t1), q));
+        return res;
     }
 
     /// <summary>Chú thích ký hiệu sàn hạ cốt ở dưới bản vẽ (gọi trước khi ghi tên hình). Không có ô hạ cốt → không vẽ.</summary>

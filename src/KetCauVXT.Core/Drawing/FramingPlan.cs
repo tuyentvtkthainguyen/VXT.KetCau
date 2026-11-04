@@ -79,7 +79,9 @@ public static class FramingPlan
             var ss = p.SlabSections.FirstOrDefault(x => x.Name == sl.Section);
             if (ss != null) t = ss.Thickness;
             if (t > 0) w.Text(Lay.Chu, cx, cy - 1.6 * th, 0.8 * th, $"h={DxfWriter.N0(t * 1000)}", 0, 1, 3);
+            SlabDropDrawing.Mark(w, p, sl);   // [Sàn hạ cốt] bao nét đứt + gạch chéo + "SÀN HẠ COS -50" – Drawing/SlabDropDrawing.cs
         }
+        SlabDropDrawing.Legend(w, p, st);   // [Sàn hạ cốt] chú thích (chỉ khi tầng có ô hạ cốt)
 
         string title = $"MẶT BẰNG KẾT CẤU TẦNG {st.Name} ({DxfWriter.ElevText(st.Elevation)})";
         w.Title(extent.Cx, w.Extents.Y2 + 5 * th, title, DrawUtil.ScaleText(S));

@@ -99,6 +99,7 @@ public partial class MainWindow : Window
         _dirty = false;
         _p.InvalidateIndex();
         ActivateCadStandard();   // chuẩn layer CAD của dự án (MainWindow.CadStandard.cs)
+        OnCadLinksProjectSet();   // [CadLink] nạp bản vẽ liên kết, theo dõi file – MainWindow.CadLink.cs
         LoadUiFromProject();
         RefreshAll(true);
         UpdateTitle();
@@ -145,6 +146,7 @@ public partial class MainWindow : Window
                 if (dlg.ShowDialog(this) != true) return false;
                 path = dlg.FileName;
             }
+            _p.UpdateCadLinkPaths(path);   // [CadLink] đường dẫn bản vẽ liên kết tương đối theo file dự án
             _p.Save(path);
             _path = path; _dirty = false;
             UpdateTitle();

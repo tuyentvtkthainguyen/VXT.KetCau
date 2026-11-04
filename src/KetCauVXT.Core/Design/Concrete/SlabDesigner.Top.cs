@@ -238,7 +238,7 @@ public static partial class SlabDesigner
                 var pnc = pn;
                 var mesh = pn.Mesh[dir];   // lưới trên (dừng tại bậc, neo vào dầm) đã đủ → không thêm mũ
                 if (pn.Scheme != SlabRebarScheme.TopBarsBottomMesh && mesh != null && mesh.AsPerM >= Math.Max(pn.AsMin(mesh.Dia), asBot / 3) * (1 - 1e-6)) continue;
-                var ch =RcSection.ChooseSpacing(dg => Math.Max(pnc.AsMin(dg), asBot / 3), pn.Dias, 0.20, 0.10, 0.20);
+                var ch = RcSection.ChooseSpacing(dg => Math.Max(pnc.AsMin(dg), asBot / 3), pn.Dias, 0.20, 0.10, 0.20);
                 items.Add(new EdgeItem { P = pn, Edge = i, Dir = dir, A = pn.Pts[i], B = pn.Pts[(i + 1) % 4], Choice = ch, Step = true });
             }
             // ---- hết Sàn hạ cốt ----

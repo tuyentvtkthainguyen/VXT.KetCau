@@ -103,6 +103,7 @@ public partial class MainWindow
     private void PlanClick(Point s)
     {
         if (_p == null) return;
+        if (CadLinkAlignClick(s)) return;   // [CadLink] căn bản vẽ liên kết theo 2 điểm – MainWindow.CadLink.cs
         if (_mode == PlanEditMode.Select) { _multiSel.Clear(); SelectAt(s); return; }
         if (_mode == PlanEditMode.MultiSelect) { MultiSelectClick(s); return; }   // [BeamTools]
         if (_busy) { SetStatus("Chương trình đang tính toán – chờ xong rồi sửa mô hình."); return; }
@@ -302,6 +303,7 @@ public partial class MainWindow
         bool del = key == Key.Delete && !ctrl, esc = key == Key.Escape, undo = ctrl && key == Key.Z;
         if (!del && !esc && !undo) return false;
         if (IsTextInputFocused()) return false; // để ô nhập / bảng tự xử lý
+        if (esc && HandleCadLinkKey(key)) return true;   // [CadLink] huỷ căn bản vẽ
         if (esc && _lineStart != null)
         {
             _lineStart = null; _arcEnd = null;
@@ -447,6 +449,7 @@ public partial class MainWindow
     {
         double tol = Math.Clamp(10 / Math.Max(_scale, 1e-6), 0.15, 0.5);
         if (UseEtabsSnap) return EtabsSnap(story, x, y, tol);   // [BeamTools] bắt điểm kiểu ETABS cho ＋ Dầm
+        if (TryCadLinkSnap(story, x, y, tol, out var cadPt)) return cadPt;   // [CadLink] nét bản vẽ liên kết (nút/giao trục ưu tiên)
         return ModelEdit.Snap(_p, story, x, y, tol);
     }
 
@@ -512,6 +515,7 @@ public partial class MainWindow
     private void DrawSnapMarker(string story, (double X, double Y) pt, Brush br, bool filled)
     {
         if (!filled && DrawEtabsSnapGlyph(pt)) return;   // [BeamTools] ký hiệu điểm bắt kiểu ETABS
+        if (!filled && !UseEtabsSnap && DrawCadSnapGlyph(pt)) return;   // [CadLink] ký hiệu điểm bắt trên bản vẽ link
         var c = W2S(pt.X, pt.Y);
         double z = ModelEdit.StoryZ(_p, story);
         bool onNode = _p.Nodes.Any(n => Math.Abs(n.Z - z) < 0.01 && Math.Abs(n.X - pt.X) < 1e-4 && Math.Abs(n.Y - pt.Y) < 1e-4);

@@ -633,6 +633,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
                 x.BotX, x.BotY, x.TopX, x.TopY, OkText(x.Ok)
             }), new[] { 1.4, 1.8, 1.0, 1.1, 1.0, 1.0, 1.0, 1.0, 1.4, 1.4, 1.4, 1.4, 1.6 }, 9);
         d.Paragraph("Mô men đơn vị kN.m/m.", false, true);
+        SlabDropReport.Section(p, s, d, n);   // [Sàn hạ cốt] mục n.3 (chỉ khi có ô hạ cốt) – Report/SlabDropReport.cs
     }
 
     // ------------------------------------------------------------------

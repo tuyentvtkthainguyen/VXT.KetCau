@@ -118,6 +118,7 @@ public partial class MainWindow
         var xs = new List<double>(); var ys = new List<double>();
         foreach (var n in _p.Nodes) { xs.Add(n.X); ys.Add(n.Y); }
         foreach (var g in _p.Grids) { if (g.Dir == GridDir.X) xs.Add(g.Coord); else ys.Add(g.Coord); }
+        if (xs.Count == 0 && ys.Count == 0) CadLinkExtent(xs, ys);   // [CadLink] mô hình trống: vừa theo bản vẽ liên kết – MainWindow.CadLink.cs
         if (xs.Count == 0) xs.AddRange(new[] { 0.0, 10.0 });
         if (ys.Count == 0) ys.AddRange(new[] { 0.0, 10.0 });
         double x0 = xs.Min(), x1 = xs.Max(), y0 = ys.Min(), y1 = ys.Max();
@@ -140,6 +141,8 @@ public partial class MainWindow
         RefreshEditCombos();
         bool labels = chkLabels.IsChecked == true;
         double w = planHost.ActualWidth, h = planHost.ActualHeight;
+
+        DrawCadLinks();   // [CadLink] nền bản vẽ AutoCAD liên kết (dưới mô hình) – MainWindow.CadLink.cs
 
         // ---- sàn ----
         foreach (var s in PlanSlabs())
@@ -358,6 +361,7 @@ public partial class MainWindow
     private void DrawHover()
     {
         planOverlay.Children.Clear();
+        if (DrawCadAlignOverlay()) return;   // [CadLink] căn bản vẽ theo 2 điểm – MainWindow.CadLink.cs
         if (DrawBeamToolOverlay()) return;   // [BeamTools] chọn nhiều, khung chọn, công cụ dầm – MainWindow.BeamTools.cs
         if (_p != null && !_panning && IsLineMode) { DrawLineToolOverlay(); return; }
         if (_p == null || _hover == null || _panning) return;
@@ -498,7 +502,7 @@ public partial class MainWindow
         if (!_panning)
         {
             _lastMouse = e.GetPosition(planHost);
-            if (IsLineMode || IsBeamToolMode) { DrawHover(); return; }   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
+            if (IsLineMode || IsBeamToolMode || CadAlignActive) { DrawHover(); return; }   // [CadLink] CadAlignActive   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
             UpdateHover(_lastMouse.Value);
             return;
         }

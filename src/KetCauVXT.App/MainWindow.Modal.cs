@@ -222,7 +222,7 @@ public partial class MainWindow
                 _cbMode.ItemsSource = null; _cbModalStory.ItemsSource = null;
                 _txtModalNotes.Text = "";
                 _txtModalInfo.Text = _res == null ? "Chưa có kết quả phân tích (F5)."
-                    : "Không có kết quả dao động riêng – bật trong Phân tích → Dao động riêng… rồi chạy lại phân tích (F5).";
+                    : "Không có kết quả dao động riêng – bật trong Khai báo → Nguồn khối lượng & dao động riêng… rồi chạy lại phân tích (F5).";
             }
             else
             {

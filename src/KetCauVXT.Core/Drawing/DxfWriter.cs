@@ -15,6 +15,8 @@ public static class Lay
     public const string KyHieu = "KY_HIEU";
     public const string Truc = "TRUC";
     public const string KhungTen = "KHUNG_TEN";
+    /// <summary>Tô vật liệu mặt cắt (HATCH) – không nằm trong bảng layer mặc định; ghi khi có dùng (màu 8, đổi tên/màu bằng layer thêm khoá "HATCH").</summary>
+    public const string Hatch = "HATCH";
 }
 
 /// <summary>Hình chữ nhật bao (trục song song), dùng cho phạm vi bản vẽ và tránh chồng nhãn.</summary>

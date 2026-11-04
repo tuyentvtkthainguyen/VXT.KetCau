@@ -249,7 +249,7 @@ public partial class MainWindow
     private (double X, double Y) EtabsSnap(string story, double x, double y, double tol)
     {
         (double X, double Y)? from = _lineStart != null && _lineStory == story ? _lineStart : null;
-        _lastSnap = BeamTools.BestSnap(_p, story, x, y, tol, _snapMask, from);
+        _lastSnap = BeamTools.BestSnap(_p, story, x, y, tol, CadSnapMask(_snapMask), from);   // [CadLink] CadSnapMask: bắt nét bản vẽ link
         return (_lastSnap.X, _lastSnap.Y);
     }
 
@@ -290,7 +290,7 @@ public partial class MainWindow
                 Poly(new Point(c.X, c.Y - r), new Point(c.X + r, c.Y), new Point(c.X, c.Y + r), new Point(c.X - r, c.Y));
                 break;
             default:
-                planOverlay.Children.Add(MakeCircle(c, 4, br));
+                if (!DrawCadSnapGlyph(pt, _lastSnap.Kind)) planOverlay.Children.Add(MakeCircle(c, 4, br));   // [CadLink] ký hiệu nét bản vẽ link
                 break;
         }
         AddText($"{BeamTools.SnapName(_lastSnap.Kind)}  ({pt.X:0.000}; {pt.Y:0.000})", new Point(c.X + 10, c.Y + 7), Brushes.DimGray, 9, false, false, planOverlay);

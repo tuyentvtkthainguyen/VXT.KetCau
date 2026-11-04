@@ -21,15 +21,15 @@ internal sealed class CadLinkDiffDialog : Window
     {
         _diff = diff; _preview = preview;
         DialogUi.Setup(this, $"Cập nhật mô hình từ bản vẽ link – tầng {diff.Story}", 860, 560);
-        foreach (var it in diff.Items) _rows.Add(new DiffRow(it, Changed));
+        foreach (var it in diff.Items) _rows.Add(new DiffRow(it, () => { Changed(); _preview?.Invoke(); }));
         var grid = DialogUi.NewGrid();
         grid.Columns.Add(new DataGridCheckBoxColumn { Header = "Áp dụng", Binding = new Binding("Apply") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged }, Width = 62 });
-        grid.Columns.Add(DialogUi.Text("Thao tác", "Action", true, 70));
-        grid.Columns.Add(DialogUi.Text("Cấu kiện", "Element", true, 70));
+        grid.Columns.Add(DialogUi.Text("Thao tác", "ActionText", true, 70));
+        grid.Columns.Add(DialogUi.Text("Cấu kiện", "ElementText", true, 70));
         grid.Columns.Add(DialogUi.Text("Mô tả", "Description", true, 560));
         grid.ItemsSource = _rows;
         var st = new Style(typeof(DataGridRow));
-        st.Setters.Add(new Setter(DataGridRow.ForegroundProperty, new Binding("Color")));
+        st.Setters.Add(new Setter(DataGridRow.ForegroundProperty, new Binding("RowBrush")));
         grid.RowStyle = st;
 
         var head = new StackPanel();
@@ -72,10 +72,10 @@ internal sealed class CadLinkDiffDialog : Window
         public DiffRow(CadDiffItem it, Action changed) { Item = it; _changed = changed; }
         public bool Apply { get => Item.Apply; set { if (Item.Apply == value) return; Item.Apply = value; Raise(); _changed?.Invoke(); } }
         public void SetApply(bool v) { Item.Apply = v; Raise(nameof(Apply)); }
-        public string Action => Item.ActionText;
-        public string Element => Item.ElementText;
+        public string ActionText => Item.ActionText;
+        public string ElementText => Item.ElementText;
         public string Description => Item.Description;
-        public Brush Color => Item.Action switch
+        public Brush RowBrush => Item.Action switch
         {
             CadDiffAction.Add => Brushes.DarkGreen,
             CadDiffAction.Move => Brushes.DarkOrange,

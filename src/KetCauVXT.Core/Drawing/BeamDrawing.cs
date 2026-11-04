@@ -127,6 +127,8 @@ public static class BeamDrawing
                     string n = $"Sàn liền khối {sideTxt} hs={string.Join("/", hsList)}";
                     if (!slabNotes.Contains(n)) slabNotes.Add(n);
                 }
+                string dropNote = SlabDropDrawing.ElevationNote(sc);   // [Sàn hạ cốt]
+                if (dropNote != null && !slabNotes.Contains(dropNote)) slabNotes.Add(dropNote);
             }
         }
         for (int i = 0; i < ns; i++)
@@ -683,6 +685,7 @@ public static class BeamDrawing
             double x1 = B + fR.Len * k;
             w.Dim(x1, H + (fR.Dz - fR.Hs) * k, x1, H + fR.Dz * k, -1.4 * th, k, "hs=" + DxfWriter.N0(fR.Hs));
         }
+        if (flanged) SlabDropDrawing.SectionNote(w, layout, B, H, k, fL?.Dz, fR?.Dz);   // [Sàn hạ cốt] kích thước bậc Δ + ghi chú
         // dầm lệch trục (điểm chèn / dời ngang): đường trục định vị và khoảng cách mép dầm – trục
         if (c.Slab != null && Math.Abs(c.Slab.Offset) > 1)
         {

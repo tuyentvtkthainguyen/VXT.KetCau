@@ -44,6 +44,7 @@
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
                 <MenuItem Header="Nhập mô hình _ETABS/SAP (.e2k/.s2k)…" Click="MnuImportCsiModel_Click"/>
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
+                <MenuItem Header="Liên kết bản vẽ AutoCAD (DWG/DXF)…" Click="MnuCadLinks_Click" ToolTip="Bản vẽ liên kết – MainWindow.CadLink.cs"/>
                 <Separator/>
                 <MenuItem Header="_Xuất mô hình">
                     <MenuItem Header="Mô hình ETABS .e2k..." Click="MnuExpE2k_Click"/>
@@ -577,13 +578,13 @@
                                     <TextBox x:Name="txtCurveValue" Text="1.00" Width="44" Margin="0,0,4,2" VerticalContentAlignment="Center" ToolTip="m; 0 = nắn thẳng; số âm = vồng về phía phải hướng I→J (đảo phía)"/>
                                     <Button Content="Uốn cong" Click="BtnCurveBeam_Click" Padding="7,2,7,2" Margin="0,0,6,2" ToolTip="Đổi dầm đang chọn thành dầm cong theo độ vồng / bán kính đã nhập (hoàn tác bằng Ctrl+Z)"/>
                                     <TextBlock Text="Loại tường:" VerticalAlignment="Center" Margin="0,0,4,2"/>
-                                    <ComboBox x:Name="cbEditWallType" Width="150" Margin="0,0,6,2" ToolTip="Loại tường (Mô hình → Loại tường…)"/>
+                                    <ComboBox x:Name="cbEditWallType" Width="150" Margin="0,0,6,2" ToolTip="Loại tường (Khai báo → Loại tường…)"/>
                                     <TextBlock Text="Cao (m):" VerticalAlignment="Center" Margin="0,0,4,2"/>
                                     <TextBox x:Name="txtEditWallH" Text="0" Width="36" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Chiều cao tường; 0 = tự động (chiều cao tầng trên − chiều cao dầm)"/>
                                     <TextBlock Text="Diện tích cửa (m²):" VerticalAlignment="Center" Margin="0,0,4,2"/>
                                     <TextBox x:Name="txtEditWallOpen" Text="" Width="36" Margin="0,0,6,2" VerticalContentAlignment="Center" ToolTip="Để trống hoặc −1 = theo tỷ lệ cửa của loại tường; 0 = không có cửa"/>
                                     <TextBlock Text="Cấu tạo sàn:" VerticalAlignment="Center" Margin="0,0,4,2"/>
-                                    <ComboBox x:Name="cbEditBuildUp" Width="130" Margin="0,0,6,2" ToolTip="Cấu tạo sàn gán khi bấm ô sàn (chế độ Gán cấu tạo) – Mô hình → Cấu tạo sàn…"/>
+                                    <ComboBox x:Name="cbEditBuildUp" Width="130" Margin="0,0,6,2" ToolTip="Cấu tạo sàn gán khi bấm ô sàn (chế độ Gán cấu tạo) – Khai báo → Cấu tạo sàn…"/>
                                 </WrapPanel>
                             </Border>
                             <Border x:Name="planHost" ClipToBounds="True" Background="White"

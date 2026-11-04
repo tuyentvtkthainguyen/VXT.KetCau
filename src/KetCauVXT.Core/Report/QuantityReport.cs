@@ -174,6 +174,8 @@ public static class QuantityReport
             fd.Add(g.Key.Story, g.Key.BuildUp, g.Key.Layer, f0.Kind, R(g.Sum(f => f.Area), 2), R(f0.Thickness * 1000, 0), R(g.Sum(f => f.Volume)));
         }
         sheets[5].Tables.Add(fd);
+        var dropT = SlabDropReport.QuantityTable(p);   // [Sàn hạ cốt] danh sách ô hạ cốt (thông tin) – Report/SlabDropReport.cs
+        if (dropT != null) sheets[5].Tables.Add(dropT);
 
         // ---------------- PHÂN TÍCH VẬT TƯ ----------------
         sheets[6].Tables.Add(MaterialLines(q, prices));
@@ -315,7 +317,7 @@ public static class QuantityReport
         var l = new List<QtyTable>();
         var src = new QtyTable { Title = "Nguồn định mức", Headers = new[] { "Ghi chú" }, Widths = new double[] { 140 } };
         src.Add(qs.EffectiveSource());
-        src.Add("Các giá trị dưới đây là MẶC ĐỊNH THAM KHẢO – người dùng kiểm tra, chỉnh sửa trong chương trình (Xuất → Bảng khối lượng vật tư… → Định mức; nhập bảng định mức hiện hành bằng nút “Nhập định mức từ Excel…”).");
+        src.Add("Các giá trị dưới đây là MẶC ĐỊNH THAM KHẢO – người dùng kiểm tra, chỉnh sửa trong chương trình (Triển khai hồ sơ → Bảng khối lượng vật tư… → Định mức; nhập bảng định mức hiện hành bằng nút “Nhập định mức từ Excel…”).");
         l.Add(src);
         var c = new QtyTable { Title = "Cấp phối 1 m³ bê tông", Headers = new[] { "Cấp độ bền", "Mác tương đương", "Xi măng (kg)", "Cát vàng (m³)", "Đá dăm (m³)", "Nước (lít)", "Ghi chú" }, Widths = new double[] { 11, 12, 12, 12, 12, 10, 26 } };
         foreach (var n in qs.ConcreteNorms ?? new List<ConcreteMixNorm>()) c.Add(n.Grade, n.Mark, n.Cement, n.Sand, n.Stone, n.Water, n.Note);

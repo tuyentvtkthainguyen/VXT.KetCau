@@ -301,7 +301,8 @@ public static class ModelBuilder
                         Label = f.Label, DesignGroup = f.DesignGroup, Angle = f.Angle, ReleaseJ = f.ReleaseJ, UnbracedLength22 = f.UnbracedLength22,
                         CurveMidOffset = CurvedBeam.SagittaOfPiece(arc, onArc.t, 1), CurveSegments = 0,
                         ExternalName = f.ExternalName, ExternalStory = f.ExternalStory,
-                        Insertion = f.Insertion, PlanOffset = f.PlanOffset   // [BeamTools]
+                        Insertion = f.Insertion, PlanOffset = f.PlanOffset,   // [BeamTools]
+                        StiffnessModifiers = (double[])f.StiffnessModifiers?.Clone()   // [Workflow ETABS]
                     };
                     foreach (var fl in p.FrameLoads.Where(l => l.Element == f.Id).ToList())
                     {
@@ -330,7 +331,8 @@ public static class ModelBuilder
                     Id = p.NextFrameId(), NodeI = mid.n.Id, NodeJ = f.NodeJ, Kind = f.Kind, Section = f.Section, Story = f.Story,
                     Label = f.Label, DesignGroup = f.DesignGroup, Angle = f.Angle, ReleaseJ = f.ReleaseJ, UnbracedLength22 = f.UnbracedLength22,
                     ExternalName = f.ExternalName, ExternalStory = f.ExternalStory,
-                    Insertion = f.Insertion, PlanOffset = f.PlanOffset   // [BeamTools]
+                    Insertion = f.Insertion, PlanOffset = f.PlanOffset,   // [BeamTools]
+                    StiffnessModifiers = (double[])f.StiffnessModifiers?.Clone()   // [Workflow ETABS]
                 };
                 // chia lại tải trên thanh
                 double r = mid.t / L;

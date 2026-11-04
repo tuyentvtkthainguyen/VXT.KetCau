@@ -206,6 +206,10 @@ public class CadStandard
     /// <summary>Hỏi "Xem/đổi tên layer trước khi xuất" mỗi lần xuất DXF (false = "Không hỏi lại")</summary>
     public bool AskLayersBeforeExport { get; set; } = true;
 
+    /// <summary>Định dạng file bản vẽ khi xuất: DXF R12 (mặc định, tương thích cũ) | DXF 2018 (có HATCH) | DWG 2018 (có HATCH).
+    /// File JSON cũ không có mục này → R12 (Model/CadOutput.cs, Drawing/CadFileWriters.cs).</summary>
+    public CadOutputFormat OutputFormat { get; set; } = CadOutputFormat.DxfR12;
+
     // ---- 4. thiết lập bản vẽ: tỷ lệ, cỡ chữ, chú thích tuỳ chọn (Model/DrawingStyle.cs) ----
     /// <summary>Tỷ lệ theo loại bản vẽ, cỡ chữ kích thước/ghi chú/nhãn thép/tên hình…; file JSON cũ không có mục này → mặc định.</summary>
     public DrawingStyle Drawing { get; set; } = new();
@@ -428,6 +432,7 @@ public class CadStandard
         ReportFont = string.IsNullOrWhiteSpace(ReportFont) ? FontTimes : NormalizeFont(ReportFont);
         Drawing ??= new DrawingStyle();
         Drawing.Normalize();
+        if (!Enum.IsDefined(typeof(CadOutputFormat), OutputFormat)) OutputFormat = CadOutputFormat.DxfR12;
         return this;
     }
 

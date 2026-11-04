@@ -26,13 +26,20 @@ public partial class MainWindow
         cbStory.SelectionChanged += (s, e) => UpdateStoryStatus();
         planHost.MouseMove += (s, e) => UpdateCursorStatus(e.GetPosition(planHost));
         planHost.MouseLeave += (s, e) => { if (txtStCursor != null) txtStCursor.Text = "X = –  Y = –"; };
-        PreviewKeyDown += Workflow_PreviewKeyDown;
+        AddHandler(PreviewKeyDownEvent, new KeyEventHandler(Workflow_PreviewKeyDown), true);   // nhận cả phím đã xử lý (Esc) để vẽ lại cột đang chọn
         InitModelExplorer();
     }
 
     private void Workflow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (_busy || e.Handled) return;
+        if (_busy) return;
+        if (e.Key == Key.Escape)
+        {
+            // Esc bỏ chọn nhiều (MainWindow.BeamTools.cs) – vẽ lại để xoá viền cột đang chọn
+            Dispatcher.BeginInvoke(new Action(() => { if (_p != null && _multiSel.Count == 0) RedrawPlan(); }), System.Windows.Threading.DispatcherPriority.Background);
+            return;
+        }
+        if (e.Handled) return;
         bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
         if (!ctrl) return;
         if (e.Key == Key.E) { MnuModelExplorer_Click(this, new RoutedEventArgs()); e.Handled = true; }

@@ -124,6 +124,7 @@ public partial class MainWindow
             await SelfTestGeoAppendix(tag);
             await SelfTestRegulation(tag);
             await SelfTestVerification(tag);
+            await SelfTestWorkflow(tag); // cây mô hình, kiểm tra mô hình, bảng kết quả, tổ hợp – MainWindow.SelfTestWorkflow.cs
             await SelfTestUserGuide(tag); // hướng dẫn, bắt đầu nhanh – MainWindow.SelfTestUserGuide.cs // kiểm chứng phần mềm – MainWindow.Verification.cs // văn bản pháp lý – MainWindow.SelfTestRegulation.cs // địa danh gió, hố khoan, gợi ý móng, phụ lục – MainWindow.SelfTestGeo.cs
             // dầm, tường, cấu tạo sàn, móng cọc, móng băng – MainWindow.SelfTestFoundation.cs
             // dàn trang: bộ tờ mặc định → DXF từng tờ + PDF, mở cửa sổ dàn trang và chụp ảnh

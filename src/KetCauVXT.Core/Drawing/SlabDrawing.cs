@@ -113,6 +113,8 @@ public static class SlabDrawing
             FramingPlan.SlabNameBox(w, cx, cy, pn.Name);
             layout.Reserve(new Rect2(cx - 3 * th, cy - 0.6 * th, cx + 3 * th, cy + 1.8 * th));
         }
+        // ---- [Sàn hạ cốt] ghi "SÀN HẠ COS -50 (▽ -0.050)" dưới tên ô – Drawing/SlabDropDrawing.cs ----
+        foreach (var sl in SlabDrop.Lowered(p, st.Name)) layout.Reserve(SlabDropDrawing.Note(w, p, sl));
 
         // ---- thép lớp dưới: 1 thanh đại diện mỗi phương / ô ----
         foreach (var pn in panels)

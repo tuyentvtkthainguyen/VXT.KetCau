@@ -35,7 +35,7 @@ public partial class SheetWindow
         var all = TemplateService.LibrarySheetTemplates();
         if (all.Count == 0)
         {
-            MessageBox.Show(this, "Thư viện chưa có tờ mẫu nào.\nDàn một tờ rồi bấm \"Lưu tờ làm mẫu\", hoặc nhập gói mẫu ở Tệp → Mẫu định dạng (template)…", Title,
+            MessageBox.Show(this, "Thư viện chưa có tờ mẫu nào.\nDàn một tờ rồi bấm \"Lưu tờ làm mẫu\", hoặc nhập gói mẫu ở Tuỳ chọn → Mẫu định dạng (template)…", Title,
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
