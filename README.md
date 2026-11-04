@@ -56,6 +56,8 @@ tests/KetCauVXT.Tests/         Kiểm chứng lời giải giải tích + chạy
 
 ## 3. Quy trình làm việc
 
+> **Hướng dẫn sử dụng chi tiết** (cài đặt → khởi tạo → mô hình → tải trọng → phân tích → thiết kế → hồ sơ → kiểm chứng, kèm ví dụ nhà phố 4 tầng): trong chương trình **Trợ giúp → Hướng dẫn sử dụng…** hoặc phím **F1** (mở đúng mục của tab / công cụ / hộp thoại đang dùng), **Trợ giúp → Bắt đầu nhanh…**; bản Word / Markdown do bộ kiểm thử sinh tại `KetQuaMau/HuongDan/HuongDanSuDung.docx|.md` (nội dung: `src/KetCauVXT.Core/Docs/UserGuide*.cs`).
+
 1. **Công trình** – nhập bước cột theo X, Y (vd. `5`, `4.5 4.5 4.5`), chiều cao tầng (`3.9 3.3 3.3 3.3`), cao độ chân cột, tiết diện, tải hoàn thiện / hoạt tải / tường biên, thông số gió, động đất, nền đất → **Tạo mô hình**.
    Hoặc **Tệp → Nhập DXF** (layer `TRUC`, `COT`, `DAM`, `SAN`) / **Nhập từ Revit (JSON)**.
    Nhà xưởng: **Mô hình → Tạo khung thép tiền chế** (nhịp, cao đỉnh cột, độ dốc, số bước khung, tiết diện vát).

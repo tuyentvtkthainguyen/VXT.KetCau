@@ -8,8 +8,8 @@ namespace KetCauVXT.App;
 // =====================================================================
 // TRỢ GIÚP THEO NGỮ CẢNH – dùng chung cho mọi cửa sổ:
 //   • Help.Id (thuộc tính gắn kèm): HelpId của mục hướng dẫn (Docs/UserGuide.Content.cs) cho một phần tử / cửa sổ;
-//   • Help.Attach(window, "help-id"): đặt Help.Id và thêm dải "? Hướng dẫn (F1)" ở đầu cửa sổ (một dòng trong hàm dựng hộp thoại);
-//   • HelpButton.Create("help-id"): nút "?" nhỏ để đặt vào thanh nút bất kỳ;
+//   • Help.Attach(window, <HelpId>): đặt Help.Id và thêm dải "? Hướng dẫn (F1)" ở đầu cửa sổ (một dòng trong hàm dựng hộp thoại);
+//   • HelpButton.Create(<HelpId>): nút "?" nhỏ để đặt vào thanh nút bất kỳ;
 //   • F1 ở bất kỳ cửa sổ nào (MainWindow.UserGuide.cs đăng ký): Help.Id của phần tử đang có focus → của cửa sổ →
 //     HelpContext.ForWindow(tên lớp cửa sổ) → ngữ cảnh cửa sổ chính.
 // =====================================================================

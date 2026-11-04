@@ -134,6 +134,7 @@ internal sealed class PileLayoutDialog : Window
         _nodes = cap.NodeIds.ToList();
         _node = _nodes.FirstOrDefault();
         DialogUi.Setup(this, "Bố trí cọc – " + (string.IsNullOrEmpty(cap.Name) ? "đài cọc" : cap.Name) + " (nút " + _node + ")", 1320, 760);
+        Help.Attach(this, "mong.coc");   // nút "?" + F1 – Help.cs
 
         var cur = PileLayout.Find(p.Foundation, _node) ?? new PileCapOverride { NodeId = _node };
         _tNx = Box(cur.Nx); _tNy = Box(cur.Ny);

@@ -110,7 +110,8 @@ internal sealed class ComboEditorWindow : Window
         dock.Children.Add(grid);
         Content = dock;
         Activated += (s, e) => { if (!_reloading) Reload(_editing); };
-        Reload(null);
+        string first = P?.Combinations.FirstOrDefault()?.Name;
+        if (first != null) Reload(first); else { Reload(null); New(); }
     }
 
     /// <summary>Nạp lại danh sách (giữ tổ hợp đang chọn theo tên).</summary>
@@ -125,10 +126,20 @@ internal sealed class ComboEditorWindow : Window
             var rows = p.Combinations.Select(c => new ComboListRow { C = c }).ToList();
             _list.ItemsSource = rows;
             _caseCol.ItemsSource = p.Patterns.Select(x => x.Name).Concat(p.Combinations.Select(c => c.Name)).ToList();
-            var r = rows.FirstOrDefault(x => x.Name == (select ?? _editing)) ?? rows.FirstOrDefault();
-            if (r != null) { _list.SelectedItem = r; _list.ScrollIntoView(r); }
-            if (r != null && r.Name != _editing) Edit(r.C);
-            else if (r == null) New();
+            string want = select ?? _editing;
+            var r = want != null ? rows.FirstOrDefault(x => x.Name == want) : null;
+            if (r != null)
+            {
+                _list.SelectedItem = r; _list.ScrollIntoView(r);
+                if (r.Name != _editing) Edit(r.C);
+            }
+            else if (want != null)
+            {
+                // tổ hợp đang sửa không còn (bị xoá / hoàn tác) → tổ hợp đầu tiên hoặc tổ hợp mới
+                var f = rows.FirstOrDefault();
+                if (f != null) { _list.SelectedItem = f; Edit(f.C); } else New();
+            }
+            // want == null: đang soạn tổ hợp mới – giữ nguyên nội dung đang soạn
         }
         finally { _reloading = false; }
     }
@@ -215,8 +226,11 @@ internal sealed class ComboEditorWindow : Window
         if (_editing == null) return;
         string n = _editing;
         if (MessageBox.Show(this, $"Xoá tổ hợp {n}?", Title, MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
-        _editing = null;
-        Do(p => ComboEditor.Delete(p, n), null);
+        if (Do(p => ComboEditor.Delete(p, n), "\0"))
+        {
+            string first = P.Combinations.FirstOrDefault()?.Name;
+            if (first != null) SelectCombo(first); else New();
+        }
     }
 
     private void Generate()

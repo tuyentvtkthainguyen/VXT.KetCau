@@ -182,7 +182,7 @@ jobs:
           choco install innosetup -y --no-progress | Out-Null
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
-          Copy-Item README.md publish\HuongDan.md -Force
+          if (Test-Path KetQuaMau\HuongDan\HuongDanSuDung.md) { Copy-Item KetQuaMau\HuongDan\HuongDanSuDung.md publish\HuongDan.md -Force } else { Copy-Item README.md publish\HuongDan.md -Force }
           # tiếng Việt cho trình cài (bản dịch không chính thức của Inno Setup); lỗi thì dùng tiếng Anh
           try { Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/Vietnamese.isl" -OutFile installer\Vietnamese.isl } catch { Write-Host "::warning::Khong tai duoc Vietnamese.isl" }
           $ver = "1.0.${{ github.run_number }}"
@@ -211,7 +211,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           New-Item -ItemType Directory dist -Force | Out-Null
-          Copy-Item README.md publish\HuongDan.md
+          if (Test-Path KetQuaMau\HuongDan\HuongDanSuDung.md) { Copy-Item KetQuaMau\HuongDan\HuongDanSuDung.md publish\HuongDan.md -Force } else { Copy-Item README.md publish\HuongDan.md -Force }
           Compress-Archive -Path publish\* -DestinationPath dist\KetCauVXT-win-x64.zip -Force
           Get-ChildItem dist
           $tag = "ketcau-vxt-latest"
@@ -225,6 +225,7 @@ jobs:
           git add -f dist/KetCauVXT-win-x64.zip
           if (Test-Path dist/setup) { git add -f dist/setup/* }
           if (Test-Path KetQuaMau/KiemChung) { git add -f KetQuaMau/KiemChung/* }
+          if (Test-Path KetQuaMau/HuongDan) { git add -f KetQuaMau/HuongDan/* }
           if (Test-Path ManHinh) { git add -f ManHinh/*.png ManHinh/selftest.log }
           git commit -m "Ban phat hanh tu $env:GITHUB_SHA"
           git push -f origin ketcau-vxt-dist

@@ -32,6 +32,7 @@ internal sealed class FoundationDialog : Window
     {
         _f = f;
         DialogUi.Setup(this, "Thiết kế móng", 560, 640);
+        Help.Attach(this, "mong.loai");   // nút "?" + F1 – Help.cs
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
 

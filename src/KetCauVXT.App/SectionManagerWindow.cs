@@ -35,6 +35,7 @@ internal sealed class SectionManagerWindow : Window
     {
         _getP = getP; _snapshot = snapshot; _commit = commit; _setCurrent = setCurrent;
         DialogUi.Setup(this, "Khai báo tiết diện dầm / cột (Frame Sections)", 1060, 560);
+        Help.Attach(this, "mo-hinh.tiet-dien");   // nút "?" + F1 – Help.cs
         ShowInTaskbar = false;
         _grid = DialogUi.NewGrid();
         _grid.SelectionMode = DataGridSelectionMode.Single;

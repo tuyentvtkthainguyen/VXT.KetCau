@@ -66,6 +66,7 @@ public partial class SheetWindow : Window
     public SheetWindow(Project p, AnalysisResults r, DesignSummary d, Action markDirty)
     {
         InitializeComponent();
+        Help.Attach(this, "ho-so.dan-trang");   // nút "?" + F1 – Help.cs
         _p = p ?? throw new ArgumentNullException(nameof(p));
         _r = r; _d = d; _markDirty = markDirty;
         _p.Sheets ??= new List<Sheet>();

@@ -54,6 +54,7 @@ internal sealed class QuantityWindow : Window
         _p = p; _ds = ds; _changed = changed ?? (() => { });
         _p.QuantitySettings ??= new QuantitySettings();
         DialogUi.Setup(this, "Bảng khối lượng vật tư – " + p.Name, 1280, 820);
+        Help.Attach(this, "ho-so.khoi-luong");   // nút "?" + F1 – Help.cs
         ShowInTaskbar = true;
         var root = new DockPanel { Margin = new Thickness(8) };
         var top = DialogUi.Row(

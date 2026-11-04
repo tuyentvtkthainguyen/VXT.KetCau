@@ -101,6 +101,9 @@ public static partial class SlabDesigner
             if (slab.EdgeFixed != null && slab.EdgeFixed.Count == 4) edges[i] = slab.EdgeFixed[i] ? EdgeKind.Fixed : EdgeKind.Simple;
             else edges[i] = HasNeighbour(p, slab, pts[i], pts[(i + 1) % 4]) ? EdgeKind.Fixed : EdgeKind.Simple;
         }
+        // ---- [Sàn hạ cốt] cạnh giáp ô chênh cốt (bậc) → khớp (HasNeighbour bỏ qua ô chênh cốt); thép mũ cấu tạo riêng ở lượt 2 – SlabDropChecks.cs ----
+        var stepEdges = SlabDropChecks.StepEdges(p, slab, pts, out var stepNb);
+        // ---- hết Sàn hạ cốt ----
         // cạnh 0 và 2 có chiều dài la; cạnh 1 và 3 có chiều dài lb
         bool aShort = la <= lb;
         double lx = Math.Min(la, lb), ly = Math.Max(la, lb);
@@ -122,6 +125,16 @@ public static partial class SlabDesigner
         };
         int nf = edges.Count(e => e == EdgeKind.Fixed);
         d.EdgeCondition = nf == 4 ? "4 cạnh ngàm" : nf == 0 ? "4 cạnh khớp" : nf + " cạnh ngàm, " + (4 - nf) + " cạnh khớp";
+        // ---- [Sàn hạ cốt] ghi chú ô hạ cốt / cạnh bậc ----
+        if (SlabDrop.IsLowered(slab))
+            d.Messages.Add("Sàn hạ cốt Δ = " + SlabDrop.MmText(slab.LevelOffset) + " mm (▽ " + SlabDrop.LevelText(slab.LevelOffset) + " so với sàn tầng)"
+                           + (string.IsNullOrEmpty(slab.DropReason) ? "" : " – " + slab.DropReason));
+        for (int i = 0; i < 4; i++)
+            if (stepEdges[i])
+                d.Messages.Add("Cạnh " + (i + 1).ToString(DesignUtil.Inv) + " giáp ô " + stepNb[i] + " chênh cốt > " + DesignUtil.F(SlabDropChecks.Threshold(p) * 1000, "0")
+                               + " mm (bậc sàn hạ cốt): " + (edges[i] == EdgeKind.Fixed ? "giữ ngàm (khai báo / ô kề cùng cốt)" : "tính khớp, không liên tục mô men")
+                               + "; thép mũ không vắt qua bậc – mỗi ô đặt thép mũ riêng neo vào dầm");
+        // ---- hết Sàn hạ cốt ----
 
         // ---- nội lực ----
         double qx, qy;
@@ -227,7 +240,8 @@ public static partial class SlabDesigner
         {
             Slab = slab, D = d, Pts = pts, Edges = edges, LongEdges = longEdges, ShortEdges = shortEdges, ShortIsX = shortIsX,
             Lx = lx, Ly = ly, T = t, C = c, Conc = conc, SteelOf = SteelOf, MI = mI, MII = mII, Tx = tx, Ty = ty, Dias = dias, SMax = sMax,
-            Key = key, Basis = basis, OneWay = !d.TwoWay
+            Key = key, Basis = basis, OneWay = !d.TwoWay,
+            StepEdges = stepEdges   // [Sàn hạ cốt]
         };
     }
 
@@ -257,6 +271,7 @@ public static partial class SlabDesigner
         foreach (var o in p.Slabs)
         {
             if (o.Id == slab.Id || o.Nodes.Count < 3) continue;
+            if (SlabDropChecks.IsStep(p, slab, o)) continue;   // [Sàn hạ cốt] ô chênh cốt (bậc) không tạo liên tục
             var op = o.Nodes.Select(id => p.Node(id).P).ToList();
             for (int i = 0; i < op.Count; i++)
             {
@@ -372,5 +387,6 @@ public static partial class SlabDesigner
 
     private static string Signature(SlabDesign d) =>
         d.Story + "|" + Math.Round(d.Lx * 100) + "x" + Math.Round(d.Ly * 100) + "|" + Math.Round(d.Thickness * 1000) + "|"
-        + d.EdgeCondition + "|" + Math.Round(d.Q * 100) + "|" + d.BotX + d.BotY + d.TopX + d.TopY + "|" + RebarNumbering.Signature(d.Bars);
+        + d.EdgeCondition + "|" + Math.Round(d.Q * 100) + "|" + d.BotX + d.BotY + d.TopX + d.TopY + "|" + RebarNumbering.Signature(d.Bars)
+        + "|" + string.Join(";", d.Messages.Where(m => m.StartsWith("Sàn hạ cốt", StringComparison.Ordinal)));   // [Sàn hạ cốt] ô hạ cốt không gộp với ô thường
 }

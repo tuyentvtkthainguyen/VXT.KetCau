@@ -130,6 +130,7 @@ public static class ModelEdit
         var s = new Slab { Id = p.NextSlabId(), Label = $"S{story}-{k}", Story = story, Section = section, Nodes = new List<int> { n1.Id, n2.Id, n3.Id, n4.Id } };
         p.Slabs.Add(s);
         SetLoads(p, s, use);
+        SlabDrop.ApplyDefault(p, s, use, SlabUse.Normal);   // [Sàn hạ cốt] hạ cốt mặc định theo công năng – Model/SlabDrop.cs
         ModelBuilder.SplitFramesAtNodes(p);
         p.InvalidateIndex();
         return s;
@@ -172,9 +173,11 @@ public static class ModelEdit
     public static EditResult SetSlabUse(Project p, Slab s, SlabUse use)
     {
         if (s == null) return EditResult.Fail("Chưa chọn ô sàn.");
+        var oldUse = UseOf(p, s);   // [Sàn hạ cốt]
         SetLoads(p, s, use);
         var (fin, live, name) = Loads(use);
-        return new EditResult { Ok = true, Message = $"{s.Label}: {name} – hoàn thiện {fin:0.##} kN/m², hoạt tải {live:0.##} kN/m²." };
+        string drop = SlabDrop.ApplyDefault(p, s, use, oldUse);   // [Sàn hạ cốt] hạ cốt mặc định theo công năng – Model/SlabDrop.cs
+        return new EditResult { Ok = true, Message = $"{s.Label}: {name} – hoàn thiện {fin:0.##} kN/m², hoạt tải {live:0.##} kN/m²." + drop };
     }
 
     public static SlabUse UseOf(Project p, Slab s)

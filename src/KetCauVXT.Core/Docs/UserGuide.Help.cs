@@ -107,6 +107,14 @@ public static class HelpContext
         ["RegulationWindow"] = "phap-ly.danh-muc",
         ["UserGuideWindow"] = "giao-dien.tro-giup",
         ["QuickStartWindow"] = "quy-trinh.bat-dau-nhanh",
+        ["ModelCheckWindow"] = "giao-dien.cay-mo-hinh",
+        ["DeformedShapeWindow"] = "giao-dien.cay-mo-hinh",
+        ["ResultTablesWindow"] = "phan-tich.bang-ket-qua",
+        ["ComboEditorWindow"] = "tai-trong.sua-to-hop",
+        ["LoadPatternsWindow"] = "tai-trong.truong-hop",
+        ["LoadCasesWindow"] = "tai-trong.sua-to-hop",
+        ["MaterialsWindow"] = "mo-hinh.vat-lieu",
+        ["SpectrumDialog"] = "tai-trong.dong-dat",
     };
 
     private static string Get(IReadOnlyDictionary<string, string> map, string key) =>
@@ -126,7 +134,7 @@ public static class HelpContext
             .Concat(Windows.Values).Concat(QuickStart.Steps.Select(s => s.HelpId)).Distinct();
 }
 
-/// <summary>Một bước của bảng "Bắt đầu nhanh".</summary>
+/// <summary>Một bước của bảng "Bắt đầu nhanh". Description có thể chứa đánh dấu {m:…} (hiển thị qua UserGuide.Plain).</summary>
 public sealed class QuickStartStep
 {
     public string Id { get; init; } = "";
@@ -162,7 +170,7 @@ public static class QuickStart
             Description = "Nhập hố khoan (tab Địa chất) hoặc chỉ tiêu nền ở tab Công trình; chọn loại móng (tab Mô hình móng).",
             Status = (p, r, d) => p.Boreholes.Count > 0 ? true : d != null && (d.Footings.Count + d.PileCaps.Count + d.StripFootings.Count) > 0 ? (bool?)null : false },
         new() { Id = "phan-tich", Title = "Phân tích", HelpId = "phan-tich.chay",
-            Description = "Phân tích → Chạy phân tích (F5): tĩnh, gió, động đất; dao động riêng nếu bật.",
+            Description = "{m:modelCheck} rồi {m:run} (F5): tĩnh, gió, động đất; dao động riêng nếu bật.",
             Status = (p, r, d) => r },
         new() { Id = "kiem-tra", Title = "Kiểm tra kết quả", HelpId = "phan-tich.bieu-do",
             Description = "Xem biểu đồ nội lực, phản lực, cảnh báo; so sánh với ETABS/SAP khi cần.",
@@ -171,7 +179,7 @@ public static class QuickStart
             Description = "Thiết kế BTCT, móng, kiểm tra thép; chọn bố trí thép; cấu kiện không đạt tô đỏ.",
             Status = (p, r, d) => d != null },
         new() { Id = "ho-so", Title = "Bản vẽ, thuyết minh", HelpId = "ho-so.ban-ve",
-            Description = "Xuất bộ bản vẽ DXF, dàn trang, shop drawing, khối lượng, thuyết minh Word (Xuất → Xuất tất cả vào thư mục…).",
+            Description = "Bộ bản vẽ DXF, dàn trang, shop drawing, khối lượng, thuyết minh Word ({m:expAll}).",
             Status = (p, r, d) => p.Sheets.Count > 0 ? true : d != null ? (bool?)null : false },
     };
 

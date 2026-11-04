@@ -51,6 +51,7 @@ internal sealed class VerificationWindow : Window
     public VerificationWindow()
     {
         Title = "Kiểm chứng phần mềm – Kết cấu VXT";
+        Help.Attach(this, "kiem-chung.bao-cao");   // nút "?" + F1 – Help.cs
         Width = 1400; Height = 820; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var root = new DockPanel { Margin = new Thickness(8) };
 

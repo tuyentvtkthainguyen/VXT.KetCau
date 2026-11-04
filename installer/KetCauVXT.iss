@@ -78,6 +78,8 @@ vi.Samples=Dự án mẫu
 en.Samples=Sample projects
 vi.Guide=Hướng dẫn sử dụng
 en.Guide=User guide
+vi.GuideWord=Hướng dẫn sử dụng (Word)
+en.GuideWord=User guide (Word)
 vi.Uninst=Gỡ cài đặt Kết cấu VXT
 en.Uninst=Uninstall Kết cấu VXT
 
@@ -99,11 +101,14 @@ Source: "{#SrcDir}\AutoCAD\KetCauVXT.bundle\*"; DestDir: "{autoappdata}\Autodesk
 Source: "{#SampleDir}\NhaPho\NhaPho.kcvxt"; DestDir: "{app}\DuAnMau"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SampleDir}\TuBanVeKienTruc\TuBanVeKienTruc.kcvxt"; DestDir: "{app}\DuAnMau"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SampleDir}\TuBanVeKienTruc\*_DauVao.dxf"; DestDir: "{app}\DuAnMau"; Flags: ignoreversion skipifsourcedoesntexist
+; [HướngDẫn] hướng dẫn sử dụng Word do bộ kiểm thử sinh (UserGuideTests → KetQuaMau\HuongDan)
+Source: "{#SampleDir}\HuongDan\HuongDanSuDung.docx"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\Kết cấu VXT"; Filename: "{app}\KetCauVXT.exe"; WorkingDir: "{app}"
 Name: "{group}\{cm:Samples}"; Filename: "{app}\DuAnMau"
 Name: "{group}\{cm:Guide}"; Filename: "{app}\HuongDan.md"
+Name: "{group}\{cm:GuideWord}"; Filename: "{app}\HuongDanSuDung.docx"; Check: GuideDocxExists
 Name: "{group}\{cm:Uninst}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Kết cấu VXT"; Filename: "{app}\KetCauVXT.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
@@ -121,3 +126,10 @@ Filename: "{app}\KetCauVXT.exe"; Description: "{cm:RunApp}"; WorkingDir: "{app}"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{autoappdata}\Autodesk\ApplicationPlugins\KetCauVXT.bundle"
+
+[Code]
+// [HướngDẫn] chỉ tạo lối tắt "Hướng dẫn sử dụng (Word)" khi file đã được cài (bộ kiểm thử có sinh file)
+function GuideDocxExists: Boolean;
+begin
+  Result := FileExists(ExpandConstant('{app}\HuongDanSuDung.docx'));
+end;

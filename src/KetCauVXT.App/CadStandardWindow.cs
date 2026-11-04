@@ -249,6 +249,7 @@ internal sealed class CadStandardWindow : Window
     {
         _p = p;
         DialogUi.Setup(this, "Chuẩn layer CAD", 1120, 680);
+        Help.Attach(this, "ho-so.chuan-layer");   // nút "?" + F1 – Help.cs
         _std = CadStandard.EffectiveFor(p);
 
         // ================= TAB 1: nhận diện layer kiến trúc =================

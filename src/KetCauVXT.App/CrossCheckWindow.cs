@@ -135,6 +135,7 @@ internal sealed class CrossCheckWindow : Window
         _p = p; _ours = ours;
         _ses = new CrossCheckSession(p, ours);
         DialogUi.Setup(this, "So sánh kết quả với ETABS / SAP2000 / SAFE", 1280, 800);
+        Help.Attach(this, "phan-tich.so-sanh");   // nút "?" + F1 – Help.cs
 
         // ---- đầu ----
         _btnRun = DialogUi.Btn("So sánh", (s, e) => RunCompare(), true);

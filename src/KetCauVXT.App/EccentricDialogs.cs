@@ -40,6 +40,7 @@ internal sealed partial class BoundaryDialog : Window   // [LùiCọcRanh] parti
         _p = p;
         var fs = p.Foundation ?? new FoundationSettings();
         DialogUi.Setup(this, "Ranh giới đất – móng lệch tâm", 900, 560);
+        Help.Attach(this, "mong.lech-tam");   // nút "?" + F1 – Help.cs
         var root = new DockPanel { Margin = new Thickness(10) };
         var left = new StackPanel { Width = 440 };
         left.Children.Add(DialogUi.Label("Các cạnh ranh giới đất (móng không được vượt ra ngoài)", double.NaN, true));
@@ -274,6 +275,7 @@ internal sealed class EccentricFootingDialog : Window
         _p = p; _res = res; _node = node; _apply = apply;
         var n = p.Nodes.FirstOrDefault(x => x.Id == node);
         DialogUi.Setup(this, $"Móng lệch tâm – chân cột nút {node}" + (n != null ? " (" + GridText(p, n) + ")" : ""), 1080, 640);
+        Help.Attach(this, "mong.lech-tam");   // nút "?" + F1 – Help.cs
         var cur = EccentricFooting.Find(p.Foundation, node) ?? new EccentricOverride { NodeId = node };
         _cbScheme.ItemsSource = Schemes.Select(EccentricOverride.SchemeName).ToList();
         _cbScheme.SelectedIndex = Math.Max(0, Array.IndexOf(Schemes, cur.Scheme));

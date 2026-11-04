@@ -94,9 +94,9 @@ public static partial class UserGuide
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
     // ==================================================================
-    // BẢNG ĐƯỜNG DẪN MENU – sửa tại đây khi menu được sắp xếp lại (một chỗ duy nhất).
-    // Mục Planned = true: menu của tính năng đang được phát triển song song (cây mô hình, kiểm tra mô hình, bảng kết quả,
-    // trình sửa tổ hợp, gán tải / giải phóng liên kết) – đường dẫn là DỰ KIẾN theo bố cục kiểu ETABS, cập nhật khi hoàn thành.
+    // BẢNG ĐƯỜNG DẪN MENU – sửa tại đây khi menu được sắp xếp lại (một chỗ duy nhất). Theo bố cục kiểu ETABS của MainWindow.xaml:
+    // Tệp, Sửa, Xem, Khai báo, Vẽ, Chọn, Gán, Phân tích, Hiển thị, Thiết kế, Triển khai hồ sơ, Tuỳ chọn, Trợ giúp.
+    // Planned("id", …): menu của tính năng chưa có trong MainWindow.xaml – kiểm thử UserGuideTests chỉ liệt kê, không coi là thiếu.
     // ==================================================================
     private static GuideMenu M(string id, params string[] path) => new() { Id = id, Path = path };
     private static GuideMenu Planned(string id, params string[] path) => new() { Id = id, Path = path, Planned = true };
@@ -113,25 +113,82 @@ public static partial class UserGuide
         M("importRevit", "Tệp", "Nhập từ Revit (JSON)..."),
         M("importCsi", "Tệp", "Nhập mô hình ETABS/SAP (.e2k/.s2k)…"),
         M("acad", "Tệp", "Nhận dữ liệu từ AutoCAD…"),
-        M("cadStd", "Tệp", "Chuẩn layer CAD…"),
-        M("drawStyle", "Tệp", "Thiết lập bản vẽ (tỷ lệ, cỡ chữ)…"),
-        M("templates", "Tệp", "Mẫu định dạng (template)…"),
+        M("e2k", "Tệp", "Xuất mô hình", "Mô hình ETABS .e2k..."),
+        M("s2k", "Tệp", "Xuất mô hình", "Mô hình SAP2000 .s2k..."),
+        M("csv", "Tệp", "Xuất mô hình", "Nội lực CSV..."),
         M("exit", "Tệp", "Thoát"),
-        // Mô hình
-        M("buildGrid", "Mô hình", "Tạo khung BTCT từ lưới trục"),
-        M("portal", "Mô hình", "Tạo khung thép tiền chế..."),
-        M("split", "Mô hình", "Chia thanh tại nút"),
-        M("sections", "Mô hình", "Khai báo tiết diện dầm/cột…"),
-        M("wallTypes", "Mô hình", "Loại tường…"),
-        M("walls", "Mô hình", "Tường đã khai báo…"),
-        M("buildUps", "Mô hình", "Cấu tạo sàn…"),
-        M("locations", "Mô hình", "Danh mục địa danh (QCVN 02:2022)…"),
+        // Sửa
+        M("undo", "Sửa", "Hoàn tác"),
+        M("deleteSel", "Sửa", "Xoá đối tượng đang chọn"),
+        M("replicate", "Sửa", "Sao chép / Đối xứng dầm đã chọn…"),
+        M("split", "Sửa", "Chia thanh tại nút"),
+        M("mergeNodes", "Sửa", "Gộp nút trùng"),
+        // Xem
+        M("explorer", "Xem", "Cây mô hình"),
+        M("viewPlan", "Xem", "Mặt bằng"),
+        M("view3d", "Xem", "Khung nhìn 3D"),
+        M("viewFnd", "Xem", "Mô hình móng"),
+        M("fit", "Xem", "Vừa màn hình"),
+        M("labels", "Xem", "Tên cấu kiện"),
+        // Khai báo
+        M("materials", "Khai báo", "Vật liệu…"),
+        M("sections", "Khai báo", "Tiết diện dầm/cột…"),
+        M("wallTypes", "Khai báo", "Loại tường…"),
+        M("buildUps", "Khai báo", "Cấu tạo sàn…"),
+        M("loadPatterns", "Khai báo", "Trường hợp tải (Load Patterns)…"),
+        M("loadCases", "Khai báo", "Trường hợp phân tích (Load Cases)…"),
+        M("comboEditor", "Khai báo", "Tổ hợp tải trọng…"),
+        M("combos", "Khai báo", "Tự tạo tổ hợp theo TCVN 2737:2023"),
+        M("modal", "Khai báo", "Nguồn khối lượng & dao động riêng…"),
+        M("spectrum", "Khai báo", "Phổ phản ứng / động đất…"),
+        M("diaphragms", "Khai báo", "Sàn cứng (diaphragm) theo tầng…"),
+        // Vẽ
+        M("buildGrid", "Vẽ", "Tạo khung BTCT từ lưới trục"),
+        M("portal", "Vẽ", "Tạo khung thép tiền chế..."),
+        M("drawBeam", "Vẽ", "Dầm (2 điểm)"),
+        M("drawCurved", "Vẽ", "Dầm cong"),
+        M("drawQuick", "Vẽ", "Dầm nhanh theo lưới"),
+        M("drawSecondary", "Vẽ", "Dầm phụ"),
+        M("drawCantilever", "Vẽ", "Dầm công xôn"),
+        M("beamByPos", "Vẽ", "Dầm theo toạ độ / trục…"),
+        M("drawSlab", "Vẽ", "Ô sàn"),
+        M("drawBalcony", "Vẽ", "Ban công"),
+        M("drawStair", "Vẽ", "Ô cầu thang"),
+        M("drawVoid", "Vẽ", "Giếng trời"),
+        M("stairDecl", "Vẽ", "Khai báo cầu thang…"),
+        M("drawWall", "Vẽ", "Tường"),
+        M("walls", "Vẽ", "Tường đã khai báo…"),
+        // Chọn
+        M("selOne", "Chọn", "Chọn từng đối tượng"),
+        M("selMulti", "Chọn", "Chọn nhiều (bấm / kéo khung)"),
+        M("selAll", "Chọn", "Mọi thanh tầng đang xem"),
+        M("selBySection", "Chọn", "Theo tiết diện…"),
+        M("selClear", "Chọn", "Bỏ chọn"),
+        // Gán
+        M("assignFrameLoad", "Gán", "Tải trên thanh (đều / hình thang / tập trung)…"),
+        M("assignAreaLoad", "Gán", "Tải trên sàn…"),
+        M("assignJointLoad", "Gán", "Tải tại nút…"),
+        M("assignRestraint", "Gán", "Liên kết nút (ngàm / khớp / tự do)…"),
+        M("assignRelease", "Gán", "Giải phóng đầu thanh…"),
+        M("assignSection", "Gán", "Tiết diện thanh…"),
+        M("assignModifiers", "Gán", "Hệ số độ cứng thanh…"),
+        M("insertion", "Gán", "Điểm chèn / dời ngang…"),
+        M("assignDiaphragm", "Gán", "Sàn cứng tầng đang xem…"),
+        M("assignWall", "Gán", "Gán tường lên dầm"),
+        M("assignBuildUp", "Gán", "Gán cấu tạo sàn"),
+        M("assignWc", "Gán", "Sàn vệ sinh"),
         // Phân tích
-        M("combos", "Phân tích", "Tạo tổ hợp tải"),
+        M("modelCheck", "Phân tích", "Kiểm tra mô hình…"),
         M("run", "Phân tích", "Chạy phân tích"),
-        M("modal", "Phân tích", "Dao động riêng…"),
         M("importResults", "Phân tích", "Nhập kết quả nội lực (ETABS/SAP/SAFE/khác)…"),
         M("crossCheck", "Phân tích", "So sánh với ETABS/SAP/SAFE…"),
+        // Hiển thị
+        M("deformed", "Hiển thị", "Hình biến dạng…"),
+        M("diagrams", "Hiển thị", "Biểu đồ nội lực"),
+        M("modes", "Hiển thị", "Dạng dao động"),
+        M("reactions", "Hiển thị", "Phản lực gối…"),
+        M("resultTables", "Hiển thị", "Bảng kết quả…"),
+        M("showLoads", "Hiển thị", "Hiển thị tải gán"),
         // Thiết kế
         M("designRc", "Thiết kế", "Thiết kế BTCT"),
         M("checkSteel", "Thiết kế", "Kiểm tra thép"),
@@ -139,20 +196,22 @@ public static partial class UserGuide
         M("designFnd", "Thiết kế", "Thiết kế móng…"),
         M("rebarChoice", "Thiết kế", "Chọn bố trí thép…"),
         M("rebarPrefs", "Thiết kế", "Tuỳ chọn chọn thép & gia công…"),
-        // Xuất
-        M("expDxf", "Xuất", "Bản vẽ DXF..."),
-        M("drawEdit", "Xuất", "Hiệu chỉnh bản vẽ…"),
-        M("drawAttach", "Xuất", "Nạp lại bản vẽ đã chỉnh sửa (DXF/DWG)…"),
-        M("expWord", "Xuất", "Thuyết minh Word..."),
-        M("expExcel", "Xuất", "Bảng tính Excel..."),
-        M("quantities", "Xuất", "Bảng khối lượng vật tư…"),
-        M("autoReport", "Xuất", "Lập thuyết minh tự động…"),
-        M("shop", "Xuất", "Xuất shop drawing thép…"),
-        M("csv", "Xuất", "Nội lực CSV..."),
-        M("e2k", "Xuất", "Mô hình ETABS .e2k..."),
-        M("s2k", "Xuất", "Mô hình SAP2000 .s2k..."),
-        M("expAll", "Xuất", "Xuất tất cả vào thư mục..."),
-        M("sheets", "Xuất", "Dàn trang & in bản vẽ…"),
+        // Triển khai hồ sơ
+        M("expDxf", "Triển khai hồ sơ", "Bản vẽ DXF..."),
+        M("drawEdit", "Triển khai hồ sơ", "Hiệu chỉnh bản vẽ…"),
+        M("drawAttach", "Triển khai hồ sơ", "Nạp lại bản vẽ đã chỉnh sửa (DXF/DWG)…"),
+        M("shop", "Triển khai hồ sơ", "Xuất shop drawing thép…"),
+        M("sheets", "Triển khai hồ sơ", "Dàn trang & in bản vẽ…"),
+        M("expWord", "Triển khai hồ sơ", "Thuyết minh Word..."),
+        M("autoReport", "Triển khai hồ sơ", "Lập thuyết minh tự động…"),
+        M("expExcel", "Triển khai hồ sơ", "Bảng tính Excel..."),
+        M("quantities", "Triển khai hồ sơ", "Bảng khối lượng vật tư…"),
+        M("expAll", "Triển khai hồ sơ", "Xuất tất cả vào thư mục..."),
+        // Tuỳ chọn
+        M("cadStd", "Tuỳ chọn", "Chuẩn layer CAD…"),
+        M("drawStyle", "Tuỳ chọn", "Thiết lập bản vẽ (tỷ lệ, cỡ chữ)…"),
+        M("templates", "Tuỳ chọn", "Mẫu định dạng (template)…"),
+        M("locations", "Tuỳ chọn", "Danh mục địa danh (QCVN 02:2022)…"),
         // Trợ giúp
         M("guide", "Trợ giúp", "Hướng dẫn sử dụng…"),
         M("quickStart", "Trợ giúp", "Bắt đầu nhanh…"),
@@ -160,14 +219,6 @@ public static partial class UserGuide
         M("regs", "Trợ giúp", "Văn bản pháp lý & tiêu chuẩn áp dụng…"),
         M("verify", "Trợ giúp", "Kiểm chứng phần mềm…"),
         M("about", "Trợ giúp", "Giới thiệu"),
-        // [SẮP CÓ] tính năng đang phát triển song song – đường dẫn dự kiến, cập nhật khi hoàn thành
-        Planned("explorer", "Xem", "Cây mô hình…"),
-        Planned("modelCheck", "Phân tích", "Kiểm tra mô hình…"),
-        Planned("resultTables", "Hiển thị", "Bảng kết quả…"),
-        Planned("comboEditor", "Khai báo", "Tổ hợp tải trọng…"),
-        Planned("assignFrameLoad", "Gán", "Tải trọng thanh…"),
-        Planned("assignAreaLoad", "Gán", "Tải trọng sàn…"),
-        Planned("assignRelease", "Gán", "Giải phóng liên kết đầu thanh…"),
     };
 
     /// <summary>Đường dẫn menu theo mã ("Tệp → Mới"); mã không có → "[menu ?id]".</summary>

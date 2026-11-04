@@ -30,6 +30,7 @@ internal sealed class StairDialog : Window
     {
         _p = p; _s = draft; _apply = apply; _remove = remove;
         DialogUi.Setup(this, "Khai báo cầu thang " + draft.Name, 1180, 780);
+        Help.Attach(this, "mo-hinh.cau-thang");   // nút "?" + F1 – Help.cs
 
         var form = new StackPanel { Margin = new Thickness(0, 0, 8, 0) };
         void Hd(string t) => form.Children.Add(new TextBlock { Text = t, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 8, 0, 2) });

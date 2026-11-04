@@ -34,6 +34,8 @@ public static partial class SlabDesigner
         public SpacingChoice[] Mesh = new SpacingChoice[2];
         /// <summary>Thép mũ đã bố trí tại các cạnh ngàm theo phương [0]/[1]: As (m²/m) và nhãn</summary>
         public List<(int Dir, double As, string Text, int Dia)> EdgeProv = new();
+        /// <summary>[Sàn hạ cốt] cạnh i giáp ô chênh cốt (bậc) – SlabDropChecks.StepEdges; null = không có.</summary>
+        public bool[] StepEdges;
         public double Z => Pts.Max(v => v.Z);
         public double X1 => Pts.Min(v => v.X);
         public double X2 => Pts.Max(v => v.X);
@@ -99,6 +101,8 @@ public static partial class SlabDesigner
         public SpacingChoice Choice;
         public bool User;
         public bool Done;
+        /// <summary>[Sàn hạ cốt] thép mũ cấu tạo tại cạnh bậc (cạnh khớp do chênh cốt): một phía, neo vào dầm, không ghép cặp.</summary>
+        public bool Step;
     }
 
     /// <summary>Lượt 2: lưới trên, mũ gối (cạnh chung một lần), kiểm tra uốn gối, chuỗi thép trên.</summary>
@@ -143,6 +147,7 @@ public static partial class SlabDesigner
                         grown = false;
                         var last = run[^1];
                         var next = cand.FirstOrDefault(o => !used.Contains(o) && o.AxisAligned && Math.Abs(o.Z - last.Z) < 0.01 && Math.Abs(o.T - last.T) < 1e-4
+                            && !SlabDropChecks.IsStep(p, o.Slab, last.Slab)   // [Sàn hạ cốt] lưới trên dừng tại bậc
                             && (alongX ? Math.Abs(o.X1 - last.X2) < 0.01 && Math.Abs(o.Y1 - last.Y1) < 0.01 && Math.Abs(o.Y2 - last.Y2) < 0.01
                                        : Math.Abs(o.Y1 - last.Y2) < 0.01 && Math.Abs(o.X1 - last.X1) < 0.01 && Math.Abs(o.X2 - last.X2) < 0.01));
                         if (next != null) { run.Add(next); used.Add(next); grown = true; }
@@ -223,6 +228,20 @@ public static partial class SlabDesigner
                 it.User = user && it.Choice != null;
                 items.Add(it);
             }
+            // ---- [Sàn hạ cốt] cạnh bậc (khớp do chênh cốt): thép mũ cấu tạo riêng của ô, As ≥ max(⅓ As nhịp cùng phương, μmin), a ≤ 200 ----
+            for (int i = 0; i < 4 && pn.StepEdges != null && i < pn.StepEdges.Length; i++)
+            {
+                if (!pn.StepEdges[i] || pn.Edges[i] == EdgeKind.Fixed) continue;
+                int dir = pn.LongEdges.Contains(i) ? 0 : 1;
+                var (bd, bs) = ParseSpacing(dir == 0 ? pn.D.BotX : pn.D.BotY);
+                double asBot = bd > 0 && bs > 0 ? RcSection.BarArea(bd) / bs : 0;
+                var pnc = pn;
+                var mesh = pn.Mesh[dir];   // lưới trên (dừng tại bậc, neo vào dầm) đã đủ → không thêm mũ
+                if (pn.Scheme != SlabRebarScheme.TopBarsBottomMesh && mesh != null && mesh.AsPerM >= Math.Max(pn.AsMin(mesh.Dia), asBot / 3) * (1 - 1e-6)) continue;
+                var ch =RcSection.ChooseSpacing(dg => Math.Max(pnc.AsMin(dg), asBot / 3), pn.Dias, 0.20, 0.10, 0.20);
+                items.Add(new EdgeItem { P = pn, Edge = i, Dir = dir, A = pn.Pts[i], B = pn.Pts[(i + 1) % 4], Choice = ch, Step = true });
+            }
+            // ---- hết Sàn hạ cốt ----
         }
         double Need(EdgeItem it, int dia) => Math.Max(it.P.ReqTop(it.Dir, dia) - (it.P.Mesh[it.Dir]?.AsPerM ?? 0), 0);
         foreach (var it in items)
@@ -237,6 +256,7 @@ public static partial class SlabDesigner
             foreach (var o in items)
             {
                 if (o == it || o.Done || o.P == it.P || Math.Abs(o.P.Z - it.P.Z) > 0.01) continue;
+                if (it.Step || o.Step || SlabDropChecks.IsStep(p, it.P.Slab, o.P.Slab)) continue;   // [Sàn hạ cốt] không vắt mũ qua bậc
                 if (!OnLine(it.A, u, o.A, out double t1) || !OnLine(it.A, u, o.B, out double t2)) continue;
                 double l2 = Math.Max(0, Math.Min(t1, t2)), h2 = Math.Min(le, Math.Max(t1, t2));
                 if (h2 - l2 > 0.1 * le) { mate = o; lo = l2; hi = h2; break; }
@@ -256,11 +276,12 @@ public static partial class SlabDesigner
                 double ext = pn.Lx / 4;
                 double over = Math.Max(bw - pn.C, 0);
                 double len = DesignUtil.R10(ext + over);
-                var bm = Spread("Lớp trên mũ gối biên phương " + DirName(pn, it.Dir), it.Choice, len, ovl, true,
+                var bm = Spread((it.Step ? "Lớp trên mũ cấu tạo cạnh hạ cốt phương " : "Lớp trên mũ gối biên phương ") + DirName(pn, it.Dir), it.Choice, len, ovl, true,
                     new List<double> { DesignUtil.Mm(hook), DesignUtil.Mm(len), DesignUtil.Mm(hook) }, hook * 2);
                 pn.D.Bars.Add(bm);
                 pn.D.EdgeBars.Add(new SlabEdgeBar { X1 = A.X, Y1 = A.Y, X2 = B.X, Y2 = B.Y, NX = nrm.X, NY = nrm.Y, Ext1 = ext + bw / 2, Ext2 = Math.Max(bw / 2 - pn.C, 0), Bar = bm });
-                pn.EdgeProv.Add((it.Dir, it.Choice.AsPerM, it.Choice.Text, it.Choice.Dia));
+                if (!it.Step) pn.EdgeProv.Add((it.Dir, it.Choice.AsPerM, it.Choice.Text, it.Choice.Dia));   // [Sàn hạ cốt] mũ cấu tạo không kể vào kiểm tra gối
+                else pn.D.Messages.Add("Mũ cấu tạo cạnh hạ cốt " + it.Choice.Text + " (dài " + DesignUtil.F(len, "0.00") + " m + móc) neo qua dầm, không liên tục sang ô kề");
                 continue;
             }
             mate.Done = true;

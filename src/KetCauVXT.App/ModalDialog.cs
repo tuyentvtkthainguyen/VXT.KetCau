@@ -40,6 +40,7 @@ internal sealed class ModalDialog : Window
     {
         _p = p;
         DialogUi.Setup(this, "Phân tích dao động riêng", 760, 680);
+        Help.Attach(this, "phan-tich.dao-dong");   // nút "?" + F1 – Help.cs
         var ms = p.Modal ??= new ModalSettings();
         var names = p.Patterns.Select(t => t.Name).ToList();
 

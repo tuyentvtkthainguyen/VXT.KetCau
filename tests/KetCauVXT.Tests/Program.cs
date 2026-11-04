@@ -551,6 +551,9 @@ BeamToolsTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.Ba
 Console.WriteLine("44. Mặt cắt dầm có cánh sàn (chữ T / L), thép sàn trong cánh, đường cắt lửng");
 BeamFlangeDrawingTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("45. Hướng dẫn sử dụng tích hợp (Word/Markdown, trợ giúp theo ngữ cảnh F1, menu)");
+UserGuideTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

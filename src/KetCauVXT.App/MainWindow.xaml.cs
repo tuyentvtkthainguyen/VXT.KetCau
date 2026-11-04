@@ -84,7 +84,7 @@ public partial class MainWindow : Window
         else if (ctrl && e.Key == Key.O) { MnuOpen_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (ctrl && e.Key == Key.S) { MnuSave_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (e.Key == Key.F5) { MnuRun_Click(this, new RoutedEventArgs()); e.Handled = true; }
-        else if (e.Key == Key.F1) { ShowAppendix(); e.Handled = true; }   // MainWindow.Help.cs
+        else if (e.Key == Key.F1 && (Keyboard.Modifiers & ModifierKeys.Shift) != 0) { ShowAppendix(); e.Handled = true; }   // MainWindow.Help.cs (F1: hướng dẫn theo ngữ cảnh – MainWindow.UserGuide.cs)
         else if (HandlePlanEditKey(e.Key, ctrl)) e.Handled = true; // Delete / Esc / Ctrl+Z – MainWindow.Edit.cs
     }
 
@@ -166,6 +166,7 @@ public partial class MainWindow : Window
         if (_busy || !ConfirmDiscard()) return;
         SetProject(ModelBuilder.NewProject(), null);
         SetStatus("Dự án mới.");
+        MaybeShowQuickStart();   // bảng Bắt đầu nhanh – MainWindow.UserGuide.cs
     }
 
     private void MnuOpen_Click(object sender, RoutedEventArgs e)

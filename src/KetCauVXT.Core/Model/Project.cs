@@ -153,6 +153,11 @@ public partial class Project
     /// <summary>Tuỳ chọn thuyết minh tự động gần nhất (trang bìa, chương…); null = mặc định (Report/ReportOptions.cs)</summary>
     public KetCauVXT.Report.ReportOptions ReportOptions { get; set; }
     // ---- [hết] ----
+    // ---- [Sàn hạ cốt – Model/SlabDrop.cs] ----
+    /// <summary>Hạ cốt mặc định theo công năng, ngưỡng bậc sàn; null = mặc định (file cũ không ghi).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public SlabDropSettings SlabDrop { get; set; }
+    // ---- [hết Sàn hạ cốt] ----
 
     // ------------------------------------------------------------------
     // Truy vấn

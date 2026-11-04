@@ -498,12 +498,16 @@ public static class CadLinkCache
 public static class CadLinkSnap
 {
     /// <summary>Các bản vẽ liên kết hiện trên tầng, có bắt điểm và đã nạp hình.</summary>
-    public static IEnumerable<(CadLink link, CadLinkGeometry g)> Active(Project p, string story)
+    public static IEnumerable<(CadLink link, CadLinkGeometry g)> Active(Project p, string story) => Active(p?.CadLinks, story, false);
+
+    /// <summary>ignoreFlags = true: bỏ qua công tắc Hiện / Bắt điểm / tầng của link (dùng khi căn bản vẽ).</summary>
+    public static IEnumerable<(CadLink link, CadLinkGeometry g)> Active(IEnumerable<CadLink> links, string story, bool ignoreFlags)
     {
-        if (p?.CadLinks == null) yield break;
-        foreach (var l in p.CadLinks)
+        if (links == null) yield break;
+        foreach (var l in links)
         {
-            if (l == null || !l.Visible || !l.Snap || !l.AppliesTo(story)) continue;
+            if (l == null) continue;
+            if (!ignoreFlags && (!l.Visible || !l.Snap || !l.AppliesTo(story))) continue;
             var g = CadLinkCache.Get(l);
             if (g != null) yield return (l, g);
         }
@@ -520,12 +524,16 @@ public static class CadLinkSnap
 
     /// <summary>Điểm bắt trên nét bản vẽ liên kết trong bán kính tol quanh (x, y). Ưu tiên: đầu nét/tâm 2, giao nét 3, trung điểm 4
     /// (sau đầu dầm/nút của mô hình). mask: End|Node → đầu nét, tâm; Intersection → giao nét; Midpoint → trung điểm.</summary>
-    public static List<SnapCandidate> Candidates(Project p, string story, double x, double y, double tol, SnapMask mask = SnapMask.All)
+    public static List<SnapCandidate> Candidates(Project p, string story, double x, double y, double tol, SnapMask mask = SnapMask.All) =>
+        Candidates(Active(p, story), x, y, tol, mask);
+
+    /// <summary>Điểm bắt trên các bản vẽ cho trước (đã lọc).</summary>
+    public static List<SnapCandidate> Candidates(IEnumerable<(CadLink link, CadLinkGeometry g)> active, double x, double y, double tol, SnapMask mask = SnapMask.All)
     {
         var list = new List<SnapCandidate>();
         if ((mask & SnapMask.CadLink) == 0) return list;
         bool ends = (mask & (SnapMask.End | SnapMask.Node)) != 0, mids = (mask & SnapMask.Midpoint) != 0, inter = (mask & SnapMask.Intersection) != 0;
-        foreach (var (l, g) in Active(p, story))
+        foreach (var (l, g) in active ?? Enumerable.Empty<(CadLink, CadLinkGeometry)>())
         {
             var v = g.View(l);
             var vis = LayerFilter(l, g);

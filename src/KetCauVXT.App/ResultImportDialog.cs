@@ -119,6 +119,7 @@ internal sealed class ResultImportDialog : Window
         _p = p; _own = own; _apply = apply;
         _ses = new ResultImportSession(p, own);
         DialogUi.Setup(this, "Nhập kết quả nội lực – ETABS / SAP2000 / SAFE / phần mềm khác", 1250, 760);
+        Help.Attach(this, "phan-tich.nhap-ket-qua");   // nút "?" + F1 – Help.cs
 
         // ---- đầu: file, phần mềm, đơn vị ----
         var top = new StackPanel();

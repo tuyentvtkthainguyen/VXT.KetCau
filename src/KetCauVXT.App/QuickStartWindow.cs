@@ -57,28 +57,20 @@ internal sealed class QuickStartWindow : Window
         Refresh();
     }
 
-    /// <summary>Đọc lại trạng thái dự án và vẽ lại danh sách bước.</summary>
-    public void Refresh()
+    private readonly List<(QuickStartStep Step, TextBlock Mark, Button Go)> _rows = new();
+
+    private void BuildRows()
     {
-        var (p, hasRes, ds) = _state();
-        _list.Children.Clear();
-        int done = 0, i = 0;
+        int i = 0;
         foreach (var step in QuickStart.Steps)
         {
             i++;
-            bool? st = QuickStart.Evaluate(step, p, hasRes, ds);
-            if (st == true) done++;
-            var mark = new TextBlock
-            {
-                Text = st == true ? "✓" : st == false ? "○" : "?", FontSize = 18, FontWeight = FontWeights.Bold, Width = 26, VerticalAlignment = VerticalAlignment.Top,
-                Foreground = st == true ? DoneBrush : st == false ? TodoBrush : AskBrush,
-                ToolTip = st == true ? "Đã làm (tự nhận biết từ dự án)" : st == false ? "Chưa làm" : "Không tự nhận biết được – bạn tự kiểm tra"
-            };
+            var mark = new TextBlock { FontSize = 18, FontWeight = FontWeights.Bold, Width = 26, VerticalAlignment = VerticalAlignment.Top };
             var text = new StackPanel();
             text.Children.Add(new TextBlock { Text = $"{i}. {step.Title}", FontWeight = FontWeights.SemiBold, FontSize = 13.5 });
-            text.Children.Add(new TextBlock { Text = step.Description, TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DimGray, Margin = new Thickness(0, 1, 0, 0) });
+            text.Children.Add(new TextBlock { Text = UserGuide.Plain(step.Description), TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DimGray, Margin = new Thickness(0, 1, 0, 0) });
             var id = step.Id; var help = step.HelpId;
-            var go = DialogUi.Btn("Làm bước này", (s, e) => { try { _doStep?.Invoke(id); } catch (Exception ex) { MessageBox.Show(this, ex.Message, Title); } Refresh(); }, st != true);
+            var go = DialogUi.Btn("Làm bước này", (s, e) => { try { _doStep?.Invoke(id); } catch (Exception ex) { MessageBox.Show(this, ex.Message, Title); } Refresh(); });
             var see = DialogUi.Btn("Xem hướng dẫn", (s, e) => Help.Show(help));
             var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
             actions.Children.Add(go); actions.Children.Add(see);
@@ -87,9 +79,30 @@ internal sealed class QuickStartWindow : Window
             DockPanel.SetDock(actions, Dock.Right); row.Children.Add(actions);
             row.Children.Add(text);
             _list.Children.Add(new Border { Child = row, BorderBrush = new SolidColorBrush(Color.FromRgb(225, 228, 234)), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 2, 0, 4) });
+            _rows.Add((step, mark, go));
+        }
+    }
+
+    /// <summary>Đọc lại trạng thái dự án và cập nhật dấu trạng thái từng bước (không dựng lại nút).</summary>
+    public void Refresh()
+    {
+        if (_rows.Count == 0) BuildRows();
+        var (p, hasRes, ds) = _state();
+        int done = 0;
+        foreach (var (step, mark, go) in _rows)
+        {
+            bool? st = QuickStart.Evaluate(step, p, hasRes, ds);
+            if (st == true) done++;
+            mark.Text = st == true ? "✓" : st == false ? "○" : "?";
+            mark.Foreground = st == true ? DoneBrush : st == false ? TodoBrush : AskBrush;
+            mark.ToolTip = st == true ? "Đã làm (tự nhận biết từ dự án)" : st == false ? "Chưa làm" : "Không tự nhận biết được – bạn tự kiểm tra";
+            go.FontWeight = st == true ? FontWeights.Normal : FontWeights.Bold;
         }
         _summary.Text = $"Dự án \"{p?.Name}\": đã làm {done}/{QuickStart.Steps.Count} bước.";
     }
+
+    /// <summary>Số bước đã làm (tự kiểm tra).</summary>
+    public int DoneCount => _rows.Count(r => r.Mark.Text == "✓");
 
     // ------------------------------------------------------------------ tuỳ chọn "Không hiện lại"
     private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KetCauVXT", "BatDauNhanh.json");

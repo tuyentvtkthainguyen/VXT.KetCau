@@ -181,7 +181,9 @@
                 <MenuItem Header="Danh mục địa danh (QCVN 02:2022)…" Click="MnuLocationDb_Click"/>
             </MenuItem>
             <MenuItem Header="T_rợ giúp">
-                <MenuItem Header="Phụ lục tính toán &amp; hướng dẫn…" Click="MnuAppendix_Click" InputGestureText="F1"/>
+                <MenuItem Header="Hướng dẫn sử dụng…" Click="MnuUserGuide_Click" InputGestureText="F1" ToolTip="Hướng dẫn sử dụng chi tiết từ khởi tạo đến sử dụng kết quả; F1 mở đúng mục của tab / công cụ / hộp thoại đang dùng – MainWindow.UserGuide.cs"/>
+                <MenuItem Header="Bắt đầu nhanh…" Click="MnuQuickStart_Click" ToolTip="Các bước làm việc, trạng thái của dự án, nút chuyển tới từng bước"/>
+                <MenuItem Header="Phụ lục tính toán &amp; hướng dẫn…" Click="MnuAppendix_Click" InputGestureText="Shift+F1"/>
                 <MenuItem Header="Văn bản pháp lý &amp; tiêu chuẩn áp dụng…" Click="MnuRegulations_Click"/>
                 <MenuItem Header="Kiểm chứng phần mềm…" Click="MnuVerification_Click"/>
                 <Separator/>
@@ -192,25 +194,25 @@
         <!-- ================= TOOLBAR ================= -->
         <ToolBarTray DockPanel.Dock="Top">
             <ToolBar>
-                <Button Content="Mới" Click="MnuNew_Click" Style="{StaticResource ToolButton}"/>
-                <Button Content="Mở" Click="MnuOpen_Click" Style="{StaticResource ToolButton}"/>
-                <Button Content="Lưu" Click="MnuSave_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Mới" Click="MnuNew_Click" Style="{StaticResource ToolButton}" ToolTip="Dự án mới (Ctrl+N)"/>
+                <Button Content="Mở" Click="MnuOpen_Click" Style="{StaticResource ToolButton}" ToolTip="Mở dự án .kcvxt (Ctrl+O)"/>
+                <Button Content="Lưu" Click="MnuSave_Click" Style="{StaticResource ToolButton}" ToolTip="Lưu dự án (Ctrl+S)"/>
                 <Button Content="Cây mô hình" Click="MnuModelExplorer_Click" Style="{StaticResource ToolButton}" ToolTip="Hiện / ẩn cây mô hình (Xem → Cây mô hình, Ctrl+E)"/>
                 <Separator/>
-                <Button Content="Nhập DWG/DXF" Click="MnuImportDxf_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Nhập DWG/DXF" Click="MnuImportDxf_Click" Style="{StaticResource ToolButton}" ToolTip="Nhập mặt bằng kết cấu đã vẽ (layer TRUC, COT, DAM, SAN) từ DWG/DXF"/>
                 <Button Content="Từ bản vẽ KT" Click="MnuImportArch_Click" Style="{StaticResource ToolButton}" ToolTip="Nhập bản vẽ kiến trúc sơ bộ → tự triển khai kết cấu"/>
-                <Button Content="Nhập Revit" Click="MnuImportRevit_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Nhập Revit" Click="MnuImportRevit_Click" Style="{StaticResource ToolButton}" ToolTip="Nhập mô hình xuất từ add-in Revit (*.vxtrevit.json)"/>
                 <Separator/>
-                <Button Content="Tạo khung BTCT" Click="MnuBuildGrid_Click" Style="{StaticResource ToolButton}"/>
-                <Button Content="Khung tiền chế" Click="MnuBuildPortal_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="Tạo khung BTCT" Click="MnuBuildGrid_Click" Style="{StaticResource ToolButton}" ToolTip="Sinh lại khung BTCT từ lưới trục, tầng ở tab Công trình (xoá mô hình hiện có)"/>
+                <Button Content="Khung tiền chế" Click="MnuBuildPortal_Click" Style="{StaticResource ToolButton}" ToolTip="Tạo khung thép tiền chế (nhịp, cao đỉnh cột, độ dốc, bước khung, tiết diện vát)"/>
                 <Separator/>
                 <Button Content="Kiểm tra MH" Click="MnuCheckModel_Click" Style="{StaticResource ToolButton}" ToolTip="Phân tích → Kiểm tra mô hình…"/>
-                <Button Content="▶ Phân tích" Click="MnuRun_Click" Style="{StaticResource ToolButton}" FontWeight="Bold"/>
-                <Button Content="Thiết kế BTCT" Click="MnuDesignConcrete_Click" Style="{StaticResource ToolButton}"/>
-                <Button Content="Kiểm tra thép" Click="MnuCheckSteel_Click" Style="{StaticResource ToolButton}"/>
+                <Button Content="▶ Phân tích" Click="MnuRun_Click" Style="{StaticResource ToolButton}" FontWeight="Bold" ToolTip="Chạy phân tích tĩnh (và dao động riêng nếu bật) – F5"/>
+                <Button Content="Thiết kế BTCT" Click="MnuDesignConcrete_Click" Style="{StaticResource ToolButton}" ToolTip="Thiết kế thép dầm, cột, sàn, móng, cầu thang theo TCVN 5574:2018 (tự phân tích nếu cần)"/>
+                <Button Content="Kiểm tra thép" Click="MnuCheckSteel_Click" Style="{StaticResource ToolButton}" ToolTip="Kiểm tra cấu kiện khung thép tiền chế (TCVN 5575)"/>
                 <Button Content="Bảng kết quả" Click="MnuTables_Click" Style="{StaticResource ToolButton}" ToolTip="Hiển thị → Bảng kết quả… (Ctrl+T)"/>
                 <Separator/>
-                <Button Content="Xuất tất cả" Click="MnuExpAll_Click" Style="{StaticResource ToolButton}" FontWeight="Bold"/>
+                <Button Content="Xuất tất cả" Click="MnuExpAll_Click" Style="{StaticResource ToolButton}" FontWeight="Bold" ToolTip="Xuất toàn bộ hồ sơ vào một thư mục: bản vẽ DXF, gia công thép, thuyết minh, Excel, khối lượng, CSV, .e2k, .s2k"/>
             </ToolBar>
         </ToolBarTray>
 

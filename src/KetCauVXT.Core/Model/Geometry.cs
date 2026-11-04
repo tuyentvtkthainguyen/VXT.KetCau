@@ -148,6 +148,15 @@ public class Slab
     public List<bool> EdgeFixed { get; set; } = new();
     /// <summary>Cấu tạo sàn (tên trong Project.FloorBuildUps); rỗng = tải nhập tay</summary>
     public string BuildUp { get; set; } = "";
+    // ---- [Sàn hạ cốt – Model/SlabDrop.cs] ----
+    /// <summary>Hạ cốt sàn (m): mặt trên ô sàn thấp hơn cao độ sàn tầng (âm = hạ, vd. −0,05 sàn vệ sinh). 0 = không hạ (mặc định,
+    /// file cũ). Nút ô sàn vẫn ở cao độ tầng: phân tích bỏ qua; dùng cho thiết kế sàn (cạnh bậc tính khớp), kiểm tra dầm biên, bản vẽ.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public double LevelOffset { get; set; }
+    /// <summary>Lý do / ghi chú hạ cốt (vd. "WC đặt bệt âm"); null = không ghi.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string DropReason { get; set; }
+    // ---- [hết Sàn hạ cốt] ----
 }
 
 /// <summary>Móng (gán tại nút chân cột).</summary>

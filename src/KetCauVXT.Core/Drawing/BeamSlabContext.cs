@@ -9,8 +9,8 @@ namespace KetCauVXT.Drawing;
 // tại một vị trí dọc dầm, mỗi bên trái/phải có ô sàn nào (chiều dày hs, chênh cao dz, thép sàn) hay là mép ngoài
 // (dầm biên) / lỗ sàn (cầu thang, giếng trời). "Trái/phải" theo hướng nhìn dọc dầm từ đầu x = 0 tới cuối
 // (hướng của mặt đứng dầm): mặt cắt vẽ bên trái là bên trái hướng dầm.
-// Mô hình hiện chưa có khai báo hạ cốt sàn riêng: dz lấy theo cao độ nút ô sàn so với đỉnh dầm (thường = 0) cộng
-// LevelOffsetHook (null = 0) – chỗ móc khi dự án có thuộc tính hạ cốt sàn vệ sinh / ban công.
+// dz lấy theo cao độ nút ô sàn so với đỉnh dầm (thường = 0) cộng LevelOffsetHook – mặc định Slab.LevelOffset (hạ cốt sàn vệ sinh,
+// ban công… – Model/SlabDrop.cs).
 // =====================================================================
 
 /// <summary>Ô sàn ở một bên dầm tại mặt cắt. Kích thước mm.</summary>
@@ -61,8 +61,9 @@ public sealed class BeamSlabSection
 
 public static class BeamSlabContext
 {
-    /// <summary>Chỗ móc hạ cốt sàn (m, âm = mặt sàn thấp hơn mặt dầm) khi dự án có khai báo riêng; null = 0.</summary>
-    public static Func<Project, Slab, double> LevelOffsetHook { get; set; }
+    /// <summary>Chỗ móc hạ cốt sàn (m, âm = mặt sàn thấp hơn mặt dầm); null = 0. Mặc định đọc Slab.LevelOffset
+    /// (khai báo "Hạ cốt sàn" – Model/SlabDrop.cs) → mặt cắt dầm tự vẽ bậc sàn hạ cốt.</summary>
+    public static Func<Project, Slab, double> LevelOffsetHook { get; set; } = (p, s) => s?.LevelOffset ?? 0;   // [Sàn hạ cốt]
 
     /// <summary>Khoảng cách điểm dò từ mặt bên dầm vào ô sàn (m).</summary>
     public const double Probe = 0.15;

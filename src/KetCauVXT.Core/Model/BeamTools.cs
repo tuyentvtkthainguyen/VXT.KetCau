@@ -568,7 +568,8 @@ public static class BeamTools
                         label = $"{s.Label}.{k}";
                     }
                     part++;
-                    var ns = new Slab { Id = p.NextSlabId(), Label = label, Story = s.Story, Section = s.Section, BuildUp = s.BuildUp, Nodes = new List<int> { n1.Id, n2.Id, n3.Id, n4.Id } };
+                    var ns = new Slab { Id = p.NextSlabId(), Label = label, Story = s.Story, Section = s.Section, BuildUp = s.BuildUp, Nodes = new List<int> { n1.Id, n2.Id, n3.Id, n4.Id },
+                        LevelOffset = s.LevelOffset, DropReason = s.DropReason };   // [Sàn hạ cốt] ô chia lại giữ hạ cốt
                     p.Slabs.Add(ns);
                     foreach (var l in loads) p.AreaLoads.Add(new AreaLoad { Slab = ns.Id, Pattern = l.Pattern, Q = l.Q, Note = l.Note, Source = l.Source });
                 }

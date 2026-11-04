@@ -27,6 +27,10 @@ public static class ConcreteDesigner
         // ---- cầu thang (Design/Concrete/StairDesigner.cs) ----
         s.Stairs = Run(s, "cầu thang", () => StairDesigner.Design(p, s.Warnings));
         // ---- hết cầu thang ----
+        // ---- [Sàn hạ cốt] kiểm tra dầm biên ô sàn hạ cốt h ≥ hs1 + Δ + hs2 – Design/Concrete/SlabDropChecks.cs ----
+        try { SlabDropChecks.Apply(p, s); }
+        catch (Exception ex) { s.Warnings.Add("LỖI kiểm tra dầm biên sàn hạ cốt: " + ex.Message); }
+        // ---- hết Sàn hạ cốt ----
 
         foreach (var m in s.All.Where(x => !x.Ok).ToList())
         {

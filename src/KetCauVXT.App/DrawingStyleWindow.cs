@@ -172,6 +172,7 @@ internal sealed class DrawingStyleWindow : Window
     {
         _p = p;
         DialogUi.Setup(this, "Thiết lập bản vẽ (tỷ lệ, cỡ chữ)", 1180, 720);
+        Help.Attach(this, "ho-so.thiet-lap-ban-ve");   // nút "?" + F1 – Help.cs
         _st = (CadStandard.Active?.Drawing ?? CadStandard.EffectiveFor(p).Drawing ?? DrawingStyle.Default()).Clone();
 
         // ---------------- bảng tỷ lệ ----------------

@@ -38,6 +38,7 @@ internal sealed class CuTramDialog : Window
         _p = p; _design = design; _node = node; _apply = apply;
         var cs = p.Foundation?.CuTram ?? new CuTramSettings();
         DialogUi.Setup(this, "Gia cố nền bằng cừ tràm" + (node != 0 ? $" – chân cột nút {node}" : ""), 1220, 760);
+        Help.Attach(this, "mong.cu-tram");   // nút "?" + F1 – Help.cs
         TextBox Box(double v, string fmt = "0.###") { var t = new TextBox { Width = 80, Text = DialogUi.F(v, fmt) }; t.TextChanged += (s, e) => Kick(); return t; }
         _tLen = Box(cs.Length, "0.##"); _tD1 = Box(cs.TopDiameter * 100, "0.#"); _tD2 = Box(cs.TipDiameter * 100, "0.#"); _tDen = Box(cs.Density, "0.#");
         _tLean = Box(cs.LeanThickness * 1000, "0"); _tSand = Box(cs.SandCushion * 1000, "0"); _tGt = Box(cs.TimberUnitWeight, "0.#"); _tRg = Box(cs.TimberStrength / 1000, "0.#");

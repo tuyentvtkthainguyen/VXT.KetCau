@@ -21,6 +21,7 @@ internal sealed class AutoReportDialog : Window
         Options.Chapters ??= new ReportChapters();
         _run = run;
         DialogUi.Setup(this, "Lập thuyết minh tính toán tự động", 980, 640);
+        Help.Attach(this, "ho-so.thuyet-minh");   // nút "?" + F1 – Help.cs
         ShowInTaskbar = true;
         var ch = Options.Chapters;
 
