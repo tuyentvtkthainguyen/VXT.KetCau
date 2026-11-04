@@ -156,6 +156,7 @@ public partial class MainWindow
             await SelfTestDrawingEdit(tag); // hiệu chỉnh bản vẽ, xuất gộp – MainWindow.SelfTestDrawingEdit.cs
             await SelfTestManualSheet(tag);
             await SelfTestHatch(tag); // hatch, xuất DXF 2018/DWG – MainWindow.SelfTestHatch.cs
+            await SelfTestDetailing(tag); // chế độ Triển khai hồ sơ – MainWindow.Modes.cs, DetailingWindow.cs
             await SelfTestTemplate(tag); // template, khung tên người dùng – MainWindow.SelfTestTemplate.cs // dàn trang thủ công – MainWindow.SelfTestSheetEdit.cs
             StLog("XONG – không lỗi");
         }

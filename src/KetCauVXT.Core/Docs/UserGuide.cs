@@ -114,6 +114,8 @@ public static partial class UserGuide
         M("importCsi", "Tệp", "Nhập mô hình ETABS/SAP (.e2k/.s2k)…"),
         M("acad", "Tệp", "Nhận dữ liệu từ AutoCAD…"),
         M("cadLinks", "Tệp", "Liên kết bản vẽ AutoCAD (DWG/DXF)…"),
+        M("detailingMode", "Tệp", "Chuyển sang chế độ Triển khai hồ sơ…"),
+        M("startMode", "Tệp", "Chọn chế độ làm việc khi khởi động…"),
         M("e2k", "Tệp", "Xuất mô hình", "Mô hình ETABS .e2k..."),
         M("s2k", "Tệp", "Xuất mô hình", "Mô hình SAP2000 .s2k..."),
         M("csv", "Tệp", "Xuất mô hình", "Nội lực CSV..."),

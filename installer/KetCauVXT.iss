@@ -118,6 +118,12 @@ Root: HKA; Subkey: "Software\Classes\.kcvxt\OpenWithProgids"; ValueType: string;
 Root: HKA; Subkey: "Software\Classes\KetCauVXT.DuAn"; ValueType: string; ValueName: ""; ValueData: "Dự án Kết cấu VXT"; Flags: uninsdeletekey; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\KetCauVXT.DuAn\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\KetCauVXT.exe,0"; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\KetCauVXT.DuAn\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\KetCauVXT.exe"" ""%1"""; Tasks: assoc
+; hồ sơ chế độ Triển khai hồ sơ (*.kcvxth)
+Root: HKA; Subkey: "Software\Classes\.kcvxth"; ValueType: string; ValueName: ""; ValueData: "KetCauVXT.HoSo"; Flags: uninsdeletevalue; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\.kcvxth\OpenWithProgids"; ValueType: string; ValueName: "KetCauVXT.HoSo"; ValueData: ""; Flags: uninsdeletevalue; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\KetCauVXT.HoSo"; ValueType: string; ValueName: ""; ValueData: "Hồ sơ triển khai Kết cấu VXT"; Flags: uninsdeletekey; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\KetCauVXT.HoSo\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\KetCauVXT.exe,0"; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\KetCauVXT.HoSo\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\KetCauVXT.exe"" ""%1"""; Tasks: assoc
 ; gỡ mục "Programs and Features" của bản cài thủ công cũ (CaiDat.ps1)
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\KetCauVXT"; Flags: deletekey dontcreatekey
 

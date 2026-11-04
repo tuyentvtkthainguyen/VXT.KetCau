@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Globalization;
 using System.Threading;
 using System.Windows;
@@ -30,6 +31,28 @@ public partial class App : Application
         global::KetCauVXT.Dwg.CadDocWriter.Register();
         global::KetCauVXT.Model.TemplateService.AutoApplyDefault = true;
         base.OnStartup(e);
+        StartWindows(e.Args ?? Array.Empty<string>());
+    }
+
+    /// <summary>Chọn cửa sổ mở đầu: tham số "--…" (tự kiểm tra, AutoCAD) hoặc file .kcvxt → chế độ Thiết kế – chạy nội lực;
+    /// file .kcvxth → chế độ Triển khai hồ sơ; còn lại → màn hình chọn chế độ (hoặc chế độ đã ghi nhớ).</summary>
+    private void StartWindows(string[] args)
+    {
+        bool Has(string ext) => args.Any(a => a.EndsWith(ext, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(a));
+        if (args.Any(a => a.StartsWith("--", StringComparison.Ordinal)) || Has(".kcvxt")) { LauncherWindow.Open(LauncherWindow.Mode.Model); return; }
+        if (Has(".kcvxth"))
+        {
+            LauncherWindow.Open(LauncherWindow.Mode.Detailing, args.First(a => a.EndsWith(".kcvxth", StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(a)));
+            return;
+        }
+        var pref = LauncherWindow.LoadPref();
+        if (pref.Remember && Enum.TryParse(pref.Mode, out LauncherWindow.Mode m) && m != LauncherWindow.Mode.None) { LauncherWindow.Open(m); return; }
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        var l = new LauncherWindow();
+        bool ok = l.ShowDialog() == true && l.Chosen != LauncherWindow.Mode.None;
+        ShutdownMode = ShutdownMode.OnLastWindowClose;
+        if (ok) LauncherWindow.Open(l.Chosen);
+        else Shutdown(0);
     }
 
     private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

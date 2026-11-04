@@ -38,6 +38,8 @@
                 <MenuItem Header="_Mở .kcvxt..." Click="MnuOpen_Click" InputGestureText="Ctrl+O"/>
                 <MenuItem Header="_Lưu" Click="MnuSave_Click" InputGestureText="Ctrl+S"/>
                 <MenuItem Header="Lưu _thành..." Click="MnuSaveAs_Click"/>
+                <MenuItem Header="Chuyển sang chế độ _Triển khai hồ sơ…" Click="MnuDetailingMode_Click" ToolTip="Nhập kích thước dầm, sàn, cột, chọn thép; móng đơn / băng / cọc / bè, dự ứng lực, bể nước, khối lượng – DetailingWindow.cs"/>
+                <MenuItem Header="Chọn chế độ làm việc khi khởi động…" Click="MnuStartMode_Click"/>
                 <Separator/>
                 <MenuItem Header="Nhập mặt bằng kết cấu _DWG/DXF..." Click="MnuImportDxf_Click"/>
                 <MenuItem Header="Nhập bản vẽ _kiến trúc (triển khai kết cấu)..." Click="MnuImportArch_Click"/>

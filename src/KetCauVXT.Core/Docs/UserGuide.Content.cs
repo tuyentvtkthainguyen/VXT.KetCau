@@ -13,7 +13,7 @@ public static partial class UserGuide
 
     private static List<GuideSection> BuildChapters() => new()
     {
-        ChIntro(), ChInstall(), ChUi(), ChWorkflow(), ChStart(), ChModel(), ChLoads(),
+        ChIntro(), ChInstall(), ChUi(), ChModes(), ChWorkflow(), ChStart(), ChModel(), ChLoads(),
         ChAnalysis(), ChDesign(), ChDocs(), ChVerify(), ChLegal(), ChFaq(), ChAppendix()
     };
 
@@ -290,6 +290,66 @@ public static partial class UserGuide
     // ==================================================================
     // 4. QUY TRÌNH TỔNG QUÁT + VÍ DỤ
     // ==================================================================
+    // ==================================================================
+    // HAI CHẾ ĐỘ LÀM VIỆC – TRIỂN KHAI HỒ SƠ (DetailingWindow, Core/Detailing)
+    // ==================================================================
+    private static GuideSection ChModes()
+    {
+        var c = Ch("che-do-ho-so", "Hai chế độ làm việc – Triển khai hồ sơ");
+        c.P("Khi khởi động, màn hình **chọn chế độ làm việc** hiện 2 lựa chọn (phím 1 / 2):",
+            "**1 – Thiết kế – chạy nội lực**: giao diện mô hình tính như ETABS (lưới trục, tầng, tiết diện, tải trọng, phân tích khung 3D, thiết kế theo nội lực) – các chương sau của hướng dẫn.",
+            "**2 – Triển khai hồ sơ**: không cần mô hình – chỉ nhập kích thước dầm, sàn, cột, chọn số thanh, Ø, khoảng cách thép; thiết kế móng đơn, móng băng, móng cọc, móng bè theo tải chân cột; "
+            + "tính bê tông dự ứng lực, bể nước; xuất bản vẽ, thống kê thép, khối lượng, thuyết minh.")
+            .Bullets("Đánh dấu **Luôn mở chế độ đã chọn khi khởi động** để bỏ qua màn hình này; đổi lại: {m:startMode}.",
+                "Đang ở chế độ mô hình: {m:detailingMode} (cửa sổ mô hình vẫn mở để lấy nội lực). Ở chế độ triển khai: Tệp → **Chuyển sang chế độ Thiết kế – chạy nội lực**.",
+                "Mở file **.kcvxt** (dự án mô hình) → chế độ thiết kế; file **.kcvxth** (hồ sơ triển khai) → chế độ triển khai.");
+
+        c.Sec("che-do-ho-so.giao-dien", "Cửa sổ Triển khai hồ sơ")
+            .Bullets("Bên trái: **danh sách cấu kiện** theo nhóm (Dầm, Cột, Sàn, Móng đơn, Móng băng, Móng cọc, Móng bè, Dự ứng lực, Bể nước); ✓ đạt, ✗ đỏ = không đạt. Nút **Nhân bản**, **Xoá**, ▲▼.",
+                "Thanh công cụ: **＋ Dầm**, **＋ Cột**, **＋ Sàn**, **＋ Móng đơn**, **＋ Móng băng**, **＋ Móng cọc**, **＋ Móng bè**, **＋ DƯL**, **＋ Bể nước**; **Tính toàn bộ (F5)**, **Xuất tất cả…**.",
+                "Giữa: **bảng nhập** theo nhóm (Tiết diện, Thép dọc, Thép đai, Nội lực, Nền…). Ô kích thước ghi đơn vị (mm, m, kN, kN.m); nhập **0** ở ô thép / kích thước = chương trình **tự chọn**. Kết quả tính lại ngay khi sửa.",
+                "Phải: tab **Kết quả kiểm tra** (bảng yêu cầu – khả năng – tỷ số, dòng đỏ = không đạt, thông báo LỖI kèm đề xuất), **Thuyết minh** (công thức, thay số, thống kê thép 1 cấu kiện), "
+                + "**Bản vẽ (xem trước)** (khung A1, phóng to / thu nhỏ, **Xuất DXF cấu kiện này…**), **Khối lượng hồ sơ**.",
+                "Tuỳ chọn → **Vật liệu, lớp bảo vệ…** (cấp bê tông, thép dọc / thép đai, lớp bảo vệ dầm, cột, sàn, móng, bể; bê tông lót; chiều dài cây thép) và **Thông tin công trình…** (in lên khung tên).",
+                "Tệp → **Mở hồ sơ mẫu**: đủ 9 loại cấu kiện để tham khảo. Lưu hồ sơ: Ctrl+S (file .kcvxth).");
+
+        c.Sec("che-do-ho-so.dam-cot-san", "Dầm, cột, sàn – nhập kích thước, chọn thép")
+            .Bullets("**Dầm**: b × h, **các nhịp tim – tim** (vd. \"4,2; 3,6\" hoặc \"3*4,2\"), bề rộng gối, cao độ đỉnh; thép dưới / trên chạy suốt (≥ 2 thanh), tăng cường dưới mỗi nhịp, mũ gối; đai Ø, bước vùng gối / giữa nhịp, số nhánh. "
+                + "Nhập M nhịp, M gối, Q (tuỳ chọn) → kiểm tra M ≤ Mu, Q ≤ Qb + Qsw, dải nén 0,3Rb·b·h0 (TCVN 5574:2018 mục 8.1). Luôn kiểm tra cấu tạo: μ ≥ 0,1 %, bước đai, khe hở thép 1 lớp.",
+                "**Cột**: b × h, chiều cao các tầng, cao độ chân, chiều cao dầm tại nút; Ø, số thanh mỗi cạnh, đai đầu / giữa cột. Nhập N, Mx, My tầng dưới → kiểm tra nén lệch tâm xiên (Bresler) có kể độ lệch tâm ngẫu nhiên; "
+                + "vị trí nối thép tự đặt ngoài vùng nguy hiểm, so le 2 nhóm ≥ 1,3·ll.",
+                "**Sàn**: Lx, Ly, t, số cạnh ngàm; tĩnh tải hoàn thiện, hoạt tải (tiêu chuẩn) → q tính toán, phân tải Marcus, mô men dải 1 m; thép lớp dưới 2 phương, mũ gối (0 = tự chọn Ø6…Ø12, bước 100…200).",
+                "Bản vẽ dùng chung bộ vẽ của chế độ mô hình: mặt đứng dầm – chuỗi vùng đai, nhãn thép, mặt cắt 1-1 / 2-2; mặt đứng cột, mặt cắt; mặt bằng thép sàn + mặt cắt. Số hiệu thép theo quy tắc Kết cấu Soft.");
+
+        c.Sec("che-do-ho-so.mong", "Móng đơn, móng băng, móng cọc")
+            .Bullets("**Móng đơn**: kích thước cột, N, ML, MB tính toán (N tiêu chuẩn = N/1,15 nếu để 0), R, Df. L, B, H = 0 → tự chọn: ptb ≤ R, pmax ≤ 1,2R, không tách đáy; H theo chọc thủng F ≤ Rbt·u·h0 và móng cứng; thép mép cột với áp lực hình thang.",
+                "**Móng băng** (dầm móng chữ T ngược dưới dãy cột): chiều dài băng, bề rộng bản (0 = tự chọn), bản mép, sườn; bảng **cột trên móng băng** (vị trí X, N, M). Tính dầm trên nền đàn hồi Winkler (k = 120·R nếu để 0): "
+                + "áp lực nền, M+ tại cột (thép dưới), M− giữa nhịp (thép trên), Q (đai); bản cánh tính console.",
+                "**Móng cọc**: cột, N, Mx, My; cọc D, [P] nén, [Pk] nhổ, số cọc (0 = tự chọn), khoảng cách (0 = 3D), tim cọc tới mép đài. Kiểm tra Pmax ≤ [P], nhổ, khoảng cách 3D, chọc thủng cột và cọc góc, cắt tiết diện nghiêng, thép mép cột.",
+                "Khối lượng kèm theo: bê tông lót, đào đất hố móng, số cọc, đập đầu cọc.");
+
+        c.Sec("che-do-ho-so.mong-be", "Móng bè")
+            .P("Khai báo Lx, Ly, chiều dày, Df, R và bảng **cột trên móng bè** (toạ độ X, Y từ góc móng, kích thước, N, Ntc, Mx, My). Phương pháp móng cứng (ACI 336.2R): "
+               + "áp lực đáy p = ΣNtc/A + γ·Df ± M·y/I, chia dải theo hàng cột, mô men dải theo cân bằng tĩnh, thép lớp trên / dưới 2 phương (0 = tự chọn), chọc thủng từng cột (cột giữa, biên, góc).");
+
+        c.Sec("che-do-ho-so.du-ung-luc", "Bê tông dự ứng lực (căng sau)")
+            .P("Dầm hoặc dải sàn 1 m nhịp đơn giản: tiết diện (chữ nhật / chữ T), tải G2, Q; cáp T12.7 / T15.2, số sợi, độ lệch tâm giữa nhịp và đầu, σcon, ma sát μ, k, tụt neo. "
+               + "Chương trình tính tổn hao (chùng ứng suất, ma sát, tụt neo, co ngót, từ biến; tối thiểu 100 MPa), P0, P∞, tải cân bằng, ứng suất lúc buông neo và khai thác, Mu, độ vồng – độ võng (TCVN 5574:2018 mục 9), "
+               + "vẽ đường cáp parabol + mặt cắt, khối lượng cáp, neo, ống gen.");
+
+        c.Sec("che-do-ho-so.be-nuoc", "Bể nước BTCT")
+            .P("Bể ngầm hoặc bể trên mái: kích thước trong, chiều cao nước, chiều dày thành / đáy / nắp; đất (γ, φ, phụ tải, mực nước ngầm). Tính thành bể theo phương pháp dải (Grashof) với áp lực nước / đất, "
+               + "kiểm tra bề rộng vết nứt ≤ 0,2 mm (tự tăng thép nếu cần), đáy, nắp, chống đẩy nổi khi bể rỗng; khối lượng kèm băng cản nước, chống thấm.");
+
+        c.Sec("che-do-ho-so.xuat", "Xuất hồ sơ")
+            .Bullets("Xuất hồ sơ → **Bản vẽ DXF – gộp 1 file** (các khung A1 đặt cạnh nhau + bảng thống kê cốt thép) hoặc **tách từng cấu kiện** (KC-01_Dầm_D1.dxf … + KC-xx_ThongKeThep.dxf).",
+                "**Bảng khối lượng Excel**: tổng hợp bê tông, bê tông lót, ván khuôn, cốt thép theo nhóm Ø ≤ 10 / 10–18 / > 18, cáp DƯL, công tác khác; trang theo cấu kiện (hàm lượng kg/m³); thống kê cốt thép đầy đủ.",
+                "**Thuyết minh tính toán Word**: căn cứ pháp lý – tiêu chuẩn, vật liệu, từng cấu kiện (công thức thay số, bảng kiểm tra, thông báo), tổng hợp khối lượng.",
+                "**Xuất tất cả vào thư mục…**: cả bản vẽ gộp, bản vẽ tách, Excel và Word.")
+            .Note("Ở chế độ triển khai, nội lực do kỹ sư nhập (từ tính tay, chế độ mô hình hoặc phần mềm khác) – chương trình không kiểm tra nội lực đó có đúng với sơ đồ kết cấu hay không.");
+        return c;
+    }
+
     private static GuideSection ChWorkflow()
     {
         var c = Ch("quy-trinh", "Quy trình làm việc tổng quát");

@@ -96,6 +96,8 @@ public static class HelpContext
         ["RebarChoiceDialog"] = "thiet-ke.chon-thep",
         ["RebarPrefsDialog"] = "thiet-ke.tuy-chon-thep",
         ["DrawingStyleWindow"] = "ho-so.thiet-lap-ban-ve",
+        ["DetailingWindow"] = "che-do-ho-so.giao-dien",
+        ["LauncherWindow"] = "che-do-ho-so",
         ["CadStandardWindow"] = "ho-so.chuan-layer",
         ["LayerExportDialog"] = "ho-so.chuan-layer",
         ["ExportOptionsDialog"] = "ho-so.xuat",
