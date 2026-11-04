@@ -120,9 +120,9 @@ public sealed class DetailingWindow : Window
         dock.Children.Add(sb);
 
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(250), MinWidth = 160 });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(210), MinWidth = 150 });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(470), MinWidth = 320 });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(430), MinWidth = 320 });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 300 });
         var left = new DockPanel();
@@ -146,12 +146,12 @@ public sealed class DetailingWindow : Window
 
         // ---- kết quả ----
         _checks.IsReadOnly = true;
-        _checks.Columns.Add(DialogUi.Text("Kiểm tra", "Name", true, 300));
+        _checks.Columns.Add(DialogUi.Text("Kiểm tra", "Name", true, 230));
         _checks.Columns.Add(DialogUi.Num("Yêu cầu", "Demand", "0.0##", true, 80));
         _checks.Columns.Add(DialogUi.Num("Khả năng", "Capacity", "0.0##", true, 80));
         _checks.Columns.Add(DialogUi.Text("Đơn vị", "Unit", true, 60));
         _checks.Columns.Add(DialogUi.Num("Tỷ số", "Ratio", "0.00", true, 55));
-        _checks.Columns.Add(DialogUi.Text("Đạt", "OkText", true, 45));
+        _checks.Columns.Insert(1, DialogUi.Text("Đạt", "OkText", true, 50));
         _checks.LoadingRow += (s, e) => { if (e.Row.Item is CheckRow r) e.Row.Background = r.Ok ? Brushes.White : new SolidColorBrush(Color.FromRgb(0xFF, 0xE3, 0xE0)); };
         var resPanel = new DockPanel { Margin = new Thickness(8) };
         DockPanel.SetDock(_resHead, Dock.Top); resPanel.Children.Add(_resHead);
@@ -329,12 +329,12 @@ public sealed class DetailingWindow : Window
                 var editor = Editor(m, pi, fa);
                 if (editor == null) continue;
                 var row = new DockPanel { Margin = new Thickness(0, 1, 0, 1) };
-                var lab = new TextBlock { Text = fa.Label + (string.IsNullOrEmpty(fa.Unit) ? "" : " (" + fa.Unit + ")"), Width = 235, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, ToolTip = string.IsNullOrEmpty(fa.Hint) ? null : fa.Hint };
+                var lab = new TextBlock { Text = fa.Label + (string.IsNullOrEmpty(fa.Unit) ? "" : " (" + fa.Unit + ")"), Width = 215, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, ToolTip = string.IsNullOrEmpty(fa.Hint) ? null : fa.Hint };
                 DockPanel.SetDock(lab, Dock.Left);
                 row.Children.Add(lab);
                 row.Children.Add(editor);
                 _form.Children.Add(row);
-                if (!string.IsNullOrEmpty(fa.Hint)) _form.Children.Add(new TextBlock { Text = fa.Hint, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(235, 0, 0, 2), TextWrapping = TextWrapping.Wrap });
+                if (!string.IsNullOrEmpty(fa.Hint)) _form.Children.Add(new TextBlock { Text = fa.Hint, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(215, 0, 0, 2), TextWrapping = TextWrapping.Wrap });
             }
             else if (typeof(IList).IsAssignableFrom(pi.PropertyType) && pi.PropertyType.IsGenericType)
             {
