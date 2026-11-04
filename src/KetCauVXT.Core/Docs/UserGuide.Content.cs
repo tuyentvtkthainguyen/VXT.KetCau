@@ -443,8 +443,7 @@ public static partial class UserGuide
             .P("Trong chương trình: {m:acad} chọn file acad_*.json; hộp thoại **Nhập bản vẽ kiến trúc** mở với các tầng đã khai báo và phương án kết cấu đề xuất – tiếp tục như {s:khoi-tao.kien-truc}.")
             .Tip("Tường vẽ 2 nét song song (tường 1 nét lấy dày 110 mm); cột là đa tuyến kín, miền tô hoặc 4 nét rời 0,12–1,0 m; tên trục ≤ 4 ký tự gần đầu trục; cửa giữ dạng block. Elip, spline chưa hỗ trợ (bị bỏ qua, có báo số lượng).");
 
-        c.Sec("khoi-tao.lien-ket-autocad", "Liên kết bản vẽ AutoCAD (DWG/DXF) làm nền mặt bằng", true,
-                "Tính năng mới (MainWindow.CadLink.cs, CadLinkWindow.cs, CadLinkDiffDialog.cs) – kiểm tra lại thao tác, hình minh hoạ khi dùng thực tế.")
+        c.Sec("khoi-tao.lien-ket-autocad", "Liên kết bản vẽ AutoCAD (DWG/DXF) làm nền mặt bằng")
             .P("Như Xref / \"Import DXF as background\" của ETABS: bản vẽ kiến trúc được gắn vào dự án làm **nền mờ** cho mặt bằng từng tầng, bắt điểm vào nét bản vẽ, tự cập nhật khi bản vẽ được lưu trong AutoCAD.")
             .Steps("{m:cadLinks}: cửa sổ **Bản vẽ liên kết (AutoCAD DWG/DXF)** (không chặn) → **Thêm bản vẽ…**.",
                 "Thuộc tính từng bản vẽ: tầng, điểm gốc, điểm chèn, góc xoay, **Tỷ lệ ×**, đơn vị, độ đậm, màu, chữ, bắt điểm, tự cập nhật. **Căn theo 2 điểm** để khớp bản vẽ với lưới trục; **Đặt lại vị trí**; **Phóng tới bản vẽ**, **Vừa mô hình + bản vẽ**.",
@@ -565,15 +564,17 @@ public static partial class UserGuide
                 "**Sàn vệ sinh**: bấm vào ô sàn → hoàn thiện 2,0 kN/m² (chống thấm, hạ cốt); bấm lại để trả về phòng ở.",
                 "Xoá lỗ sàn (chế độ **Xoá**) sẽ đặt lại sàn.");
 
-        c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)", true,
-                "Lõi tính toán đã có (Model/SlabDrop.cs, Design/Concrete/SlabDropChecks.cs, Drawing/SlabDropDrawing.cs); nút giao diện \"Hạ cốt sàn…\" đang được hoàn thiện – kiểm tra lại tên nút, hộp thoại khi có.")
-            .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −0,50 … 0 m): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm 100…300 mm), ban công, lô gia, sân thượng, bếp…")
-            .Bullets("Khai báo: chọn ô sàn → **Hạ cốt sàn…** (nhập Δ và ghi chú lý do).",
-                "Mặc định theo công năng (chỉ áp dụng khi **đổi** công năng ô sàn – mở dự án cũ không đổi gì): Phòng ở 0; **Vệ sinh −50 mm**; **Ban công, lô gia −50 mm**; Hành lang, Kho, Mái 0.",
+        c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
+            .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")
+            .Steps("Thanh sửa mặt bằng: nhập độ hạ ở ô **Hạ cốt (mm)** (vd. −50; gõ 50 cũng hiểu là hạ 50 mm).",
+                "Chọn chế độ **Hạ cốt sàn** rồi bấm vào từng ô sàn → ô được tô gạch chéo, viền nét đứt và ghi \"▽ −0.050 (−50)\"; bấm lại ô đang có đúng Δ đó để **bỏ** hạ cốt. Góc dưới trái mặt bằng hiện chú thích các mức hạ của tầng.",
+                "Gán hàng loạt: nút **Hạ cốt sàn…** → hộp **Hạ cốt sàn (sàn vệ sinh, ban công, lô gia…)**: **Áp dụng cho** (Ô đang chọn / Mọi ô cùng công năng – tầng đang xem / mọi tầng / Mọi ô đang hạ cốt), **Hạ cốt Δ (mm)** (0 = bỏ), **Ghi chú** (lý do, in lên bản vẽ và thuyết minh).",
+                "Cùng hộp: bảng **Hạ cốt mặc định theo công năng** (Phòng ở 0; **Vệ sinh −50**; **Ban công, lô gia −50**; Hành lang, Kho, Mái 0 – sửa được), ô **Tự đặt hạ cốt mặc định khi đổi công năng** và **Ngưỡng bậc sàn (mm)** (mặc định 30). → **Đồng ý** (hoàn tác Ctrl+Z).")
+            .Bullets("Mặc định chỉ áp dụng khi **đổi** công năng ô sàn (nút Sàn vệ sinh, thêm ô sàn, ban công) – ô đã chỉnh tay giữ nguyên, mở dự án cũ không đổi gì.",
                 "Phân tích: tải sàn giữ nguyên, nút ô sàn vẫn ở cao độ tầng (Δ là thông tin hình học / cấu tạo).",
-                "Thiết kế sàn: cạnh chung giữa hai ô chênh cốt > 30 mm tính **khớp** (không liên tục mô men qua bậc); mỗi ô có thép mũ cấu tạo riêng neo vào dầm, không có thép mũ / lưới trên vắt liên tục qua bậc.",
-                "Dầm đỡ ô hạ cốt: kiểm tra **h ≥ hs1 + Δ + hs2** – không đạt thì cảnh báo và đề nghị chiều cao dầm.",
-                "Bản vẽ: mặt cắt dầm vẽ bậc sàn; mặt bằng kết cấu đánh dấu \"SÀN HẠ COS −50\".");
+                "Thiết kế sàn: cạnh chung giữa hai ô chênh cốt > ngưỡng bậc tính **khớp** (không liên tục mô men qua bậc); mỗi ô có thép mũ cấu tạo riêng neo vào dầm, không có thép mũ / lưới trên vắt liên tục qua bậc.",
+                "Dầm đỡ ô hạ cốt: kiểm tra **h ≥ hs1 + Δ + hs2** – không đạt thì cảnh báo và đề nghị chiều cao dầm (tab Kiểm tra mô hình, thuyết minh mục sàn).",
+                "Bản vẽ: mặt cắt dầm vẽ bậc sàn hai bên theo đúng cao độ; mặt bằng kết cấu đánh dấu \"SÀN HẠ COS −50\" + gạch chéo; bảng khối lượng tính đúng cao độ.");
 
         c.Sec("mo-hinh.tuong", "Tường – loại tường, vẽ và gán tường")
             .Bullets("{m:wallTypes}: thư viện **Loại tường** – tên, chiều dày, γ xây, hoàn thiện, trát mỗi mặt, γ trát, tỷ lệ cửa (%), tải tường đặc (kN/m²). Tải 1 m² tường đặc = dày × γ xây + số mặt trát × dày trát × γ trát; tải lên dầm = tải 1 m² × chiều cao × (1 − tỷ lệ cửa). **Khôi phục thư viện mặc định** nếu lỡ xoá.",
@@ -909,13 +910,13 @@ public static partial class UserGuide
                 "**Tên file gộp** (mặc định {duan}_BoBanVe), **Mẫu tên từng file**: {so} số hiệu, {ten} tên bản vẽ, {duan} tên công trình, {stt} thứ tự 01, 02…, {ngay} ngày xuất. Để trống = tên mặc định (KC-01_MatBangKetCau…).",
                 "**Ghi nhớ lựa chọn cho lần sau** (XuatBanVe.json).");
 
-        c.Sec("trien-khai.hatch-dinh-dang", "Định dạng xuất DXF R12 / DXF 2018 / DWG 2018 và mẫu tô HATCH", true,
-                "Lõi đã có (Model/CadOutput.cs, Drawing/CadFileWriters.cs, Drawing/DxfWriter.Hatch.cs); ô chọn định dạng trong Chuẩn layer CAD / hộp Tuỳ chọn xuất đang được hoàn thiện – kiểm tra lại tên ô khi có.")
+        c.Sec("trien-khai.hatch-dinh-dang", "Định dạng xuất DXF R12 / DXF 2018 / DWG 2018 và mẫu tô HATCH")
             .Table(new[] { "Định dạng", "Đặc điểm" },
                 new[] { "DXF R12 (tương thích cũ) – mặc định", "Bộ ghi gốc của chương trình, mở được bằng mọi phần mềm CAD; mẫu tô HATCH được mô phỏng bằng LINE / SOLID; không lưu được nét in theo layer." },
                 new[] { "DXF 2018 (có HATCH)", "AC1032, UTF-8: HATCH thật, LWPOLYLINE, nét in theo layer (ghi qua thư viện ACadSharp)." },
                 new[] { "DWG 2018 (có HATCH)", "File .dwg AC1032 có HATCH thật (ghi qua ACadSharp)." })
-            .Bullets("Chọn định dạng trong chuẩn CAD ({m:cadStd} – mặc định người dùng và theo dự án) hoặc ở hộp **Tuỳ chọn xuất** trước mỗi lần xuất. File chuẩn cũ không có mục này → DXF R12.",
+            .Bullets("Chọn định dạng trong chuẩn CAD ({m:cadStd} – mặc định người dùng và theo dự án) hoặc ô **Định dạng file** ở hộp **Tuỳ chọn xuất** trước mỗi lần xuất. File chuẩn cũ không có mục này → DXF R12.",
+                "Tô vật liệu mặt cắt: cửa sổ Kiểu bản vẽ → ô **Tô vật liệu (hatch) mặt cắt**: **Tự động** (bật khi xuất DXF 2018 / DWG, tắt với DXF R12), **Bật** (cả R12 – mô phỏng bằng nét), **Tắt**. Bê tông AR-CONC (dầm, cột, móng, bản thang), bê tông lót ANSI31, đất EARTH dưới móng, bậc gạch – trên layer HATCH (màu 8).",
                 "Mẫu tô: SOLID, ANSI31…, mẫu kiến trúc AR-CONC, AR-SAND, EARTH, BRICK (bản rút gọn cùng dáng mẫu AutoCAD; định nghĩa nét ghi kèm trong HATCH nên mọi phần mềm CAD hiển thị giống nhau).",
                 "Phần mở rộng file theo định dạng: .dwg cho DWG 2018, .dxf cho hai loại còn lại.");
 

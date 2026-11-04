@@ -452,7 +452,9 @@ public partial class MainWindow
         CheckMultiSelOwner();
         var ids = _multiSel.Where(id => _p.Frames.Any(f => f.Id == id)).ToList();
         if (ids.Count < 1 || (ids.Count == 1 && _mode != PlanEditMode.MultiSelect)) return false;
-        if (!ConfirmDelete($"Xoá {ids.Count} dầm đã chọn cùng tải trên dầm?")) return true;
+        int nCol = ids.Count(id => _p.Frames.First(f => f.Id == id).IsVerticalKind), nBeam = ids.Count - nCol;
+        string what = nCol == 0 ? $"{nBeam} dầm" : nBeam == 0 ? $"{nCol} cột" : $"{nBeam} dầm và {nCol} cột";
+        if (!ConfirmDelete($"Xoá {what} đã chọn cùng tải trên thanh?")) return true;
         _multiSel.Clear();
         RunBeamOp(() => BeamTools.DeleteFrames(_p, ids), false);
         return true;

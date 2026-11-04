@@ -137,8 +137,9 @@ public static class ModelWorkflowTests
             // cột treo không gối
             var top = NodeAt(p, 0, 0, z);
             var nb = new Node { Id = p.NextNodeId(), X = 0, Y = 0, Z = z + 3 };
+            p.Nodes.Add(nb);   // thêm trước khi lấy Id tiếp theo (NextNodeId dựa trên danh sách nút)
             var nt = new Node { Id = p.NextNodeId(), X = 0, Y = 0, Z = z + 6 };
-            p.Nodes.Add(nb); p.Nodes.Add(nt);
+            p.Nodes.Add(nt);
             p.Frames.Add(new FrameElement { Id = p.NextFrameId(), NodeI = nb.Id, NodeJ = nt.Id, Section = "XYZ", Kind = FrameKind.Column, Label = "CT" });
             var rep = ModelCheck.Run(p);
             check("Phát hiện cạnh sàn không có dầm đỡ", rep.Count(ModelCheck.SlabEdgeNoBeam), 1, 0);
@@ -158,10 +159,10 @@ public static class ModelWorkflowTests
             var res = FrameAnalysis.Run(p);
             var ff = res.Get("A").Frames[1];
             check("Ngàm–khớp: M3 tại đầu J (giải phóng) = 0", ff.At(6)[5], 0, 1e-6);
-            check("Ngàm–khớp: M3 tại ngàm = −qL²/8 = −45", ff.At(0)[5], -45, 1e-3);
-            check("Ngàm–khớp: M3 tại x = 3,5 m = −45 + 37,5x − 5x² = 25", ff.At(3.5)[5], 25, 1e-3);
+            check("Ngàm–khớp: M3 tại ngàm = −qL²/8 = −45 (phần tử Timoshenko kể biến dạng trượt → sai lệch < 1 %)", ff.At(0)[5], -45, 0.45);
+            check("Ngàm–khớp: M3 tại x = 3,5 m ≈ 25 (Timoshenko, sai lệch < 1 %)", ff.At(3.5)[5], 25, 0.25);
             check("Ngàm–khớp: phản lực ngàm = 5qL/8 = 37,5", res.Get("A").Reactions[1][2], 37.5, 1e-3);
-            check("Ngàm–khớp: phản lực khớp = 3qL/8 = 22,5", res.Get("A").Reactions[2][2], 22.5, 1e-3);
+            check("Ngàm–khớp: phản lực khớp = 3qL/8 = 22,5 (Timoshenko, sai lệch < 1 %)", res.Get("A").Reactions[2][2], 22.5, 0.225);
             check("Ngàm–khớp: mô men phản lực tại khớp ≈ 0", Math.Abs(res.Get("A").Reactions[2][4]) + Math.Abs(res.Get("A").Reactions[2][5]), 0, 1e-6);
             var bad = ModelAssign.Releases(p, new[] { 1 }, new[] { true, false, false, false, false, false }, new[] { true, false, false, false, false, false });
             check("Giải phóng P hai đầu bị từ chối (biến hình)", bad.Ok ? 0 : 1, 1, 0);
