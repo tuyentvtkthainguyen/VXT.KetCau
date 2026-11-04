@@ -50,7 +50,7 @@ public class DetailingProject
         {
             "Dam" => new ManualBeam(), "Cot" => new ManualColumn(), "San" => new ManualSlab(),
             "MongDon" => new ManualFooting(), "MongBang" => new ManualStrip(), "MongCoc" => new ManualPileCap(),
-            "MongBe" => RaftInput.Sample(), "DuUngLuc" => new PrestressInput(), _ => new WaterTankInput()
+            "MongBe" => RaftInput.Sample(), "DuUngLuc" => PrestressSample(), _ => new WaterTankInput()
         };
         string prefix = new string(m.Name.TakeWhile(ch => !char.IsDigit(ch)).ToArray());
         int k = 1;
@@ -93,6 +93,13 @@ public class DetailingProject
         catch (Exception e) { return new DetailResult { Name = m.Name, Quantity = m.Quantity, Messages = { "LỖI tính toán: " + e.Message } }; }
     }
 
+    /// <summary>Dầm DƯL căng sau mẫu nhịp 12 m: 400×900, B40, 12 tao T15.2 (3 bó × 4 tao), e = 220 mm – đạt mọi kiểm tra với G2 = 12, Q = 10 kN/m.</summary>
+    public static PrestressInput PrestressSample() => new()
+    {
+        B = 0.40, H = 0.90, L = 12.0, ConcreteGrade = "B40", TransferRatio = 0.8, NumStrands = 12, StrandsPerTendon = 4, EcMid = 0.22,
+        StirrupDia = 8, StirrupSpacing = 0.15
+    };
+
     /// <summary>Hồ sơ mẫu: 1 dầm, 1 cột, 1 sàn và mỗi loại móng / DƯL / bể nước một cấu kiện.</summary>
     public static DetailingProject Sample()
     {
@@ -104,7 +111,7 @@ public class DetailingProject
         p.Strips.Add(new ManualStrip());
         p.PileCaps.Add(new ManualPileCap());
         p.Rafts.Add(RaftInput.Sample());
-        p.Prestress.Add(new PrestressInput());
+        p.Prestress.Add(PrestressSample());
         p.Tanks.Add(new WaterTankInput());
         return p;
     }
