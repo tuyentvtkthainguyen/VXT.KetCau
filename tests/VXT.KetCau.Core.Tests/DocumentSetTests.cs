@@ -67,6 +67,7 @@ namespace VXT.KetCau.Core.Tests
             var wf = new StructuralWorkflow(m);
             wf.PreliminaryForces();
             var beam = m.Beams.First(b => b.Story == "Mái");
+            beam.Forces = new BeamForces { MnegLeft = -120, MnegRight = -120, MposSpan = 120, VmaxLeft = 80, VmaxRight = 80 };
             beam.ManualTop = "2Ø12"; beam.ManualBottom = "2Ø12"; beam.ManualStirrupSupport = "Ø6a100";
             var col = m.Columns.First();
             col.ManualBars = "8Ø20";

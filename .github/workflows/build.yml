@@ -26,6 +26,18 @@ jobs:
         with:
           name: ho-so-mau
           path: ho-so-mau
+      - name: Đăng hồ sơ mẫu lên bản thử (nhánh phát triển)
+        if: always() && github.ref_name == 'autocad-trien-khai-ho-so'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "autocad-ho-so-thu"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create $tag --prerelease --target $env:GITHUB_SHA --title "VXT hồ sơ AutoCAD – bản thử" --notes "Bản thử từ nhánh autocad-trien-khai-ho-so." }
+          Compress-Archive -Path ho-so-mau\* -DestinationPath ho-so-mau.zip -Force
+          gh release upload $tag ho-so-mau.zip --clobber
+          exit 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -90,6 +102,18 @@ jobs:
           path: |
             dist/*.exe
             dist/VXTKetCau.bundle.zip
+      - name: Đăng bộ cài lên bản thử (nhánh phát triển)
+        if: github.ref_name == 'autocad-trien-khai-ho-so'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "autocad-ho-so-thu"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create $tag --prerelease --target $env:GITHUB_SHA --title "VXT hồ sơ AutoCAD – bản thử" --notes "Bản thử từ nhánh autocad-trien-khai-ho-so." }
+          $exe = Get-ChildItem dist\*.exe | Select-Object -First 1
+          gh release upload $tag $exe.FullName dist\VXTKetCau.bundle.zip --clobber
+          exit 0
       - name: Đăng bộ cài lên Releases (nhánh main)
         if: github.ref == 'refs/heads/main'
         shell: pwsh
