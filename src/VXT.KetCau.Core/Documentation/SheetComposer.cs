@@ -137,7 +137,7 @@ namespace VXT.KetCau.Core.Documentation
                 if (!string.IsNullOrEmpty(value))
                 {
                     double th = textMm * k;
-                    var lines = Wrap(value, (int)Math.Max(6, (TitleStripW - 3) / (textMm * 0.6)));
+                    var lines = Wrap(value, (int)Math.Max(6, (TitleStripW - 3) / (textMm * 0.72)));
                     double ty = y + (h - (string.IsNullOrEmpty(label) ? 0 : 3.8 * k)) / 2 + (lines.Count - 1) * th * 0.7;
                     foreach (var line in lines)
                     {

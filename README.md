@@ -37,6 +37,27 @@ dotnet test tests\VXT.KetCau.Core.Tests
 - `CSiAPIv1.dll`: mặc định tìm trong `C:\Program Files\Computers and Structures\ETABS 22`. Nếu cài nơi khác: sửa `CsiApiDir` trong `Directory.Build.props` hoặc thêm `-p:CsiApiDir="..."`.
 - DWG cần **ODA File Converter** (miễn phí) để chuyển sang DXF; DXF đọc trực tiếp.
 
+## Triển khai hồ sơ trong AutoCAD (lệnh `VXTHS`)
+
+Add-in AutoCAD 2022–2026 lập bộ hồ sơ gồm cả kiến trúc và kết cấu, có khung tên và layout in. Bộ cài lấy ở mục Releases.
+
+| Bước | Lệnh | Việc làm |
+|---|---|---|
+| Đầu vào | `VXTHS_QUET` | Nhiều tầng vẽ chung một bản vẽ: khoanh khung từng tầng, chọn điểm gốc. Kết quả nhận diện vẽ chồng lên bản vẽ gốc ở lớp `VXT_NHANDIEN` để đối chiếu (`VXTHS_XOALOP` để xoá) |
+| | `VXTHS_FILE` | Mỗi tầng một file DWG/DXF |
+| | `VXTHS_THONGSO` | Khai nhịp trục, cao độ tầng, tiết diện, ô thang |
+| | `VXTHS_ETABS` | Đọc dầm, cột, sàn chữ nhật và nội lực từ ETABS/SAP2000 đang mở; có thể lấy diện tích thép đã thiết kế để đổi ra số thanh. Không có kiến trúc nên chỉ ra phần kết cấu |
+| Kiểm tra | `VXTHS_KIEMTRA` | Sửa trục, tầng, tường, cột, cửa, phòng, thang dạng bảng |
+| | `VXTHS_SUAKC` | Sửa tiết diện, đặt thép tay (`3Ø20`, `Ø6a150`); thép đặt tay được so với yêu cầu nếu có nội lực |
+| | `VXTHS_THONGTIN` | Khung tên, khổ giấy, tỉ lệ; thông số thiết kế |
+| Lập hồ sơ | `VXTHS_VE` | Vẽ các tờ vào Model, mỗi tờ một layout máy in `DWG To PDF.pc3` |
+| | `VXTHS_DXF` | Xuất ra file DXF riêng |
+
+**Kiến trúc:** bìa và danh mục, mặt bằng các tầng và mái (3 chuỗi kích thước, trục, cửa, phòng + diện tích, thang), 4 mặt đứng, 2 mặt cắt, thống kê cửa, chi tiết thang đánh số bậc, chi tiết vệ sinh.
+**Kết cấu:** ghi chú chung, mặt bằng móng, chi tiết móng, giằng, mặt bằng dầm sàn, thép sàn, chi tiết dầm, cột, bảng thống kê và tổng hợp thép.
+
+Giới hạn: mặt đứng và mặt cắt dựng từ tường, cửa, cao độ nên chỉ là hình cơ bản, chưa có mái dốc, ban công, trang trí. Bố trí thiết bị vệ sinh là gợi ý. Hoàn thiện (trần, lát, ốp), bể phốt, thang kết cấu chưa có.
+
 ## Quy trình trong Revit
 
 | Bước | Nút | Việc làm |

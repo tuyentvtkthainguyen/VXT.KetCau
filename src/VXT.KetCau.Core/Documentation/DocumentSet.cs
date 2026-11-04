@@ -88,6 +88,7 @@ namespace VXT.KetCau.Core.Documentation
         void BuildStruct(StructModel m, WorkflowResult res, List<DrawingBlock> blocks)
         {
             double P = opt.PlanScale, D = opt.DetailScale;
+            Warnings.AddRange(StructDocComposer.FootingOverlaps(m));
             DrawingBlock Add(string group, double scale, string scaleText, Action<IDraw2D> draw)
             {
                 var rec = NewRec();
@@ -102,7 +103,7 @@ namespace VXT.KetCau.Core.Documentation
             foreach (var e in res.Elements.Where(x => x.Category == "Móng"))
                 Add("CHI TIẾT MÓNG", D, mix, w => new StructDocComposer(w, m, res).DrawFootingDetail(e, D, 2));
             foreach (var st in m.Stories.Skip(1).Where(q => m.Beams.Any(b => b.Story == q.Name)))
-                Add("MẶT BẰNG DẦM SÀN " + st.Name.ToUpperInvariant(), P, null, w => new StructDocComposer(w, m, res).DrawFramingPlan(st, P));
+                Add(StructDocComposer.IsTieLevel(m, st) ? "MẶT BẰNG GIẰNG MÓNG" : "MẶT BẰNG DẦM SÀN " + st.Name.ToUpperInvariant(), P, null, w => new StructDocComposer(w, m, res).DrawFramingPlan(st, P));
             foreach (var st in m.Stories.Skip(1).Where(q => m.Slabs.Any(x => x.Story == q.Name && x.Boundary.Count == 4)))
                 Add("THÉP SÀN " + st.Name.ToUpperInvariant(), D, null, w => new StructDocComposer(w, m, res).DrawSlabRebarPlan(st, D));
 
@@ -135,11 +136,11 @@ namespace VXT.KetCau.Core.Documentation
                     double TH = comp.PrintTextHeight * comp.ElevationScale;
                     var g = (ColumnGeometry)e.Geometry;
                     comp.DrawColumnElevation(e, TH * 12, 0);
-                    comp.DrawColumnSection(e, TH * 26, g.TopZ, 2, TH);
+                    comp.DrawColumnSection(e, TH * 34, g.TopZ, 2, TH);
                 });
             }
             // Bảng thống kê chia trang theo khổ giấy
-            var sized = new ShopDrawingComposer(null, m.Settings) { ElevationScale = D, ScheduleRowHeight = 650 };
+            var sized = new ShopDrawingComposer(null, m.Settings) { ElevationScale = D, ScheduleRowHeight = 550 };
             double paperH = opt.Paper == "A4" ? 210 : opt.Paper == "A2" ? 420 : opt.Paper == "A1" ? 594 : opt.Paper == "A0" ? 841 : 297;
             double usable = (paperH - 2 * SheetComposer.Margin - 2 * SheetComposer.Gap) * D;
             double u = sized.PrintTextHeight * D / 125.0;
@@ -187,10 +188,11 @@ namespace VXT.KetCau.Core.Documentation
             sh.Number = "BV-00";
             sh.Discipline = "BV";
             Warnings.AddRange(coverSheets.Warnings);
-            // đặt tờ bìa bên trái hàng đầu tiên
-            double firstY = Sheets.Count > 0 ? Sheets.Max(q => q.Y + q.ModelH) : 0;
-            double firstX = Sheets.Min(q => q.X);
-            sh.X = firstX - sh.ModelW - 40 * s;
+            // tờ bìa đứng đầu hàng thứ nhất, các tờ còn lại dịch sang phải để không lấn sang trái điểm đặt
+            double firstY = Sheets.Max(q => q.Y + q.ModelH);
+            double shift = sh.ModelW + 40 * s;
+            foreach (var q in Sheets) q.X += shift;
+            sh.X = 0;
             sh.Y = firstY - sh.ModelH;
             Sheets.Insert(0, sh);
         }

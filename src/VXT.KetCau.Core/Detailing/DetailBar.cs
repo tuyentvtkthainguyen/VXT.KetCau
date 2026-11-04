@@ -48,8 +48,8 @@ namespace VXT.KetCau.Core.Detailing
             return r.ToString();
         }
         public static bool IsTransverse(this BarRole r) => (int)r >= 10;
-        /// <summary>Đai, đai C, đai lồng, thép rải: ghi nhãn dạng Ø{d}a{s}.</summary>
-        public static bool TagWithSpacing(this BarRole r) => r == BarRole.Stirrup || r == BarRole.CTie || r == BarRole.InnerStirrup || r == BarRole.Distribution || r == BarRole.SlabTop;
+        /// <summary>Đai, đai C, đai lồng, thép rải (sàn, đáy móng): ghi nhãn dạng Ø{d}a{s}.</summary>
+        public static bool TagWithSpacing(this BarRole r) => r == BarRole.Stirrup || r == BarRole.CTie || r == BarRole.InnerStirrup || r == BarRole.Distribution || r == BarRole.SlabTop || r == BarRole.FootingBottom;
     }
 
     /// <summary>Mã hình dạng thanh (dùng chọn Rebar Shape trong Revit và vẽ phác trong bảng thống kê).</summary>

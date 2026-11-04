@@ -114,11 +114,10 @@ namespace VXT.KetCau.Core.Documentation
                 var sec = m.SlabSection(q.Section);
                 if (sec != null) w.Text("CHU", c.X, c.Y - TH * 1.4, TH * 0.9, "h=" + sec.Thickness.ToString("0", Ci), 1, 2, 0);
             }
-            foreach (var b in m.Beams.Where(b => b.Story == st.Name))
-            {
-                Beam(b, "BE_TONG");
-                BeamLabel(b);
-            }
+            foreach (var b in m.Beams.Where(b => b.Story == st.Name)) Beam(b, "BE_TONG");
+            // mỗi dầm liên tục ghi tên một lần, ở nhịp giữa
+            foreach (var ch in res.BeamChains.Where(q => q.Story == st.Name && q.Spans.Count > 0))
+                BeamLabel(ch.Spans[(ch.Spans.Count - 1) / 2]);
             foreach (var c in cols)
             {
                 Column(c);
@@ -127,7 +126,26 @@ namespace VXT.KetCau.Core.Documentation
                     w.Text("CHU", c.Location.X + sec.B / 2 + TH * 0.3, c.Location.Y - sec.H / 2 - TH * 1.2, TH * 0.9, c.Label, 0, 0, 0);
             }
             ann.Grids(GridList, x0, y0, x1, y1, 0);
-            ann.Title((x0 + x1) / 2, y0 - ann.ChainOffset(1) - TH * 7.5, $"MẶT BẰNG DẦM SÀN {st.Name.ToUpperInvariant()} ({ShopDrawingComposer.LevelText(st.Elevation)})", s);
+            string name = IsTieLevel(m, st) ? "MẶT BẰNG GIẰNG MÓNG" : "MẶT BẰNG DẦM SÀN " + st.Name.ToUpperInvariant();
+            ann.Title((x0 + x1) / 2, y0 - ann.ChainOffset(1) - TH * 7.5, $"{name} ({ShopDrawingComposer.LevelText(st.Elevation)})", s);
+        }
+
+        /// <summary>Cao độ thấp nhất có dầm mà không có sàn: đó là giằng móng.</summary>
+        public static bool IsTieLevel(StructModel model, Story st) => model.Stories.IndexOf(st) == 1 && !model.Slabs.Any(q => q.Story == st.Name);
+
+        /// <summary>Móng chồng lên nhau: móng đơn không còn phù hợp ở vị trí đó.</summary>
+        public static List<string> FootingOverlaps(StructModel model)
+        {
+            var res = new List<string>();
+            var f = model.Footings;
+            for (int i = 0; i < f.Count; i++)
+                for (int j = i + 1; j < f.Count; j++)
+                {
+                    double dx = Math.Abs(f[i].Center.X - f[j].Center.X), dy = Math.Abs(f[i].Center.Y - f[j].Center.Y);
+                    if (dx < (f[i].L + f[j].L) / 2 && dy < (f[i].B + f[j].B) / 2)
+                        res.Add($"Móng {f[i].Label} và {f[j].Label} chồng lên nhau — xem lại kích thước hoặc đổi sang móng băng, móng bè.");
+                }
+            return res;
         }
 
         static P2 Center(IList<P2> poly) => new P2(poly.Average(p => p.X), poly.Average(p => p.Y));
@@ -265,7 +283,7 @@ namespace VXT.KetCau.Core.Documentation
             w.Text("CHU", ox - L / 2 - 100 * k, oy - 100 * k - TH * 1.0, TH * 0.8, "Lót BT đá 4x6 dày 100", 0, 0, 0);
             w.Text("CHU", ox, oy - 100 * k - TH * 6, TH * 1.1, $"Mặt cắt   tl: 1/{(s / k).ToString("0", Ci)}", 1, 0, 0);
             var pad = new PlanAnnotation(w, TH);
-            pad.Level(ox + bc / 2 + TH * 8, oy, f.BottomZ, "đáy móng");
+            pad.Level(ox + L / 2 + 100 * k + TH * 1.5, oy, f.BottomZ, "đáy móng");
         }
 
         // ================================================================== GHI CHÚ CHUNG

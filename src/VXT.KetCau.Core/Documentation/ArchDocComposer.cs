@@ -242,8 +242,17 @@ namespace VXT.KetCau.Core.Documentation
             double x0 = r.Boundary.Min(p => p.X), x1 = r.Boundary.Max(p => p.X), y0 = r.Boundary.Min(p => p.Y), y1 = r.Boundary.Max(p => p.Y);
             if (r.Boundary.Count == 4 && x1 - x0 > TH * 8 && y1 - y0 > TH * 8 && area > 1)
             {
-                w.DimH(x0, x1, y0 + TH * 2.0, TH);
-                w.DimV(x0 + TH * 2.0, y0, y1, TH);
+                // đặt phía không vướng cửa: cửa quét vào phòng một đoạn bằng bề rộng cánh
+                var near = a.Openings.Where(o => o.Level == r.Level && o.HostWallId != null
+                                                 && o.Location.X > x0 - 300 && o.Location.X < x1 + 300 && o.Location.Y > y0 - 300 && o.Location.Y < y1 + 300).ToList();
+                bool lowBusy = near.Any(o => o.Location.Y - y0 < o.Width + TH * 1.5 && o.Location.Y - y0 >= -300);
+                bool leftBusy = near.Any(o => o.Location.X - x0 < o.Width + TH * 1.5 && o.Location.X - x0 >= -300);
+                bool highBusy = near.Any(o => y1 - o.Location.Y < o.Width + TH * 1.5 && y1 - o.Location.Y >= -300);
+                bool rightBusy = near.Any(o => x1 - o.Location.X < o.Width + TH * 1.5 && x1 - o.Location.X >= -300);
+                double yd = lowBusy && !highBusy ? y1 - TH * 1.5 : y0 + TH * 2.0;
+                double xd = leftBusy && !rightBusy ? x1 - TH * 2.0 : x0 + TH * 2.0;
+                w.DimH(x0, x1, yd, TH);
+                w.DimV(xd, y0, y1, TH);
             }
         }
 
@@ -342,7 +351,8 @@ namespace VXT.KetCau.Core.Documentation
                 var a0 = P(0, mid / 2); var a1 = P(runLen * 0.85, mid / 2);
                 w.Line("KY_HIEU", a0.X, a0.Y, a1.X, a1.Y);
                 w.Dot("KY_HIEU", a0.X, a0.Y, TH * 0.2);
-                w.Text("CHU", a0.X, a0.Y, TH * 0.9, "LÊN", 2, 1, 0);
+                var up = P(runLen * 0.85 + TH * 0.2, mid / 2);
+                w.Text("CHU", up.X, up.Y, TH * 0.8, "LÊN", 1, 0, 0);
                 if (numbers)
                 {
                     for (int i = 0; i < treads; i++)
@@ -359,7 +369,8 @@ namespace VXT.KetCau.Core.Documentation
                 for (int i = 0; i <= treads; i++) L(i * c.Tread, 0, i * c.Tread, c.Width, "THANG");
                 var a0 = P(0, c.Width / 2); var a1 = P(runLen * 0.85, c.Width / 2);
                 w.Line("KY_HIEU", a0.X, a0.Y, a1.X, a1.Y);
-                w.Text("CHU", a0.X, a0.Y, TH * 0.9, "LÊN", 2, 1, 0);
+                var up = P(runLen * 0.85 + TH * 0.2, c.Width / 2);
+                w.Text("CHU", up.X, up.Y, TH * 0.8, "LÊN", 1, 0, 0);
                 if (numbers)
                     for (int i = 0; i < treads; i++)
                     {

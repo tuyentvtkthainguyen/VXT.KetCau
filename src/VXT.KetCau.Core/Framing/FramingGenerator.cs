@@ -212,7 +212,8 @@ namespace VXT.KetCau.Core.Framing
                     var frame = m.Beams.Where(bm => bm.Story == st.Name).ToList();
                     foreach (var w in a.Walls.Where(w => w.BaseLevel == lvl && w.Thickness >= opt.MinWallForSecondaryBeam && w.Line.Length > 1000))
                     {
-                        bool onFrame = frame.Any(bm => { var s = new Seg2(bm.Start, bm.End); return s.DistanceTo(w.Line.A) < Tol.Snap * 2 && s.DistanceTo(w.Line.B) < Tol.Snap * 2; });
+                        // tường có thể dài qua nhiều nhịp: xét từng đoạn, không chỉ hai đầu tường
+                        bool onFrame = WallOnBeams(w.Line, frame);
                         if (onFrame) continue;
                         if (ground) continue; // tường tầng 1 đặt trực tiếp lên giằng/nền
                         // kéo dài tới dầm vuông góc gần nhất ở hai đầu
@@ -225,6 +226,17 @@ namespace VXT.KetCau.Core.Framing
                     }
                 }
             }
+        }
+
+        static bool WallOnBeams(Seg2 wall, List<BeamElem> beams)
+        {
+            int n = Math.Max(2, (int)Math.Ceiling(wall.Length / 250));
+            for (int i = 0; i <= n; i++)
+            {
+                var p = wall.A + (wall.B - wall.A) * ((double)i / n);
+                if (!beams.Any(bm => Math.Abs((bm.End - bm.Start).Unit.Dot(wall.Dir)) > 0.95 && new Seg2(bm.Start, bm.End).DistanceTo(p) < Tol.Snap * 2)) return false;
+            }
+            return true;
         }
 
         static P2? ExtendTo(P2 from, P2 dirVec, List<BeamElem> beams)
@@ -417,8 +429,9 @@ namespace VXT.KetCau.Core.Framing
                     st = m.Stories[li + 1];
                 }
                 var beams = m.Beams.Where(b => b.Story == st.Name).ToList();
-                var on = beams.Where(b => { var s = new Seg2(b.Start, b.End); return s.DistanceTo(w.Line.Mid) < Math.Max(Tol.Snap * 2, w.Thickness)
-                                     && Math.Abs((b.End - b.Start).Unit.Dot(w.Line.Dir)) > 0.95; }).ToList();
+                // mọi dầm nằm dưới tường đều nhận tải, kể cả khi tường dài qua nhiều nhịp
+                var on = beams.Where(b => w.Line.DistanceTo((b.Start + b.End) * 0.5) < Math.Max(Tol.Snap * 2, w.Thickness)
+                                     && Math.Abs((b.End - b.Start).Unit.Dot(w.Line.Dir)) > 0.95).ToList();
                 double opening = a.Openings.Where(o => o.HostWallId == w.Id).Sum(o => o.Width * o.Height) / Math.Max(1, w.Line.Length * w.Height);
                 double gamma = Tcvn2737.WallGamma(w.Material);
                 if (on.Count > 0)

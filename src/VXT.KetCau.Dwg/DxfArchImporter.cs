@@ -20,9 +20,18 @@ namespace VXT.KetCau.Dwg
         public string[] Stair { get; set; } = { "THANG", "STAIR", "A-FLOR-STRS" };
         public string[] Slab { get; set; } = { "SAN", "SLAB", "FLOOR", "A-FLOR" };
 
+        /// <summary>Viết hoa, bỏ dấu tiếng Việt: lớp "Tường", "CỬA ĐI" khớp từ khoá TUONG, CUA DI.</summary>
+        public static string Plain(string layer)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var ch in (layer ?? "").Normalize(System.Text.NormalizationForm.FormD))
+                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch) != System.Globalization.UnicodeCategory.NonSpacingMark) sb.Append(ch);
+            return sb.ToString().Replace('đ', 'd').Replace('Đ', 'D').ToUpperInvariant();
+        }
+
         public static bool Match(string layer, string[] keys)
         {
-            var l = (layer ?? "").ToUpperInvariant();
+            var l = Plain(layer);
             return keys.Any(k => l == k || l.Contains(k));
         }
     }
@@ -209,7 +218,7 @@ namespace VXT.KetCau.Dwg
                         if (host == null) continue;
                         // nét nằm trong bề rộng một cửa đã có (khung, cánh) thì bỏ qua
                         if (a.Openings.Any(o => o.HostWallId == host.Id && (o.Location - s.Mid).Length < o.Width / 2 + 100)) continue;
-                        bool door = g.Key.ToUpperInvariant().Contains("CUA DI") || g.Key.ToUpperInvariant().Contains("DOOR");
+                        bool door = LayerMap.Plain(g.Key).Contains("CUA DI") || LayerMap.Plain(g.Key).Contains("DOOR");
                         a.Openings.Add(new ArchOpening { HostWallId = host.Id, Level = plan.LevelName, Location = s.Mid, Width = s.Length, Height = door ? 2200 : 1400, SillHeight = door ? 0 : 900, Kind = door ? "Cửa đi" : "Cửa sổ" });
                     }
                 }
@@ -219,6 +228,7 @@ namespace VXT.KetCau.Dwg
                 {
                     var host = a.Walls.First(w => w.Id == gp.wallId);
                     if (a.Openings.Any(o => o.HostWallId == host.Id && o.Location.DistanceTo(gp.center) < Math.Max(o.Width, gp.width) / 2)) continue;
+                    if (a.Columns.Any(c => c.BaseLevel == plan.LevelName && c.Center.DistanceTo(gp.center) < gp.width / 2 + 100)) continue; // tường đứt vì cột
                     a.Openings.Add(new ArchOpening { HostWallId = host.Id, Level = plan.LevelName, Location = gp.center, Width = Math.Round(gp.width / 10) * 10, Height = 1400, SillHeight = 900, Kind = "Cửa sổ" });
                     Log.Add($"{plan.LevelName}: khe tường rộng {gp.width:0} tại {gp.center} tạm coi là cửa sổ — kiểm tra lại");
                 }

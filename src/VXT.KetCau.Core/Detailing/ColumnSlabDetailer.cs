@@ -23,7 +23,7 @@ namespace VXT.KetCau.Core.Detailing
         public double AnchorBelow { get; set; }
         public List<StirrupZone> StirrupZones { get; } = new List<StirrupZone>();
         public string BaseLevelText => $"{(BaseZ >= 0 ? "+" : "")}{BaseZ / 1000:0.000}".Replace("+0.000", "±0.000");
-        public string TopLevelText => $"+{TopZ / 1000:0.000}";
+        public string TopLevelText => $"{(TopZ >= 0 ? "+" : "")}{TopZ / 1000:0.000}".Replace("+0.000", "±0.000");
         public P3 ToGlobal(double x, double y, double z)
         {
             double r = RotationDeg * Math.PI / 180;

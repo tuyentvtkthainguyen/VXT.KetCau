@@ -56,9 +56,8 @@ namespace VXT.KetCau.AutoCAD
         void Add(Entity e, string layer)
         {
             EnsureLayer(layer);
-            e.SetDatabaseDefaults(db);
             e.Layer = layer;
-            if (layer == "TRUC" && centerLoaded) { e.LinetypeScale = scale * 0.3; }
+            if (layer == "TRUC") e.LinetypeScale = scale * 0.3;
             ms.AppendEntity(e);
             tr.AddNewlyCreatedDBObject(e, true);
             Count++;
@@ -73,13 +72,11 @@ namespace VXT.KetCau.AutoCAD
                 lt.UpgradeOpen();
                 var r = new LayerTableRecord { Name = name, Color = Color.FromColorIndex(ColorMethod.ByAci, LayerColors.TryGetValue(name, out var c) ? c : (short)7) };
                 if (LayerWeights.TryGetValue(name, out var lw)) r.LineWeight = lw;
-                if (name == "TRUC") { var ltid = CenterLineType(); if (!ltid.IsNull) { r.LinetypeObjectId = ltid; centerLoaded = true; } }
+                if (name == "TRUC") { var ltid = CenterLineType(); if (!ltid.IsNull) r.LinetypeObjectId = ltid; }
                 lt.Add(r); tr.AddNewlyCreatedDBObject(r, true);
             }
             layers.Add(name);
         }
-
-        bool centerLoaded;
 
         ObjectId CenterLineType()
         {

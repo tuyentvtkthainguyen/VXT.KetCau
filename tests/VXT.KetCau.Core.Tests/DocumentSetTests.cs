@@ -213,6 +213,13 @@ namespace VXT.KetCau.Core.Tests
         }
 
         [Theory]
+        [InlineData("TƯỜNG XÂY", true)]
+        [InlineData("Tường", true)]
+        [InlineData("A-WALL", true)]
+        [InlineData("KY HIEU", false)]
+        public void Vietnamese_layer_names_match(string layer, bool expect) => Assert.Equal(expect, LayerMap.Match(layer, new LayerMap().Wall));
+
+        [Theory]
         [InlineData("P. NGỦ 1", true)]
         [InlineData("WC", true)]
         [InlineData("Phòng khách", true)]
@@ -238,7 +245,7 @@ namespace VXT.KetCau.Core.Tests
     {
         static ArchModel House()
         {
-            var a = new ParametricInput { ProjectName = "Nhà mẫu", SpansX = "4200 3600", SpansY = "5000 4000 3000", Levels = "Tầng 1=0; Tầng 2=3.6; Tầng 3=7.0; Mái=10.4", Stair = "4200,5000,3600,4000" }.ToArch();
+            var a = new ParametricInput { ProjectName = "Nhà mẫu", SpansX = "4200 3600", SpansY = "5000 4000 3000", Levels = "Tầng 1=0; Tầng 2=3.6; Tầng 3=7.0; Mái=10.4", Stair = "5400,5000,2400,4000" }.ToArch();
             // cửa + phòng cho từng tầng
             foreach (var lv in new[] { "Tầng 1", "Tầng 2", "Tầng 3" })
             {
@@ -304,6 +311,58 @@ namespace VXT.KetCau.Core.Tests
                     bool apart = a.X + a.ModelW <= b.X || b.X + b.ModelW <= a.X || a.Y + a.ModelH <= b.Y || b.Y + b.ModelH <= a.Y;
                     Assert.True(apart, $"{a.Number} chồng lên {b.Number}");
                 }
+        }
+
+        [Fact]
+        public void Long_wall_over_several_spans_adds_no_duplicate_beam_and_loads_every_span()
+        {
+            var (_, _, m, _) = Build(false);
+            Assert.DoesNotContain(m.Beams, b => b.IsSecondary);
+            foreach (var st in m.Stories)
+            {
+                var beams = m.Beams.Where(b => b.Story == st.Name).ToList();
+                for (int i = 0; i < beams.Count; i++)
+                    for (int j = i + 1; j < beams.Count; j++)
+                    {
+                        var si = new Seg2(beams[i].Start, beams[i].End);
+                        Assert.False(si.DistanceTo((beams[j].Start + beams[j].End) * 0.5) < 50 && Math.Abs((beams[i].End - beams[i].Start).Unit.Dot((beams[j].End - beams[j].Start).Unit)) > 0.95, $"Dầm trùng ở tầng {st.Name}");
+                    }
+            }
+            // tường trục A dài 2 nhịp, tầng 2: cả hai dầm trục A đều nhận tải tường
+            var axisA = m.Beams.Where(b => b.Story == "Tầng 2" && Math.Abs(b.Start.Y) < 1 && Math.Abs(b.End.Y) < 1).ToList();
+            Assert.Equal(2, axisA.Count);
+            Assert.All(axisA, b => Assert.Contains(m.LineLoads, l => l.BeamId == b.Id));
+        }
+
+        [Fact]
+        public void Overlapping_footings_are_reported()
+        {
+            var m = new StructModel();
+            m.Footings.Add(new FootingElem { Label = "M1", Center = new P2(0, 0), B = 3000, L = 3000 });
+            m.Footings.Add(new FootingElem { Label = "M2", Center = new P2(2500, 0), B = 3000, L = 3000 });
+            m.Footings.Add(new FootingElem { Label = "M3", Center = new P2(9000, 0), B = 3000, L = 3000 });
+            Assert.Single(StructDocComposer.FootingOverlaps(m));
+        }
+
+        [Fact]
+        public void Column_level_text_has_no_double_sign()
+        {
+            var g = new ColumnGeometry { BaseZ = -1000, TopZ = -50 };
+            Assert.Equal("-0.050", g.TopLevelText);
+        }
+
+        [Fact]
+        public void Footing_mesh_tag_uses_spacing()
+        {
+            var bar = new DetailBar { Role = BarRole.FootingBottom, D = 12, Shape = ShapeKind.Straight, Segments = { 1000 }, Spacing = 150, Count = 9 };
+            Assert.Equal("Ø12a150", bar.TagText());
+        }
+
+        [Fact]
+        public void Sheets_stay_right_of_the_insertion_point()
+        {
+            var (d, _, _, _) = Build(false);
+            Assert.All(d.Sheets, s => Assert.True(s.X >= 0));
         }
 
         [Fact]
