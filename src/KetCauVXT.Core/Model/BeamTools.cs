@@ -38,13 +38,16 @@ public class CoordInput
 }
 
 /// <summary>Loại điểm bắt (thứ tự ưu tiên: đầu dầm/nút → giao trục → giao điểm → trung điểm → vuông góc → gần nhất → trên trục → lưới 50 mm).</summary>
-public enum SnapKind { None, End, Node, GridIntersection, Intersection, Midpoint, Perpendicular, Nearest, GridLine, Round }
+public enum SnapKind { None, End, Node, GridIntersection, Intersection, Midpoint, Perpendicular, Nearest, GridLine, Round,
+    /* [CadLink] nét bản vẽ liên kết – Import/Link/CadLinkGeometry.cs */ CadEnd, CadMid, CadIntersection, CadCenter }
 
 [Flags]
 public enum SnapMask
 {
     None = 0, End = 1, Node = 2, GridIntersection = 4, Intersection = 8, Midpoint = 16, Perpendicular = 32, Nearest = 64, GridLine = 128,
-    All = End | Node | GridIntersection | Intersection | Midpoint | Perpendicular | Nearest | GridLine
+    /// <summary>[CadLink] bắt điểm vào nét bản vẽ liên kết (đầu nét / trung điểm / giao nét theo các cờ End, Midpoint, Intersection)</summary>
+    CadLink = 256,
+    All = End | Node | GridIntersection | Intersection | Midpoint | Perpendicular | Nearest | GridLine | CadLink
 }
 
 public class SnapCandidate
@@ -288,7 +291,9 @@ public static class BeamTools
     {
         SnapKind.End => "Đầu dầm", SnapKind.Node => "Nút", SnapKind.GridIntersection => "Giao trục", SnapKind.Intersection => "Giao điểm",
         SnapKind.Midpoint => "Trung điểm", SnapKind.Perpendicular => "Vuông góc", SnapKind.Nearest => "Trên dầm", SnapKind.GridLine => "Trên trục",
-        SnapKind.Round => "Lưới 50 mm", _ => ""
+        SnapKind.Round => "Lưới 50 mm",
+        SnapKind.CadEnd => "Đầu nét (bản vẽ link)", SnapKind.CadMid => "Trung điểm (bản vẽ link)", SnapKind.CadIntersection => "Giao nét (bản vẽ link)",
+        SnapKind.CadCenter => "Tâm (bản vẽ link)", _ => ""
     };
 
     private static int SnapPriority(SnapKind k) => k switch
@@ -381,6 +386,7 @@ public static class BeamTools
             foreach (var gx in gxs) Add(SnapKind.GridLine, gx.Coord, Math.Round(y / 0.05) * 0.05);
             foreach (var gy in gys) Add(SnapKind.GridLine, Math.Round(x / 0.05) * 0.05, gy.Coord);
         }
+        if (Has(SnapMask.CadLink)) list.AddRange(KetCauVXT.Import.Link.CadLinkSnap.Candidates(p, story, x, y, tol, mask));   // [CadLink] nét bản vẽ liên kết
         return list.OrderBy(c => c.Priority).ThenBy(c => c.Dist).ToList();
     }
 

@@ -60,6 +60,7 @@ public partial class MainWindow : Window
 
         InitModalUi();   // khung nhìn "Dao động" – MainWindow.Modal.cs
         InitBeamToolsUi();   // thanh công cụ dầm kiểu ETABS – MainWindow.BeamTools.cs
+        InitWorkflowUi();    // [Workflow ETABS] cây mô hình, thanh trạng thái, phím tắt – MainWindow.Workflow.cs
         SetProject(ModelBuilder.NewProject(), null);
         SetStatus("Sẵn sàng – nhập lưới trục, chiều cao tầng rồi bấm 'Tạo mô hình', hoặc mở/nhập mô hình có sẵn.");
         HandleCommandLine();
@@ -838,6 +839,7 @@ public partial class MainWindow : Window
         UpdateResultSourceStatus();   // "Nội lực: nhập từ ETABS (file…)" – MainWindow.ResultImport.cs
         RedrawSecondaryViews(); // biểu đồ nội lực, móng, 3D (vẽ trễ, gộp lần gọi)
         RefreshModalView();     // khung nhìn "Dao động" – MainWindow.Modal.cs
+        RefreshModelExplorer(); // [Workflow ETABS] cây mô hình (vẽ trễ, gộp lần gọi) – MainWindow.ModelExplorer.cs
         lstWarnings.ItemsSource = null;
         dgForces.ItemsSource = null;
         dgReactions.ItemsSource = null;

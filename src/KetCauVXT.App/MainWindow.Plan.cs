@@ -243,6 +243,9 @@ public partial class MainWindow
                 planCanvas.Children.Add(tri);
             }
 
+        // ---- [Workflow ETABS] tải gán (mũi tên + giá trị), cột đang chọn nhiều – MainWindow.AssignedLoads.cs ----
+        DrawAssignedLoads();
+
         // ---- tô sáng đối tượng đang chọn (vẽ trên cùng) ----
         DrawSelectionHighlight();
 
