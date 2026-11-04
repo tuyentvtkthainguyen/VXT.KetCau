@@ -114,6 +114,12 @@ public class FrameElement
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public double PlanOffset { get; set; }
     // ---- [hết BeamTools] ----
+    // ---- [Workflow ETABS: hệ số độ cứng gán cho thanh – Model/ModelAssign.cs] ----
+    /// <summary>Hệ số độ cứng gán riêng cho thanh {A, As2, As3, J, I22, I33} (Assign → Frame Property Modifiers của ETABS), nhân thêm
+    /// với hệ số của tiết diện (FrameSection.ModA, ModI33…). null = không gán (mặc định, file cũ).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public double[] StiffnessModifiers { get; set; }
+    // ---- [hết Workflow] ----
 
     /// <summary>Thanh có khai báo độ cong (|f| &gt; 0,1 mm). Hình học cung: <see cref="CurvedBeam.Arc(Project, FrameElement)"/>.</summary>
     [System.Text.Json.Serialization.JsonIgnore]

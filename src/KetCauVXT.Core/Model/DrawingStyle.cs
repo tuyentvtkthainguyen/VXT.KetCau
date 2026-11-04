@@ -157,6 +157,16 @@ public class DrawingStyle
     /// <summary>Khối "GHI CHÚ CHUNG" (một khối cho mỗi bản vẽ)</summary>
     public bool ShowGeneralNotes { get; set; } = true;
 
+    // ---------------- cánh sàn trên mặt cắt dầm (kiểu Kết cấu Soft / XSCad) ----------------
+    /// <summary>Mặt cắt dầm thể hiện cánh sàn liền khối hai bên (chữ T / chữ L), dải sàn trên mặt đứng dầm</summary>
+    public bool ShowSlabFlanges { get; set; } = true;
+    /// <summary>Chiều dài cánh sàn thể hiện mỗi bên dầm (mm thật, tính từ mặt bên dầm tới đường cắt)</summary>
+    public double SlabFlangeLength { get; set; } = 400;
+    /// <summary>Thể hiện thép sàn trong cánh (lớp dưới, thép mũ vắt qua dầm) kèm nhãn "Ø8a200 (thép sàn)"</summary>
+    public bool ShowSlabRebarInFlange { get; set; } = true;
+    /// <summary>Kiểu đường cắt ở đầu cánh sàn</summary>
+    public SlabBreakStyle SlabBreak { get; set; } = SlabBreakStyle.ZigZag;
+
     // ==================================================================
     public static DrawingStyle Default() => new();
 
@@ -373,6 +383,8 @@ public class DrawingStyle
         DimLinearFactor = Clamp(DimLinearFactor, 1e-4, 1e4, 1.0);
         DimBaselineSpacing = double.IsNaN(DimBaselineSpacing) || DimBaselineSpacing < 0 ? d.DimBaselineSpacing : Math.Min(DimBaselineSpacing, 50);
         if (!Enum.IsDefined(typeof(DimArrow), DimArrowType)) DimArrowType = DimArrow.Tick;
+        SlabFlangeLength = Clamp(SlabFlangeLength, 100, 3000, d.SlabFlangeLength);
+        if (!Enum.IsDefined(typeof(SlabBreakStyle), SlabBreak)) SlabBreak = SlabBreakStyle.ZigZag;
         DimStylePrefix = SafePrefix(DimStylePrefix);
         DimStyles ??= DefaultDimStyles();
         DimStyles.RemoveAll(x => x == null || double.IsNaN(x.Scale) || x.Scale <= 0 || x.Scale > 2000);
@@ -391,6 +403,15 @@ public class DrawingStyle
         (JsonSerializer.Deserialize<DrawingStyle>(string.IsNullOrWhiteSpace(json) ? "{}" : json, CadStandard.JsonOptions) ?? new DrawingStyle()).Normalize();
 
     public DrawingStyle Clone() => FromJson(ToJson());
+}
+
+/// <summary>Đường cắt ở đầu cánh sàn trên mặt cắt dầm.</summary>
+public enum SlabBreakStyle
+{
+    /// <summary>Đường cắt lửng dích dắc (Kết cấu Soft)</summary>
+    ZigZag,
+    /// <summary>Nét thẳng (cắt gọn)</summary>
+    Straight
 }
 
 /// <summary>Đầu đường kích thước.</summary>

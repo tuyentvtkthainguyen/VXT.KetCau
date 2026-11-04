@@ -92,7 +92,7 @@ public static class DrawingSet
         {
             k++;
             string nm = DrawUtil.SafeFile(g.Key);
-            Write($"KC-04_Dam_{nm}.dxf", () => BeamDrawing.BuildAll(p, g), BeamDrawing.CurrentScale,
+            Write($"KC-04_Dam_{nm}.dxf", () => BeamDrawing.BuildAll(p, g, s), BeamDrawing.CurrentScale,
                 $"CHI TIẾT DẦM TẦNG {g.Key}", $"KC-04.{k}", "BEAM", notes: NotesScope.Beam);
         }
 

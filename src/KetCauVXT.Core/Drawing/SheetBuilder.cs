@@ -284,7 +284,7 @@ public static partial class SheetBuilder
                     var beams = d.Beams.Where(b => b.Name == par).ToList();
                     if (beams.Count == 0 && par.Length > 0) beams = d.Beams.Where(b => BeamStory(p, b) == par).ToList();
                     if (beams.Count == 0 && par.Length == 0) beams = d.Beams.ToList();
-                    res.AddRange(BeamDrawing.BuildAll(p, beams));
+                    res.AddRange(BeamDrawing.BuildAll(p, beams, d));
                     break;
                 }
                 case SheetViewKind.ColumnDetail:

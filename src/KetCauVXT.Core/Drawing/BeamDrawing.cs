@@ -16,12 +16,13 @@ public static class BeamDrawing
     /// <summary>Mẫu số tỷ lệ mặt cắt theo Thiết lập bản vẽ (mặc định 25).</summary>
     public static double CurrentSectionScale => DrawingStyle.Current.ScaleOf(DrawingKind.MemberSection);
 
-    public static List<Figure> BuildAll(Project p, IEnumerable<BeamLineDesign> beams)
+    /// <param name="ds">Kết quả thiết kế (để lấy thép sàn thực tế vẽ trong cánh sàn); null → thép sàn quy ước Ø8a200.</param>
+    public static List<Figure> BuildAll(Project p, IEnumerable<BeamLineDesign> beams, DesignSummary ds = null)
     {
         var res = new List<Figure>();
         foreach (var d in beams)
         {
-            try { res.AddRange(Build(p, d)); }
+            try { res.AddRange(Build(p, d, ds)); }
             catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(d.Name, ex, CurrentScale), d.Name, true)); }
         }
         return res;
@@ -35,7 +36,7 @@ public static class BeamDrawing
     }
 
     /// <summary>Vẽ một dầm liên tục: hình đầu là mặt đứng (hàng mới), sau đó là các mặt cắt.</summary>
-    public static List<Figure> Build(Project p, BeamLineDesign d)
+    public static List<Figure> Build(Project p, BeamLineDesign d, DesignSummary ds = null)
     {
         double S = CurrentScale;
         var w = new DxfWriter(S);
@@ -77,12 +78,56 @@ public static class BeamDrawing
         double xL = xs[0] - sw[0] / 2, xR = xs[^1] + sw[^1] / 2;
         double stubUp = Math.Max(0.6 * h, 300), stubDn = Math.Max(0.8 * h, 400);
 
+        // ---- bối cảnh sàn hai bên dầm (cánh sàn mặt cắt, dải sàn mặt đứng) – Drawing/BeamSlabContext.cs ----
+        Func<double, BeamSlabSection> slabAt = null;
+        if (style.ShowSlabFlanges && p != null)
+        {
+            var cache = new Dictionary<long, BeamSlabSection>();
+            slabAt = x =>
+            {
+                long key = (long)Math.Round(x);
+                if (!cache.TryGetValue(key, out var v))
+                {
+                    try { v = BeamSlabContext.At(p, d, x, ds); }
+                    catch (Exception) { v = null; }   // mô hình thiếu nút/tiết diện: vẽ như dầm chữ nhật
+                    cache[key] = v;
+                }
+                return v;
+            };
+        }
+
         // ---- bê tông: dầm giữa các mặt cột + cột cụt ----
         for (int i = 0; i + 1 < ns; i++)
         {
             double a = xs[i] + sw[i] / 2, e = xs[i + 1] - sw[i + 1] / 2;
             w.Line(Lay.BeTong, a, 0, e, 0);
             w.Line(Lay.BeTong, a, -h, e, -h);
+        }
+        // dải sàn liền khối: mép dưới sàn (và mặt sàn hạ cốt) nhìn thấy sau mặt cắt dọc dầm, giữa hai mặt cột
+        var slabNotes = new List<string>();
+        if (slabAt != null && spans.Count > 0)
+        {
+            for (int i = 0; i + 1 < ns; i++)
+            {
+                var sc = slabAt((xs[i] + xs[i + 1]) / 2);
+                if (sc == null) continue;
+                double a = xs[i] + sw[i] / 2, e = xs[i + 1] - sw[i + 1] / 2;
+                if (e - a < 1) continue;
+                foreach (var sd in new[] { sc.Left, sc.Right }.Where(x => x != null && x.Hs > 0)
+                             .GroupBy(x => (Math.Round(x.Hs), Math.Round(x.Dz))).Select(g => g.First()))
+                {
+                    double yb = sd.Dz - sd.Hs;
+                    if (yb > -h + 1) w.Line(Lay.BeTong, a, yb, e, yb);
+                    if (sd.Dz < -1) w.Line(Lay.BeTong, a, sd.Dz, e, sd.Dz);
+                }
+                string sideTxt = sc.Shape == "T" ? "hai bên dầm" : sc.Left != null ? "bên trái dầm" : "bên phải dầm";
+                if (sc.Shape != "R")
+                {
+                    var hsList = new[] { sc.Left, sc.Right }.Where(x => x != null).Select(x => DxfWriter.N0(x.Hs)).Distinct().ToList();
+                    string n = $"Sàn liền khối {sideTxt} hs={string.Join("/", hsList)}";
+                    if (!slabNotes.Contains(n)) slabNotes.Add(n);
+                }
+            }
         }
         for (int i = 0; i < ns; i++)
         {
@@ -99,7 +144,7 @@ public static class BeamDrawing
             layout.Reserve(new Rect2(xs[i] - sw[i] / 2, -h - stubDn - 0.5 * th, xs[i] + sw[i] / 2, stubUp + 0.5 * th));
 
         // ---- vị trí mặt cắt ----
-        var cuts = ComputeCuts(d, xs, sw, h);
+        var cuts = ComputeCuts(d, xs, sw, h, slabAt);
         foreach (var c in cuts)
         {
             w.CutMark(c.X, 0.5 * th, c.X, 2.3 * th, c.Num.ToString(), c.X + 0.9 * th, 1.4 * th);
@@ -231,6 +276,15 @@ public static class BeamDrawing
             w.Line(Lay.KyHieu, xL - 2.5 * th, 0, xL - 0.3 * th, 0);
         }
 
+        // ---- ghi chú sàn (chiều dày cánh sàn theo mô hình) ----
+        double yNote = yBub - 3.2 * th;
+        if (slabNotes.Count > 0)
+        {
+            string txt = string.Join("; ", slabNotes) + (slabNotes.Count == 1 ? " (mặt sàn trùng mặt dầm)" : "");
+            w.Text(Lay.Chu, xs[0], yNote, th, txt, 0, 0, 0);
+            yNote -= 1.8 * th;
+        }
+
         // ---- tên hình ----
         double Lout = (xs[^1] - xs[0]) + sw[0] / 2 + sw[^1] / 2;
         string title = $"{d.Name} (SL={Math.Max(1, d.Quantity)}; L={DxfWriter.N0(Math.Round(Lout / 10) * 10)})";
@@ -239,7 +293,7 @@ public static class BeamDrawing
         {
             // dầm cong: mặt đứng là hình trải theo cung; chiều dài thép đã tính theo cung.
             // "chiều dài thép dọc tính theo cung; dùng đai kín móc 135°" chung cho mọi dầm cong → chuyển vào GHI CHÚ CHUNG (GeneralNotes)
-            double yN = yBub - 3.2 * th;
+            double yN = yNote;
             w.Text(Lay.Chu, xs[0], yN, th, CurvedDraw.Note(d.CurveRadius, d.ArcLength), 0, 0, 0);
             w.Text(Lay.Chu, xs[0], yN - 1.8 * th, 0.85 * th,
                 $"Dây cung {DxfWriter.N0(d.Chord * 1000)}, độ vồng {DxfWriter.N0(d.Sagitta * 1000)}" +
@@ -249,7 +303,7 @@ public static class BeamDrawing
 
         // ---- mặt cắt ----
         foreach (var c in cuts.GroupBy(x => x.Num).Select(g => g.First()).OrderBy(x => x.Num))
-            figs.Add(new Figure(Section(c, b, h, cover, S), d.Name + " " + c.Num));
+            figs.Add(new Figure(Section(c, b, h, cover, S, p), d.Name + " " + c.Num));
         return figs;
     }
 
@@ -263,6 +317,8 @@ public static class BeamDrawing
         public List<BarMark> Side = new();
         public StirrupZone Zone;
         public string Key = "";
+        /// <summary>Sàn hai bên dầm tại mặt cắt (null = tắt cánh sàn / không xác định)</summary>
+        public BeamSlabSection Slab;
     }
 
     internal static List<StirrupZone> Zones(BeamLineDesign d)
@@ -287,7 +343,7 @@ public static class BeamDrawing
         return res.Where(z => z.To - z.From > 1e-4).ToList();
     }
 
-    private static List<Cut> ComputeCuts(BeamLineDesign d, List<double> xs, double[] sw, double h)
+    private static List<Cut> ComputeCuts(BeamLineDesign d, List<double> xs, double[] sw, double h, Func<double, BeamSlabSection> slabAt = null)
     {
         var zones = Zones(d);
         var pos = new List<double>();
@@ -317,6 +373,11 @@ public static class BeamDrawing
             string Sig(List<BarMark> l) => string.Join(",", l.OrderBy(t => t.Mark).Select(t => $"{t.Mark}:{t.Count}:{t.Dia}"));
             c.Key = Sig(c.Top) + "|" + Sig(c.Bot) + "|" + Sig(c.Side) + "|" +
                     (c.Zone == null ? "" : $"{c.Zone.Dia}:{Math.Round(c.Zone.Spacing * 1000)}:{c.Zone.Legs}:{c.Zone.Mark}");
+            if (slabAt != null)
+            {
+                c.Slab = slabAt(x);
+                if (c.Slab != null) c.Key += "|" + c.Slab.Key;
+            }
             if (!keys.TryGetValue(c.Key, out int n)) { n = keys.Count + 1; keys[c.Key] = n; }
             c.Num = n;
             cuts.Add(c);
@@ -376,13 +437,163 @@ public static class BeamDrawing
         return res;
     }
 
-    private static DxfWriter Section(Cut c, double b, double h, double cover, double S)
+    /// <summary>Cánh sàn một bên mặt cắt (mm thật, chưa nhân hệ số phóng).</summary>
+    private sealed class FlangeSide
+    {
+        public SlabSideInfo Info;
+        public double Len, Hs, Dz;
+    }
+
+    /// <summary>Đường bao mặt cắt dầm có cánh sàn (chữ T / L): nét bao hở tại đầu cánh, đầu cánh là đường cắt lửng.
+    /// Toạ độ đã phóng (×k); gốc tại góc dưới trái dầm, trục y hướng lên, mặt trên dầm y = H.</summary>
+    private static void FlangedOutline(DxfWriter w, double B, double H, double k, FlangeSide L, FlangeSide R, SlabBreakStyle brk)
+    {
+        var v = new List<(double X, double Y)>();
+        var br = new List<bool>();
+        void Add(double x, double y, bool breakNext = false)
+        {
+            if (v.Count > 0 && Math.Abs(v[^1].X - x) < 1e-6 && Math.Abs(v[^1].Y - y) < 1e-6) { br[^1] = breakNext; return; }
+            v.Add((x, y)); br.Add(breakNext);
+        }
+        Add(0, 0);
+        Add(B, 0);
+        if (R != null)
+        {
+            double yt = H + R.Dz * k, yb = yt - R.Hs * k, x2 = B + R.Len * k;
+            Add(B, yb); Add(x2, yb, true); Add(x2, yt); Add(B, yt);
+        }
+        Add(B, H);
+        Add(0, H);
+        if (L != null)
+        {
+            double yt = H + L.Dz * k, yb = yt - L.Hs * k, x1 = -L.Len * k;
+            Add(0, yt); Add(x1, yt, true); Add(x1, yb); Add(0, yb);
+        }
+        if (v.Count > 1 && Math.Abs(v[^1].X - v[0].X) < 1e-6 && Math.Abs(v[^1].Y - v[0].Y) < 1e-6) { v.RemoveAt(v.Count - 1); br.RemoveAt(br.Count - 1); }
+        int n = v.Count, first = br.IndexOf(true);
+        if (first < 0) { w.Polyline(Lay.BeTong, v, true); return; }
+        var chain = new List<(double X, double Y)> { v[(first + 1) % n] };
+        for (int s = 1; s <= n; s++)
+        {
+            int j = (first + s) % n, jn = (j + 1) % n;
+            if (br[j])
+            {
+                if (chain.Count > 1) w.Polyline(Lay.BeTong, chain, false);
+                BreakSymbol(w, v[j].X, v[j].Y, v[jn].Y, brk);
+                chain = new List<(double X, double Y)> { v[jn] };
+            }
+            else chain.Add(v[jn]);
+        }
+        if (chain.Count > 1) w.Polyline(Lay.BeTong, chain, false);
+    }
+
+    /// <summary>Đường cắt đầu cánh sàn (đứng tại x, từ y1 tới y2) – kích thước theo chiều dày cánh, không theo cỡ chữ.</summary>
+    private static void BreakSymbol(DxfWriter w, double x, double y1, double y2, SlabBreakStyle brk)
+    {
+        double lo = Math.Min(y1, y2), hi = Math.Max(y1, y2), q = hi - lo, ym = (lo + hi) / 2;
+        if (brk == SlabBreakStyle.Straight || q < 1e-6) { w.Line(Lay.BeTong, x, lo, x, hi); return; }
+        w.Polyline(Lay.BeTong, new List<(double X, double Y)>
+        {
+            (x, lo - 0.25 * q), (x, ym - 0.2 * q), (x + 0.25 * q, ym - 0.07 * q),
+            (x - 0.25 * q, ym + 0.07 * q), (x, ym + 0.2 * q), (x, hi + 0.25 * q)
+        }, false);
+    }
+
+    /// <summary>Thép sàn trong cánh: lớp dưới vuông góc dầm (đường, neo vào dầm), lớp dưới song song dầm (chấm),
+    /// thép mũ vắt qua dầm (đường gần mặt trên; dầm biên: bẻ móc xuống trong dầm) và thép phân bố dưới mũ (chấm).
+    /// Nhãn nhẹ không số hiệu "Ø8a200 (thép sàn)" – số hiệu thép sàn thuộc bản vẽ sàn. Thép quy ước (chưa có kết quả thiết kế sàn): nét đứt.</summary>
+    private static void SlabBars(DxfWriter w, TagLayout layout, double B, double H, double k, double cover, FlangeSide fL, FlangeSide fR, Project p, double th)
+    {
+        double cs = Math.Max(10, (p?.Concrete?.CoverSlab ?? 0.015) * 1000);
+        double csb = Math.Max(0.5 * cover, cover - 3) * k;   // mép trong đai dầm
+        double rMin = 0.15 * th;
+        var tagged = new HashSet<string>();
+        // ---- thép mũ: vắt liên tục qua dầm khi hai cánh cùng cao độ ----
+        bool cont = fL != null && fR != null && Math.Abs(fL.Dz - fR.Dz) < 0.5 && fL.Info.TopDia == fR.Info.TopDia;
+        double TopY(FlangeSide f) => H + (f.Dz - cs - f.Info.TopDia / 2.0) * k;
+        if (cont)
+        {
+            double y = Math.Max(TopY(fL), TopY(fR));
+            string lt = fL.Info.TopFromDesign || fR.Info.TopFromDesign ? null : "DASHED";
+            w.Polyline(Lay.Thep, new List<(double X, double Y)> { (-fL.Len * k + 0.2 * fL.Hs * k, y), (B + fR.Len * k - 0.2 * fR.Hs * k, y) }, false, 0, lt);
+        }
+        void Side(FlangeSide f, int sg)
+        {
+            if (f == null) return;
+            var si = f.Info;
+            double hs = f.Hs, yt = H + f.Dz * k, yb = yt - hs * k;
+            double xFace = sg < 0 ? 0 : B, xEnd = sg < 0 ? -f.Len * k : B + f.Len * k;
+            double inset = 0.2 * hs * k;                          // thép dừng trước đường cắt
+            double xIn = xEnd - sg * inset;
+            string ltB = si.BotFromDesign ? null : "DASHED", ltT = si.TopFromDesign ? null : "DASHED";
+            // lớp dưới vuông góc dầm: neo vào dầm ≥ 10d (≤ ½ bề rộng dầm)
+            double yB1 = yb + (cs + si.BotPerpDia / 2.0) * k;
+            double anc = Math.Min(B / 2, Math.Max(10 * si.BotPerpDia, 100) * k);
+            w.Polyline(Lay.Thep, new List<(double X, double Y)> { (xIn, yB1), (xFace - sg * anc, yB1) }, false, 0, ltB);
+            // lớp dưới song song dầm: chấm theo bước
+            double yB2 = yb + (cs + si.BotPerpDia + si.BotParDia / 2.0) * k;
+            double sB = Math.Max(50, si.BotParSpacing);
+            var dotsB = new List<double>();
+            for (double t = sB / 2; t < f.Len - 0.2 * hs; t += sB) dotsB.Add(xFace + sg * t * k);
+            if (dotsB.Count == 0) dotsB.Add((xFace + xIn) / 2);
+            foreach (double x in dotsB) w.Dot(Lay.Thep, x, yB2, Math.Max(si.BotParDia / 2.0 * k, rMin));
+            // thép mũ (không liên tục): vào hết dầm tới mép trong đai phía kia rồi bẻ móc xuống
+            double yT1 = TopY(f);
+            if (!cont)
+            {
+                double xFar = sg < 0 ? B - csb : csb;
+                double hook = Math.Min(H - 2 * csb, Math.Max(hs, 10 * si.TopDia) * k);
+                w.Polyline(Lay.Thep, new List<(double X, double Y)> { (xIn, yT1), (xFar, yT1), (xFar, yT1 - Math.Max(0, hook)) }, false, 0, ltT);
+            }
+            // thép phân bố dưới mũ Ø6a250 (chấm)
+            double yT2 = yT1 - (si.TopDia / 2.0 + 3) * k;
+            for (double t = 125; t < f.Len - 0.2 * hs; t += 250) w.Dot(Lay.Thep, xFace + sg * t * k, yT2, Math.Max(3 * k, rMin));
+            // ---- nhãn nhẹ ----
+            double xm = (xFace + xEnd) / 2;
+            string tb = si.BotPerpText + " (thép sàn)";
+            if (tagged.Add("B|" + tb))
+            {
+                double ky = yb - 1.6 * th;
+                var box = w.TagBox(xm, ky, tb, 0, sg);
+                var (_, dy) = layout.Place(box, 0, -1.8 * th);
+                w.LeaderTag(xm, yB1, xm, ky + dy, tb, 0, sg);
+            }
+            string tt = si.TopText + " (thép sàn)";
+            if (tagged.Add("T|" + tt))
+            {
+                double ky = H + 1.6 * th;
+                var box = w.TagBox(xm, ky, tt, 0, sg);
+                var (_, dy) = layout.Place(box, 0, 1.8 * th);
+                w.LeaderTag(xm, yT1, xm, ky + dy, tt, 0, sg);
+            }
+        }
+        Side(fL, -1);
+        Side(fR, 1);
+    }
+
+    private static DxfWriter Section(Cut c, double b, double h, double cover, double S, Project p = null)
     {
         var w = new DxfWriter(S);
         double secScale = CurrentSectionScale;
         double th = w.Th, k = S / secScale;
         double B = b * k, H = h * k;
-        w.Rect(Lay.BeTong, 0, 0, B, H);
+        var style = w.Style;
+        // ---- cánh sàn (kiểu Kết cấu Soft / XSCad): T – sàn hai bên, L – dầm biên, chữ nhật – không có sàn ----
+        FlangeSide fL = null, fR = null;
+        if (style.ShowSlabFlanges && c.Slab != null)
+        {
+            FlangeSide Mk(SlabSideInfo si)
+            {
+                if (si == null || si.Hs <= 0) return null;
+                double hs = Math.Min(si.Hs, Math.Max(20, h - 20));
+                double dz = Math.Clamp(si.Dz, -(h - hs), 0);
+                return new FlangeSide { Info = si, Len = style.SlabFlangeLength, Hs = hs, Dz = dz };
+            }
+            fL = Mk(c.Slab.Left); fR = Mk(c.Slab.Right);
+        }
+        bool flanged = fL != null || fR != null;
+        if (!flanged) w.Rect(Lay.BeTong, 0, 0, B, H);
+        else FlangedOutline(w, B, H, k, fL, fR, style.SlabBreak);
         // đai
         int ds = c.Zone?.Dia ?? 6;
         double cs = Math.Max(0.5 * cover, cover - ds / 2.0) * k;
@@ -395,6 +606,9 @@ public static class BeamDrawing
 
         var layout = new TagLayout(0.2 * th);
         layout.Reserve(new Rect2(0, 0, B, H));
+        if (fL != null) layout.Reserve(new Rect2(-fL.Len * k, H + (fL.Dz - fL.Hs) * k, 0, H + fL.Dz * k));
+        if (fR != null) layout.Reserve(new Rect2(B, H + (fR.Dz - fR.Hs) * k, B + fR.Len * k, H + fR.Dz * k));
+        if (flanged && style.ShowSlabRebarInFlange) SlabBars(w, layout, B, H, k, cover, fL, fR, p, th);
         var topPos = PlaceRow(c.Top, b, h, cover, k, true);
         var botPos = PlaceRow(c.Bot, b, h, cover, k, false);
         foreach (var (bar, x, y) in topPos.Concat(botPos)) w.Dot(Lay.Thep, x, y, Math.Max(bar.Dia / 2.0 * k, 0.18 * th));
@@ -438,7 +652,7 @@ public static class BeamDrawing
                 string txt = DrawUtil.BarTag(sb.Count, sb.Dia);
                 double px = B - (cover + sb.Dia / 2.0) * k, py = H / (per + 1);
                 var box = w.TagBox(B + 2 * th, py - 1.5 * th, txt, sb.Mark, 1);
-                var (_, dy) = layout.Place(box, 0, -1.8 * th);
+                var (_, dy) = layout.Place(box, 0, -1.8 * th);   // cánh phải đã giữ chỗ → nhãn dịch xuống dưới cánh
                 w.LeaderTag(px, py, B + 2 * th, py - 1.5 * th + dy, txt, sb.Mark, 1);
             }
         }
@@ -448,12 +662,35 @@ public static class BeamDrawing
             string txt = DrawUtil.StirrupTag(c.Zone.Dia, c.Zone.Spacing);
             double py = H * 0.6;
             var box = w.TagBox(B + 2 * th, py, txt, c.Zone.Mark, 1);
-            var (_, dy) = layout.Place(box, 0, 1.8 * th);
+            var (_, dy) = layout.Place(box, 0, fR != null ? -1.8 * th : 1.8 * th);   // có cánh phải: dịch xuống, không vắt qua cánh
             w.LeaderTag(B - cs, py, B + 2 * th, py + dy, txt, c.Zone.Mark, 1);
         }
         double yMin = Math.Min(0, layout.Occupied.Min(r => r.Y1));
         w.Dim(0, 0, B, 0, yMin - 2.0 * th, k);
-        w.Dim(0, 0, 0, H, 2.6 * th, k);
+        if (fL == null) w.Dim(0, 0, 0, H, 2.6 * th, k);
+        else
+        {
+            // cánh trái: hs đo tại đầu cánh, h (từ mặt trên sàn/dầm) đặt ngoài hs
+            double x0 = -fL.Len * k;
+            w.Dim(x0, H + (fL.Dz - fL.Hs) * k, x0, H + fL.Dz * k, 1.4 * th, k, "hs=" + DxfWriter.N0(fL.Hs));
+            // kích thước h đặt ngoài các nhãn thép sàn dưới cánh trái (không cắt qua chữ)
+            double xOcc = x0 - 1.4 * th;
+            foreach (var r in layout.Occupied) if (r.Y2 > 0 && r.Y1 < H && r.X2 < 0) xOcc = Math.Min(xOcc, r.X1);
+            w.Dim(x0, 0, x0, H, (x0 - xOcc) + 2.4 * th, k);
+        }
+        if (fR != null && (fL == null || Math.Abs(fR.Hs - fL.Hs) > 0.5 || Math.Abs(fR.Dz - fL.Dz) > 0.5))
+        {
+            double x1 = B + fR.Len * k;
+            w.Dim(x1, H + (fR.Dz - fR.Hs) * k, x1, H + fR.Dz * k, -1.4 * th, k, "hs=" + DxfWriter.N0(fR.Hs));
+        }
+        // dầm lệch trục (điểm chèn / dời ngang): đường trục định vị và khoảng cách mép dầm – trục
+        if (c.Slab != null && Math.Abs(c.Slab.Offset) > 1)
+        {
+            double xa = B / 2 + c.Slab.Offset * k;
+            w.Line(Lay.Truc, xa, -0.8 * th, xa, H + 0.8 * th, "CENTER");
+            double xf = Math.Abs(xa) <= Math.Abs(xa - B) ? 0 : B;
+            if (Math.Abs(xa - xf) > 1e-6) w.Dim(Math.Min(xf, xa), 0, Math.Max(xf, xa), 0, yMin - 4.6 * th, k);
+        }
         double yt = w.Extents.Y1 - 1.2 * th;
         w.Title(B / 2, yt, $"{c.Num}-{c.Num}", DrawUtil.ScaleText(secScale), true);
         return w;

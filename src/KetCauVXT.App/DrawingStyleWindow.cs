@@ -154,6 +154,7 @@ internal sealed class DrawingStyleWindow : Window
     private readonly TextBox _txtPrefix = new() { Width = 90, VerticalContentAlignment = VerticalAlignment.Center };
     private readonly List<(CheckBox Box, Func<DrawingStyle, bool> Get, Action<DrawingStyle, bool> Set)> _checks = new();
     private readonly CheckBox _chkProject;
+    private readonly ComboBox _cmbBreak = new() { Width = 110, VerticalContentAlignment = VerticalAlignment.Center };
     private readonly TextBlock _txtStatus;
     private readonly DrawingHost _preview = new() { Background = Brushes.White, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
     private bool _loading;
@@ -204,6 +205,22 @@ internal sealed class DrawingStyleWindow : Window
         Chk("Ký hiệu cao độ ▽", "Cao độ đỉnh dầm, chân/đỉnh cột, cao độ tầng, cao độ móng", s => s.ShowElevationMarks, (s, v) => s.ShowElevationMarks = v);
         Chk("Kích thước lưới trục", "Chuỗi kích thước trục trên mặt bằng kết cấu, mặt bằng thép sàn, mặt bằng móng, mặt đứng khung", s => s.ShowGridDims, (s, v) => s.ShowGridDims = v);
         Chk("Khối GHI CHÚ CHUNG", "Một khối ghi chú chung cho mỗi bản vẽ KC-01…KC-06 (đơn vị, bê tông, thép, lớp bảo vệ, neo nối)", s => s.ShowGeneralNotes, (s, v) => s.ShowGeneralNotes = v);
+        Chk("Cánh sàn trên mặt cắt dầm", "Mặt cắt dầm thể hiện cánh sàn liền khối theo mô hình (kiểu Kết cấu Soft / XSCad): chữ T – sàn hai bên, chữ L – dầm biên, " +
+            "chữ nhật – không có sàn (lỗ cầu thang, giếng trời); kích thước hs, đường cắt ở đầu cánh; mặt đứng dầm có nét mép dưới sàn", s => s.ShowSlabFlanges, (s, v) => s.ShowSlabFlanges = v);
+        Chk("Thép sàn trong cánh", "Thép lớp dưới, thép mũ vắt qua dầm và thép phân bố trong cánh sàn, nhãn \"Ø8a200 (thép sàn)\" theo kết quả thiết kế sàn " +
+            "(chưa thiết kế sàn: thể hiện quy ước nét đứt)", s => s.ShowSlabRebarInFlange, (s, v) => s.ShowSlabRebarInFlange = v);
+        var brkPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 16, 2) };
+        brkPanel.Children.Add(new TextBlock { Text = "Đường cắt đầu cánh sàn:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
+        _cmbBreak.Items.Add("Dích dắc");
+        _cmbBreak.Items.Add("Nét thẳng");
+        _cmbBreak.SelectionChanged += (s, e) =>
+        {
+            if (_loading) return;
+            _st.SlabBreak = _cmbBreak.SelectedIndex == 1 ? SlabBreakStyle.Straight : SlabBreakStyle.ZigZag;
+            Edited();
+        };
+        brkPanel.Children.Add(_cmbBreak);
+        opt.Children.Add(brkPanel);
 
         // ---------------- bố cục ----------------
         var left = new DockPanel();
@@ -338,7 +355,9 @@ internal sealed class DrawingStyleWindow : Window
             Size("Vòng tròn số hiệu thép", "mm đường kính", s => s.MarkDiameter, (s, v) => s.MarkDiameter = v, 1, 40);
             Size("Vòng tròn đầu trục", "mm đường kính", s => s.AxisBubbleDiameter, (s, v) => s.AxisBubbleDiameter = v, 2, 40);
             Size("Hệ số rộng chữ", "× (1 = chuẩn)", s => s.WidthFactor, (s, v) => s.WidthFactor = v, 0.3, 2);
+            Size("Chiều dài cánh sàn thể hiện (mỗi bên dầm)", "mm thật", s => s.SlabFlangeLength, (s, v) => s.SlabFlangeLength = v, 100, 3000);
             foreach (var (box, get, _) in _checks) box.IsChecked = get(_st);
+            _cmbBreak.SelectedIndex = _st.SlabBreak == SlabBreakStyle.Straight ? 1 : 0;
             _txtPrefix.Text = _st.DimStylePrefix;
             LoadDims();
         }

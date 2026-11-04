@@ -146,8 +146,10 @@ public partial class FrameAnalysis   // dao động riêng + phổ phản ứng:
                     sub.R = ElementMatrices.LocalAxes(qa, qb, f.Angle);
                     sub.T = ElementMatrices.Transformation(sub.R);
                 }
+                // [Workflow ETABS] hệ số độ cứng gán cho thanh (FrameElement.StiffnessModifiers, mặc định 1) – Model/ModelAssign.cs
                 sub.K0 = ElementMatrices.LocalStiffness(sub.L, mat.E, mat.G,
-                    sp.A * sec.ModA, sp.As2, sp.As3, sp.I33 * sec.ModI33, sp.I22 * sec.ModI22, sp.J * sec.ModJ);
+                    sp.A * sec.ModA * f.Modifier(0), sp.As2 * f.Modifier(1), sp.As3 * f.Modifier(2),
+                    sp.I33 * sec.ModI33 * f.Modifier(5), sp.I22 * sec.ModI22 * f.Modifier(4), sp.J * sec.ModJ * f.Modifier(3));
                 sub.K = (double[,])sub.K0.Clone();
                 ElementMatrices.Condense(sub.K, null, sub.RelI, sub.RelJ);
                 list.Add(sub);
@@ -254,6 +256,7 @@ public partial class FrameAnalysis   // dao động riêng + phổ phản ứng:
             var slabNodes = new HashSet<int>(_p.Slabs.SelectMany(s => s.Nodes));
             foreach (var g in slabNodes.Where(used.Contains).Select(id => _p.Node(id))
                          .Where(n => !n.Restraint[0] && !n.Restraint[1] && !n.Restraint[5])
+                         .Where(n => !_p.IsDiaphragmOff(n.Z))   // [Workflow ETABS] tầng tắt sàn cứng – Model/ModelAssign.cs
                          .GroupBy(n => Math.Round(n.Z, 3)))
             {
                 var nodes = g.Select(n => n.Id).ToList();
