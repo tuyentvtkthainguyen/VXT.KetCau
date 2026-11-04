@@ -207,7 +207,7 @@ namespace VXT.KetCau.Core.Documentation
                                 w.Line(lay, endP.X, endP.Y, endP.X + nrm.X * TH * 0.5, endP.Y + nrm.Y * TH * 0.5);
                         if (first)
                         {
-                            var mid = clean[0] + (clean[clean.Count - 1] - clean[0]) * (bar.Role == BarRole.SlabTop ? 0.5 : 0.35);
+                            var mid = clean[0] + (clean[clean.Count - 1] - clean[0]) * (bar.Role == BarRole.SlabTop ? 0.5 : bar.Position == "L1" ? 0.7 : 0.15);
                             double ox = TH * 0.8, oy = TH * 0.9;
                             w.Tag(mid.X, mid.Y, mid.X + ox, mid.Y + oy, bar.TagText(Sym), bar.Mark, TH * 0.9);
                             first = false;
