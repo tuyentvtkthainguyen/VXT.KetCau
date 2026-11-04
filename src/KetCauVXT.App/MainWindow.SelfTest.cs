@@ -155,6 +155,7 @@ public partial class MainWindow
             await SelfTestDwg(tag); // đọc DWG – MainWindow.SelfTestDwg.cs // nhận dữ liệu AutoCAD – MainWindow.SelfTestAcad.cs
             await SelfTestDrawingEdit(tag); // hiệu chỉnh bản vẽ, xuất gộp – MainWindow.SelfTestDrawingEdit.cs
             await SelfTestManualSheet(tag);
+            await SelfTestHatch(tag); // hatch, xuất DXF 2018/DWG – MainWindow.SelfTestHatch.cs
             await SelfTestTemplate(tag); // template, khung tên người dùng – MainWindow.SelfTestTemplate.cs // dàn trang thủ công – MainWindow.SelfTestSheetEdit.cs
             StLog("XONG – không lỗi");
         }

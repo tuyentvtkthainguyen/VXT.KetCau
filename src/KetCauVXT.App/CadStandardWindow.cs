@@ -237,6 +237,7 @@ internal sealed class CadStandardWindow : Window
     private readonly ObservableCollection<OutputLayerRow> _outs = new();
     private readonly DataGrid _gRules, _gMaps, _gOut;
     private readonly ComboBox _cbPreset, _cbFont, _cbReportFont;
+    private readonly ComboBox _cbFormat = new() { Width = 200, ToolTip = "Định dạng file khi xuất bản vẽ: DXF R12 (tương thích cũ, hatch mô phỏng bằng nét) | DXF 2018 / DWG 2018 (HATCH thật, LWPOLYLINE, nét in theo layer)" };
     private readonly CheckBox _chkSkipOff, _chkProject, _chkAsk;
     private readonly TextBox _txtTest;
     private readonly TextBlock _txtTestRes, _txtStatus;
@@ -301,6 +302,8 @@ internal sealed class CadStandardWindow : Window
         _cbReportFont = new ComboBox { Width = 150, ItemsSource = CadStandard.Fonts };
         _cbFont.SelectionChanged += (s, e) => { if (!_loading && _cbFont.SelectedItem is string f) _std.FontName = f; };
         _cbReportFont.SelectionChanged += (s, e) => { if (!_loading && _cbReportFont.SelectedItem is string f) _std.ReportFont = f; };
+        foreach (var f in CadOutputFormats.All) _cbFormat.Items.Add(CadOutputFormats.Label(f));
+        _cbFormat.SelectionChanged += (s, e) => { if (!_loading && _cbFormat.SelectedIndex >= 0) _std.OutputFormat = CadOutputFormats.All[_cbFormat.SelectedIndex]; };
         _chkAsk = new CheckBox { Content = "Hỏi \"Xem/đổi tên layer\" mỗi lần xuất DXF", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
         _chkAsk.Checked += (s, e) => { if (!_loading) _std.AskLayersBeforeExport = true; };
         _chkAsk.Unchecked += (s, e) => { if (!_loading) _std.AskLayersBeforeExport = false; };
@@ -311,6 +314,7 @@ internal sealed class CadStandardWindow : Window
                                          "Nét in và cờ \"In\" được lưu trong chuẩn cho add-in AutoCAD / bảng nét in CTB (DXF R12 không lưu được)."));
         t2Top.Children.Add(DialogUi.Row(DialogUi.Label("Mẫu có sẵn"), _cbPreset, DialogUi.Label("   Font bản vẽ"), _cbFont,
             DialogUi.Label("   Font thuyết minh Word"), _cbReportFont, _chkAsk));
+        t2Top.Children.Add(DialogUi.Row(DialogUi.Label("Định dạng xuất"), _cbFormat));
         t2Top.Children.Add(DialogUi.Row(DialogUi.Btn("＋ Thêm layer", (s, e) => AddOut()), DialogUi.Btn("Xoá layer thêm", (s, e) => DeleteOut()),
             DialogUi.Btn("Gộp layer…", (s, e) => MergeOut()), DialogUi.Btn("Đổi tên hàng loạt…", (s, e) => BatchRename()),
             DialogUi.Btn("Sửa ký tự cấm", (s, e) => { LayerNameCheck.AutoFix(_outs); RefreshOut(); })));
@@ -358,6 +362,7 @@ internal sealed class CadStandardWindow : Window
             _cbFont.SelectedItem = CadStandard.NormalizeFont(_std.FontName);
             _cbReportFont.SelectedItem = CadStandard.NormalizeFont(_std.ReportFont);
             _chkAsk.IsChecked = _std.AskLayersBeforeExport;
+            _cbFormat.SelectedIndex = Math.Max(0, Array.IndexOf(CadOutputFormats.All, _std.OutputFormat));
         }
         finally { _loading = false; }
     }

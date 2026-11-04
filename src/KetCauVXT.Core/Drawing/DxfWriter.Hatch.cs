@@ -134,7 +134,7 @@ public static class HatchPatterns
         var d = new HatchPatternDef
         {
             Name = name, Description = "Mẫu tự định nghĩa", Predefined = false,
-            Lines = (lines ?? Array.Empty<(double, double, double[])>()).Where(l => l.Spacing > 1e-9)
+            Lines = (lines ?? Array.Empty<(double Angle, double Spacing, double[] Dash)>()).Where(l => l.Spacing > 1e-9)
                 .Select(l => HatchLineDef.Pat(l.Angle, 0, 0, 0, l.Spacing, l.Dash ?? Array.Empty<double>())).ToArray()
         };
         Register(d);
@@ -376,10 +376,11 @@ public sealed partial class DxfWriter
         if (edges.Count == 0) return res;
         double ra = angleDeg * Math.PI / 180, ca = Math.Cos(ra), sa = Math.Sin(ra);
         var ts = new List<double>();
-        for (int attempt = 0; attempt < 10; attempt++)
+        for (int attempt = 0; attempt < 30; attempt++)
         {
             res.Clear();
             bool over = false;
+            double grow = 1.6;
             double dotLen = 0.12 * scale;
             foreach (var ln in def.Lines)
             {
@@ -392,7 +393,7 @@ public sealed partial class DxfWriter
                 foreach (var ed in edges) { double p = ed.X1 * nx + ed.Y1 * ny; if (p < pmin) pmin = p; if (p > pmax) pmax = p; }
                 double c0 = bx * nx + by * ny, k1 = (pmin - c0) / sp, k2 = (pmax - c0) / sp;
                 double kmin = Math.Floor(Math.Min(k1, k2)), kmax = Math.Ceiling(Math.Max(k1, k2));
-                if (kmax - kmin > cap) { over = true; break; }
+                if (kmax - kmin > cap) { over = true; grow = Math.Max(grow, (kmax - kmin) / cap * 1.1); break; }
                 double[] dash = ln.Dash ?? Array.Empty<double>();
                 double cycle = 0;
                 foreach (double d in dash) cycle += Math.Abs(d * scale);
@@ -449,7 +450,7 @@ public sealed partial class DxfWriter
                 if (over) break;
             }
             if (!over) { usedScale = scale; return res; }
-            scale *= 1.6;
+            scale *= grow;
         }
         usedScale = scale;
         if (res.Count > cap) res.RemoveRange(cap, res.Count - cap);

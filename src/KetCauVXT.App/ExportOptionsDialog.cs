@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using KetCauVXT.Drawing;
+using KetCauVXT.Model;
 
 namespace KetCauVXT.App;
 
@@ -11,6 +12,8 @@ internal sealed class ExportOptionsDialog : Window
     private readonly ComboBox _cbMode = new() { Width = 260 };
     private readonly TextBox _tbPattern = new() { Width = 260 };
     private readonly TextBox _tbSingle = new() { Width = 260 };
+    private readonly ComboBox _cbFormat = new() { Width = 260 };
+    private readonly bool _pdf;
     private readonly CheckBox _chkRemember = new() { Content = "Ghi nhớ lựa chọn cho lần sau", IsChecked = true, Margin = new Thickness(0, 6, 0, 0) };
     private readonly TextBlock _lblPattern, _lblSingle;
     public DrawingExportOptions Result { get; private set; }
@@ -30,9 +33,20 @@ internal sealed class ExportOptionsDialog : Window
         _tbPattern.ToolTip = "Để trống = tên mặc định (KC-01_MatBangKetCau…). Ví dụ: {so}_{ten} hoặc {duan}_{stt}_{so}";
         _tbSingle.ToolTip = "Tên file gộp (không cần .dxf/.pdf)";
         _cbMode.SelectionChanged += (s, e) => UpdateEnabled();
+        _pdf = pdf;
+        // định dạng file: theo Chuẩn layer CAD (CadStandard.OutputFormat) hoặc chọn riêng cho lần xuất này
+        var stdFmt = CadStandard.Active?.OutputFormat ?? CadOutputFormat.DxfR12;
+        _cbFormat.Items.Add(new ComboBoxItem { Content = "Theo Chuẩn layer CAD – " + CadOutputFormats.Label(stdFmt), Tag = null });
+        foreach (var f in CadOutputFormats.All) _cbFormat.Items.Add(new ComboBoxItem { Content = CadOutputFormats.Label(f), Tag = f });
+        _cbFormat.SelectedIndex = start.Format.HasValue ? 1 + Array.IndexOf(CadOutputFormats.All, start.Format.Value) : 0;
+        if (_cbFormat.SelectedIndex < 0) _cbFormat.SelectedIndex = 0;
+        _cbFormat.ToolTip = "DXF R12: mở được bằng mọi phần mềm CAD, tô vật liệu (nếu bật) mô phỏng bằng nét. " +
+                            "DXF 2018 / DWG 2018: HATCH thật, LWPOLYLINE, nét in theo layer, chữ tiếng Việt Unicode." +
+                            (CadFileWriters.HasWriter ? "" : " (Chưa có bộ ghi DXF 2018/DWG – sẽ ghi DXF R12.)");
 
         var sp = new StackPanel { Margin = new Thickness(12) };
         sp.Children.Add(DialogUi.Row(DialogUi.Label("Kiểu xuất:", 120, true), _cbMode));
+        if (!pdf) sp.Children.Add(DialogUi.Row(DialogUi.Label("Định dạng file:", 120, true), _cbFormat));
         _lblSingle = DialogUi.Label("Tên file gộp:", 120);
         sp.Children.Add(DialogUi.Row(_lblSingle, _tbSingle));
         _lblPattern = DialogUi.Label("Mẫu tên từng file:", 120);
@@ -64,6 +78,7 @@ internal sealed class ExportOptionsDialog : Window
     private void Accept()
     {
         Result = new DrawingExportOptions { Mode = Mode, FilePattern = _tbPattern.Text.Trim(), SingleFileName = _tbSingle.Text.Trim() };
+        if (!_pdf && (_cbFormat.SelectedItem as ComboBoxItem)?.Tag is CadOutputFormat f) Result.Format = f;
         if (_chkRemember.IsChecked == true) Result.SaveUser();
         DialogResult = true;
     }

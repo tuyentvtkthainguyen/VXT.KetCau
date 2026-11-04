@@ -563,6 +563,9 @@ CadLinkTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.Base
 Console.WriteLine("48. Sàn hạ cốt: khai báo, mặc định theo công năng, kiểm tra chiều cao dầm, cạnh sàn không liên tục, bản vẽ");
 SlabDropTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
+Console.WriteLine("49. Hatch vật liệu (R12 mô phỏng, DXF 2018/DWG có HATCH thật)");
+HatchTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
 Console.WriteLine($"KẾT QUẢ KIỂM CHỨNG: {pass} đạt, {fail} sai");

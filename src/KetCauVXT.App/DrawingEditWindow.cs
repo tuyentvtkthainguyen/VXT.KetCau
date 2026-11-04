@@ -400,6 +400,8 @@ internal sealed class DrawingEditWindow : Window
                 double dx = x - pr.Pts[0], dy = y - pr.Pts[1];
                 return Math.Abs(Math.Sqrt(dx * dx + dy * dy) - pr.R);
             }
+            case PrimKind.Hatch:
+                return 0.95 * tol;   // tô vật liệu: chỉ chọn khi không có nét nào gần hơn
             default:
                 return 0.3 * tol;   // chữ, miền tô: trong khung bao
         }

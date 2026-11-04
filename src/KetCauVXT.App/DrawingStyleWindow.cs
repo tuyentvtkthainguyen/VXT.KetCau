@@ -155,6 +155,7 @@ internal sealed class DrawingStyleWindow : Window
     private readonly List<(CheckBox Box, Func<DrawingStyle, bool> Get, Action<DrawingStyle, bool> Set)> _checks = new();
     private readonly CheckBox _chkProject;
     private readonly ComboBox _cmbBreak = new() { Width = 110, VerticalContentAlignment = VerticalAlignment.Center };
+    private readonly ComboBox _cmbHatch = new() { Width = 250, VerticalContentAlignment = VerticalAlignment.Center };
     private readonly TextBlock _txtStatus;
     private readonly DrawingHost _preview = new() { Background = Brushes.White, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
     private bool _loading;
@@ -222,6 +223,23 @@ internal sealed class DrawingStyleWindow : Window
         };
         brkPanel.Children.Add(_cmbBreak);
         opt.Children.Add(brkPanel);
+        // tô vật liệu (hatch) mặt cắt – Drawing/DxfWriter.Hatch.cs
+        var hatchPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 16, 2) };
+        hatchPanel.Children.Add(new TextBlock
+        {
+            Text = "Tô vật liệu (hatch) mặt cắt:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0),
+            ToolTip = "Bê tông AR-CONC (mặt cắt dầm, cột, móng, bản thang), bê tông lót ANSI31, đất EARTH dưới móng, bậc gạch ANSI31 – trên lớp HATCH (màu 8). " +
+                      "Tự động: bật khi xuất DXF 2018 / DWG (HATCH thật), tắt khi xuất DXF R12 để file nhẹ và giống bản vẽ cũ; Bật: cả R12 (mô phỏng bằng nét)."
+        });
+        foreach (var hm in new[] { HatchMode.Auto, HatchMode.On, HatchMode.Off }) _cmbHatch.Items.Add(DrawingStyle.HatchModeLabel(hm));
+        _cmbHatch.SelectionChanged += (s, e) =>
+        {
+            if (_loading || _cmbHatch.SelectedIndex < 0) return;
+            _st.HatchSections = _cmbHatch.SelectedIndex == 1 ? HatchMode.On : _cmbHatch.SelectedIndex == 2 ? HatchMode.Off : HatchMode.Auto;
+            Edited();
+        };
+        hatchPanel.Children.Add(_cmbHatch);
+        opt.Children.Add(hatchPanel);
 
         // ---------------- bố cục ----------------
         var left = new DockPanel();
@@ -357,8 +375,10 @@ internal sealed class DrawingStyleWindow : Window
             Size("Vòng tròn đầu trục", "mm đường kính", s => s.AxisBubbleDiameter, (s, v) => s.AxisBubbleDiameter = v, 2, 40);
             Size("Hệ số rộng chữ", "× (1 = chuẩn)", s => s.WidthFactor, (s, v) => s.WidthFactor = v, 0.3, 2);
             Size("Chiều dài cánh sàn thể hiện (mỗi bên dầm)", "mm thật", s => s.SlabFlangeLength, (s, v) => s.SlabFlangeLength = v, 100, 3000);
+            Size("Tô vật liệu: hệ số tỷ lệ mẫu (1 = ANSI31 cách 3,175 mm)", "× (2 = thưa gấp đôi)", s => s.HatchScaleFactor, (s, v) => s.HatchScaleFactor = v, 0.1, 20);
             foreach (var (box, get, _) in _checks) box.IsChecked = get(_st);
             _cmbBreak.SelectedIndex = _st.SlabBreak == SlabBreakStyle.Straight ? 1 : 0;
+            _cmbHatch.SelectedIndex = _st.HatchSections == HatchMode.On ? 1 : _st.HatchSections == HatchMode.Off ? 2 : 0;
             _txtPrefix.Text = _st.DimStylePrefix;
             LoadDims();
         }

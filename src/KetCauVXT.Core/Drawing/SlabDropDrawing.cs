@@ -94,6 +94,24 @@ public static class SlabDropDrawing
     public static void Hatch(DxfWriter w, List<(double X, double Y)> poly, double spacing, Rect2? keepOut = null)
     {
         if (poly == null || poly.Count < 3 || spacing <= 0) return;
+        if (w.HatchOn)   // HATCH thật ANSI31 (DxfWriter.Hatch.cs) khi thiết lập "Tô vật liệu" bật / xuất DXF 2018–DWG; vùng chữ = lỗ
+        {
+            var loops = new List<IList<(double X, double Y)>> { poly };
+            if (keepOut is { IsEmpty: false } kr)
+            {
+                var hole = new List<(double X, double Y)> { (kr.X1, kr.Y1), (kr.X2, kr.Y1), (kr.X2, kr.Y2), (kr.X1, kr.Y2) };
+                bool In((double X, double Y) q)
+                {
+                    bool c = false;
+                    for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++)
+                        if ((poly[i].Y > q.Y) != (poly[j].Y > q.Y) && q.X < (poly[j].X - poly[i].X) * (q.Y - poly[i].Y) / (poly[j].Y - poly[i].Y) + poly[i].X) c = !c;
+                    return c;
+                }
+                if (hole.All(In)) loops.Add(hole);   // chỉ khoét khi vùng chữ nằm trọn trong ô
+            }
+            w.Hatch(loops, HatchPatterns.Ansi31, spacing / 3.175, 0, Lay.Hatch);
+            return;
+        }
         var f = poly.Select(q => q.X - q.Y).ToList();
         double cMin = f.Min(), cMax = f.Max();
         double step = spacing * Math.Sqrt(2);      // khoảng cách vuông góc giữa hai đường = spacing

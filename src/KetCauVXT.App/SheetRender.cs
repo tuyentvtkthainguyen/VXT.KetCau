@@ -61,6 +61,7 @@ internal static class SheetRender
         [Lay.KyHieu] = (Color.FromRgb(130, 0, 150), 0.18),
         [Lay.Truc] = (Color.FromRgb(110, 110, 110), 0.13),
         [Lay.KhungTen] = (Colors.Black, 0.25),
+        [Lay.Hatch] = (Color.FromRgb(150, 150, 150), 0.09),   // tô vật liệu mặt cắt (DxfWriter.Hatch.cs)
     };
 
     private static readonly Dictionary<Color, SolidColorBrush> _brushes = new();
@@ -130,6 +131,35 @@ internal static class SheetRender
             return b;
         }
 
+        // ---- tô vật liệu (HATCH): vẽ trước mọi nét khác (nằm dưới), nét mảnh màu xám; SOLID tô chẵn – lẻ riêng từng miền ----
+        int hatchSolidNo = 0;
+        Bucket HatchStroke(string layer)
+        {
+            var (c, mm) = Style(layer);
+            if (color.HasValue) c = color.Value;
+            double t = Math.Max(Math.Min(mm, 0.13), 0.5 * minStroke);
+            string key = $"H|S|{c}|{t:0.####}";
+            if (!buckets.TryGetValue(key, out var b))
+            {
+                var pen = new Pen(BrushOf(c), t) { StartLineCap = PenLineCap.Flat, EndLineCap = PenLineCap.Flat };
+                pen.Freeze();
+                b = new Bucket { Pen = pen };
+                b.Ctx = b.G.Open();
+                buckets[key] = b;
+            }
+            return b;
+        }
+        Bucket HatchFill(string layer)
+        {
+            var (c, _) = Style(layer);
+            if (color.HasValue) c = color.Value;
+            var b = new Bucket { Fill = BrushOf(c) };
+            b.G.FillRule = FillRule.EvenOdd;
+            b.Ctx = b.G.Open();
+            buckets[$"H|F|{hatchSolidNo++}"] = b;
+            return b;
+        }
+
         foreach (var (w, k, dx, dy) in items)
         {
             if (w == null) continue;
@@ -196,6 +226,31 @@ internal static class SheetRender
                     case PrimKind.Text:
                         if (pr.H * k > 1e-4) texts.Add((pr, k, P(a[0], a[1])));
                         break;
+                    case PrimKind.Hatch:
+                    {
+                        var hd = DxfWriter.HatchOf(pr);
+                        if (hd == null || hd.Loops.Count == 0) break;
+                        if (hd.IsSolid)
+                        {
+                            var ctx = HatchFill(pr.Layer).Ctx;
+                            foreach (var l in hd.Loops)
+                            {
+                                ctx.BeginFigure(P(l[0].X, l[0].Y), true, true);
+                                ctx.PolyLineTo(l.Skip(1).Select(q => P(q.X, q.Y)).ToList(), false, false);
+                            }
+                        }
+                        else
+                        {
+                            // cùng bộ sinh nét với bản DXF R12 mô phỏng ⇒ màn hình / in / PDF trùng file R12
+                            var ctx = HatchStroke(pr.Layer).Ctx;
+                            foreach (var (x1, y1, x2, y2) in DxfWriter.HatchSegments(pr))
+                            {
+                                ctx.BeginFigure(P(x1, y1), false, false);
+                                ctx.LineTo(P(x2, y2), true, false);
+                            }
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -203,7 +258,9 @@ internal static class SheetRender
         var dg = new DrawingGroup();
         using (var dc = dg.Open())
         {
-            foreach (var b in buckets.Values)
+            var order = buckets.Where(kv => kv.Key.StartsWith("H|", StringComparison.Ordinal)).Select(kv => kv.Value)
+                .Concat(buckets.Where(kv => !kv.Key.StartsWith("H|", StringComparison.Ordinal)).Select(kv => kv.Value)).ToList();
+            foreach (var b in order)
             {
                 b.Ctx.Close();
                 b.G.Freeze();
