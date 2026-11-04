@@ -132,7 +132,8 @@ public static class SlabDropTests
         check("Dầm 220×300: đạt", B(c30 != null && c30.Ok), 1, 0);
         var c22 = SlabDropChecks.BeamChecks(p, new DesignSummary { Beams = { Syn(0.22) } }).FirstOrDefault();
         check("Dầm cao 220 < 250: KHÔNG đạt, đề nghị h ≥ 250", B(c22 != null && !c22.Ok && Math.Abs(c22.Suggested - 250) < 1e-9 && SlabDropChecks.Text(c22).StartsWith("CẢNH BÁO")), 1, 0);
-        var dD = dsD.Beams.Where(b => b.Story == st).FirstOrDefault(b => b.Frames.Count == ids.Count && b.Frames.All(ids.Contains));
+        var dD = dsD.Beams.Where(b => b.Story == st).FirstOrDefault(b => b.Frames.Count == ids.Count && b.Frames.All(ids.Contains))
+                 ?? dsD.Beams.FirstOrDefault(b => b.RebarKeys.Contains("D:" + ids.Min()));
         check("Thiết kế: dầm trục giữa có lời kiểm tra \"Dầm biên ô sàn hạ cốt … đạt\"",
             B(dD != null && dD.Messages.Any(m => m.StartsWith("Dầm biên ô sàn hạ cốt") && m.EndsWith("đạt"))), 1, 0);
         check("Thiết kế Δ = 50: không có cảnh báo dầm biên", B(!dsD.Warnings.Any(w => w.Contains("Dầm biên ô sàn hạ cốt"))), 1, 0);
@@ -184,7 +185,11 @@ public static class SlabDropTests
         if (dD != null)
         {
             List<Figure> figs;
-            using (DrawingStyle.Use(DrawingStyle.Default())) figs = BeamDrawing.Build(p, dD, dsD);
+            // thiết kế gộp (SL > 1) có thể giữ phần tử của dải khác → vẽ với đúng dải trục giữa tầng T2
+            var keep = dD.Frames; string ks = dD.Story; double kz = dD.TopElevation;
+            dD.Frames = ids; dD.Story = st; dD.TopElevation = z2;
+            try { using (DrawingStyle.Use(DrawingStyle.Default())) figs = BeamDrawing.Build(p, dD, dsD); }
+            finally { dD.Frames = keep; dD.Story = ks; dD.TopElevation = kz; }
             check("Mặt cắt dầm cạnh ô hạ cốt: kích thước bậc \"Δ=50\" và ghi chú \"Sàn hạ cốt Δ = 50\"",
                 B(figs.Skip(1).Any(f => f.W.Texts().Contains("Δ=50") && f.W.Texts().Any(t => t.Contains("Sàn hạ cốt Δ = 50")))), 1, 0);
             check("Mặt đứng dầm: ghi chú \"Sàn hạ cốt … Δ = 50\"", B(figs[0].W.Texts().Any(t => t.Contains("Sàn hạ cốt") && t.Contains("Δ = 50"))), 1, 0);
@@ -204,7 +209,7 @@ public static class SlabDropTests
         try
         {
             using var z = ZipFile.OpenRead(docx);
-            using var sr = new StreamReader(z.GetEntry("word/document.xml")!.Open());
+            using var sr = new StreamReader(z.GetEntry("word/document.xml").Open());
             xml = sr.ReadToEnd();
         }
         catch (Exception ex) { Console.WriteLine("   · đọc thuyết minh lỗi: " + ex.Message); }

@@ -654,6 +654,6 @@ public sealed partial class DxfWriter
             if (c.Count >= 3) loops.Add(c);
         }
         if (loops.Count == 0) return;
-        Hatch(loops, h.Pattern, h.PatScale, h.Angle, h.Layer, h.Aci > 0 ? h.Aci : null);
+        Hatch(loops, h.Pattern, h.PatScale, h.Angle, h.Layer, h.Aci > 0 ? h.Aci : (int?)null);
     }
 }

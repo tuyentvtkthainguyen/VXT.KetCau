@@ -150,6 +150,7 @@ public partial class MainWindow
             await SelfTestCadStandard(tag);
             await SelfTestDrawingStyle(tag); // tỷ lệ, cỡ chữ, kiểu kích thước – MainWindow.SelfTestDrawingStyle.cs // chuẩn layer CAD – MainWindow.SelfTestCad.cs
             await SelfTestAcadLink(tag);
+            await SelfTestCadLink(tag); // liên kết bản vẽ AutoCAD – MainWindow.SelfTestCadLink.cs
             await SelfTestDwg(tag); // đọc DWG – MainWindow.SelfTestDwg.cs // nhận dữ liệu AutoCAD – MainWindow.SelfTestAcad.cs
             await SelfTestDrawingEdit(tag); // hiệu chỉnh bản vẽ, xuất gộp – MainWindow.SelfTestDrawingEdit.cs
             await SelfTestManualSheet(tag);

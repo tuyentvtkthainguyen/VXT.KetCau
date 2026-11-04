@@ -472,6 +472,7 @@ public static class BeamDrawing
             Add(0, yt); Add(x1, yt, true); Add(x1, yb); Add(0, yb);
         }
         if (v.Count > 1 && Math.Abs(v[^1].X - v[0].X) < 1e-6 && Math.Abs(v[^1].Y - v[0].Y) < 1e-6) { v.RemoveAt(v.Count - 1); br.RemoveAt(br.Count - 1); }
+        w.HatchMat(HatchMaterial.Concrete, v);   // tô bê tông cả cánh sàn (nếu thiết lập bật – DxfWriter.Hatch.cs)
         int n = v.Count, first = br.IndexOf(true);
         if (first < 0) { w.Polyline(Lay.BeTong, v, true); return; }
         var chain = new List<(double X, double Y)> { v[(first + 1) % n] };
@@ -594,7 +595,7 @@ public static class BeamDrawing
             fL = Mk(c.Slab.Left); fR = Mk(c.Slab.Right);
         }
         bool flanged = fL != null || fR != null;
-        if (!flanged) w.Rect(Lay.BeTong, 0, 0, B, H);
+        if (!flanged) { w.HatchMatRect(HatchMaterial.Concrete, 0, 0, B, H); w.Rect(Lay.BeTong, 0, 0, B, H); }   // tô bê tông (DxfWriter.Hatch.cs)
         else FlangedOutline(w, B, H, k, fL, fR, style.SlabBreak);
         // đai
         int ds = c.Zone?.Dia ?? 6;

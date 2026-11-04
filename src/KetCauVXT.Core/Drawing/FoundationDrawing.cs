@@ -182,6 +182,32 @@ public static class FoundationDrawing
     }
 
     /// <summary>Mặt cắt đài cọc theo phương L: bê tông lót, đài, đầu cọc ngàm vào đài, cổ cột, thép đáy/đỉnh đài.</summary>
+    /// <summary>Tô vật liệu mặt cắt đài cọc: đất dưới lót và bê tông lót (chừa chỗ cọc), bê tông đài, thân cọc.</summary>
+    private static void HatchCapSection(DxfWriter w, PileCapDesign c, double L, double H, double xc, double lot, double dp, double pileShow, double k, double th)
+    {
+        var pxs = c.Piles.Select(q => Math.Round(q.X, 4)).Distinct().Select(px => xc + px * 1000 * k).OrderBy(x => x).ToList();
+        List<(double X, double Y)> R(double x1, double y1, double x2, double y2) => new() { P(x1, y1), P(x2, y1), P(x2, y2), P(x1, y2) };
+        // dải [x1, x2] trừ phần thân cọc → các hình chữ nhật rời (một miền tô nhiều vòng biên ngoài)
+        IList<(double X, double Y)>[] WithPiles(double x1, double y1, double x2, double y2)
+        {
+            var loops = new List<IList<(double X, double Y)>>();
+            double a = x1;
+            foreach (double x in pxs)
+            {
+                double pa = Math.Max(x1, x - dp / 2), pb = Math.Min(x2, x + dp / 2);
+                if (pb <= pa) continue;
+                if (pa - a > 1e-6) loops.Add(R(a, y1, pa, y2));
+                a = Math.Max(a, pb);
+            }
+            if (x2 - a > 1e-6) loops.Add(R(a, y1, x2, y2));
+            return loops.ToArray();
+        }
+        w.HatchMat(HatchMaterial.Earth, WithPiles(-lot - 2 * th, -lot - 1.2 * th, L + lot + 2 * th, -lot));
+        w.HatchMat(HatchMaterial.LeanConcrete, WithPiles(-lot, -lot, L + lot, 0));
+        w.HatchMatRect(HatchMaterial.Concrete, 0, 0, L, H);
+        foreach (double x in pxs) w.HatchMatRect(HatchMaterial.Concrete, x - dp / 2, -lot - pileShow, x + dp / 2, 0);
+    }
+
     public static DxfWriter CapSection(Project p, PileCapDesign c, double S)
     {
         var w = new DxfWriter(S);
@@ -192,6 +218,7 @@ public static class FoundationDrawing
         double lot = 100 * k, emb = Math.Max(0, p.Foundation?.PileEmbed ?? 0.1) * 1000 * k;
         double hc = (c.ColumnH > 0 ? c.ColumnH : 0.22) * 1000 * k;
         double neck = 500 * k, dp = c.PileSize * 1000 * k, pileShow = 700 * k;
+        if (w.HatchOn) HatchCapSection(w, c, L, H, xc, lot, dp, pileShow, k, th);   // tô vật liệu (DxfWriter.Hatch.cs)
         // lót + đài
         w.Rect(Lay.BeTong, -lot, -lot, L + lot, 0);
         w.Rect(Lay.BeTong, 0, 0, L, H);
@@ -407,6 +434,18 @@ public static class FoundationDrawing
             double xb = st.FlangeSide > 0 ? x0 : x1;
             w.Line(Lay.KyHieu, xb, -lot - 3 * th, xb, h + 3 * th, "DASHED");
             w.Text(Lay.Chu, xb, h + 3.4 * th, 0.85 * th, EccentricDrawing.BoundaryLabel, 0, 1, 0);
+        }
+        if (w.HatchOn)   // tô vật liệu (DxfWriter.Hatch.cs): đất dưới lót, bê tông lót, bê tông móng băng
+        {
+            w.HatchMatRect(HatchMaterial.Earth, x0 - lot - 2 * th, -lot - 1.2 * th, x1 + lot + 2 * th, -lot);
+            w.HatchMatRect(HatchMaterial.LeanConcrete, x0 - lot, -lot, x1 + lot, 0);
+            if (B > b + 1 && st.FlangeSide != 0)
+                w.HatchMat(HatchMaterial.Concrete, st.FlangeSide > 0
+                    ? new List<(double X, double Y)> { P(x0, 0), P(x1, 0), P(x1, he), P(r1, hr), P(r1, h), P(x0, h) }
+                    : new List<(double X, double Y)> { P(x0, 0), P(x1, 0), P(x1, h), P(r0, h), P(r0, hr), P(x0, he) });
+            else if (B > b + 1)
+                w.HatchMat(HatchMaterial.Concrete, new List<(double X, double Y)> { P(x0, 0), P(x1, 0), P(x1, he), P(r1, hr), P(r1, h), P(r0, h), P(r0, hr), P(x0, he) });
+            else w.HatchMatRect(HatchMaterial.Concrete, r0, 0, r1, h);
         }
         w.Rect(Lay.BeTong, x0 - lot, -lot, x1 + lot, 0);
         if (B > b + 1 && st.FlangeSide != 0)   // [MóngLệchTâm] chữ L ngược (một cánh)

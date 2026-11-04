@@ -137,8 +137,7 @@ public partial class MainWindow
     internal void CadLinkEdited(CadLink l, bool reread = false)
     {
         if (l == null) return;
-        MarkDirty(false);
-        _clDraw.Remove(l.Id);
+        MarkDirty(false);   // nét đã dựng được dùng lại nếu phép đặt / layer ẩn / chế độ màu không đổi (CadLinkParts so chữ ký)
         UpdateCadWatchers();
         if (reread) _ = ReloadCadLinkAsync(l, true, false);
         else RedrawPlan();

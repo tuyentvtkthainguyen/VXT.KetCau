@@ -264,6 +264,7 @@ public static class ColumnDrawing
         double th = w.Th, k = S / secScale;
         var s = t.Story;
         double b = s.B * 1000, h = s.H * 1000, B = b * k, H = h * k;
+        w.HatchMatRect(HatchMaterial.Concrete, 0, 0, B, H);   // tô bê tông (nếu thiết lập bật – DxfWriter.Hatch.cs)
         w.Rect(Lay.BeTong, 0, 0, B, H);
         int ds = t.Zone?.Dia ?? (s.StirrupDia > 0 ? s.StirrupDia : 6);
         double cs = Math.Max(0.5 * cover, cover - ds / 2.0) * k;

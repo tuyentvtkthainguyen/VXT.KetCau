@@ -60,6 +60,7 @@ public partial class MainWindow : Window
 
         InitModalUi();   // khung nhìn "Dao động" – MainWindow.Modal.cs
         InitBeamToolsUi();   // thanh công cụ dầm kiểu ETABS – MainWindow.BeamTools.cs
+        InitSlabDropUi();    // [Sàn hạ cốt] nút "Hạ cốt sàn", ô "Hạ cốt (mm)", hộp thoại – MainWindow.SlabDrop.cs
         InitWorkflowUi();    // [Workflow ETABS] cây mô hình, thanh trạng thái, phím tắt – MainWindow.Workflow.cs
         SetProject(ModelBuilder.NewProject(), null);
         SetStatus("Sẵn sàng – nhập lưới trục, chiều cao tầng rồi bấm 'Tạo mô hình', hoặc mở/nhập mô hình có sẵn.");

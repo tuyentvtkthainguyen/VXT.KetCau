@@ -43,7 +43,7 @@ public static class SlabDropChecks
 
     /// <summary>Hai ô sàn chênh cốt quá ngưỡng (bậc sàn).</summary>
     public static bool IsStep(Project p, Slab a, Slab b) =>
-        a != null && b != null && Math.Abs(a.LevelOffset - b.LevelOffset) > Threshold(p) + 1e-9;
+        a != null && b != null && a.LevelOffset != b.LevelOffset && Math.Abs(a.LevelOffset - b.LevelOffset) > Threshold(p) + 1e-9;
 
     private static bool OnLine(Vec3 a, Vec3 u, Vec3 q, out double t)
     {

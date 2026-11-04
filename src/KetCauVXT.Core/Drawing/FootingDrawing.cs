@@ -212,6 +212,16 @@ public static class FootingDrawing
         double neck = Math.Max(300, (f.Depth > 0 ? f.Depth - f.H : 0.5) * 1000) * k;
         double exS = (f.Eccentric?.OffsetX ?? 0) * 1000 * k;   // [MóngLệchTâm] tim cột tại L/2 − ex
         double xc1 = L / 2 - exS - cb / 2, xc2 = L / 2 - exS + cb / 2, ped = Math.Abs(exS) > 1e-6 ? 0 : 50 * k;
+        // tô vật liệu (nếu thiết lập bật – DxfWriter.Hatch.cs): đất dưới lót, bê tông lót, bê tông móng
+        if (w.HatchOn)
+        {
+            w.HatchMatRect(HatchMaterial.Earth, -lot - 2 * th, -lot - 1.2 * th, L + lot + 2 * th, -lot);
+            w.HatchMatRect(HatchMaterial.LeanConcrete, -lot, -lot, L + lot, 0);
+            w.HatchMat(HatchMaterial.Concrete, new List<(double X, double Y)>
+            {
+                (0, 0), (L, 0), (L, Hb), (xc2 + ped, H), (xc2, H), (xc2, H + neck), (xc1, H + neck), (xc1, H), (xc1 - ped, H), (0, Hb)
+            });
+        }
         // lót
         w.Rect(Lay.BeTong, -lot, -lot, L + lot, 0);
         // đế

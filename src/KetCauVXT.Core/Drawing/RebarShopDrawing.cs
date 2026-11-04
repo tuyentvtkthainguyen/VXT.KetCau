@@ -404,9 +404,14 @@ public static class RebarShopDrawing
         var res = new DrawingExportResult();
         if (p == null || s == null) return res;
         List<DrawingItem> items;
+        using var fmtScope = CadFileWriters.UseFormat(o?.Format);   // định dạng xuất chọn khi xuất (DXF R12 / 2018 / DWG)
         using (DrawingOverlay.Collect(res.Report)) items = BuildDrawings(p, s);
         if (o != null && o.Mode == DrawingExportMode.Single && (string.IsNullOrWhiteSpace(o.SingleFileName) || o.SingleFileName == "{duan}_BoBanVe"))
+        {
+            var fmt = o.Format;
             o = DrawingExportOptions.SingleFile("{duan}_GiaCongThep");   // tên mặc định riêng cho bản vẽ gia công
+            o.Format = fmt;
+        }
         DrawingExport.Write(items, folder, o, p.Name, res);
         foreach (var m in res.Report.Messages()) if (!res.Messages.Contains(m)) res.Messages.Add(m);
         return res;

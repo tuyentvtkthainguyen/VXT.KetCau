@@ -24,11 +24,13 @@ public sealed class DrawingExportOptions
     public string FilePattern { get; set; } = "";
     /// <summary>Tên file khi gộp (không phần mở rộng).</summary>
     public string SingleFileName { get; set; } = "{duan}_BoBanVe";
+    /// <summary>Định dạng file (DXF R12 / DXF 2018 / DWG 2018); null = theo Chuẩn layer CAD (CadStandard.OutputFormat).</summary>
+    public CadOutputFormat? Format { get; set; }
 
     public static DrawingExportOptions Split => new() { Mode = DrawingExportMode.Split };
     public static DrawingExportOptions SingleFile(string name = null) => new() { Mode = DrawingExportMode.Single, SingleFileName = string.IsNullOrWhiteSpace(name) ? "{duan}_BoBanVe" : name };
 
-    public DrawingExportOptions Clone() => new() { Mode = Mode, FilePattern = FilePattern, SingleFileName = SingleFileName };
+    public DrawingExportOptions Clone() => new() { Mode = Mode, FilePattern = FilePattern, SingleFileName = SingleFileName, Format = Format };
 
     private static readonly JsonSerializerOptions Opts = new()
     {
@@ -69,7 +71,7 @@ public sealed class DrawingExportOptions
             .Replace("{duan}", project ?? "", StringComparison.OrdinalIgnoreCase)
             .Replace("{stt}", index.ToString("00", CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase)
             .Replace("{ngay}", DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase);
-        if (s.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase)) s = s.Substring(0, s.Length - 4);
+        if (s.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase) || s.EndsWith(".dwg", StringComparison.OrdinalIgnoreCase)) s = s.Substring(0, s.Length - 4);
         return DrawUtil.SafeFile(s);
     }
 }
@@ -142,10 +144,12 @@ public static class DrawingExport
         return outW;
     }
 
-    /// <summary>Ghi các bản vẽ vào thư mục theo tuỳ chọn. Bản vẽ đã khoá khi tách rời được ghi nguyên văn file đã nạp.</summary>
+    /// <summary>Ghi các bản vẽ vào thư mục theo tuỳ chọn. Bản vẽ đã khoá khi tách rời được ghi nguyên văn file đã nạp.
+    /// Định dạng: o.Format → CadFileWriters.Current (Chuẩn layer CAD); DWG → phần mở rộng .dwg (Files ghi đúng đường dẫn thực).</summary>
     public static DrawingExportResult Write(IList<DrawingItem> items, string folder, DrawingExportOptions o, string projectName, DrawingExportResult res = null)
     {
         o ??= DrawingExportOptions.Split;
+        var fmt = o.Format ?? CadFileWriters.Current;
         res ??= new DrawingExportResult();
         Directory.CreateDirectory(folder);
         var list = (items ?? new List<DrawingItem>()).Where(i => i?.W != null).ToList();
@@ -158,8 +162,7 @@ public static class DrawingExport
                 list.Count == 1 ? list[0].Number : "", list.Count == 1 ? list[0].Title : "", projectName, 1);
             if (string.IsNullOrWhiteSpace(name) || name == "Khac") name = "BoBanVe";
             string path = Path.Combine(folder, name + ".dxf");
-            w.Save(path);
-            res.Files.Add(path);
+            res.Files.Add(CadFileWriters.Write(w, path, fmt));
             return res;
         }
         var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -174,7 +177,7 @@ public static class DrawingExport
             for (int k = 2; !used.Add(fn); k++) fn = baseName + "_" + k.ToString(CultureInfo.InvariantCulture) + ".dxf";
             string path = Path.Combine(folder, fn);
             if (it.Frozen != null && DrawingOverlay.RawBytes(it.Frozen).Length > 0) res.Files.AddRange(DrawingOverlay.WriteFrozen(it.Frozen, path).Where(f => f.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase)));
-            else { it.W.Save(path); res.Files.Add(path); }
+            else res.Files.Add(CadFileWriters.Write(it.W, path, fmt));
         }
         return res;
     }

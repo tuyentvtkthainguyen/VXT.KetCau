@@ -132,6 +132,9 @@ public sealed partial class DxfWriter
                     if (InsideR(clip, gx, gy)) { _ents.Add(e); _ext = _ext.Union(e.Box); start = _ents.Count; }
                     break;
                 }
+                case "HATCH":
+                    ClipHatchInto(e, clip);   // biên miền tô cắt theo khung (DxfWriter.Hatch.cs)
+                    break;
                 default:
                     if (!e.Box.IsEmpty && InsideR(clip, e.Box.Cx, e.Box.Cy)) { _ents.Add(e); _ext = _ext.Union(e.Box); start = _ents.Count; }
                     break;

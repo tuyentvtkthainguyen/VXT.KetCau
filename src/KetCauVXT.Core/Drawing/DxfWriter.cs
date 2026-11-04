@@ -565,11 +565,13 @@ public sealed partial class DxfWriter
             G(sb, 72, 65); G(sb, 73, 4); G(sb, 40, 50.8); G(sb, 49, 31.75); G(sb, 49, -6.35); G(sb, 49, 6.35); G(sb, 49, -6.35);
             G(sb, 0, "ENDTAB");
 
-            G(sb, 0, "TABLE"); G(sb, 2, "LAYER"); G(sb, 70, LayerDefs.Length);
+            bool hatchLayer = _ents.Any(e => e.Type == "HATCH" && LayerOf(e) == Lay.Hatch) && !LayerDefs.Any(d => d.Name == Lay.Hatch);
+            G(sb, 0, "TABLE"); G(sb, 2, "LAYER"); G(sb, 70, LayerDefs.Length + (hatchLayer ? 1 : 0));
             foreach (var (name, color, lt) in LayerDefs)
             {
                 G(sb, 0, "LAYER"); G(sb, 2, name); G(sb, 70, 0); G(sb, 62, color); G(sb, 6, lt);
             }
+            if (hatchLayer) { G(sb, 0, "LAYER"); G(sb, 2, Lay.Hatch); G(sb, 70, 0); G(sb, 62, 8); G(sb, 6, "CONTINUOUS"); }   // lớp tô vật liệu
             G(sb, 0, "ENDTAB");
 
             G(sb, 0, "TABLE"); G(sb, 2, "STYLE"); G(sb, 70, 1);
@@ -583,7 +585,12 @@ public sealed partial class DxfWriter
         // ENTITIES
         G(sb, 0, "SECTION"); G(sb, 2, "ENTITIES");
         var map = std != null ? OutputNameMap(std) : null;
-        foreach (var e in _ents)
+        foreach (var e0 in _ents)
+        {
+            if (e0.Type == "HATCH") { foreach (var x in ExpandHatchR12(e0)) WriteEnt(x); continue; }   // R12: mô phỏng (DxfWriter.Hatch.cs)
+            WriteEnt(e0);
+        }
+        void WriteEnt(DxfEnt e)
         {
             G(sb, 0, e.Type);
             foreach (var (code, val) in e.Codes)

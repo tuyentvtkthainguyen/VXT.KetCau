@@ -17,7 +17,8 @@ namespace KetCauVXT.App;
 public partial class MainWindow
 {
     private enum PlanEditMode { Select, AddSlab, Balcony, Stair, Void, WC, Delete, AddBeam, AddWall, AssignWall, AssignBuildUp, AddCurvedBeam,
-        /* [BeamTools] MainWindow.BeamTools.cs */ QuickGridBeam, SecondaryBeam, CantileverBeam, MultiSelect }
+        /* [BeamTools] MainWindow.BeamTools.cs */ QuickGridBeam, SecondaryBeam, CantileverBeam, MultiSelect,
+        /* [Sàn hạ cốt] MainWindow.SlabDrop.cs */ SlabDropMode }
 
     private PlanEditMode _mode = PlanEditMode.Select;
 
@@ -41,6 +42,7 @@ public partial class MainWindow
         PlanEditMode.Stair => "Thêm cầu thang: bấm vào ô sàn / ô kín bởi dầm để biến thành ô cầu thang (tải truyền vào dầm viền).",
         PlanEditMode.Void => "Thêm giếng trời: bấm vào ô sàn / ô kín bởi dầm để biến thành giếng trời, thông tầng.",
         PlanEditMode.WC => "Sàn vệ sinh: bấm vào ô sàn để đổi thành sàn vệ sinh; bấm lại ô WC để trả về phòng ở.",
+        PlanEditMode.SlabDropMode => SlabDropHint,   // [Sàn hạ cốt]
         PlanEditMode.Delete => "Xoá: bấm vào tường, dầm, cột (hỏi lại), ô sàn hoặc lỗ sàn (cầu thang, giếng trời) để xoá.",
         PlanEditMode.AddBeam => "Thêm dầm: bấm điểm đầu rồi điểm cuối (bắt đầu dầm, nút, giao trục, giao điểm, trung điểm, vuông góc, điểm trên dầm – bật/tắt ở thanh 'Bắt điểm'); gõ số để nhập toạ độ x,y | @dx,dy | L<góc | L; bấm tiếp để vẽ nối; chuột phải / Esc để dừng.",
         PlanEditMode.QuickGridBeam or PlanEditMode.SecondaryBeam or PlanEditMode.CantileverBeam or PlanEditMode.MultiSelect => BeamToolHint(m),   // [BeamTools]
@@ -74,6 +76,7 @@ public partial class MainWindow
             case PlanEditMode.Select: return HitTest(s);
             case PlanEditMode.Balcony: return CurrentStory == AllStories ? null : NearestBeam(s, 10);
             case PlanEditMode.WC:
+            case PlanEditMode.SlabDropMode:   // [Sàn hạ cốt]
             {
                 var (x, y) = S2W(s);
                 return SlabAtPlan(x, y);
@@ -218,6 +221,14 @@ public partial class MainWindow
                     if (slab == null) { SetStatus("Không có ô sàn tại vị trí bấm – thêm ô sàn trước."); return; }
                     var use = ModelEdit.UseOf(_p, slab) == SlabUse.WC ? SlabUse.Normal : SlabUse.WC;
                     r = ModelEdit.SetSlabUse(_p, slab, use);
+                    select = slab;
+                    break;
+                }
+                case PlanEditMode.SlabDropMode:   // [Sàn hạ cốt] MainWindow.SlabDrop.cs
+                {
+                    var slab = ModelEdit.SlabAt(_p, st, x, y);
+                    if (slab == null) { SetStatus("Không có ô sàn tại vị trí bấm – thêm ô sàn trước."); return; }
+                    r = SlabDropClick(slab);
                     select = slab;
                     break;
                 }

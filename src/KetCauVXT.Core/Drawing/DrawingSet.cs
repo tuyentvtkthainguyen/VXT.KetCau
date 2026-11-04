@@ -19,6 +19,7 @@ public static class DrawingSet
         if (p == null) throw new ArgumentNullException(nameof(p));
         var res = new DrawingExportResult();
         List<DrawingItem> items;
+        using var fmtScope = CadFileWriters.UseFormat(o?.Format);   // tô vật liệu "tự động" theo định dạng chọn khi xuất
         using (DrawingOverlay.Collect(res.Report)) items = BuildDrawings(p, s);
         DrawingExport.Write(items, folder, o, p.Name, res);
         foreach (var m in res.Report.Messages()) if (!res.Messages.Contains(m)) res.Messages.Add(m);

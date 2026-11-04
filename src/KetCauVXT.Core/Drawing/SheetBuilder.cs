@@ -565,7 +565,7 @@ public static partial class SheetBuilder
         return outW;
     }
 
-    public static void ExportDxf(Project p, AnalysisResults r, DesignSummary d, Sheet s, string path)
+    public static string ExportDxf(Project p, AnalysisResults r, DesignSummary d, Sheet s, string path)
     {
         if (p == null) throw new ArgumentNullException(nameof(p));
         if (s == null) throw new ArgumentNullException(nameof(s));
@@ -574,9 +574,9 @@ public static partial class SheetBuilder
         {
             DrawingOverlay.Current?.Warn(FrozenSheetWarning(p, r, d, s, fz));
             DrawingOverlay.WriteFrozen(fz, path);
-            return;
+            return path;
         }
-        Compose(p, r, d, s).Save(path);
+        return CadFileWriters.Write(Compose(p, r, d, s), path);   // định dạng theo Chuẩn layer CAD (DWG → .dwg); trả đường dẫn thực
     }
 
     /// <summary>Mã băm tờ tự sinh (đã áp chỉnh sửa, không dùng bản khoá) – so với lúc khoá.</summary>
@@ -597,6 +597,7 @@ public static partial class SheetBuilder
         if (p == null) throw new ArgumentNullException(nameof(p));
         var res = new DrawingExportResult();
         var list = (sheets ?? p.Sheets).ToList();
+        using (CadFileWriters.UseFormat(o?.Format))
         using (DrawingOverlay.Collect(res.Report))
         {
             if (o == null || (o.Mode == DrawingExportMode.Split && string.IsNullOrWhiteSpace(o.FilePattern)))
@@ -626,8 +627,7 @@ public static partial class SheetBuilder
             string fn = FileName(s);
             for (int k = 2; !used.Add(fn); k++) fn = Path.GetFileNameWithoutExtension(FileName(s)) + "_" + k + ".dxf";
             string path = Path.Combine(folder, fn);
-            ExportDxf(p, r, d, s, path);
-            paths.Add(path);
+            paths.Add(ExportDxf(p, r, d, s, path));
         }
         return paths;
     }

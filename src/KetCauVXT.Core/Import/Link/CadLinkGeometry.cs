@@ -425,14 +425,15 @@ public static class CadLinkCache
     public static bool Accept(CadLink l, CadLinkGeometry g)
     {
         if (l == null || g == null) return false;
-        bool changed = !string.IsNullOrEmpty(l.LastHash) && !string.Equals(l.LastHash, g.Hash, StringComparison.OrdinalIgnoreCase);
+        bool first = string.IsNullOrEmpty(l.LastHash);
+        bool changed = !first && !string.Equals(l.LastHash, g.Hash, StringComparison.OrdinalIgnoreCase);
         l.LastHash = g.Hash; l.LastWriteUtc = g.WriteUtc == default ? l.LastWriteUtc : g.WriteUtc; l.LastLength = g.Length;
         l.InsUnits = g.InsUnits; l.DetectedUnitScale = g.UnitScale;
         if (!string.IsNullOrEmpty(g.Path)) l.FilePath = g.Path;
         if (string.IsNullOrWhiteSpace(l.Name) && !string.IsNullOrEmpty(g.Path)) l.Name = Path.GetFileName(g.Path);
         // lần đầu: ẩn sẵn các layer đang tắt trong AutoCAD
-        if (string.IsNullOrEmpty(l.SyncedHash) && l.HiddenLayers.Count == 0 && g.OffLayers.Count > 0 && Get(l) == null)
-            l.HiddenLayers.AddRange(g.OffLayers);
+        l.HiddenLayers ??= new List<string>();
+        if (first && l.HiddenLayers.Count == 0 && g.OffLayers.Count > 0) l.HiddenLayers.AddRange(g.OffLayers);
         Set(l, g);
         return changed;
     }

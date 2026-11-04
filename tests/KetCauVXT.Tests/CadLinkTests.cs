@@ -69,7 +69,7 @@ public static class CadLinkTests
 
     private static Project NewProject()
     {
-        var p = new Project { Name = "Kiểm thử bản vẽ link" };
+        var p = new Project { Name = "Kiểm thử bản vẽ link", CadStandard = CadStandard.Default() };   // quy tắc layer mặc định (không phụ thuộc chuẩn đang dùng)
         p.Stories.Add(new Story { Name = "T1", Elevation = 3.6, Height = 3.6 });
         p.Stories.Add(new Story { Name = "T2", Elevation = 6.9, Height = 3.3 });
         return p;

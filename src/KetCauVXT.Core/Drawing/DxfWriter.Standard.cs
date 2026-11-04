@@ -74,7 +74,7 @@ public sealed partial class DxfWriter
         foreach (var e in _ents)
             foreach (var (code, val) in e.Codes)
             {
-                if (code == 8 && val is string ln) AddLayer(map.TryGetValue(ln, out var on2) ? on2 : CadStandard.SafeLayerName(ln), 7, "CONTINUOUS");
+                if (code == 8 && val is string ln) AddLayer(map.TryGetValue(ln, out var on2) ? on2 : CadStandard.SafeLayerName(ln), ln == Lay.Hatch ? 8 : 7, "CONTINUOUS");
                 else if (code == 6 && val is string lt6) usedLt.Add(lt6);
             }
 
@@ -112,6 +112,53 @@ public sealed partial class DxfWriter
 
     /// <summary>Kiểu nét đã khai báo trong bảng LTYPE của lần ghi hiện tại (null = ghi kiểu cũ, không kiểm tra).</summary>
     private HashSet<string> _definedLtypes;
+
+    // ---- bảng layer / kiểu nét cho bộ ghi DXF 2018 / DWG (KetCauVXT.Dwg – CadDocWriter) ----
+    /// <summary>Định nghĩa kiểu nét (tên, mô tả, các đoạn: dương = nét, âm = khe, 0 = chấm) – cùng bảng với DXF R12.</summary>
+    public static IReadOnlyList<(string Name, string Desc, double[] Elems)> LinetypeTable =>
+        LtypeDefs.Select(d => (d.Name, d.Desc, d.Elems)).ToList();
+
+    /// <summary>Chuẩn layer dùng khi ghi (Standard → CadStandard.Active; null = tên nội bộ).</summary>
+    public CadStandard EffectiveStandard => Standard ?? CadStandard.Active;
+
+    /// <summary>Tên layer xuất của layer nội bộ theo chuẩn của bộ ghi (cùng quy tắc với DXF R12).</summary>
+    public string OutputLayerOf(string internalLayer)
+    {
+        var std = EffectiveStandard;
+        string ln = internalLayer ?? "0";
+        if (std == null) return ln;
+        return OutputNameMap(std).TryGetValue(ln, out var on) ? on : CadStandard.SafeLayerName(ln);
+    }
+
+    /// <summary>Bảng layer xuất (tên, màu ACI, kiểu nét, nét in mm, in) – cùng thứ tự/quy tắc gộp với bảng LAYER của DXF R12,
+    /// kèm layer thực thể dùng mà chuẩn chưa khai báo (HATCH màu 8, còn lại màu 7).</summary>
+    public List<(string Name, int Color, string LType, double Lineweight, bool Plot)> OutputLayerTable()
+    {
+        var std = EffectiveStandard;
+        var res = new List<(string Name, int Color, string LType, double Lineweight, bool Plot)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void AddLayer(string name, int color, string lt, double lw, bool plot)
+        {
+            if (string.IsNullOrEmpty(name) || !seen.Add(name)) return;
+            res.Add((name, color is >= 1 and <= 255 ? color : 7, CadStandard.NormalizeLinetype(lt), lw, plot));
+        }
+        var map = std != null ? OutputNameMap(std) : new Dictionary<string, string>(StringComparer.Ordinal);
+        var preset = CadStandard.PresetVxt();
+        foreach (var (key, color, lt) in LayerDefs)
+        {
+            var o = std?.Output(key);
+            if (o == null) AddLayer(key, color, lt, preset.FirstOrDefault(q => q.Key == key)?.Lineweight ?? 0, true);
+            else AddLayer(map[key], o.Color, o.Linetype, o.Lineweight, o.Plot);
+        }
+        foreach (var o in std?.OutputLayers ?? new List<OutputLayer>())
+            if (o != null && !string.IsNullOrEmpty(o.Key) && map.TryGetValue(o.Key, out var on)) AddLayer(on, o.Color, o.Linetype, o.Lineweight, o.Plot);
+        foreach (var e in _ents)
+        {
+            string ln = LayerOf(e);
+            AddLayer(OutputLayerOf(ln), ln == Lay.Hatch ? 8 : 7, "CONTINUOUS", ln == Lay.Hatch ? 0.09 : 0, true);
+        }
+        return res;
+    }
 }
 
 /// <summary>Liệt kê các layer (tên nội bộ) sẽ được ghi trong một lần xuất – dùng cho hộp "Xem/đổi tên layer trước khi xuất".</summary>

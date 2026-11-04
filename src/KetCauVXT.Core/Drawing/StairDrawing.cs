@@ -238,6 +238,24 @@ public static class StairDrawing
             prof.Add((xa, yi)); prof.Add((xb, yi));
         }
         prof.Add((X(run), Y(zT)));
+        if (w.HatchOn)   // tô vật liệu (DxfWriter.Hatch.cs): bản thang bê tông; bậc bê tông (liền bản) hoặc gạch xây (ANSI31)
+        {
+            if (s.Steps == StepConstruction.Concrete)
+            {
+                var all = new List<(double X, double Y)>(prof) { (X(run), Y(zSoffit(run))), (X(0), Y(zSoffit(0))) };
+                w.HatchMat(HatchMaterial.Concrete, all);
+            }
+            else
+            {
+                w.HatchMat(HatchMaterial.Concrete, new List<(double X, double Y)>
+                {
+                    (X(0), Y(zSoffit(0))), (X(run), Y(zSoffit(run))), (X(run), Y(zTopLine(run))), (X(0), Y(zB))
+                });
+                var steps = new List<(double X, double Y)>(prof);
+                if (Math.Abs(Y(zT) - Y(zTopLine(run))) > 1e-6) steps.Add((X(run), Y(zTopLine(run))));
+                w.HatchMat(HatchMaterial.Brick, steps);
+            }
+        }
         w.Polyline(Lay.BeTong, prof, false);
         w.Line(s.Steps == StepConstruction.Concrete ? Lay.BeTong : Lay.KyHieu, X(0), Y(zB), X(run), Y(zTopLine(run)));
         if (s.Steps == StepConstruction.Brick)

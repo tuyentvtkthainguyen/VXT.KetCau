@@ -156,7 +156,9 @@ public partial class MainWindow
             if (labels) AddText(s.Label, tag.Length > 0 ? new Point(c.X, c.Y - 7) : c, Brushes.DarkGreen, 10, true);
             if (tag.Length > 0)
                 AddText(tag, labels ? new Point(c.X, c.Y + 7) : c, use == SlabUse.WC ? Brushes.SteelBlue : Brushes.SaddleBrown, 10, true);
+            DrawSlabDropPlan(s, pts, c);   // [Sàn hạ cốt] gạch chéo + ▽ cao độ – MainWindow.SlabDrop.cs
         }
+        DrawSlabDropLegend();   // [Sàn hạ cốt]
 
         // ---- lỗ sàn: cầu thang, giếng trời ----
         foreach (var o in PlanOpenings()) DrawOpening(o);
@@ -737,6 +739,7 @@ public partial class MainWindow
         sb.AppendLine($"Hoạt tải (HT): {live:0.##} kN/m²");
         foreach (var a in _p.AreaLoads.Where(a => a.Slab == s.Id && a.Pattern != "HTHT" && a.Pattern != "HT"))
             sb.AppendLine($"Tải {a.Pattern}: {a.Q:0.##} kN/m²{(string.IsNullOrEmpty(a.Note) ? "" : " – " + a.Note)}");
+        sb.Append(SlabDropInfo(s));   // [Sàn hạ cốt]
         return sb.ToString();
     }
 
