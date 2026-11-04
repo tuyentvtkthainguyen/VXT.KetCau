@@ -565,6 +565,14 @@ SlabDropTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.Bas
 
 Console.WriteLine("49. Hatch vật liệu (R12 mô phỏng, DXF 2018/DWG có HATCH thật)");
 HatchTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("50. Triển khai hồ sơ: dầm / cột / sàn / móng đơn / móng băng / đài cọc, xuất DXF – Excel – Word");
+DetailingTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("51. Móng bè (phương pháp móng cứng, dải, chọc thủng)");
+RaftTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("52. Bê tông dự ứng lực (tổn hao, ứng suất, Mu, độ vồng)");
+PrestressTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("53. Bể nước BTCT (áp lực nước / đất, nứt, đẩy nổi)");
+WaterTankTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

@@ -91,6 +91,7 @@ public static class RebarSchedule
         foreach (var m in s.PileCaps) AddMember(m, "Đài cọc");
         foreach (var m in s.StripFootings) AddMember(m, "Móng băng");
         foreach (var m in s.StrapBeams ?? new List<KetCauVXT.Design.Foundation.StrapBeamDesign>()) AddMember(m, "Giằng móng");   // [MóngLệchTâm] dầm móng cân bằng DM
+        foreach (var (m, cat) in s.Others ?? new()) AddMember(m, cat);   // [Triển khai hồ sơ] Detailing/*
         StairSchedule.AppendTo(rows, s);   // cầu thang (Drawing/StairDrawing.cs)
         return rows;
     }

@@ -383,6 +383,10 @@ public class DesignSummary
     // ---- hết [MóngLệchTâm] ----
     public List<string> Warnings { get; set; } = new();
 
+    /// <summary>[Triển khai hồ sơ] cấu kiện khác (móng bè, bể nước, dầm DƯL…) đưa vào bảng thống kê thép: (cấu kiện, nhóm).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public List<(MemberDesignBase Member, string Category)> Others { get; set; } = new();
+
     public IEnumerable<MemberDesignBase> All =>
         Beams.Cast<MemberDesignBase>().Concat(Columns).Concat(Slabs).Concat(Footings).Concat(PileCaps).Concat(StripFootings).Concat(StrapBeams ?? new List<KetCauVXT.Design.Foundation.StrapBeamDesign>()).Concat(Steel);   // [MóngLệchTâm] StrapBeams
 }
