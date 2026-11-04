@@ -367,7 +367,7 @@ public class ManualStrip : IDetailMember
         w.DimChainH(xsCol, 0, -1300);
         w.Dim(0, 0, L, 0, -1900);
         w.Dim(L, 0, L, hs, 600);
-        w.Title(L / 2, -2500, RebarSchedule.MemberLabel("MẶT ĐỨNG MÓNG BĂNG " + Name, r.Quantity), DxfWriter.ScaleText(S));
+        w.Title(L / 2, -2500, RebarSchedule.MemberLabel("MẶT ĐỨNG MÓNG BĂNG " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, Name, true));
 
         // mặt cắt ngang 1-1 (chữ T ngược)
@@ -402,7 +402,7 @@ public class ManualStrip : IDetailMember
         x2.Dim(-bs / 2, hs, bs / 2, hs, 300);
         x2.Dim(B / 2, 0, B / 2, hf, 400);
         x2.Dim(B / 2, 0, B / 2, hs, 900);
-        x2.Title(0, -1800, "1-1", DxfWriter.ScaleText(Ss), true);
+        x2.Title(0, -1800, "1-1", DrawUtil.ScaleText(Ss), true);
         figs.Add(new Figure(x2, Name + " mặt cắt"));
         return figs;
     }
@@ -617,7 +617,7 @@ public class ManualPileCap : IDetailMember
         w.Dim(-L / 2, -B / 2, L / 2, -B / 2, -1500);
         w.DimChainV(ys, L / 2, L / 2 + 900);
         w.Dim(L / 2, -B / 2, L / 2, B / 2, 1500);
-        w.Title(0, -B / 2 - 2100, RebarSchedule.MemberLabel("MẶT BẰNG ĐÀI " + Name, r.Quantity), DxfWriter.ScaleText(S));
+        w.Title(0, -B / 2 - 2100, RebarSchedule.MemberLabel("MẶT BẰNG ĐÀI " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, Name, true));
 
         // mặt cắt 1-1 phương X
@@ -641,7 +641,7 @@ public class ManualPileCap : IDetailMember
         x2.Dim(L / 2, 0, L / 2, H, 600);
         x2.Dim(-L / 2, 0, L / 2, 0, -1600);
         x2.ElevMark(-L / 2 - 300, 0, DxfWriter.ElevText(-Df));
-        x2.Title(0, -2300, "1-1", DxfWriter.ScaleText(S), true);
+        x2.Title(0, -2300, "1-1", DrawUtil.ScaleText(S), true);
         figs.Add(new Figure(x2, Name + " mặt cắt"));
         return figs;
     }

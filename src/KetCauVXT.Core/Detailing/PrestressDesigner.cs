@@ -479,7 +479,7 @@ public static class PrestressDesigner
         string ns = (r.Ap > 0 ? Math.Round(r.Ap / StrandArea(inp.StrandType)).ToString("0", Dt.Inv) : inp.NumStrands.ToString(Dt.Inv)) + " tao " + inp.StrandType;
         w.LeaderTag(L * 0.3, -yt - (e0 + 4 * sag * 0.3 * 0.7), L * 0.3 + 600, -h - 900, "Cáp DƯL " + ns, 0, 1);
         w.Text(Lay.Chu, L / 2, ym - 2.2 * th, th, "ec = " + Dt.Mm(inp.EcMid) + "  (e0 = " + Dt.Mm(inp.EEnd) + ")", 0, 1, 2);
-        w.Title(L / 2, -h - 1500, $"{r.Name} (SL={Math.Max(1, r.Quantity)}; L={Math.Round(L).ToString("0", Dt.Inv)})", DxfWriter.ScaleText(S));
+        w.Title(L / 2, -h - 1500, $"{r.Name} (SL={Math.Max(1, r.Quantity)}; L={Math.Round(L).ToString("0", Dt.Inv)})", DrawUtil.ScaleText(S));
         return new Figure(w, r.Name + " – mặt đứng cáp");
     }
 
@@ -537,7 +537,7 @@ public static class PrestressDesigner
         if (tee) w.Dim(-b / 2, -h, b / 2, -h, -400 * k, k);
         w.Dim(-bf / 2, 0, -bf / 2, -h, -150 * k, k);
         w.Dim(b / 2, -h, b / 2, yc, -120 * k, k);
-        w.Title(0, -h - 700 * k, "1-1", DxfWriter.ScaleText(Ss), true);
+        w.Title(0, -h - 700 * k, "1-1", DrawUtil.ScaleText(Ss), true);
         return new Figure(w, r.Name + " – mặt cắt 1-1");
     }
 }

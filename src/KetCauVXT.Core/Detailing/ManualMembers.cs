@@ -591,7 +591,7 @@ public class ManualSlab : IDetailMember
         w.Dim(0, 0, lx, 0, -900);
         w.Dim(0, 0, 0, ly, 900);
         w.Text(Lay.Chu, lx / 2, ly / 2, w.Th, "S = " + Dt.Mm(T) + " mm", 0, 1, 2);
-        w.Title(lx / 2, -1500, RebarSchedule.MemberLabel("MẶT BẰNG THÉP SÀN " + Name, r.Quantity), DxfWriter.ScaleText(S));
+        w.Title(lx / 2, -1500, RebarSchedule.MemberLabel("MẶT BẰNG THÉP SÀN " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, "Sàn " + Name));
 
         // mặt cắt 1-1 theo phương ngắn
@@ -616,7 +616,7 @@ public class ManualSlab : IDetailMember
         }
         sct.Dim(0, -t, lx, -t, -bh - 400);
         sct.Dim(lx + bw, -t, lx + bw, 0, 500);
-        sct.Title(lx / 2, -bh - 1000, "1-1", DxfWriter.ScaleText(Ss), true);
+        sct.Title(lx / 2, -bh - 1000, "1-1", DrawUtil.ScaleText(Ss), true);
         figs.Add(new Figure(sct, "Mặt cắt sàn " + Name));
         return figs;
     }
