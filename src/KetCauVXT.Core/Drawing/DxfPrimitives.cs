@@ -4,12 +4,13 @@ using System.Text;
 namespace KetCauVXT.Drawing;
 
 /// <summary>Loại nét vẽ cơ bản đọc ra từ một mảnh hình DXF (để vẽ lại trên màn hình / máy in).</summary>
-public enum PrimKind { Line, Polyline, Circle, Arc, Solid, Text }
+public enum PrimKind { Line, Polyline, Circle, Arc, Solid, Text, Hatch }
 
 /// <summary>Một nét vẽ cơ bản, toạ độ theo đơn vị của mảnh hình (mm mô hình).
 /// Line: Pts = x1,y1,x2,y2. Polyline: Pts = x0,y0,x1,y1..., Closed, Width.
 /// Circle/Arc: Pts = cx,cy; R; A1→A2 (độ, ngược chiều kim đồng hồ). Solid: Pts = 4 đỉnh theo thứ tự chu vi.
-/// Text: Pts = x,y (điểm chèn); H (chiều cao chữ), Rot (độ), HA (0 trái,1 giữa,2 phải), VA (0 chân,1 đáy,2 giữa,3 đỉnh).</summary>
+/// Text: Pts = x,y (điểm chèn); H (chiều cao chữ), Rot (độ), HA (0 trái,1 giữa,2 phải), VA (0 chân,1 đáy,2 giữa,3 đỉnh).
+/// Hatch: Pts = các vòng biên nối tiếp (x0,y0,x1,y1…), Loops = số đỉnh từng vòng (vòng đầu = biên ngoài), Pattern, PatScale, Rot = góc mẫu.</summary>
 public sealed class DrawPrim
 {
     public PrimKind Kind;
@@ -26,6 +27,14 @@ public sealed class DrawPrim
     public double WF = 1;
     /// <summary>Chỉ số thực thể trong bộ ghi (để chọn/hiệu chỉnh trên màn hình); −1 = không rõ.</summary>
     public int Ent = -1;
+    /// <summary>Màu ACI của thực thể (mã 62; 0 = theo lớp).</summary>
+    public int Aci;
+    /// <summary>Hatch: số đỉnh của từng vòng biên.</summary>
+    public int[] Loops;
+    /// <summary>Hatch: tên mẫu (SOLID, ANSI31, AR-CONC…).</summary>
+    public string Pattern;
+    /// <summary>Hatch: tỷ lệ mẫu (đơn vị mô hình / đơn vị mẫu).</summary>
+    public double PatScale;
 }
 
 public sealed partial class DxfWriter
@@ -56,6 +65,12 @@ public sealed partial class DxfWriter
         foreach (var e in _ents)
         {
             entIndex++;
+            if (e.Type == "HATCH")   // miền tô (DxfWriter.Hatch.cs)
+            {
+                var hd = ParseHatch(e);
+                if (hd != null && hd.Loops.Count > 0) res.Add(HatchPrim(hd, entIndex));
+                continue;
+            }
             var pr = new DrawPrim { Ent = entIndex };
             double x0 = 0, y0 = 0, x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0;
             bool layerSet = false, inVertex = false;
@@ -67,6 +82,7 @@ public sealed partial class DxfWriter
                 if (code == 8) { if (!layerSet) { pr.Layer = val as string ?? "0"; layerSet = true; } continue; }
                 if (code == 6) { pr.LType = val as string; continue; }
                 if (code == 1) { pr.Text = Decode(val as string); continue; }
+                if (code == 62) { if (!inVertex && val is int aci) pr.Aci = aci; continue; }
                 double d = val is double dd ? dd : val is int ii ? ii : 0;
                 if (e.Type == "POLYLINE")
                 {
@@ -138,7 +154,7 @@ public sealed partial class DxfWriter
                     if (code >= 10 && code <= 18) v = d * k + dx;
                     else if (code >= 20 && code <= 28) v = d * k + dy;
                     else if (code == 40) v = d * k;
-                    else if (code == 41 && e.Type == "POLYLINE") v = d * k;
+                    else if (code == 41 && (e.Type == "POLYLINE" || e.Type == "HATCH")) v = d * k;   // HATCH: tỷ lệ mẫu
                 }
                 n.Codes.Add((code, v));
             }
