@@ -115,7 +115,7 @@ public sealed class DetailingWindow : Window
         DockPanel.SetDock(bar, Dock.Top);
         dock.Children.Add(bar);
 
-        var sb = new StatusBar(); sb.Items.Add(_status);
+        var sb = new System.Windows.Controls.Primitives.StatusBar(); sb.Items.Add(_status);
         DockPanel.SetDock(sb, Dock.Bottom);
         dock.Children.Add(sb);
 
