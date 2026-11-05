@@ -113,12 +113,12 @@ public class ManualStair : IDetailMember
             {
                 r.Checks.AddRange(part.Checks);
                 foreach (var m in part.Messages) r.Messages.Add(part.Name + ": " + m);
-                int q = Math.Max(1, part.Quantity);
+                int qn = Math.Max(1, part.Quantity);
                 foreach (var b in part.Bars.Where(b => b.Count > 0 && b.Dia > 0))
                 {
                     r.Bars.Add(new BarMark
                     {
-                        Mark = b.Mark, Role = part.Name + " – " + b.Role, Dia = b.Dia, Count = b.Count * q, Length = b.Length, Shape = b.Shape,
+                        Mark = b.Mark, Role = part.Name + " – " + b.Role, Dia = b.Dia, Count = b.Count * qn, Length = b.Length, Shape = b.Shape,
                         Spacing = b.Spacing, IsTop = b.IsTop, Segments = b.Segments?.ToList() ?? new List<double>(), Start = b.Start, End = b.End
                     });
                 }
