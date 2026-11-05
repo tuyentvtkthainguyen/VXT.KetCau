@@ -11,6 +11,7 @@ using Shapes = System.Windows.Shapes;
 using FixedDocument = System.Windows.Documents.FixedDocument;
 using FixedPage = System.Windows.Documents.FixedPage;
 using PageContent = System.Windows.Documents.PageContent;
+using PlacedFigure = KetCauVXT.Detailing.PlacedFigure;
 
 namespace KetCauVXT.App;
 
