@@ -32,12 +32,14 @@ public static class SlabPlanTests
         check("Ô 2-1: cạnh trên khớp (ô 2-2 không hạ)", B(p21.FixT), 0, 0);
         check("Ô 1-1 – 1-2 cùng cốt → liên tục", B(p11.FixT && p12.FixB), 1, 0);
         check("Ô 1-1 cạnh trái là biên → khớp", B(p11.FixL), 0, 0);
-        // ô 1-1: 1 cạnh ngàm mỗi phương → Marcus kx = 2,08·4,2⁴, ky = 2,08·4,5⁴; q = 1,1·25·0,1 + 1,2·1,5 + 1,2·2 = 6,95
+        // ô 1-1: phương X khớp 2 đầu (biên + bậc sàn), phương Y ngàm 1 đầu → Marcus kx = 5·4,2⁴, ky = 2,08·4,5⁴; q = 1,1·25·0,1 + 1,2·1,5 + 1,2·2 = 6,95
         double q = 1.1 * 25 * 0.1 + 1.2 * 1.5 + 1.2 * 2.0;
         check("Ô 1-1: q tính toán = 6,95 kN/m²", p11.Q, 6.95, 1e-12);
-        double kx = 2.08 * Math.Pow(4.2, 4), ky = 2.08 * Math.Pow(4.5, 4), qx = q * ky / (kx + ky);
-        check("Ô 1-1: Mx nhịp = 9·qx·lx²/128 (ngàm–khớp)", p11.MxSpan, 9 * qx * 4.2 * 4.2 / 128, 1e-9);
-        check("Ô 1-1: Mx gối = qx·lx²/8", p11.MxSup, qx * 4.2 * 4.2 / 8, 1e-9);
+        double kx = 5 * Math.Pow(4.2, 4), ky = 2.08 * Math.Pow(4.5, 4), qx = q * ky / (kx + ky), qy = q - qx;
+        check("Ô 1-1: Mx nhịp = qx·lx²/8 (khớp–khớp)", p11.MxSpan, qx * 4.2 * 4.2 / 8, 1e-9);
+        check("Ô 1-1: Mx gối = 0 (không ngàm)", p11.MxSup + 1, 1, 1e-12);
+        check("Ô 1-1: My nhịp = 9·qy·ly²/128 (ngàm–khớp)", p11.MySpan, 9 * qy * 4.5 * 4.5 / 128, 1e-9);
+        check("Ô 1-1: My gối = qy·ly²/8", p11.MySup, qy * 4.5 * 4.5 / 8, 1e-9);
         check("Ô 2-1 (khớp X, khớp Y) Mx = qx·lx²/8 với kx = 5·3,6⁴, ky = 5·4,5⁴",
             p21.MxSpan, q * (5 * Math.Pow(4.5, 4)) / (5 * Math.Pow(3.6, 4) + 5 * Math.Pow(4.5, 4)) * 3.6 * 3.6 / 8, 1e-9);
 
