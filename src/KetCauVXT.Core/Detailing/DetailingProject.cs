@@ -215,11 +215,12 @@ public static class DetailingExport
         try { lsh = LintelPlanDrawing.Sheets(p, results); }
         catch (Exception e) { log.Add("Không lập được mặt bằng lanh tô: " + e.Message); lsh = new(); }
         var lintelDone = new HashSet<IDetailMember>();
-        foreach (var (m, r) in results)
+        bool lintelSheets = false;
+        void LintelSheets()
         {
-            if (lintelDone.Contains(m)) continue;
-            var ls = lsh.FirstOrDefault(x => x.Members.Contains(m));
-            if (ls.Members != null)
+            // mục LANH TÔ – Ô VĂNG CÁC TẦNG: mỗi tầng một tờ (mặt bằng lanh tô tầng + chi tiết lanh tô của tầng), theo cao độ
+            lintelSheets = true;
+            foreach (var ls in lsh)
             {
                 var lf = new List<Figure>();
                 if (ls.Plan != null) lf.Add(ls.Plan);
@@ -230,11 +231,16 @@ public static class DetailingExport
                     if (lr != null) lf.AddRange(FiguresOf(lm, lr, p.Settings, log));
                 }
                 Sheet(lf, "LANH TÔ – Ô VĂNG " + (ls.Level?.Name ?? "").ToUpperInvariant(), "LanhTo_" + (ls.Level?.Name ?? ""));
-                continue;
             }
+        }
+        foreach (var (m, r) in results)
+        {
+            if (lintelDone.Contains(m)) continue;
+            if (!lintelSheets && lsh.Any(x => x.Members.Contains(m))) { LintelSheets(); continue; }
             var figs = FiguresOf(m, r, p.Settings, log);
             Sheet(figs, (r.Kind + " " + m.Name).ToUpperInvariant(), r.Kind + "_" + m.Name);
         }
+        if (!lintelSheets && lsh.Count > 0) LintelSheets();
         // 3. thống kê cốt thép
         var sch = RebarSchedule.BuildFigures(Summary(results), 1, 30);
         if (split)
