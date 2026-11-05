@@ -108,6 +108,20 @@ public static class BeamDrawing
             w.Line(Lay.BeTong, a, 0, e, 0);
             w.Line(Lay.BeTong, a, -h, e, -h);
         }
+        // [Chia đoạn] dầm kéo qua gối đầu / cuối đoạn tới đường cắt ngắt
+        if (_seg != null)
+        {
+            if (!double.IsNaN(_seg.CutL))
+            {
+                w.Line(Lay.BeTong, _seg.CutL, 0, xs[0] - sw[0] / 2, 0); w.Line(Lay.BeTong, _seg.CutL, -h, xs[0] - sw[0] / 2, -h);
+                w.BreakV(Lay.BeTong, _seg.CutL, 0.4 * h, -1.4 * h);
+            }
+            if (!double.IsNaN(_seg.CutR))
+            {
+                w.Line(Lay.BeTong, xs[^1] + sw[^1] / 2, 0, _seg.CutR, 0); w.Line(Lay.BeTong, xs[^1] + sw[^1] / 2, -h, _seg.CutR, -h);
+                w.BreakV(Lay.BeTong, _seg.CutR, 0.4 * h, -1.4 * h);
+            }
+        }
         // [Dầm móng] bê tông lót dưới đáy dầm (nhập tay – Detailing/ManualMembers.cs)
         if (d.ManualSlab != null && d.ManualSlab.LeanT > 0 && ns >= 2)
         {
@@ -163,7 +177,7 @@ public static class BeamDrawing
             layout.Reserve(new Rect2(xs[i] - sw[i] / 2, -h - stubDn - 0.5 * th, xs[i] + sw[i] / 2, stubUp + 0.5 * th));
 
         // ---- vị trí mặt cắt ----
-        var cuts = ComputeCuts(d, xs, sw, h, slabAt);
+        var cuts = _seg != null ? _seg.Cuts.Select(c => new Cut { X = c.X, Num = c.Num }).ToList() : ComputeCuts(d, xs, sw, h, slabAt);
         foreach (var c in cuts)
         {
             w.CutMark(c.X, 0.5 * th, c.X, 2.3 * th, c.Num.ToString(), c.X + 0.9 * th, 1.4 * th);
@@ -202,6 +216,8 @@ public static class BeamDrawing
         foreach (var sg in segs)
         {
             var (hs, he) = DrawUtil.Hooks(sg.Bar);
+            if (_seg != null && _seg.CutStart.Contains(sg.Bar)) hs = 0;   // thanh bị cắt ngắt ở đầu đoạn: không vẽ móc
+            if (_seg != null && _seg.CutEnd.Contains(sg.Bar)) he = 0;
             bool top = sg.Y > -h / 2 + 1e-6 || (sg.Bar.IsTop && sg.Y >= -h / 2 - 1e-6);
             double dir = top ? -1 : 1;
             var pts = new List<(double X, double Y)>();
@@ -228,6 +244,7 @@ public static class BeamDrawing
         {
             bool top = sg.Bar.IsTop && !gia.Contains(sg.Bar);
             string txt = DrawUtil.BarTag(sg.Bar.Count, sg.Bar.Dia);
+            if (_seg != null && _seg.CutStart.Contains(sg.Bar)) txt += " (tiếp)";   // thanh chạy tiếp từ đoạn trước
             double len = sg.X2 - sg.X1;
             double ax = DrawUtil.PickAnchor(sg.X1 + 0.08 * len, sg.X2 - 0.08 * len, top ? usedTop : usedBot, 1.6 * th);
             if (top)
@@ -292,7 +309,7 @@ public static class BeamDrawing
         }
 
         // ---- cao độ đỉnh dầm bên trái ----
-        if (style.ShowElevationMarks)
+        if (style.ShowElevationMarks && (_seg == null || _seg.No == 1))
         {
             w.ElevMark(xL - 2.5 * th, 0, DxfWriter.ElevText(d.TopElevation), -1);
             w.Line(Lay.KyHieu, xL - 2.5 * th, 0, xL - 0.3 * th, 0);
@@ -309,7 +326,9 @@ public static class BeamDrawing
 
         // ---- tên hình ----
         double Lout = (xs[^1] - xs[0]) + sw[0] / 2 + sw[^1] / 2;
+        if (_seg != null) Lout = _seg.FullLength;
         string title = $"{d.Name} (SL={Math.Max(1, d.Quantity)}; L={DxfWriter.N0(Math.Round(Lout / 10) * 10)})";
+        if (_seg != null) title += $" – ĐOẠN {_seg.No}/{_seg.Count} ({_seg.Range})";
         w.Title((xs[0] + xs[^1]) / 2, yChain + 6.5 * th, title, DrawUtil.ScaleText(S));
         if (d.IsCurved)
         {
@@ -321,12 +340,131 @@ public static class BeamDrawing
                 $"Dây cung {DxfWriter.N0(d.Chord * 1000)}, độ vồng {DxfWriter.N0(d.Sagitta * 1000)}" +
                 (style.ShowDesignValues ? $"; Tmax = {d.TorsionMax.ToString("0.0", DrawUtil.Inv)} kN.m" : ""), 0, 0, 0);
         }
+        if (_seg != null)
+        {
+            // ghi chú nối tiếp ở đường cắt ngắt
+            if (!double.IsNaN(_seg.CutR)) w.Text(Lay.Chu, _seg.CutR + 0.6 * th, -h / 2, 0.9 * th, $"XEM TIẾP ĐOẠN {_seg.No + 1}/{_seg.Count}", 0, 0, 2);
+            if (!double.IsNaN(_seg.CutL)) w.Text(Lay.Chu, _seg.CutL - 0.6 * th, -h / 2, 0.9 * th, $"TIẾP THEO ĐOẠN {_seg.No - 1}/{_seg.Count}", 0, 2, 2);
+            figs.Add(new Figure(w, d.Name + " – ĐOẠN " + _seg.No + "/" + _seg.Count, true));
+            return figs;   // mặt cắt vẽ một lần (hình riêng, Build đầy đủ)
+        }
         figs.Add(new Figure(w, d.Name, true));
 
         // ---- mặt cắt ----
         foreach (var c in cuts.GroupBy(x => x.Num).Select(g => g.First()).OrderBy(x => x.Num))
             figs.Add(new Figure(Section(c, b, h, cover, S, p), d.Name + " " + c.Num));
         return figs;
+    }
+
+    // ==================================================================
+    // CHIA MẶT ĐỨNG DẦM THÀNH NHIỀU ĐOẠN (dàn trang in vừa khổ giấy)
+    // ==================================================================
+    private sealed class SegCtx
+    {
+        public int No, Count;
+        public string Range = "";
+        public double FullLength;
+        public double CutL = double.NaN, CutR = double.NaN;
+        public HashSet<BarMark> CutStart = new(), CutEnd = new();
+        public List<(double X, int Num)> Cuts = new();
+    }
+    [ThreadStatic] private static SegCtx _seg;
+
+    /// <summary>Đoạn vượt qua gối đầu / cuối tới đường cắt ngắt (mm).</summary>
+    public const double SegmentOverhang = 350;
+
+    /// <summary>Các đoạn [gối đầu, gối cuối] theo chỉ số gối 0…n (n = số nhịp) từ danh sách gối chia (gối trong 1…n−1).</summary>
+    public static List<(int I0, int I1)> SegmentRanges(int spans, IEnumerable<int> breaks)
+    {
+        var b = (breaks ?? Enumerable.Empty<int>()).Where(x => x > 0 && x < spans).Distinct().OrderBy(x => x).ToList();
+        var res = new List<(int, int)>();
+        int a = 0;
+        foreach (var x in b) { res.Add((a, x)); a = x; }
+        res.Add((a, spans));
+        return res;
+    }
+
+    /// <summary>Gối chia đều: n đoạn, mỗi đoạn ≈ số nhịp bằng nhau.</summary>
+    public static List<int> EvenBreaks(int spans, int segments)
+    {
+        var res = new List<int>();
+        segments = Math.Clamp(segments, 1, Math.Max(1, spans));
+        for (int k = 1; k < segments; k++) res.Add((int)Math.Round(k * spans / (double)segments));
+        return res.Distinct().Where(x => x > 0 && x < spans).ToList();
+    }
+
+    /// <summary>MẶT ĐỨNG DẦM CHIA ĐOẠN tại các gối (breaks: chỉ số gối 1…n−1): mỗi đoạn gồm các nhịp liên tiếp, kéo qua gối đầu / cuối
+    /// tới đường cắt ngắt (đoạn kề chồng nhau 1 gối), thép bị cắt ngắt không vẽ móc ở đầu cắt, nhãn thép chạy tiếp ghi "(tiếp)",
+    /// số hiệu thép, vùng đai, vị trí mặt cắt giữ nguyên như dầm đầy đủ; tiêu đề "D1 (SL=…; L=…) – ĐOẠN 1/3 (trục 1–4)".
+    /// Trả về chỉ các hình mặt đứng; mặt cắt lấy từ <see cref="Build"/> (hình riêng, vẽ một lần).</summary>
+    public static List<Figure> BuildSegments(Project p, BeamLineDesign d, IEnumerable<int> breaks, DesignSummary ds = null)
+    {
+        var res = new List<Figure>();
+        var spans = d?.Spans ?? new List<BeamSpanResult>();
+        if (spans.Count == 0) return res;
+        var ranges = SegmentRanges(spans.Count, breaks);
+        var xs = new List<double> { 0 };
+        foreach (var sp in spans) xs.Add(xs[^1] + sp.L * 1000);
+        int ns = xs.Count;
+        var sw = new double[ns];
+        for (int i = 0; i < ns; i++)
+        {
+            double v = i == 0 ? spans[0].SupportWidthLeft : i == ns - 1 ? spans[^1].SupportWidthRight : Math.Max(spans[i - 1].SupportWidthRight, spans[i].SupportWidthLeft);
+            sw[i] = v > 1e-6 ? v * 1000 : 220;
+        }
+        double full = (xs[^1] - xs[0]) + sw[0] / 2 + sw[^1] / 2;
+        var allCuts = SectionCuts(d);
+        string Gn(int i) => (i == 0 ? spans[0].LeftSupport : spans[i - 1].RightSupport) ?? "";
+        for (int k = 0; k < ranges.Count; k++)
+        {
+            var (i0, i1) = ranges[k];
+            double x0 = xs[i0];                                   // gốc đoạn (mm, theo dầm đầy đủ)
+            double cutL = i0 > 0 ? xs[i0] - sw[i0] / 2 - SegmentOverhang : double.NaN;
+            double cutR = i1 < spans.Count ? xs[i1] + sw[i1] / 2 + SegmentOverhang : double.NaN;
+            double lo = double.IsNaN(cutL) ? double.NegativeInfinity : cutL, hi = double.IsNaN(cutR) ? double.PositiveInfinity : cutR;
+            var ctx = new SegCtx
+            {
+                No = k + 1, Count = ranges.Count, FullLength = full,
+                Range = "trục " + (Gn(i0).Length > 0 ? Gn(i0) : (i0 + 1).ToString()) + "–" + (Gn(i1).Length > 0 ? Gn(i1) : (i1 + 1).ToString()),
+                CutL = double.IsNaN(cutL) ? double.NaN : cutL - x0, CutR = double.IsNaN(cutR) ? double.NaN : cutR - x0
+            };
+            var sub = new BeamLineDesign
+            {
+                Name = d.Name, Quantity = d.Quantity, B = d.B, H = d.H, Section = d.Section, TopElevation = d.TopElevation, ManualSlab = d.ManualSlab,
+                Frames = d.Frames, IsCurved = d.IsCurved, CurveRadius = d.CurveRadius, ArcLength = d.ArcLength, Chord = d.Chord, Sagitta = d.Sagitta,
+                Spans = spans.GetRange(i0, i1 - i0)
+            };
+            foreach (var bm in d.Bars)
+            {
+                if (DrawUtil.IsStirrup(bm)) { sub.Bars.Add(bm); continue; }   // đai: theo vùng đai của đoạn
+                double a = Math.Min(bm.Start, bm.End) * 1000, e = Math.Max(bm.Start, bm.End) * 1000;
+                if (e < lo + 1 || a > hi - 1) continue;
+                double ca = Math.Max(a, lo), ce = Math.Min(e, hi);
+                var nb = new BarMark
+                {
+                    Mark = bm.Mark, Role = bm.Role, Dia = bm.Dia, Count = bm.Count, Length = bm.Length, Shape = bm.Shape, Segments = bm.Segments,
+                    Start = (ca - x0) / 1000, End = (ce - x0) / 1000, Spacing = bm.Spacing, Span = bm.Span, IsTop = bm.IsTop, SpliceAllowed = bm.SpliceAllowed
+                };
+                sub.Bars.Add(nb);
+                if (ca > a + 1) ctx.CutStart.Add(nb);
+                if (ce < e - 1) ctx.CutEnd.Add(nb);
+            }
+            if (d.StirrupZones != null && d.StirrupZones.Count > 0)
+                foreach (var z in d.StirrupZones)
+                {
+                    double za = z.From * 1000, ze = z.To * 1000;
+                    if (z.Span >= 0 && z.Span < spans.Count && (z.Span < i0 || z.Span >= i1)) continue;   // vùng đai thuộc nhịp ngoài đoạn
+                    if (ze <= xs[i0] + 1 || za >= xs[i1] - 1) continue;
+                    sub.StirrupZones.Add(new StirrupZone { Span = z.Span - i0, From = (za - x0) / 1000, To = (ze - x0) / 1000, Dia = z.Dia, Spacing = z.Spacing, Mark = z.Mark, Legs = z.Legs });
+                }
+            foreach (var (cx, num) in allCuts)
+                if (cx >= xs[i0] - 1 && cx <= xs[i1] + 1) ctx.Cuts.Add((cx - x0, num));
+            var prev = _seg;
+            _seg = ctx;
+            try { res.AddRange(Build(p, sub, ds)); }
+            finally { _seg = prev; }
+        }
+        return res;
     }
 
     /// <summary>Vị trí (mm từ tim gối đầu) và số hiệu các mặt cắt của dầm – như trên mặt đứng (dùng cho mặt bằng kết cấu, kiểm tra).</summary>

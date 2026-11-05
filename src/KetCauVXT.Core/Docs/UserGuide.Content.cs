@@ -432,6 +432,12 @@ public static partial class UserGuide
                 "**In…**: chọn máy in đã cài driver trên máy, số bản, khoảng trang; tờ tự thu vừa khổ giấy máy in (xoay nếu hợp hơn) hoặc chọn **In 1:1**. **Xuất DWG/DXF…**: mỗi tờ một file AutoCAD theo định dạng xuất đang chọn.")
             .Note("In và xuất PDF chỉ dùng máy in, phông chữ có sẵn trên máy – không kết nối mạng, không gửi dữ liệu đi đâu.");
 
+        c.Sec("che-do-ho-so.chia-dam", "Chia dầm nhiều đoạn, xuất tất cả theo bộ dàn trang")
+            .Bullets("Dầm nhiều nhịp có mặt đứng dài hơn vùng vẽ của khổ đang dùng (ở tỷ lệ chuẩn 1/50) được **chia đoạn tại gối**: mỗi đoạn gồm các nhịp liên tiếp, kéo qua gối đầu / cuối tới đường cắt ngắt (hai đoạn kề nhau cùng thể hiện gối chung), ghi \"XEM TIẾP ĐOẠN 2/3\" / \"TIẾP THEO ĐOẠN 1/3\"; tiêu đề \"D1 (SL=2; L=20300) – ĐOẠN 1/3 (trục 1–4)\".",
+                "Số hiệu thép, vùng đai, vị trí mặt cắt giữ như dầm nguyên; thanh chạy qua nhiều đoạn ghi nhãn ở mỗi đoạn, đoạn sau ghi \"(tiếp)\" và không vẽ móc ở đầu bị cắt ngắt. Mặt cắt là hình riêng, vẽ một lần, xếp thành hàng ngay dưới mặt đứng.",
+                "Cửa sổ **Dàn trang in** → mục **CHIA DẦM NHIỀU ĐOẠN**: Tự động | Không chia | Theo số nhịp/đoạn (vd. 2) | Tại các trục (vd. 3, 5 – số thứ tự gối hoặc tên trục); tuỳ chọn **cho thu tới 1/75 trước khi chia**; **Áp dụng cho dầm đang chọn** hoặc **cho mọi dầm**. Không chia: mặt đứng dài tự hạ tỷ lệ (khổ chốt) hoặc nâng khổ (khổ tự động).",
+                "**Xuất tất cả…** dùng chung bộ dàn trang: nếu đã dàn trang tay thì xuất đúng bộ tờ đó (hình mới được xếp thêm vào cuối), chưa dàn thì tự dàn – khổ, tỷ lệ tự động, cấu kiện cùng nhóm mặt bằng gộp tờ, tờ danh mục ở đầu. File tách rời đặt tên theo số hiệu + nội dung (KC-02_MB_KetCauMong, KC-05_Dầm_D1-D3…).");
+
         c.Sec("che-do-ho-so.kho-giay", "Khổ giấy và tỷ lệ tự động")
             .Bullets("Cửa sổ **Dàn trang in** → mục **BỘ TỜ**: **Khổ** (Tự động, A4, A3, A2, A1, A0), **hướng** (Ngang, Đứng, Tự động), **Tỷ lệ mặt bằng** (Tự động hoặc 1/50, 1/75, 1/100…), **Khổ lớn nhất** khi tự chọn khổ → **Áp dụng cho toàn bộ (tự dàn trang)**.",
                 "Khổ chốt (vd. A3): mặt bằng lấy **tỷ lệ lớn nhất** (trong dãy chuẩn 1/50 … 1/500) mà hình – kể cả kích thước, đầu trục, tiêu đề – vừa vùng vẽ trừ khung tên và lề; chi tiết giữ tỷ lệ chuẩn (1/20 – 1/50), mặt cắt 1/10 – 1/25, thu nhỏ nếu không vừa.",

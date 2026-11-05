@@ -603,6 +603,8 @@ Console.WriteLine("67. Khổ giấy – tỷ lệ tự động, vẽ lại đún
 PaperScaleTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("68. Trích chi tiết, mặt cắt mọi nhịp dầm, shop drawing, điểm cắt thép, ghi chú thép sàn");
 ShopCutTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("69. Chia dầm nhiều đoạn, xuất tất cả theo bộ dàn trang");
+BeamSplitTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

@@ -182,86 +182,38 @@ public static class DetailingExport
     public static List<string> Drawings(DetailingProject p, List<(IDetailMember Member, DetailResult Result)> results, string folder, bool split, List<string> log,
         KetCauVXT.Model.CadOutputFormat? format = null)
     {
+        // dùng chung BỘ DÀN TRANG IN (Detailing/SheetLayout.cs): bộ tờ người dùng đã dàn, hoặc tự dàn trang – khổ / tỷ lệ tự động,
+        // cấu kiện cùng nhóm mặt bằng gộp tờ, dầm dài chia đoạn, mặt cắt xếp dưới mặt đứng
         var fmt = format ?? DefaultFormat;
+        log ??= new List<string>();
         Directory.CreateDirectory(folder);
         var files = new List<string>();
-        var info = new SheetComposer.SheetInfo { ProjectName = p.ProjectName, Owner = p.Owner, Location = p.Location, Designer = p.Designer };
-        var all = new List<Figure>();
-        int no = 1;
-        void Sheet(List<Figure> figs, string title, string file)
-        {
-            if (figs.Count == 0) return;
-            if (split)
-            {
-                info.Title = title; info.SheetNo = "KC-" + no.ToString("00");
-                var (sc, paper) = SheetFor(figs);
-                var w = SheetComposer.Compose(figs, sc, info, paper);
-                files.Add(Write(w, Path.Combine(folder, info.SheetNo + "_" + Safe(file)), fmt));
-                no++;
-            }
-            else all.AddRange(figs);
-        }
-        // 1. mặt bằng kết cấu
-        List<Figure> plans;
-        try { plans = StructuralPlanDrawing.Build(p, results); }
-        catch (Exception e) { log.Add("Không vẽ được mặt bằng kết cấu: " + e.Message); plans = new List<Figure>(); }
-        foreach (var f in plans)
-        {
-            string key = f.Name == StructuralPlanDrawing.TitleFoundation ? "MB_KetCauMong" : f.Name == StructuralPlanDrawing.TitleColumns ? "MB_DinhViCot" : "MB_" + f.Name.Replace(StructuralPlanDrawing.TitleLevelPrefix, "").Split('(')[0].Trim();
-            Sheet(new List<Figure> { f }, f.Name, key);
-        }
-        // 2. chi tiết cấu kiện; lanh tô – ô văng đặt trên mặt bằng: gộp theo tầng (mặt bằng lanh tô tầng + chi tiết) – mục lanh tô cửa các tầng
-        List<(PlanLevel Level, Figure Plan, List<IDetailMember> Members)> lsh;
-        try { lsh = LintelPlanDrawing.Sheets(p, results); }
-        catch (Exception e) { log.Add("Không lập được mặt bằng lanh tô: " + e.Message); lsh = new(); }
-        var lintelDone = new HashSet<IDetailMember>();
-        bool lintelSheets = false;
-        void LintelSheets()
-        {
-            // mục LANH TÔ – Ô VĂNG CÁC TẦNG: mỗi tầng một tờ (mặt bằng lanh tô tầng + chi tiết lanh tô của tầng), theo cao độ
-            lintelSheets = true;
-            foreach (var ls in lsh)
-            {
-                var lf = new List<Figure>();
-                if (ls.Plan != null) lf.Add(ls.Plan);
-                foreach (var lm in ls.Members)
-                {
-                    lintelDone.Add(lm);
-                    var lr = results.FirstOrDefault(x => ReferenceEquals(x.Member, lm)).Result;
-                    if (lr != null) lf.AddRange(FiguresOf(lm, lr, p.Settings, log));
-                }
-                Sheet(lf, "LANH TÔ – Ô VĂNG " + (ls.Level?.Name ?? "").ToUpperInvariant(), "LanhTo_" + (ls.Level?.Name ?? ""));
-            }
-        }
-        foreach (var (m, r) in results)
-        {
-            if (lintelDone.Contains(m)) continue;
-            if (!lintelSheets && lsh.Any(x => x.Members.Contains(m))) { LintelSheets(); continue; }
-            var figs = FiguresOf(m, r, p.Settings, log);
-            Sheet(figs, (r.Kind + " " + m.Name).ToUpperInvariant(), r.Kind + "_" + m.Name);
-        }
-        if (!lintelSheets && lsh.Count > 0) LintelSheets();
-        // 3. thống kê cốt thép
-        var sch = RebarSchedule.BuildFigures(Summary(results), 1, 30);
+        var (set, cat) = SheetLayoutEngine.ExportSet(p, results, log);
+        var map = cat.GroupBy(f => f.Id).ToDictionary(g => g.Key, g => g.First());
+        var pages = SheetLayoutEngine.Pages(p, set, cat);
         if (split)
         {
-            info.Title = "THỐNG KÊ CỐT THÉP"; info.SheetNo = "KC-" + no.ToString("00");
-            var w = SheetComposer.Compose(sch, 100, info, "A1");
-            files.Add(Write(w, Path.Combine(folder, info.SheetNo + "_ThongKeThep"), fmt));
-            no++;
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (sh, w, _, _) in pages)
+            {
+                string nm = (sh.No ?? "KC") + "_" + Safe(SheetLayoutEngine.SheetSlug(sh, map));
+                string u = nm; int k = 2;
+                while (!used.Add(u)) u = nm + "_" + k++;
+                files.Add(Write(w, Path.Combine(folder, u), fmt));
+            }
+            return files;
         }
-        else all.AddRange(sch);
-        // 4. bảng thống kê vật liệu (thép, bê tông, ván khuôn)
-        List<Figure> mat;
-        try { mat = MaterialTable.Build(p, results) ?? new List<Figure>(); }
-        catch (Exception e) { log.Add("Không lập được bảng thống kê vật liệu: " + e.Message); mat = new List<Figure>(); }
-        Sheet(mat, "THỐNG KÊ VẬT LIỆU", "ThongKeVatLieu");
-        if (!split)
+        // một file: các tờ đặt cạnh nhau (tỷ lệ chung = tỷ lệ thô nhất; tờ tỷ lệ khác phóng đúng cỡ in)
+        double S = pages.Select(t => t.W.Scale).DefaultIfEmpty(100).Max();
+        var all = new DxfWriter(S);
+        double x = 0;
+        foreach (var (_, w, wmm, _) in pages)
         {
-            info.Title = "HỒ SƠ TRIỂN KHAI KẾT CẤU"; info.SheetNo = "KC-01";
-            var w = SheetComposer.Compose(all, SheetFor(all).Scale, info, "A1");
-            files.Add(Write(w, Path.Combine(folder, Safe(p.ProjectName) + "_BoBanVe"), fmt));
+            double k = S / Math.Max(w.Scale, 1e-9);
+            if (Math.Abs(k - 1) < 1e-9) all.Append(w, x, 0); else all.AppendScaled(w, k, x, 0);
+            x += (wmm + 20) * S;
         }
+        files.Add(Write(all, Path.Combine(folder, Safe(p.ProjectName) + "_BoBanVe"), fmt));
         return files;
     }
 

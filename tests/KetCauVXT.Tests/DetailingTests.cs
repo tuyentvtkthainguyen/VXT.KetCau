@@ -174,8 +174,13 @@ public static class DetailingTests
         var many = DetailingExport.Drawings(prj, res, Path.Combine(dir, "TachRoi"), true, log, KetCauVXT.Model.CadOutputFormat.DxfR12);
         foreach (var l in log) Console.WriteLine("    " + l);
         check("Xuất bản vẽ gộp: 1 file DXF", one.Count, 1, 0);
-        check("Xuất bản vẽ tách rời: 3 mặt bằng kết cấu + 13 cấu kiện + thống kê thép + thống kê vật liệu", many.Count, 18, 0);
-        check("Xuất tách rời: tờ đầu là mặt bằng kết cấu móng", B(Path.GetFileName(many[0]).StartsWith("KC-01_MB_KetCauMong")), 1, 0);
+        // từ bản dàn trang in chung (SheetLayout): tờ danh mục + mặt bằng + các tờ chi tiết (cấu kiện cùng nhóm mặt bằng gộp tờ, khổ / tỷ lệ tự động) + thống kê
+        var expSet = SheetLayoutEngine.ExportSet(prj, res, new List<string>()).Set;
+        check("Xuất bản vẽ tách rời: mỗi tờ dàn trang một file", many.Count, expSet.Sheets.Count, 0);
+        check("Xuất tách rời: tờ chi tiết gộp cấu kiện cùng nhóm mặt bằng (có tờ chứa ≥ 2 cấu kiện)",
+            B(expSet.Sheets.Any(sh => sh.Figures.Where(pf => !pf.Id.StartsWith("MB") && !pf.Id.StartsWith("TK")).Select(pf => pf.Id.Split(':').Length > 1 ? pf.Id.Split(':')[1] : "").Where(n => n.Length > 0).Distinct().Count() >= 2)), 1, 0);
+        check("Xuất tách rời: tờ đầu danh mục bản vẽ, tờ thứ hai mặt bằng kết cấu móng",
+            B(Path.GetFileName(many[0]).StartsWith("KC-01_DanhMuc")) + B(Path.GetFileName(many[1]).StartsWith("KC-02_MB_KetCauMong")), 2, 0);
         check("Xuất tách rời: tờ cuối là bảng thống kê vật liệu", B(Path.GetFileName(many[^1]).Contains("ThongKeVatLieu")), 1, 0);
         check("Xuất bản vẽ: không lỗi vẽ", log.Count, 0, 0);
         check("Bản vẽ gộp có chữ tiếng Việt mã hoá", B(File.ReadAllText(one[0]).Contains(DxfWriter.Encode("THỐNG KÊ"))), 1, 0);

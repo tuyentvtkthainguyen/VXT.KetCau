@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using KetCauVXT.Design;
 using KetCauVXT.Drawing;
 
 namespace KetCauVXT.Detailing;
@@ -63,6 +64,17 @@ public class DetailSheetSet
     public static readonly string[] Orientations = { OrientLandscape, OrientPortrait, OrientAuto };
     /// <summary>Khổ cho tờ mới (tự động → khổ lớn nhất cho phép).</summary>
     [JsonIgnore] public string DefaultPaper => !AutoPaper && SheetGeometry.Papers.Contains(Paper) ? Paper : SheetGeometry.Papers.Contains(MaxPaper) ? MaxPaper : "A1";
+    // ---- chia dầm nhiều đoạn ----
+    public const string SplitAuto = "Tự động", SplitNone = "Không chia", SplitPerSpans = "Theo số nhịp/đoạn:", SplitAtAxes = "Tại các trục:";
+    public static readonly string[] SplitModes = { SplitAuto, SplitNone, SplitPerSpans, SplitAtAxes };
+    /// <summary>Cách chia mặt đứng dầm mặc định (Tự động | Không chia | "Theo số nhịp/đoạn: 2" | "Tại các trục: 3, 5").</summary>
+    public string BeamSplit { get; set; } = SplitAuto;
+    /// <summary>Cách chia riêng từng dầm (tên dầm → cách chia).</summary>
+    public Dictionary<string, string> BeamSplitBy { get; set; } = new();
+    /// <summary>Tự động: cho phép thu mặt đứng dầm tới 1/75 trước khi chia đoạn.</summary>
+    public bool AllowBeam75 { get; set; }
+    public string SplitModeOf(string member) =>
+        member != null && BeamSplitBy != null && BeamSplitBy.TryGetValue(member, out var m) && !string.IsNullOrWhiteSpace(m) ? m : string.IsNullOrWhiteSpace(BeamSplit) ? SplitAuto : BeamSplit;
     /// <summary>Có tờ danh mục bản vẽ ở đầu bộ.</summary>
     public bool IndexSheet { get; set; } = true;
     /// <summary>Ngày ghi trong khung tên (người dùng nhập; để trống = không ghi).</summary>
@@ -120,6 +132,10 @@ public sealed class SheetFigure
     public double W => F?.W == null ? 0 : F.W.Extents.W / Math.Max(F.W.Scale, 1e-9);
     public double H => F?.W == null ? 0 : F.W.Extents.H / Math.Max(F.W.Scale, 1e-9);
 
+    /// <summary>Chi tiết đi cùng tờ với mặt bằng của nó (mục lanh tô – ô văng các tầng).</summary>
+    public bool KeepWithPlan;
+    /// <summary>Đoạn mặt đứng dầm chia đoạn (1…Segments); 0 = hình nguyên.</summary>
+    public int Segment, Segments;
     /// <summary>Vẽ lại hình ở mẫu số tỷ lệ s (null = không vẽ lại được – giữ tỷ lệ gốc).</summary>
     public Func<double, Figure> Redraw;
     private readonly Dictionary<double, Figure> _at = new();
@@ -223,8 +239,9 @@ public static class SheetLayoutEngine
     /// mỗi mặt bằng (móng, dầm móng, định vị cột, các tầng, lanh tô – ô văng từng tầng) → chi tiết các cấu kiện thuộc mặt bằng đó;
     /// cấu kiện chưa đặt trên mặt bằng xếp theo loại (móng → cột → dầm → sàn → lanh tô → thang → khác); cuối cùng là bảng thống kê.
     /// Section = số thứ tự nhóm; Part 0 = mặt bằng (+ mặt cắt), 1 = chi tiết, 2 = bảng. Mã hình ổn định giữa các lần sinh.</summary>
-    public static List<SheetFigure> Catalog(DetailingProject p, List<(IDetailMember Member, DetailResult Result)> results, List<string> log = null)
+    public static List<SheetFigure> Catalog(DetailingProject p, List<(IDetailMember Member, DetailResult Result)> results, List<string> log = null, DetailSheetSet set = null)
     {
+        set ??= p?.Sheets;
         log ??= new List<string>();
         var list = new List<SheetFigure>();
         var seen = new HashSet<string>();
@@ -241,7 +258,7 @@ public static class SheetLayoutEngine
         var done = new HashSet<IDetailMember>();
         var drawn = new HashSet<string>();
         int sec = 0;
-        void Members(IEnumerable<IDetailMember> ms, int s, string title)
+        void Members(IEnumerable<IDetailMember> ms, int s, string title, bool keepWithPlan = false)
         {
             foreach (var m in ms)
             {
@@ -249,6 +266,34 @@ public static class SheetLayoutEngine
                 List<Figure> figs;
                 try { figs = m.Draw(r, p.Settings) ?? new List<Figure>(); }
                 catch (Exception e) { log.Add("Không vẽ được " + m.Name + ": " + e.Message); continue; }
+                // DẦM DÀI: mặt đứng chia đoạn tại gối cho vừa khổ giấy (mặt cắt giữ hình riêng, vẽ một lần)
+                if (m is ManualBeam && r?.Source is BeamLineDesign bd && bd.Spans.Count >= 2 && figs.Count > 0 && figs[0].Name == bd.Name)
+                {
+                    List<int> brk = null;
+                    try { brk = BeamBreaks(set, m.Name, bd, figs[0], p.Settings); }
+                    catch (Exception e) { log.Add("Không chia được dầm " + m.Name + ": " + e.Message); }
+                    if (brk != null && brk.Count > 0)
+                    {
+                        var proj = DetailShim.Project(p.Settings);
+                        List<Figure> segF = null;
+                        try { segF = BeamDrawing.BuildSegments(proj, bd, brk); } catch (Exception e) { log.Add("Không chia được dầm " + m.Name + ": " + e.Message); }
+                        if (segF != null && segF.Count > 1)
+                        {
+                            double b0s = figs[0].W.Scale;
+                            for (int k = 0; k < segF.Count; k++)
+                            {
+                                int kk = k; var brk0 = brk; var bd0 = bd;
+                                Add(new SheetFigure
+                                {
+                                    Id = m.GetType().Name + ":" + m.Name + ":" + segF[k].Name, Section = s, Part = 1, Member = m.Name, Kind = r?.Kind ?? "",
+                                    Caption = (r?.Kind ?? "") + " " + segF[k].Name, F = segF[k], KeepWithPlan = keepWithPlan, Segment = k + 1, Segments = segF.Count,
+                                    Redraw = sc => Pick(RedrawAt(b0s, sc, () => BeamDrawing.BuildSegments(DetailShim.Project(p.Settings), bd0, brk0)), kk, null)
+                                }, title);
+                            }
+                            figs = figs.Skip(1).ToList();
+                        }
+                    }
+                }
                 for (int i = 0; i < figs.Count; i++)
                 {
                     int idx = i; var mm = m; var rr0 = r; double b0 = figs[i].W.Scale; string fn = figs[i].Name;
@@ -256,7 +301,7 @@ public static class SheetLayoutEngine
                     {
                         Id = m.GetType().Name + ":" + m.Name + ":" + (string.IsNullOrEmpty(figs[i].Name) ? i.ToString() : figs[i].Name),
                         Section = s, Part = 1, Member = m.Name, Kind = r?.Kind ?? "",
-                        Caption = (r?.Kind ?? "") + " " + m.Name + (string.IsNullOrEmpty(figs[i].Name) ? "" : " – " + figs[i].Name), F = figs[i],
+                        Caption = (r?.Kind ?? "") + " " + m.Name + (string.IsNullOrEmpty(figs[i].Name) ? "" : " – " + figs[i].Name), F = figs[i], KeepWithPlan = keepWithPlan,
                         // vẽ lại cấu kiện với mọi tỷ lệ nhân cùng hệ số (hình chính b0 → sc)
                         Redraw = sc => Pick(RedrawAt(b0, sc, () => mm.Draw(rr0, p.Settings)), idx, fn)
                     }, title);
@@ -285,7 +330,7 @@ public static class SheetLayoutEngine
                     Redraw = sc => Pick(RedrawAt(b1, sc, () => StructuralPlanDrawing.ForGroup(p, results, gg)), -1, nm)
                 }, title);
             }
-            Members(g.Members, s, title);
+            Members(g.Members, s, title, g.Kind == StructuralPlan.LintelGroupKind);
         }
         // cấu kiện chưa đặt trên mặt bằng: theo loại
         var un = results.Select(t => t.Member).Where(m => m != null && !done.Contains(m)).ToList();
@@ -308,6 +353,62 @@ public static class SheetLayoutEngine
         }
         catch (Exception e) { log.Add("Không lập được thống kê vật liệu: " + e.Message); }
         return list;
+    }
+
+    /// <summary>Các gối chia mặt đứng dầm theo lựa chọn "Chia dầm" của bộ tờ (Tự động | Không chia | n nhịp/đoạn | tại các trục):
+    /// tự động → mặt đứng ở tỷ lệ chuẩn (1/50; cho phép 1/75 nếu chọn) rộng hơn vùng vẽ khổ đang dùng thì chia số đoạn ít nhất mà mỗi đoạn vừa.</summary>
+    public static List<int> BeamBreaks(DetailSheetSet set, string member, BeamLineDesign d, Figure whole, DetailSettings st)
+    {
+        int n = d.Spans.Count;
+        string mode = set?.SplitModeOf(member) ?? DetailSheetSet.SplitAuto;
+        if (mode == DetailSheetSet.SplitNone) return new List<int>();
+        if (mode.StartsWith(DetailSheetSet.SplitPerSpans))
+        {
+            int k = int.TryParse(mode.Substring(DetailSheetSet.SplitPerSpans.Length).Trim(), out int v) ? Math.Max(1, v) : 2;
+            var r = new List<int>();
+            for (int i = k; i < n; i += k) r.Add(i);
+            return r;
+        }
+        if (mode.StartsWith(DetailSheetSet.SplitAtAxes))
+        {
+            // "tại: 2, 4" – số thứ tự gối 1…n+1 (gối đầu = 1) hoặc tên trục
+            var r = new List<int>();
+            foreach (var tok in mode.Substring(DetailSheetSet.SplitAtAxes.Length).Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                int idx = -1;
+                for (int i = 0; i <= n; i++)
+                {
+                    string g = (i == 0 ? d.Spans[0].LeftSupport : d.Spans[i - 1].RightSupport) ?? "";
+                    if (string.Equals(g, tok, StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
+                }
+                if (idx < 0 && int.TryParse(tok, out int num)) idx = num - 1;
+                if (idx > 0 && idx < n) r.Add(idx);
+            }
+            return r.Distinct().OrderBy(x => x).ToList();
+        }
+        // tự động
+        string paper = set == null ? "A1" : set.AutoPaper ? (set.MaxPaper ?? "A1") : set.Paper;
+        bool anyOrient = set?.Orientation == DetailSheetSet.OrientAuto;
+        bool por = set?.Orientation == DetailSheetSet.OrientPortrait;
+        double avail = Math.Max(SheetGeometry.Drawable(paper, por).W, anyOrient ? SheetGeometry.Drawable(paper, !por).W : 0) - 2;
+        double W(Figure f) => f?.W == null ? 0 : f.W.Extents.W / Math.Max(f.W.Scale, 1e-9);
+        double b0 = whole.W.Scale;
+        if (W(whole) <= avail) return new List<int>();
+        if (set?.AllowBeam75 == true)
+        {
+            var at75 = RedrawAt(b0, 75, () => BeamDrawing.Build(DetailShim.Project(st), d)).FirstOrDefault();
+            if (W(at75) <= avail) return new List<int>();
+        }
+        var proj = DetailShim.Project(st);
+        for (int seg = 2; seg <= n; seg++)
+        {
+            var brk = BeamDrawing.EvenBreaks(n, seg);
+            var parts = BeamDrawing.BuildSegments(proj, d, brk);
+            if (parts.Count > 0 && parts.All(f => W(f) <= avail)) return brk;
+        }
+        var one = new List<int>();
+        for (int i = 1; i < n; i++) one.Add(i);
+        return one;   // mỗi nhịp một đoạn
     }
 
     /// <summary>Gọi hàm vẽ trong phạm vi đổi tỷ lệ: mọi tỷ lệ x → x · sc / b0 (hình chính b0 → sc; mặt cắt kèm theo đổi cùng hệ số).</summary>
@@ -498,7 +599,7 @@ public static class SheetLayoutEngine
         var used = new HashSet<string>(locked.SelectMany(s => s.Figures.Select(pf => pf.Id)));
         var fresh = new List<(int Section, DetailSheet S)>();
         // mỗi nhóm (mặt bằng / chi tiết thuộc mặt bằng / bảng) bắt đầu tờ mới
-        foreach (var grp in catalog.Where(f => !used.Contains(f.Id)).GroupBy(f => f.Section * 10 + f.Part).OrderBy(g => g.Key))
+        foreach (var grp in catalog.Where(f => !used.Contains(f.Id)).GroupBy(f => f.Section * 10 + (f.KeepWithPlan ? 0 : f.Part)).OrderBy(g => g.Key))
         {
             var items = grp.ToList();
             // tỷ lệ từng hình theo khổ / tỷ lệ chốt, rồi khổ – hướng giấy
@@ -527,9 +628,50 @@ public static class SheetLayoutEngine
             }
             DetailSheet cur = null; List<Rect2> rects = null;
             int part = 0;
-            foreach (var f in items)
+            // khối hình của cùng một cấu kiện: mặt đứng (các đoạn) trên cùng, mặt cắt xếp thành hàng ngay dưới, đáy hình trong hàng thẳng nhau
+            var units = new List<(List<(SheetFigure F, double Dx, double Dy)> Parts, double W, double H, string Caption)>();
             {
-                double fw = Wd(f), fh = Hd(f);
+                var dMax = SheetGeometry.Drawable(set.AutoPaper ? (set.MaxPaper ?? "A1") : set.Paper, portrait);
+                int i0 = 0;
+                while (i0 < items.Count)
+                {
+                    var f0 = items[i0];
+                    int j = i0 + 1;
+                    if (f0.Part == 1 && !string.IsNullOrEmpty(f0.Member))
+                        while (j < items.Count && items[j].Member == f0.Member && items[j].Part == 1) j++;
+                    var mem = items.GetRange(i0, j - i0);
+                    i0 = j;
+                    if (mem.Count == 1) { units.Add((new List<(SheetFigure, double, double)> { (mem[0], 0, 0) }, Wd(mem[0]), Hd(mem[0]), mem[0].Caption)); continue; }
+                    var heads = mem.Where(f => f.Segment > 0).ToList();
+                    if (heads.Count == 0) heads.Add(mem.OrderByDescending(f => Wd(f)).First());
+                    var rest = mem.Where(f => !heads.Contains(f)).ToList();
+                    double wrap = Math.Max(heads.Max(f => Wd(f)), Math.Min(dMax.W, 0.7 * dMax.W));
+                    var parts = new List<(SheetFigure F, double Dx, double Dy)>();
+                    double y = 0, wMax = 0;
+                    foreach (var f in heads) { parts.Add((f, 0, y)); y += Hd(f) + SheetGeometry.Gap; wMax = Math.Max(wMax, Wd(f)); }
+                    double x = 0, rowH = 0;
+                    var row = new List<SheetFigure>();
+                    void Flush()
+                    {
+                        foreach (var rf in row) { var idx = parts.FindIndex(t => t.F == rf); parts[idx] = (rf, parts[idx].Dx, y + rowH - Hd(rf)); }   // căn đáy
+                        if (row.Count > 0) y += rowH + SheetGeometry.Gap;
+                        x = 0; rowH = 0; row.Clear();
+                    }
+                    foreach (var f in rest)
+                    {
+                        if (x > 0 && x + Wd(f) > wrap) Flush();
+                        parts.Add((f, x, y)); row.Add(f);
+                        x += Wd(f) + SheetGeometry.Gap; rowH = Math.Max(rowH, Hd(f)); wMax = Math.Max(wMax, x - SheetGeometry.Gap);
+                    }
+                    Flush();
+                    double hTot = Math.Max(0, y - SheetGeometry.Gap);
+                    if (wMax <= dMax.W && hTot <= dMax.H - SheetGeometry.TitleH) units.Add((parts, wMax, hTot, mem[0].Caption));
+                    else foreach (var f in mem) units.Add((new List<(SheetFigure, double, double)> { (f, 0, 0) }, Wd(f), Hd(f), f.Caption));
+                }
+            }
+            foreach (var u in units)
+            {
+                double fw = u.W, fh = u.H;
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
                     if (cur == null)
@@ -547,21 +689,26 @@ public static class SheetLayoutEngine
                         fresh.Add((grp.Key / 10, cur)); part++;
                     }
                     var spot = FindSpot(cur, rects, fw, fh, set);
-                    if (spot is { } sp)
-                    {
-                        cur.Figures.Add(new PlacedFigure { Id = f.Id, X = sp.X, Y = sp.Y, Scale = scl[f.Id] });
-                        rects.Add(new Rect2(sp.X, sp.Y, sp.X + fw, sp.Y + fh));
-                        break;
-                    }
-                    if (cur.Figures.Count == 0)
+                    bool forced = false;
+                    if (spot == null && cur.Figures.Count == 0)
                     {
                         // quá lớn kể cả trên tờ trống khổ lớn nhất: đặt ở góc trái trên, ghi cảnh báo
                         var a = SheetGeometry.Drawable(cur.Paper, cur.Portrait);
-                        cur.Figures.Add(new PlacedFigure { Id = f.Id, X = a.X1, Y = a.Y2 - fh, Scale = scl[f.Id] });
-                        rects.Add(new Rect2(a.X1, a.Y2 - fh, a.X1 + fw, a.Y2));
-                        log.Add("Hình \"" + f.Caption + "\" lớn hơn khổ " + cur.Paper + " – cần thu tỷ lệ hoặc chọn khổ lớn hơn.");
+                        spot = (a.X1, a.Y2 - fh); forced = true;
+                        log.Add("Hình \"" + u.Caption + "\" lớn hơn khổ " + cur.Paper + " – cần thu tỷ lệ hoặc chọn khổ lớn hơn.");
+                    }
+                    if (spot is { } sp)
+                    {
+                        double top = sp.Y + fh;
+                        foreach (var (pf0, dx, dy) in u.Parts)
+                        {
+                            double px = sp.X + dx, py = top - dy - Hd(pf0);
+                            cur.Figures.Add(new PlacedFigure { Id = pf0.Id, X = px, Y = py, Scale = scl[pf0.Id] });
+                            rects.Add(new Rect2(px, py, px + Wd(pf0), py + Hd(pf0)));
+                        }
                         break;
                     }
+                    if (forced) break;
                     cur = null;   // sang tờ mới cùng mục
                 }
             }
@@ -787,6 +934,68 @@ public static class SheetLayoutEngine
     {
         var pages = Pages(p, set, catalog).Select(t => (t.W, 1.0 / t.W.Scale, t.WMm, t.HMm)).ToList();
         PdfVectorWriter.Write(path, pages, (p?.ProjectName ?? "") + " – hồ sơ kết cấu", monochrome);
+    }
+
+    /// <summary>Bộ tờ dùng khi xuất hồ sơ: bộ tờ người dùng đã dàn (bản sao; hình mới chưa đặt được xếp thêm vào các tờ mới cuối bộ),
+    /// hoặc tự dàn trang mới (khổ / tỷ lệ tự động). Không sửa bộ tờ trong hồ sơ.</summary>
+    public static (DetailSheetSet Set, List<SheetFigure> Catalog) ExportSet(DetailingProject p, List<(IDetailMember Member, DetailResult Result)> results, List<string> log)
+    {
+        log ??= new List<string>();
+        DetailSheetSet set;
+        bool user = p?.Sheets?.Sheets != null && p.Sheets.Sheets.Count > 0;
+        if (user)
+        {
+            var opt = new System.Text.Json.JsonSerializerOptions { NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals };
+            set = System.Text.Json.JsonSerializer.Deserialize<DetailSheetSet>(System.Text.Json.JsonSerializer.Serialize(p.Sheets, opt), opt) ?? new DetailSheetSet();
+            set.Sheets ??= new List<DetailSheet>();
+            set.TitleBlock = p.Sheets.TitleBlock;
+        }
+        else set = new DetailSheetSet { TitleBlock = p?.Sheets?.TitleBlock ?? new DetailTitleBlock() };
+        var cat = Catalog(p, results, log, set);
+        if (!user) { AutoLayout(set, cat, log); return (set, cat); }
+        Prune(set, cat);
+        var un = Unplaced(set, cat);
+        if (un.Count > 0)
+        {
+            var tmp = new DetailSheetSet
+            {
+                Paper = set.Paper, AutoPaper = set.AutoPaper, MaxPaper = set.MaxPaper, Orientation = set.Orientation, PlanScale = set.PlanScale,
+                IndexSheet = false, TitleBlock = set.TitleBlock
+            };
+            AutoLayout(tmp, un, log);
+            set.Sheets.AddRange(tmp.Sheets);
+            log.Add("Dàn trang: " + un.Count + " hình chưa đặt được xếp thêm vào " + tmp.Sheets.Count + " tờ cuối bộ.");
+        }
+        set.Sheets.RemoveAll(sh => !sh.IsIndex && sh.Figures.Count == 0);
+        ApplyNames(set, cat);
+        Renumber(set, cat);
+        return (set, cat);
+    }
+
+    /// <summary>Tên file (không dấu cách) của tờ theo nội dung: DanhMuc, MB_KetCauMong, MB_DinhViCot, MB_Tầng 2, LanhTo_Tầng 2,
+    /// Dầm_D1-D3, ThongKeThep, ThongKeVatLieu…</summary>
+    public static string SheetSlug(DetailSheet sh, IReadOnlyDictionary<string, SheetFigure> map)
+    {
+        if (sh.IsIndex) return "DanhMuc";
+        var figs = sh.Figures.Where(pf => map.ContainsKey(pf.Id)).Select(pf => map[pf.Id]).ToList();
+        if (figs.Count == 0) return "To";
+        var plan = figs.FirstOrDefault(f => f.Part == 0 && !(f.Caption ?? "").StartsWith("MẶT CẮT "));
+        if (plan != null)
+        {
+            string c = plan.Caption ?? "";
+            if (c == StructuralPlanDrawing.TitleFoundation) return "MB_KetCauMong";
+            if (c == StructuralPlanDrawing.TitleColumns) return "MB_DinhViCot";
+            if (c.StartsWith(LintelPlanDrawing.TitlePrefix)) return "LanhTo_" + c.Substring(LintelPlanDrawing.TitlePrefix.Length).Split('(')[0].Trim();
+            return "MB_" + c.Replace(StructuralPlanDrawing.TitleLevelPrefix, "").Split('(')[0].Trim();
+        }
+        if (figs.All(f => f.Part == 2))
+        {
+            bool st = figs.Any(f => f.Id.StartsWith("TKTHEP:")), mt = figs.Any(f => f.Id.StartsWith("TKVL:"));
+            return st && mt ? "ThongKeThep_ThongKeVatLieu" : st ? "ThongKeThep" : "ThongKeVatLieu";
+        }
+        var det = figs.Where(f => f.Part == 1).ToList();
+        if (figs.Any(f => f.KeepWithPlan) && figs.All(f => f.KeepWithPlan)) return "LanhTo_ChiTiet_" + CompressNames(det.Select(f => f.Member)).Replace(", ", "-").Replace("–", "-");
+        return string.Join("_", det.GroupBy(f => f.Kind ?? "").Select(g => (g.Key.Length > 0 ? g.Key : "CauKien") + "_" + CompressNames(g.Select(f => f.Member)).Replace(", ", "-").Replace("–", "-")));
     }
 
     /// <summary>Xuất DWG/DXF từng tờ: KC-01_TenTo.dxf… Trả về các file đã ghi.</summary>

@@ -94,8 +94,9 @@ jobs:
           from ezdxf.addons.drawing import RenderContext, Frontend
           from ezdxf.addons.drawing.matplotlib import MatplotlibBackend
           os.makedirs("BanVePng", exist_ok=True)
-          files = sorted(glob.glob("KetQuaMau/TrienKhai/TachRoi/*.dxf")) + sorted(glob.glob("KetQuaMau/TrienKhai/*.dxf"))
-          for f in files[:30]:
+          files = sorted(glob.glob("KetQuaMau/TrienKhai/TachRoi/*.dxf")) + sorted(glob.glob("KetQuaMau/TrienKhai/ChiaDam/*.dxf")) + sorted(glob.glob("KetQuaMau/TrienKhai/*.dxf"))
+          files = [f for f in files if not f.endswith("_DauVao.dxf")]
+          for f in files[:45]:
               try:
                   doc = ezdxf.readfile(f)
                   import re
@@ -108,7 +109,8 @@ jobs:
                   ax = fig.add_axes([0, 0, 1, 1])
                   ctx = RenderContext(doc)
                   Frontend(ctx, MatplotlibBackend(ax)).draw_layout(doc.modelspace(), finalize=True)
-                  out = os.path.join("BanVePng", os.path.splitext(os.path.basename(f))[0] + ".png")
+                  pre = "ChiaDam_" if "ChiaDam" in f else ""
+                  out = os.path.join("BanVePng", pre + os.path.splitext(os.path.basename(f))[0] + ".png")
                   fig.set_size_inches(36, 25.4)
                   fig.savefig(out, dpi=110, facecolor="white")
                   plt.close(fig)

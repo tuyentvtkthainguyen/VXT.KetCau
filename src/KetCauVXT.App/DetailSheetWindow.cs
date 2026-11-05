@@ -24,6 +24,10 @@ public sealed class DetailSheetWindow : Window
     private readonly DetailingProject _prj;
     private readonly Action _changed;
     private readonly string _dir;
+    private readonly List<(IDetailMember, DetailResult)> _results;
+    private readonly ComboBox _split = new() { ItemsSource = DetailSheetSet.SplitModes, Width = 150 };
+    private readonly TextBox _splitArg = new() { Width = 70, ToolTip = "Số nhịp mỗi đoạn (vd. 2) hoặc các trục chia (vd. 3, 5)" };
+    private readonly CheckBox _allow75 = new() { Content = "Cho thu mặt đứng tới 1/75 trước khi chia", Margin = new Thickness(0, 4, 0, 0) };
     private List<SheetFigure> _cat = new();
     private Dictionary<string, SheetFigure> _map = new();
     private readonly Dictionary<string, System.Windows.Media.Drawing> _figDraw = new();
@@ -77,6 +81,7 @@ public sealed class DetailSheetWindow : Window
         Title = "Dàn trang in – " + prj.ProjectName;
         Width = 1360; Height = 860; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var log = new List<string>();
+        _results = results;
         _cat = SheetLayoutEngine.Catalog(prj, results, log);
         _map = _cat.GroupBy(f => f.Id).ToDictionary(g => g.Key, g => g.First());
         if (_prj.Sheets == null || _prj.Sheets.Sheets.Count == 0)
@@ -146,6 +151,13 @@ public sealed class DetailSheetWindow : Window
         mv.Children.Add(Btn("Chuyển", MoveFigureToSheet));
         right.Children.Add(mv);
         right.Children.Add(Btn("Gỡ hình khỏi tờ", RemoveFigure));
+        right.Children.Add(H("CHIA DẦM NHIỀU ĐOẠN"));
+        var spl = new WrapPanel();
+        spl.Children.Add(_split); spl.Children.Add(new TextBlock { Text = " ", VerticalAlignment = VerticalAlignment.Center }); spl.Children.Add(_splitArg);
+        right.Children.Add(spl);
+        right.Children.Add(_allow75);
+        right.Children.Add(Btn("Áp dụng cho dầm đang chọn", () => ApplySplit(false)));
+        right.Children.Add(Btn("Áp dụng cho mọi dầm", () => ApplySplit(true)));
         right.Children.Add(H("HÌNH CHƯA ĐẶT"));
         right.Children.Add(new Border { BorderBrush = Brushes.Gainsboro, BorderThickness = new Thickness(1), Child = _unplaced, MaxHeight = 240 });
         right.Children.Add(Btn("Đặt vào tờ đang chọn", PlaceSelected));
@@ -803,5 +815,41 @@ public sealed class DetailSheetWindow : Window
         public double TextH { get; set; } = 2.5;
         public bool Enabled { get; set; } = true;
         public bool ShowLabel { get; set; } = true;
+    }
+
+    // ------------------------------------------------------------------
+    // Chia dầm nhiều đoạn
+    // ------------------------------------------------------------------
+    private void ApplySplit(bool all)
+    {
+        string mode = _split.SelectedItem as string ?? DetailSheetSet.SplitAuto;
+        if (mode == DetailSheetSet.SplitPerSpans || mode == DetailSheetSet.SplitAtAxes)
+        {
+            if (string.IsNullOrWhiteSpace(_splitArg.Text)) { SetStatus("Nhập số nhịp mỗi đoạn (vd. 2) hoặc các trục chia (vd. 3, 5)."); return; }
+            mode += " " + _splitArg.Text.Trim();
+        }
+        Set.AllowBeam75 = _allow75.IsChecked == true;
+        Set.BeamSplitBy ??= new Dictionary<string, string>();
+        string member = null;
+        if (!all)
+        {
+            if (_selFig == null || !_map.TryGetValue(_selFig, out var f) || string.IsNullOrEmpty(f.Member)) { SetStatus("Chọn một hình mặt đứng dầm trên tờ."); return; }
+            member = f.Member;
+            Set.BeamSplitBy[member] = mode;
+        }
+        else { Set.BeamSplit = mode; Set.BeamSplitBy.Clear(); }
+        try
+        {
+            Mouse.OverrideCursor = Cursors.Wait;
+            var log = new List<string>();
+            _cat = SheetLayoutEngine.Catalog(_prj, _results, log, Set);
+            _map = _cat.GroupBy(x => x.Id).ToDictionary(g => g.Key, g => g.First());
+            _figDraw.Clear();
+            SheetLayoutEngine.Prune(Set, _cat);
+            SheetLayoutEngine.AutoLayout(Set, _cat, log);
+            Changed(); RefreshSheets();
+            SetStatus((member != null ? "Dầm " + member : "Mọi dầm") + ": " + mode + ". Đã dàn trang lại." + (log.Count > 0 ? " " + string.Join(" ", log) : ""));
+        }
+        finally { Mouse.OverrideCursor = null; }
     }
 }
