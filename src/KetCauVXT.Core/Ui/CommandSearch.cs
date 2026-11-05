@@ -91,7 +91,7 @@ public static class UiGlyphs
 {
     private static readonly (string Key, string Glyph)[] Map =
     {
-        ("luu thanh", "\uE792"), ("luu", "\uE74E"), ("mo ho so mau", "\uE8F1"), ("mo", "\uE8E5"), ("moi", "\uE7C3"),
+        ("luu thanh", "\uE792"), ("luu", "\uE74E"), ("mo ho so mau", "\uE8F1"), ("mo rong", "\uE740"), ("mo", "\uE8E5"), ("moi", "\uE7C3"),
         ("cay", "\uE8FD"), ("nhap dwg", "\uE8B5"), ("tu autocad", "\uE8B5"), ("tu ban ve", "\uE8B5"), ("nhap revit", "\uE8B5"), ("nhap", "\uE8B5"),
         ("tao khung", "\uE80A"), ("khung tien che", "\uE8B9"), ("kiem tra mh", "\uE9D9"), ("kiem tra thep", "\uE73E"), ("kiem tra", "\uE9D9"),
         ("chay noi luc", "\uE8AB"), ("phan tich", "\uE768"), ("tinh toan bo", "\uE768"), ("tinh", "\uE8EF"), ("thiet ke", "\uE8EF"), ("bang ket qua", "\uE8A5"),
