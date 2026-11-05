@@ -164,7 +164,7 @@ public class DrawingStyle
     /// <summary>Mặt cắt dầm thể hiện cánh sàn liền khối hai bên (chữ T / chữ L), dải sàn trên mặt đứng dầm</summary>
     public bool ShowSlabFlanges { get; set; } = true;
     /// <summary>Chiều dài cánh sàn thể hiện mỗi bên dầm (mm thật, tính từ mặt bên dầm tới đường cắt)</summary>
-    public double SlabFlangeLength { get; set; } = 400;
+    public double SlabFlangeLength { get; set; } = 50;   // đoạn sàn ngắn 50 mm hai bên – chỉ để nhận biết dầm chữ T / L
     /// <summary>Thể hiện thép sàn trong cánh (lớp dưới, thép mũ vắt qua dầm) kèm nhãn "Ø8a200 (sàn)"</summary>
     public bool ShowSlabRebarInFlange { get; set; } = false;   // mặt cắt dầm chỉ thể hiện cấu tạo dầm (cánh sàn vẽ nét, không vẽ thép sàn)
     /// <summary>Kiểu đường cắt ở đầu cánh sàn</summary>
@@ -407,7 +407,7 @@ public class DrawingStyle
         DimLinearFactor = Clamp(DimLinearFactor, 1e-4, 1e4, 1.0);
         DimBaselineSpacing = double.IsNaN(DimBaselineSpacing) || DimBaselineSpacing < 0 ? d.DimBaselineSpacing : Math.Min(DimBaselineSpacing, 50);
         if (!Enum.IsDefined(typeof(DimArrow), DimArrowType)) DimArrowType = DimArrow.Tick;
-        SlabFlangeLength = Clamp(SlabFlangeLength, 100, 3000, d.SlabFlangeLength);
+        SlabFlangeLength = Clamp(SlabFlangeLength, 30, 3000, d.SlabFlangeLength);
         if (!Enum.IsDefined(typeof(SlabBreakStyle), SlabBreak)) SlabBreak = SlabBreakStyle.ZigZag;
         if (!Enum.IsDefined(typeof(HatchMode), HatchSections)) HatchSections = HatchMode.Auto;
         HatchScaleFactor = Clamp(HatchScaleFactor, 0.1, 20, 1.0);

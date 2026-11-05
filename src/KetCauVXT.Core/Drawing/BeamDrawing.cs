@@ -467,6 +467,8 @@ public static class BeamDrawing
     /// Toạ độ đã phóng (×k); gốc tại góc dưới trái dầm, trục y hướng lên, mặt trên dầm y = H.</summary>
     private static void FlangedOutline(DxfWriter w, double B, double H, double k, FlangeSide L, FlangeSide R, SlabBreakStyle brk)
     {
+        // đoạn sàn ngắn (< 150 mm thật): đường cắt thẳng cho gọn, dích dắc chỉ dùng khi cánh đủ dài
+        if ((L?.Len ?? double.MaxValue) < 150 && (R?.Len ?? double.MaxValue) < 150) brk = SlabBreakStyle.Straight;
         var v = new List<(double X, double Y)>();
         var br = new List<bool>();
         void Add(double x, double y, bool breakNext = false)

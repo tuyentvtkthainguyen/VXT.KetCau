@@ -80,7 +80,8 @@ public static class BeamFlangeDrawingTests
         var ds = ConcreteDesigner.Design(p, r);
         var def0 = DrawingStyle.Default();
         check("Thiết lập mặc định: mặt cắt dầm KHÔNG vẽ thép sàn (chỉ cấu tạo dầm), vẫn vẽ cánh sàn", B(!def0.ShowSlabRebarInFlange && def0.ShowSlabFlanges), 1, 0);
-        var def = def0.Clone(); def.ShowSlabRebarInFlange = true;   // các kiểm tra thép sàn trong cánh dưới đây bật tuỳ chọn
+        check("Thiết lập mặc định: đoạn sàn hai bên mặt cắt dầm dài 50 mm", def0.SlabFlangeLength, 50, 1e-9);
+        var def = def0.Clone(); def.ShowSlabRebarInFlange = true; def.SlabFlangeLength = 400;   // các kiểm tra thép sàn trong cánh dưới đây: bật thép sàn, cánh dài 400 mm
         double S = 50, k = S / 25, b = 220 * k, Lf = def.SlabFlangeLength * k, hsK = 100 * k;
         check("Thiết lập (bật thép sàn): bật cánh sàn, dài 400 mm, có thép sàn, đường cắt dích dắc",
             B(def.ShowSlabFlanges && Math.Abs(def.SlabFlangeLength - 400) < 1e-9 && def.ShowSlabRebarInFlange && def.SlabBreak == SlabBreakStyle.ZigZag), 1, 0);
@@ -201,9 +202,9 @@ public static class BeamFlangeDrawingTests
         var back = DrawingStyle.FromJson(sj.ToJson());
         check("JSON: lưu/mở giữ thiết lập cánh sàn", B(Math.Abs(back.SlabFlangeLength - 550) < 1e-9 && back.SlabBreak == SlabBreakStyle.Straight && !back.ShowSlabRebarInFlange && back.ShowSlabFlanges), 1, 0);
         var old = DrawingStyle.FromJson("{\"NoteHeight\": 2.5}");
-        check("JSON cũ (không có mục cánh sàn): mặc định bật, 400 mm", B(old.ShowSlabFlanges && Math.Abs(old.SlabFlangeLength - 400) < 1e-9), 1, 0);
+        check("JSON cũ (không có mục cánh sàn): mặc định bật, 50 mm", B(old.ShowSlabFlanges && Math.Abs(old.SlabFlangeLength - 50) < 1e-9), 1, 0);
         var bad = DrawingStyle.FromJson("{\"SlabFlangeLength\": -5}");
-        check("JSON sai (chiều dài cánh âm) → về 400 mm", bad.SlabFlangeLength, 400, 1e-9);
+        check("JSON sai (chiều dài cánh âm) → về 50 mm", bad.SlabFlangeLength, 50, 1e-9);
         try
         {
             using (DrawingStyle.Use(def))
