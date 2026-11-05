@@ -78,6 +78,40 @@ jobs:
           $py | Out-File -Encoding utf8 chkdxf.py
           python chkdxf.py
 
+      - name: Ve anh PNG ban ve Trien khai ho so (xem truoc chat luong the hien)
+        shell: pwsh
+        continue-on-error: true
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUTF8: "1"
+        run: |
+          python -m pip install --quiet matplotlib
+          $py = @'
+          import glob, os, ezdxf
+          import matplotlib
+          matplotlib.use("Agg")
+          import matplotlib.pyplot as plt
+          from ezdxf.addons.drawing import RenderContext, Frontend
+          from ezdxf.addons.drawing.matplotlib import MatplotlibBackend
+          os.makedirs("BanVePng", exist_ok=True)
+          files = sorted(glob.glob("KetQuaMau/TrienKhai/TachRoi/*.dxf")) + sorted(glob.glob("KetQuaMau/TrienKhai/*.dxf"))
+          for f in files[:30]:
+              try:
+                  doc = ezdxf.readfile(f)
+                  fig = plt.figure(figsize=(22, 15.5))
+                  ax = fig.add_axes([0, 0, 1, 1])
+                  ctx = RenderContext(doc)
+                  Frontend(ctx, MatplotlibBackend(ax)).draw_layout(doc.modelspace(), finalize=True)
+                  out = os.path.join("BanVePng", os.path.splitext(os.path.basename(f))[0] + ".png")
+                  fig.savefig(out, dpi=110, facecolor="white")
+                  plt.close(fig)
+                  print("ve", out)
+              except Exception as ex:
+                  print("loi ve", f, ex)
+          '@
+          $py | Out-File -Encoding utf8 vepng.py
+          python vepng.py
+
       - name: Kiem tra thuyet minh Word bang LibreOffice (xuat PDF)
         shell: pwsh
         continue-on-error: true
@@ -227,6 +261,7 @@ jobs:
           if (Test-Path KetQuaMau/KiemChung) { git add -f KetQuaMau/KiemChung/* }
           if (Test-Path KetQuaMau/HuongDan) { git add -f KetQuaMau/HuongDan/* }
           if (Test-Path ManHinh) { git add -f ManHinh/*.png ManHinh/selftest.log }
+          if (Test-Path BanVePng) { git add -f BanVePng/*.png }
           git commit -m "Ban phat hanh tu $env:GITHUB_SHA"
           git push -f origin ketcau-vxt-dist
 
