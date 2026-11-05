@@ -17,6 +17,8 @@ public class PlacedFigure
     /// <summary>Góc trái dưới khung bao hình trên tờ (mm giấy).</summary>
     public double X { get; set; }
     public double Y { get; set; }
+    /// <summary>Mẫu số tỷ lệ in của hình trên tờ (0 = tỷ lệ gốc của hàm vẽ). Hình được VẼ LẠI ở tỷ lệ này ⇒ chữ, vòng số hiệu, đầu trục đúng cỡ in.</summary>
+    public double Scale { get; set; }
 }
 
 /// <summary>Một tờ in.</summary>
@@ -25,8 +27,10 @@ public class DetailSheet
     /// <summary>Số hiệu tờ (KC-01…), đánh lại khi tự dàn trang / bấm "Đánh số lại".</summary>
     public string No { get; set; } = "KC-01";
     public string Title { get; set; } = "";
-    /// <summary>A0 | A1 | A2 | A3</summary>
+    /// <summary>A0 | A1 | A2 | A3 | A4</summary>
     public string Paper { get; set; } = "A1";
+    /// <summary>Tỷ lệ chốt cho các hình chính của tờ (0 = tự động theo khổ).</summary>
+    public double Scale { get; set; }
     /// <summary>Khổ đứng (mặc định khổ ngang).</summary>
     public bool Portrait { get; set; }
     /// <summary>Tờ người dùng đã chỉnh tay: "Tự dàn trang" giữ nguyên tờ này (hình, vị trí, khổ giấy).</summary>
@@ -49,6 +53,16 @@ public class DetailSheetSet
     public string Paper { get; set; } = "A1";
     /// <summary>Tự chọn khổ nhỏ nhất (A3 → A2 → A1 → A0) chứa được các hình của mục.</summary>
     public bool AutoPaper { get; set; } = true;
+    /// <summary>Khổ lớn nhất khi tự chọn khổ (vượt quá thì hạ tỷ lệ).</summary>
+    public string MaxPaper { get; set; } = "A1";
+    /// <summary>Hướng giấy: "Ngang" | "Đứng" | "Tự động" (chọn hướng chứa hình tốt hơn).</summary>
+    public string Orientation { get; set; } = OrientLandscape;
+    /// <summary>Tỷ lệ chốt cho các mặt bằng (0 = tự động: khổ chốt → tỷ lệ lớn nhất vừa khổ; khổ tự động → 1/100 hoặc 1/50).</summary>
+    public double PlanScale { get; set; }
+    public const string OrientLandscape = "Ngang", OrientPortrait = "Đứng", OrientAuto = "Tự động", PaperAuto = "Tự động";
+    public static readonly string[] Orientations = { OrientLandscape, OrientPortrait, OrientAuto };
+    /// <summary>Khổ cho tờ mới (tự động → khổ lớn nhất cho phép).</summary>
+    [JsonIgnore] public string DefaultPaper => !AutoPaper && SheetGeometry.Papers.Contains(Paper) ? Paper : SheetGeometry.Papers.Contains(MaxPaper) ? MaxPaper : "A1";
     /// <summary>Có tờ danh mục bản vẽ ở đầu bộ.</summary>
     public bool IndexSheet { get; set; } = true;
     /// <summary>Ngày ghi trong khung tên (người dùng nhập; để trống = không ghi).</summary>
@@ -102,9 +116,35 @@ public sealed class SheetFigure
     /// <summary>Tên cấu kiện ("" với mặt bằng / bảng).</summary>
     public string Member = "";
     public Figure F;
-    /// <summary>Kích thước hình trên giấy (mm).</summary>
+    /// <summary>Kích thước hình trên giấy (mm) ở tỷ lệ gốc.</summary>
     public double W => F?.W == null ? 0 : F.W.Extents.W / Math.Max(F.W.Scale, 1e-9);
     public double H => F?.W == null ? 0 : F.W.Extents.H / Math.Max(F.W.Scale, 1e-9);
+
+    /// <summary>Vẽ lại hình ở mẫu số tỷ lệ s (null = không vẽ lại được – giữ tỷ lệ gốc).</summary>
+    public Func<double, Figure> Redraw;
+    private readonly Dictionary<double, Figure> _at = new();
+    /// <summary>Mẫu số tỷ lệ gốc của hàm vẽ.</summary>
+    public double BaseScale => F?.W == null ? 1 : F.W.Scale;
+    public bool CanRescale => Redraw != null && BaseScale > 1.0001;
+    /// <summary>Lớp tỷ lệ: 0 mặt bằng (1/50…1/500), 1 mặt đứng – chi tiết (1/20…1/100), 2 mặt cắt – chi tiết nhỏ (1/10…1/50).</summary>
+    public int ScaleClass => BaseScale >= 99 ? 0 : BaseScale >= 40 ? 1 : 2;
+
+    /// <summary>Hình ở mẫu số tỷ lệ s (s ≤ 0 hoặc không vẽ lại được → hình gốc). Có bộ đệm.</summary>
+    public Figure At(double s)
+    {
+        if (s <= 0 || !CanRescale || Math.Abs(s - BaseScale) < 1e-9) return F;
+        if (!_at.TryGetValue(s, out var f))
+        {
+            try { f = Redraw(s); } catch (Exception) { f = null; }
+            if (f?.W == null || f.W.EntityCount == 0 || f.W.Extents.IsEmpty) f = null;
+            _at[s] = f;
+        }
+        return f ?? F;
+    }
+    /// <summary>Mẫu số tỷ lệ thực của hình ở yêu cầu s.</summary>
+    public double ScaleAt(double s) => At(s)?.W?.Scale ?? BaseScale;
+    public double WAt(double s) { var f = At(s); return f?.W == null ? 0 : f.W.Extents.W / Math.Max(f.W.Scale, 1e-9); }
+    public double HAt(double s) { var f = At(s); return f?.W == null ? 0 : f.W.Extents.H / Math.Max(f.W.Scale, 1e-9); }
 }
 
 /// <summary>Hình học tờ: khổ giấy, vùng vẽ được (trong khung, trừ khung tên).</summary>
@@ -113,7 +153,13 @@ public static class SheetGeometry
     public const double MarginLeft = 25, MarginOther = 10, TitleW = 180, TitleH = 45;
     /// <summary>Khe hở tối thiểu giữa các hình và tới khung (mm giấy).</summary>
     public const double Gap = 10;
-    public static readonly string[] Papers = { "A3", "A2", "A1", "A0" };
+    public static readonly string[] Papers = { "A4", "A3", "A2", "A1", "A0" };
+    /// <summary>Dãy tỷ lệ chuẩn (mẫu số).</summary>
+    public static readonly double[] StdScales = { 10, 15, 20, 25, 30, 50, 75, 100, 125, 150, 200, 250, 300, 500 };
+    /// <summary>Khoảng tỷ lệ hợp lý theo lớp hình (mẫu số nhỏ nhất, lớn nhất).</summary>
+    public static (double Lo, double Hi) ClassRange(int cls) => cls switch { 0 => (50, 500), 1 => (20, 200), _ => (10, 100) };
+    /// <summary>Tỷ lệ chuẩn gần nhất (≥ s).</summary>
+    public static double SnapUp(double s) => StdScales.FirstOrDefault(x => x >= s - 1e-6) is var v && v > 0 ? v : StdScales[^1];
 
     public static (double W, double H) PaperSize(string paper, bool portrait = false)
     {
@@ -204,12 +250,17 @@ public static class SheetLayoutEngine
                 try { figs = m.Draw(r, p.Settings) ?? new List<Figure>(); }
                 catch (Exception e) { log.Add("Không vẽ được " + m.Name + ": " + e.Message); continue; }
                 for (int i = 0; i < figs.Count; i++)
+                {
+                    int idx = i; var mm = m; var rr0 = r; double b0 = figs[i].W.Scale; string fn = figs[i].Name;
                     Add(new SheetFigure
                     {
                         Id = m.GetType().Name + ":" + m.Name + ":" + (string.IsNullOrEmpty(figs[i].Name) ? i.ToString() : figs[i].Name),
                         Section = s, Part = 1, Member = m.Name, Kind = r?.Kind ?? "",
-                        Caption = (r?.Kind ?? "") + " " + m.Name + (string.IsNullOrEmpty(figs[i].Name) ? "" : " – " + figs[i].Name), F = figs[i]
+                        Caption = (r?.Kind ?? "") + " " + m.Name + (string.IsNullOrEmpty(figs[i].Name) ? "" : " – " + figs[i].Name), F = figs[i],
+                        // vẽ lại cấu kiện với mọi tỷ lệ nhân cùng hệ số (hình chính b0 → sc)
+                        Redraw = sc => Pick(RedrawAt(b0, sc, () => mm.Draw(rr0, p.Settings)), idx, fn)
                     }, title);
+                }
             }
         }
         List<PlanTreeGroup> groups;
@@ -227,7 +278,12 @@ public static class SheetLayoutEngine
             {
                 string nm = f.Name ?? "";
                 if (!drawn.Add(nm)) continue;   // mặt bằng móng dùng chung cho nhóm dầm móng
-                Add(new SheetFigure { Id = (g.Kind == StructuralPlan.LintelGroupKind ? "MBLT:" : "MB:") + nm, Section = s, Part = 0, Caption = nm, F = f }, title);
+                var gg = g; double b1 = f.W.Scale;
+                Add(new SheetFigure
+                {
+                    Id = (g.Kind == StructuralPlan.LintelGroupKind ? "MBLT:" : "MB:") + nm, Section = s, Part = 0, Caption = nm, F = f,
+                    Redraw = sc => Pick(RedrawAt(b1, sc, () => StructuralPlanDrawing.ForGroup(p, results, gg)), -1, nm)
+                }, title);
             }
             Members(g.Members, s, title);
         }
@@ -252,6 +308,25 @@ public static class SheetLayoutEngine
         }
         catch (Exception e) { log.Add("Không lập được thống kê vật liệu: " + e.Message); }
         return list;
+    }
+
+    /// <summary>Gọi hàm vẽ trong phạm vi đổi tỷ lệ: mọi tỷ lệ x → x · sc / b0 (hình chính b0 → sc; mặt cắt kèm theo đổi cùng hệ số).</summary>
+    public static List<Figure> RedrawAt(double b0, double sc, Func<List<Figure>> draw)
+    {
+        double f = sc / Math.Max(b0, 1e-9);
+        using (DxfWriter.OverrideScales(x => x * f)) return draw() ?? new List<Figure>();
+    }
+
+    /// <summary>Chọn hình theo tên (ưu tiên) hoặc thứ tự.</summary>
+    private static Figure Pick(List<Figure> figs, int idx, string name)
+    {
+        if (figs == null || figs.Count == 0) return null;
+        if (!string.IsNullOrEmpty(name))
+        {
+            var byName = figs.Where(x => x.Name == name).ToList();
+            if (byName.Count == 1) return byName[0];
+        }
+        return idx >= 0 && idx < figs.Count ? figs[idx] : figs.FirstOrDefault(x => x.Name == name);
     }
 
     // ------------------------------------------------------------------
@@ -347,25 +422,69 @@ public static class SheetLayoutEngine
     {
         var res = new List<Rect2>();
         foreach (var pf in sh.Figures)
-            if (map.TryGetValue(pf.Id, out var f)) res.Add(new Rect2(pf.X, pf.Y, pf.X + f.W, pf.Y + f.H));
+            if (map.TryGetValue(pf.Id, out var f)) res.Add(new Rect2(pf.X, pf.Y, pf.X + f.WAt(pf.Scale), pf.Y + f.HAt(pf.Scale)));
         return res;
     }
 
     /// <summary>Khổ nhỏ nhất chứa được hình lớn nhất của nhóm và tổng diện tích (hệ số lấp đầy 0,55).</summary>
-    public static string PaperFor(IEnumerable<SheetFigure> figs, string maxPaper = "A1")
+    public static string PaperFor(IEnumerable<SheetFigure> figs, string maxPaper = "A1") => PaperFor(figs.Select(f => (f.W, f.H)), maxPaper);
+
+    /// <summary>Khổ nhỏ nhất (A4 → … → maxPaper) chứa hình lớn nhất (kích thước mm giấy) và tổng diện tích (lấp đầy ≤ 0,55).</summary>
+    public static string PaperFor(IEnumerable<(double W, double H)> sizes, string maxPaper = "A1", DetailSheetSet set = null, bool portrait = false)
     {
-        var l = figs.ToList();
+        var l = sizes.ToList();
         if (l.Count == 0) return "A3";
         double area = l.Sum(f => (f.W + SheetGeometry.Gap) * (f.H + SheetGeometry.Gap));
-        int iMax = Math.Max(0, Array.IndexOf(SheetGeometry.Papers, maxPaper));
+        int iMax = Array.IndexOf(SheetGeometry.Papers, maxPaper);
+        if (iMax < 0) iMax = Array.IndexOf(SheetGeometry.Papers, "A1");
+        var big = l.OrderByDescending(f => f.W * f.H).First();
         foreach (var p in SheetGeometry.Papers)
         {
-            var d = SheetGeometry.Drawable(p);
+            var d = SheetGeometry.Drawable(p, portrait);
+            var tz = set != null ? TitleZone(set, new DetailSheet { Paper = p, Portrait = portrait }) : SheetGeometry.TitleZone(p, portrait);
+            double free = d.W * d.H - Math.Max(0, Math.Min(d.X2, tz.X2) - Math.Max(d.X1, tz.X1)) * Math.Max(0, Math.Min(d.Y2, tz.Y2) - Math.Max(d.Y1, tz.Y1));
+            bool fitsBig = FindSpot(new DetailSheet { Paper = p, Portrait = portrait }, new List<Rect2>(), big.W, big.H, set) != null;
             bool fitsAll = l.All(f => f.W <= d.W && f.H <= d.H);
-            if (fitsAll && area <= 0.55 * d.W * d.H) return p;
-            if (p == SheetGeometry.Papers[iMax] && l.All(f => f.W <= d.W && f.H <= d.H)) return p;
+            if (fitsBig && fitsAll && area <= 0.55 * free) return p;
+            if (p == SheetGeometry.Papers[Math.Max(0, iMax)] && fitsBig) return p;
         }
         return "A0";
+    }
+
+    /// <summary>Hình có vừa tờ trống khổ paper (hướng ngang / đứng theo lựa chọn) ở mẫu số s?</summary>
+    public static bool Fits(DetailSheetSet set, SheetFigure f, double s, string paper, string orient = null)
+    {
+        orient ??= set?.Orientation ?? DetailSheetSet.OrientLandscape;
+        double w = f.WAt(s), h = f.HAt(s);
+        foreach (bool por in orient == DetailSheetSet.OrientAuto ? new[] { false, true } : new[] { orient == DetailSheetSet.OrientPortrait })
+            if (FindSpot(new DetailSheet { Paper = paper, Portrait = por }, new List<Rect2>(), w, h, set) != null) return true;
+        return false;
+    }
+
+    /// <summary>CHỌN TỶ LỆ cho một hình (mẫu số):
+    /// • tỷ lệ chốt (tờ / bộ tờ với mặt bằng) → dùng;
+    /// • khổ chốt → mặt bằng: tỷ lệ LỚN NHẤT (mẫu số nhỏ nhất trong 1/50…1/500) vừa vùng vẽ trừ khung tên; hình khác: tỷ lệ chuẩn theo loại, hạ nếu không vừa;
+    /// • khổ tự động → mặt bằng 1/50 nếu vừa A3, không thì 1/100…; hình khác tỷ lệ chuẩn; vượt khổ lớn nhất cho phép thì hạ tỷ lệ.
+    /// 0 = hình không vẽ lại được (giữ tỷ lệ gốc).</summary>
+    public static double ChooseScale(DetailSheetSet set, SheetFigure f, double fixedScale = 0, string paper = null, string orient = null)
+    {
+        if (!f.CanRescale) return 0;
+        var (lo, hi) = SheetGeometry.ClassRange(f.ScaleClass);
+        var cands = SheetGeometry.StdScales.Where(x => x >= lo - 1e-9 && x <= hi + 1e-9).ToList();
+        double pref = Math.Clamp(SheetGeometry.SnapUp(f.BaseScale), lo, hi);
+        double fx = fixedScale > 0 ? fixedScale : f.ScaleClass == 0 ? set.PlanScale : 0;
+        if (fx > 0) return fx;
+        bool autoPaper = paper == null ? set.AutoPaper : paper == DetailSheetSet.PaperAuto;
+        string P = paper == null || paper == DetailSheetSet.PaperAuto ? (set.AutoPaper ? set.MaxPaper ?? "A1" : set.Paper) : paper;
+        if (!autoPaper)
+        {
+            var list = f.ScaleClass == 0 ? cands : cands.Where(x => x >= pref - 1e-9).ToList();
+            foreach (var sc in list) if (Fits(set, f, sc, P, orient)) return sc;
+            return list.Count > 0 ? list[^1] : pref;
+        }
+        if (f.ScaleClass == 0 && pref >= 100 && Fits(set, f, 50, "A3", orient)) return 50;
+        foreach (var sc in cands.Where(x => x >= pref - 1e-9)) if (Fits(set, f, sc, P, orient)) return sc;
+        return cands[^1];
     }
 
     /// <summary>TỰ DÀN TRANG: giữ các tờ đã khoá (và hình trên đó), xếp các hình còn lại theo thứ tự mục hồ sơ;
@@ -382,40 +501,64 @@ public static class SheetLayoutEngine
         foreach (var grp in catalog.Where(f => !used.Contains(f.Id)).GroupBy(f => f.Section * 10 + f.Part).OrderBy(g => g.Key))
         {
             var items = grp.ToList();
-            string paper = set.AutoPaper ? PaperFor(items, set.Paper) : set.Paper;
+            // tỷ lệ từng hình theo khổ / tỷ lệ chốt, rồi khổ – hướng giấy
+            var scl = items.ToDictionary(f => f.Id, f => ChooseScale(set, f));
+            double Wd(SheetFigure f) => f.WAt(scl[f.Id]);
+            double Hd(SheetFigure f) => f.HAt(scl[f.Id]);
+            var big = items.OrderByDescending(f => Wd(f) * Hd(f)).First();
+            bool portrait = set.Orientation == DetailSheetSet.OrientPortrait;
+            string paper = set.AutoPaper ? PaperFor(items.Select(f => (Wd(f), Hd(f))), set.MaxPaper ?? "A1", set, portrait) : set.Paper;
+            if (set.Orientation == DetailSheetSet.OrientAuto)
+            {
+                // hướng chứa hình lớn nhất với độ lấp đầy cao hơn
+                double Fill(bool por)
+                {
+                    var d = SheetGeometry.Drawable(paper, por);
+                    if (FindSpot(new DetailSheet { Paper = paper, Portrait = por }, new List<Rect2>(), Wd(big), Hd(big), set) == null) return -1;
+                    return Math.Max(Wd(big) / d.W, Hd(big) / d.H);
+                }
+                double fl = Fill(false), fp = Fill(true);
+                portrait = fp > fl + 0.05;
+                if (set.AutoPaper)
+                {
+                    string pPor = PaperFor(items.Select(f => (Wd(f), Hd(f))), set.MaxPaper ?? "A1", set, true);
+                    if (Array.IndexOf(SheetGeometry.Papers, pPor) < Array.IndexOf(SheetGeometry.Papers, paper)) { paper = pPor; portrait = true; }
+                }
+            }
             DetailSheet cur = null; List<Rect2> rects = null;
             int part = 0;
             foreach (var f in items)
             {
+                double fw = Wd(f), fh = Hd(f);
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
                     if (cur == null)
                     {
-                        string pp = paper;
-                        // hình lớn hơn khổ đã chọn → nâng khổ cho tờ này
+                        string pp = paper; bool pr = portrait;
+                        // hình lớn hơn khổ đã chọn → nâng khổ cho tờ này (thử cả khổ đứng khi hướng tự động)
                         foreach (var cand in SheetGeometry.Papers.SkipWhile(x => x != paper))
                         {
                             pp = cand;
-                            // khổ đủ chỗ cho hình trên tờ trống (đã tránh khung tên đang dùng)
-                            if (FindSpot(new DetailSheet { Paper = cand }, new List<Rect2>(), f.W, f.H, set) != null) break;
+                            if (FindSpot(new DetailSheet { Paper = cand, Portrait = portrait }, new List<Rect2>(), fw, fh, set) != null) { pr = portrait; break; }
+                            if (set.Orientation == DetailSheetSet.OrientAuto && FindSpot(new DetailSheet { Paper = cand, Portrait = !portrait }, new List<Rect2>(), fw, fh, set) != null) { pr = !portrait; break; }
                         }
-                        cur = new DetailSheet { Paper = pp, Title = grp.First().SectionTitle };
+                        cur = new DetailSheet { Paper = pp, Portrait = pr, Title = grp.First().SectionTitle };
                         rects = new List<Rect2>();
                         fresh.Add((grp.Key / 10, cur)); part++;
                     }
-                    var spot = FindSpot(cur, rects, f.W, f.H, set);
+                    var spot = FindSpot(cur, rects, fw, fh, set);
                     if (spot is { } sp)
                     {
-                        cur.Figures.Add(new PlacedFigure { Id = f.Id, X = sp.X, Y = sp.Y });
-                        rects.Add(new Rect2(sp.X, sp.Y, sp.X + f.W, sp.Y + f.H));
+                        cur.Figures.Add(new PlacedFigure { Id = f.Id, X = sp.X, Y = sp.Y, Scale = scl[f.Id] });
+                        rects.Add(new Rect2(sp.X, sp.Y, sp.X + fw, sp.Y + fh));
                         break;
                     }
                     if (cur.Figures.Count == 0)
                     {
                         // quá lớn kể cả trên tờ trống khổ lớn nhất: đặt ở góc trái trên, ghi cảnh báo
                         var a = SheetGeometry.Drawable(cur.Paper, cur.Portrait);
-                        cur.Figures.Add(new PlacedFigure { Id = f.Id, X = a.X1, Y = a.Y2 - f.H });
-                        rects.Add(new Rect2(a.X1, a.Y2 - f.H, a.X1 + f.W, a.Y2));
+                        cur.Figures.Add(new PlacedFigure { Id = f.Id, X = a.X1, Y = a.Y2 - fh, Scale = scl[f.Id] });
+                        rects.Add(new Rect2(a.X1, a.Y2 - fh, a.X1 + fw, a.Y2));
                         log.Add("Hình \"" + f.Caption + "\" lớn hơn khổ " + cur.Paper + " – cần thu tỷ lệ hoặc chọn khổ lớn hơn.");
                         break;
                     }
@@ -442,7 +585,7 @@ public static class SheetLayoutEngine
         {
             // khổ tờ danh mục: A3 nếu đủ dòng (7 mm / dòng), không thì khổ lớn hơn
             double need = 12 + 7.0 * (set.Sheets.Count + 2) + SheetGeometry.TitleH;
-            string ip = SheetGeometry.Papers.FirstOrDefault(x => SheetGeometry.Drawable(x).H >= need) ?? "A0";
+            string ip = SheetGeometry.Papers.Skip(1).FirstOrDefault(x => SheetGeometry.Drawable(x).H >= need) ?? "A0";
             var ix = new DetailSheet { IsIndex = true, Title = IndexTitle, Paper = ip };
             if (oldIndex != null) { ix.NameLocked = oldIndex.NameLocked; ix.NumberLocked = oldIndex.NumberLocked; if (oldIndex.NameLocked) ix.Title = oldIndex.Title; if (oldIndex.NumberLocked) ix.No = oldIndex.No; }
             set.Sheets.Insert(0, ix);
@@ -476,14 +619,65 @@ public static class SheetLayoutEngine
         }
     }
 
+    /// <summary>Lớp tỷ lệ chính của tờ (lớp thô nhất có trên tờ: 0 mặt bằng, 1 chi tiết, 2 mặt cắt).</summary>
+    public static int MainClass(DetailSheet sh, IReadOnlyDictionary<string, SheetFigure> map) =>
+        sh.Figures.Where(pf => map.ContainsKey(pf.Id)).Select(pf => map[pf.Id].ScaleClass).DefaultIfEmpty(9).Min();
+
+    /// <summary>ĐỔI KHỔ / HƯỚNG / TỶ LỆ của một tờ rồi xếp lại các hình trên tờ:
+    /// paper: "Tự động" | A4…A0; orient: Ngang | Đứng | Tự động; scale: 0 = tự động (khổ chốt → tỷ lệ lớn nhất vừa khổ; khổ tự động → tỷ lệ chuẩn, khổ nhỏ nhất).
+    /// Tỷ lệ chốt áp cho hình chính của tờ (lớp thô nhất), hình phụ đổi cùng hệ số (làm tròn tỷ lệ chuẩn). Hình không còn chỗ → chưa đặt (ghi log). Tờ được khoá.</summary>
+    public static void RefitSheet(DetailSheetSet set, DetailSheet sh, IReadOnlyDictionary<string, SheetFigure> map, string paper, string orient, double scale, List<string> log = null)
+    {
+        log ??= new List<string>();
+        var figs = sh.Figures.Where(pf => map.ContainsKey(pf.Id)).Select(pf => map[pf.Id]).ToList();
+        if (figs.Count == 0) { if (paper != DetailSheetSet.PaperAuto) sh.Paper = paper; sh.Portrait = orient == DetailSheetSet.OrientPortrait; return; }
+        int main = figs.Min(f => f.ScaleClass);
+        var mainF = figs.Where(f => f.ScaleClass == main).OrderByDescending(f => f.W * f.H).First();
+        bool autoPaper = paper == DetailSheetSet.PaperAuto;
+        string P = autoPaper ? (set.MaxPaper ?? "A1") : paper;
+        double sMain = scale > 0 ? scale : ChooseScale(set, mainF, 0, autoPaper ? DetailSheetSet.PaperAuto : P, orient);
+        double ratio = sMain > 0 && mainF.CanRescale ? sMain / Math.Max(SheetGeometry.SnapUp(mainF.BaseScale), 1) : 1;
+        var scl = new Dictionary<string, double>();
+        foreach (var f in figs)
+        {
+            if (!f.CanRescale) { scl[f.Id] = 0; continue; }
+            if (f.ScaleClass == main) scl[f.Id] = scale > 0 ? scale : ChooseScale(set, f, 0, autoPaper ? DetailSheetSet.PaperAuto : P, orient);
+            else { var (lo, hi) = SheetGeometry.ClassRange(f.ScaleClass); scl[f.Id] = Math.Clamp(SheetGeometry.SnapUp(SheetGeometry.SnapUp(f.BaseScale) * ratio), lo, hi); }
+        }
+        var sizes = figs.Select(f => (f.WAt(scl[f.Id]), f.HAt(scl[f.Id]))).ToList();
+        bool por = orient == DetailSheetSet.OrientPortrait;
+        if (autoPaper) P = PaperFor(sizes, set.MaxPaper ?? "A1", set, por);
+        if (orient == DetailSheetSet.OrientAuto)
+        {
+            var big = sizes.OrderByDescending(t => t.Item1 * t.Item2).First();
+            bool okL = FindSpot(new DetailSheet { Paper = P }, new List<Rect2>(), big.Item1, big.Item2, set) != null;
+            bool okP = FindSpot(new DetailSheet { Paper = P, Portrait = true }, new List<Rect2>(), big.Item1, big.Item2, set) != null;
+            por = !okL && okP || okP && big.Item2 > big.Item1 * 1.15;
+        }
+        sh.Paper = P; sh.Portrait = por; sh.Scale = scale; sh.Locked = true;
+        var order = sh.Figures.ToList();
+        sh.Figures.Clear();
+        var rects = new List<Rect2>();
+        foreach (var pf in order)
+        {
+            if (!map.TryGetValue(pf.Id, out var f)) continue;
+            double sc = scl[f.Id], w = f.WAt(sc), h = f.HAt(sc);
+            var spot = FindSpot(sh, rects, w, h, set);
+            if (spot == null) { log.Add("Hình \"" + f.Caption + "\" không còn chỗ trên tờ " + sh.No + " – đã chuyển về danh sách chưa đặt."); continue; }
+            sh.Figures.Add(new PlacedFigure { Id = f.Id, X = spot.Value.X, Y = spot.Value.Y, Scale = sc });
+            rects.Add(new Rect2(spot.Value.X, spot.Value.Y, spot.Value.X + w, spot.Value.Y + h));
+        }
+    }
+
     /// <summary>Đặt một hình vào tờ ở chỗ trống đầu tiên (hoặc tại (x, y) nếu cho). Gỡ hình khỏi tờ cũ. false = không còn chỗ.</summary>
     public static bool Place(DetailSheetSet set, DetailSheet target, SheetFigure f, IReadOnlyDictionary<string, SheetFigure> map, double? x = null, double? y = null)
     {
         foreach (var s in set.Sheets) s.Figures.RemoveAll(pf => pf.Id == f.Id);
-        if (x.HasValue && y.HasValue) { target.Figures.Add(new PlacedFigure { Id = f.Id, X = x.Value, Y = y.Value }); return true; }
-        var spot = FindSpot(target, PlacedRects(target, map), f.W, f.H, set);
+        double sc = target.Scale > 0 && f.ScaleClass <= MainClass(target, map) ? target.Scale : ChooseScale(set, f, 0, target.Paper);
+        if (x.HasValue && y.HasValue) { target.Figures.Add(new PlacedFigure { Id = f.Id, X = x.Value, Y = y.Value, Scale = sc }); return true; }
+        var spot = FindSpot(target, PlacedRects(target, map), f.WAt(sc), f.HAt(sc), set);
         if (spot == null) return false;
-        target.Figures.Add(new PlacedFigure { Id = f.Id, X = spot.Value.X, Y = spot.Value.Y });
+        target.Figures.Add(new PlacedFigure { Id = f.Id, X = spot.Value.X, Y = spot.Value.Y, Scale = sc });
         return true;
     }
 
@@ -507,7 +701,7 @@ public static class SheetLayoutEngine
     /// <summary>Tỷ lệ in ghi trong khung tên (danh sách tỷ lệ các hình, vd. "1/100; 1/50; 1/25").</summary>
     public static string ScaleText(DetailSheet sh, IReadOnlyDictionary<string, SheetFigure> map)
     {
-        var sc = sh.Figures.Where(pf => map.ContainsKey(pf.Id)).Select(pf => map[pf.Id].F.W.Scale).Where(s => s > 1.0001)
+        var sc = sh.Figures.Where(pf => map.ContainsKey(pf.Id)).Select(pf => map[pf.Id].ScaleAt(pf.Scale)).Where(s => s > 1.0001)
             .Distinct().OrderByDescending(s => s).Select(s => "1/" + Math.Round(s)).ToList();
         return string.Join("; ", sc);
     }
@@ -516,7 +710,7 @@ public static class SheetLayoutEngine
     /// Toạ độ mô hình = mm giấy × S, gốc góc trái dưới tờ.</summary>
     public static DxfWriter Compose(DetailingProject p, DetailSheetSet set, DetailSheet sh, IReadOnlyDictionary<string, SheetFigure> map)
     {
-        double S = sh.Figures.Where(pf => map.ContainsKey(pf.Id)).Select(pf => map[pf.Id].F.W.Scale).DefaultIfEmpty(100).Max();
+        double S = sh.Figures.Where(pf => map.ContainsKey(pf.Id)).Select(pf => map[pf.Id].ScaleAt(pf.Scale)).DefaultIfEmpty(100).Max();
         if (S <= 1.0001) S = 100;
         var w = new DxfWriter(S);
         var info = new SheetComposer.SheetInfo
@@ -532,8 +726,8 @@ public static class SheetLayoutEngine
         foreach (var pf in sh.Figures)
         {
             if (!map.TryGetValue(pf.Id, out var f)) continue;
-            var fw = f.F.W;
-            double k = S / Math.Max(fw.Scale, 1e-9);
+            var fw = f.At(pf.Scale).W;
+            double k = S / Math.Max(fw.Scale, 1e-9);   // hình đã vẽ đúng tỷ lệ riêng; k chỉ đổi đơn vị mô hình sang tỷ lệ tờ (cỡ in giữ nguyên)
             var e = fw.Extents;
             double dx = pf.X * S - e.X1 * k, dy = pf.Y * S - e.Y1 * k;
             if (Math.Abs(k - 1) < 1e-9) w.Append(fw, dx, dy); else w.AppendScaled(fw, k, dx, dy);

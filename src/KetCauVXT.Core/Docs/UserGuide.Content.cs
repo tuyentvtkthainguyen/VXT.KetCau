@@ -425,6 +425,14 @@ public static partial class UserGuide
                 "**In…**: chọn máy in đã cài driver trên máy, số bản, khoảng trang; tờ tự thu vừa khổ giấy máy in (xoay nếu hợp hơn) hoặc chọn **In 1:1**. **Xuất DWG/DXF…**: mỗi tờ một file AutoCAD theo định dạng xuất đang chọn.")
             .Note("In và xuất PDF chỉ dùng máy in, phông chữ có sẵn trên máy – không kết nối mạng, không gửi dữ liệu đi đâu.");
 
+        c.Sec("che-do-ho-so.kho-giay", "Khổ giấy và tỷ lệ tự động")
+            .Bullets("Cửa sổ **Dàn trang in** → mục **BỘ TỜ**: **Khổ** (Tự động, A4, A3, A2, A1, A0), **hướng** (Ngang, Đứng, Tự động), **Tỷ lệ mặt bằng** (Tự động hoặc 1/50, 1/75, 1/100…), **Khổ lớn nhất** khi tự chọn khổ → **Áp dụng cho toàn bộ (tự dàn trang)**.",
+                "Khổ chốt (vd. A3): mặt bằng lấy **tỷ lệ lớn nhất** (trong dãy chuẩn 1/50 … 1/500) mà hình – kể cả kích thước, đầu trục, tiêu đề – vừa vùng vẽ trừ khung tên và lề; chi tiết giữ tỷ lệ chuẩn (1/20 – 1/50), mặt cắt 1/10 – 1/25, thu nhỏ nếu không vừa.",
+                "Khổ **Tự động**: tỷ lệ chốt (vd. mặt bằng 1/100) → chọn **khổ nhỏ nhất** chứa vừa; nếu để tỷ lệ tự động: mặt bằng nhỏ dùng 1/50 (vừa A3), mặt bằng lớn 1/100…; hình vượt khổ lớn nhất cho phép thì hạ tỷ lệ.",
+                "Mục **TỜ ĐANG CHỌN**: khổ, hướng, **Tỷ lệ hình chính** → **Áp dụng cho tờ đang chọn** (các hình phụ đổi tỷ lệ cùng hệ số; tờ được khoá).",
+                "Hình được **vẽ lại** ở tỷ lệ mới (không phóng / thu hình cũ): chữ ghi chú luôn cao 2,5 mm khi in, tiêu đề 3,5 mm, vòng số hiệu, đầu trục, mũi tên kích thước đúng cỡ; tiêu đề hình ghi đúng \"tl: 1/xx\", khung tên ghi các tỷ lệ của tờ.",
+                "Mặt bằng kết cấu tự tránh đè nhãn: nhãn dầm đặt giữa nhịp, đụng nhãn cột / dầm khác thì dời dọc dầm hoặc sang phía bên kia; nhãn lanh tô, ô văng tránh dầm; chữ thép sàn Ø..a.. luôn cách vòng số hiệu và không đè nhau.");
+
         c.Sec("che-do-ho-so.khung-ten", "Khung tên, tên và số hiệu bản vẽ")
             .Bullets("Cửa sổ **Dàn trang in** → mục **KHUNG TÊN** chọn: **Mặc định** (khung tên dựng sẵn), **Tự tạo** hoặc **Tải lên (AutoCAD)**.",
                 "**Thiết kế khung tên…**: bảng các ô – hàng, trường (Đơn vị thiết kế, Công trình, Hạng mục, Địa điểm, Chủ đầu tư, Chủ trì, Thiết kế, Kiểm tra, Duyệt, Tên bản vẽ, Số hiệu, Tỷ lệ, Ngày, Ghi chú, Lần sửa, Tờ số…), nhãn ô, bề rộng (mm), cỡ chữ, bật / tắt ô, hiện nhãn; chiều cao từng hàng; vị trí **góc phải dưới** hoặc **dải dọc bên phải**. Bấm **Xem trước**, **Khôi phục mặc định**, **Dùng khung tên này**.",

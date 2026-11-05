@@ -33,8 +33,14 @@ public sealed class DetailSheetWindow : Window
     private readonly Canvas _canvas = new() { Background = new SolidColorBrush(Color.FromRgb(120, 124, 130)) };
     private readonly ScrollViewer _scroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly TextBlock _status = new() { Margin = new Thickness(6, 2, 6, 2) };
-    private readonly ComboBox _paper = new() { ItemsSource = SheetGeometry.Papers, Width = 70 };
-    private readonly CheckBox _portrait = new() { Content = "Khổ đứng", Margin = new Thickness(0, 4, 0, 0) };
+    private static readonly List<string> PaperChoices = new[] { DetailSheetSet.PaperAuto }.Concat(SheetGeometry.Papers).ToList();
+    private static readonly List<string> ScaleChoices = new[] { "Tự động" }.Concat(SheetGeometry.StdScales.Select(x => "1/" + x)).ToList();
+    private readonly ComboBox _paper = new() { ItemsSource = PaperChoices, Width = 80 };
+    private readonly ComboBox _orient = new() { ItemsSource = DetailSheetSet.Orientations, Width = 80 };
+    private readonly ComboBox _scale = new() { ItemsSource = ScaleChoices, Width = 80 };
+    private readonly ComboBox _setOrient = new() { ItemsSource = DetailSheetSet.Orientations, Width = 80 };
+    private readonly ComboBox _setScale = new() { ItemsSource = ScaleChoices, Width = 80 };
+    private readonly ComboBox _maxPaper = new() { ItemsSource = SheetGeometry.Papers, Width = 70 };
     private readonly CheckBox _locked = new() { Content = "Khoá tờ (giữ khi tự dàn trang)", Margin = new Thickness(0, 4, 0, 0) };
     private readonly TextBox _title = new();
     private readonly TextBox _no = new();
@@ -45,8 +51,7 @@ public sealed class DetailSheetWindow : Window
     private readonly TextBox _digits = new() { Width = 30 };
     private readonly ComboBox _tbKind = new() { ItemsSource = DetailTitleBlock.Kinds, MinWidth = 150 };
     private readonly TextBlock _tbInfo = new() { Foreground = Brushes.DimGray, FontSize = 11, TextWrapping = TextWrapping.Wrap };
-    private readonly ComboBox _setPaper = new() { ItemsSource = SheetGeometry.Papers, Width = 70 };
-    private readonly CheckBox _autoPaper = new() { Content = "Tự chọn khổ nhỏ nhất vừa hình", Margin = new Thickness(0, 4, 0, 0) };
+    private readonly ComboBox _setPaper = new() { ItemsSource = PaperChoices, Width = 80 };
     private readonly CheckBox _index = new() { Content = "Có tờ danh mục bản vẽ", Margin = new Thickness(0, 4, 0, 0) };
     private readonly TextBox _date = new();
     private readonly ComboBox _moveTo = new() { MinWidth = 120 };
@@ -127,8 +132,14 @@ public sealed class DetailSheetWindow : Window
         right.Children.Add(new TextBlock { Text = "Tên bản vẽ (sửa tay → giữ nguyên khi tự dàn trang)", Margin = new Thickness(0, 4, 0, 0) }); right.Children.Add(_title);
         right.Children.Add(_nameState);
         var pr = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-        pr.Children.Add(new TextBlock { Text = "Khổ giấy  ", VerticalAlignment = VerticalAlignment.Center }); pr.Children.Add(_paper);
-        right.Children.Add(pr); right.Children.Add(_portrait); right.Children.Add(_locked);
+        pr.Children.Add(new TextBlock { Text = "Khổ ", VerticalAlignment = VerticalAlignment.Center }); pr.Children.Add(_paper);
+        pr.Children.Add(new TextBlock { Text = "  ", VerticalAlignment = VerticalAlignment.Center }); pr.Children.Add(_orient);
+        right.Children.Add(pr);
+        var prs = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+        prs.Children.Add(new TextBlock { Text = "Tỷ lệ hình chính ", VerticalAlignment = VerticalAlignment.Center }); prs.Children.Add(_scale);
+        right.Children.Add(prs);
+        right.Children.Add(Btn("Áp dụng cho tờ đang chọn", ApplySheetFormat));
+        right.Children.Add(_locked);
         right.Children.Add(H("HÌNH ĐANG CHỌN"));
         var mv = new StackPanel { Orientation = Orientation.Horizontal };
         mv.Children.Add(_moveTo);
@@ -140,8 +151,20 @@ public sealed class DetailSheetWindow : Window
         right.Children.Add(Btn("Đặt vào tờ đang chọn", PlaceSelected));
         right.Children.Add(H("BỘ TỜ"));
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
-        sp.Children.Add(new TextBlock { Text = "Khổ mặc định  ", VerticalAlignment = VerticalAlignment.Center }); sp.Children.Add(_setPaper);
-        right.Children.Add(sp); right.Children.Add(_autoPaper); right.Children.Add(_index);
+        sp.Children.Add(new TextBlock { Text = "Khổ ", VerticalAlignment = VerticalAlignment.Center }); sp.Children.Add(_setPaper);
+        sp.Children.Add(new TextBlock { Text = "  ", VerticalAlignment = VerticalAlignment.Center }); sp.Children.Add(_setOrient);
+        right.Children.Add(sp);
+        var sp2 = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+        sp2.Children.Add(new TextBlock { Text = "Tỷ lệ mặt bằng ", VerticalAlignment = VerticalAlignment.Center }); sp2.Children.Add(_setScale);
+        sp2.Children.Add(new TextBlock { Text = "  Khổ lớn nhất ", VerticalAlignment = VerticalAlignment.Center }); sp2.Children.Add(_maxPaper);
+        right.Children.Add(sp2);
+        right.Children.Add(Btn("Áp dụng cho toàn bộ (tự dàn trang)", ApplySetFormat));
+        right.Children.Add(new TextBlock
+        {
+            Text = "Khổ chốt → chọn tỷ lệ lớn nhất cho mặt bằng vừa khổ. Khổ Tự động → tỷ lệ chuẩn theo loại hình (mặt bằng 1/50 – 1/100, chi tiết 1/20 – 1/50, mặt cắt 1/10 – 1/25), khổ nhỏ nhất vừa; vượt khổ lớn nhất thì hạ tỷ lệ. Hình được vẽ lại ở tỷ lệ mới – chữ luôn cao 2,5 mm khi in.",
+            TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DimGray, FontSize = 11
+        });
+        right.Children.Add(_index);
         right.Children.Add(new TextBlock { Text = "Ngày ghi khung tên (để trống = không ghi)", Margin = new Thickness(0, 4, 0, 0) }); right.Children.Add(_date);
         right.Children.Add(H("ĐÁNH SỐ BẢN VẼ"));
         var nr = new WrapPanel();
@@ -195,18 +218,18 @@ public sealed class DetailSheetWindow : Window
             if (k == DetailTitleBlock.KindImported && Set.TitleBlock.Imported == null) { ImportTitle(); return; }
             Set.TitleBlock.Kind = k; Changed(); TitleBlockChanged();
         };
-        _paper.SelectionChanged += (s, e) => { if (_loading || Cur == null || _paper.SelectedItem is not string p) return; Cur.Paper = p; Cur.Locked = true; Changed(); RefreshSheets(); };
-        _portrait.Click += (s, e) => { if (Cur == null) return; Cur.Portrait = _portrait.IsChecked == true; Cur.Locked = true; Changed(); RefreshSheets(); };
+
         _locked.Click += (s, e) => { if (Cur == null) return; Cur.Locked = _locked.IsChecked == true; Changed(); RefreshSheets(); };
-        _setPaper.SelectionChanged += (s, e) => { if (_loading || _setPaper.SelectedItem is not string p) return; Set.Paper = p; Changed(); };
-        _autoPaper.Click += (s, e) => { Set.AutoPaper = _autoPaper.IsChecked == true; Changed(); };
+
         _index.Click += (s, e) => { Set.IndexSheet = _index.IsChecked == true; Changed(); };
         _date.LostFocus += (s, e) => { if (Set.Date == _date.Text) return; Set.Date = _date.Text; Changed(); Render(); };
         _canvas.MouseMove += Canvas_MouseMove;
         _canvas.MouseLeftButtonUp += Canvas_MouseUp;
 
         _loading = true;
-        _setPaper.SelectedItem = Set.Paper; _autoPaper.IsChecked = Set.AutoPaper; _index.IsChecked = Set.IndexSheet; _date.Text = Set.Date ?? "";
+        _setPaper.SelectedItem = Set.AutoPaper ? DetailSheetSet.PaperAuto : Set.Paper; _setOrient.SelectedItem = Set.Orientation ?? DetailSheetSet.OrientLandscape;
+        _setScale.SelectedItem = Set.PlanScale > 0 ? "1/" + Set.PlanScale : "Tự động"; _maxPaper.SelectedItem = Set.MaxPaper ?? "A1";
+        _index.IsChecked = Set.IndexSheet; _date.Text = Set.Date ?? "";
         Set.TitleBlock ??= new DetailTitleBlock();
         _prefix.Text = Set.NumberPrefix ?? ""; _style.SelectedItem = Set.NumberStyle; _startNo.Text = Set.StartNo.ToString(); _digits.Text = Set.Digits.ToString();
         _tbKind.SelectedItem = Set.TitleBlock.Kind;
@@ -249,18 +272,54 @@ public sealed class DetailSheetWindow : Window
         var c = Cur;
         _loading = true;
         _title.Text = c?.Title ?? ""; _no.Text = c?.No ?? "";
-        _nameState.Text = c == null ? "" : (c.NameLocked ? "Tên sửa tay (giữ khi tự dàn trang)" : "Tên tự động theo cây thư mục") + " · " + (c.NumberLocked ? "số hiệu sửa tay" : "số hiệu tự động"); _paper.SelectedItem = c?.Paper; _portrait.IsChecked = c?.Portrait == true; _locked.IsChecked = c?.Locked == true;
+        _nameState.Text = c == null ? "" : (c.NameLocked ? "Tên sửa tay (giữ khi tự dàn trang)" : "Tên tự động theo cây thư mục") + " · " + (c.NumberLocked ? "số hiệu sửa tay" : "số hiệu tự động"); _paper.SelectedItem = c?.Paper; _orient.SelectedItem = c == null ? null : c.Portrait ? DetailSheetSet.OrientPortrait : DetailSheetSet.OrientLandscape;
+        _scale.SelectedItem = c != null && c.Scale > 0 ? "1/" + c.Scale : "Tự động"; _locked.IsChecked = c?.Locked == true;
         _loading = false;
     }
 
-    private System.Windows.Media.Drawing FigureDrawing(SheetFigure f)
+    private System.Windows.Media.Drawing FigureDrawing(SheetFigure f, double scale)
     {
-        if (_figDraw.TryGetValue(f.Id, out var d)) return d;
-        var e = f.F.W.Extents;
-        double k = 1.0 / Math.Max(f.F.W.Scale, 1e-9);
-        d = SheetRender.Render(new[] { (f.F.W, k, -e.X1 * k, -e.Y1 * k) }, 0, f.H, 0.1, x => x.GetPrimitives());
-        _figDraw[f.Id] = d;
+        string key = f.Id + "@" + scale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (_figDraw.TryGetValue(key, out var d)) return d;
+        var fw = f.At(scale).W;
+        var e = fw.Extents;
+        double k = 1.0 / Math.Max(fw.Scale, 1e-9);
+        d = SheetRender.Render(new[] { (fw, k, -e.X1 * k, -e.Y1 * k) }, 0, f.HAt(scale), 0.1, x => x.GetPrimitives());
+        _figDraw[key] = d;
         return d;
+    }
+
+    private static double ParseScale(object item) =>
+        item is string t && t.StartsWith("1/") && double.TryParse(t.Substring(2), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v) ? v : 0;
+
+    /// <summary>Khổ / hướng / tỷ lệ cho tờ đang chọn: vẽ lại các hình ở tỷ lệ mới rồi xếp lại tờ.</summary>
+    private void ApplySheetFormat()
+    {
+        var c = Cur;
+        if (c == null || c.IsIndex) { SetStatus("Chọn một tờ có hình."); return; }
+        var log = new List<string>();
+        try
+        {
+            Mouse.OverrideCursor = Cursors.Wait;
+            SheetLayoutEngine.RefitSheet(Set, c, _map, _paper.SelectedItem as string ?? DetailSheetSet.PaperAuto, _orient.SelectedItem as string ?? DetailSheetSet.OrientLandscape, ParseScale(_scale.SelectedItem), log);
+            SheetLayoutEngine.ApplyNames(Set, _cat); SheetLayoutEngine.Renumber(Set, _cat);
+        }
+        finally { Mouse.OverrideCursor = null; }
+        Changed(); RefreshSheets();
+        SetStatus("Tờ " + c.No + ": khổ " + c.Paper + (c.Portrait ? " đứng" : " ngang") + ", tỷ lệ " + SheetLayoutEngine.ScaleText(c, _map) + (log.Count > 0 ? " | " + string.Join(" ", log) : ""));
+    }
+
+    /// <summary>Khổ / hướng / tỷ lệ mặt bằng cho toàn bộ: tự dàn trang lại (tờ khoá giữ nguyên).</summary>
+    private void ApplySetFormat()
+    {
+        string pp = _setPaper.SelectedItem as string ?? DetailSheetSet.PaperAuto;
+        Set.AutoPaper = pp == DetailSheetSet.PaperAuto;
+        if (!Set.AutoPaper) Set.Paper = pp;
+        Set.Orientation = _setOrient.SelectedItem as string ?? DetailSheetSet.OrientLandscape;
+        Set.PlanScale = ParseScale(_setScale.SelectedItem);
+        Set.MaxPaper = _maxPaper.SelectedItem as string ?? "A1";
+        try { Mouse.OverrideCursor = Cursors.Wait; AutoLayout(); }
+        finally { Mouse.OverrideCursor = null; }
     }
 
     /// <summary>Hình vẽ cả tờ (mm giấy, y xuống) – in / xem.</summary>
@@ -309,14 +368,15 @@ public sealed class DetailSheetWindow : Window
             if (!_map.TryGetValue(pf.Id, out var f)) continue;
             var r = rects[i++];
             bool bad = rects.Any(o => !o.Equals(r) && SheetGeometry.Overlap(o, r)) || SheetGeometry.Overlap(r, tz) || r.X1 < area.X1 - 9 || r.Y1 < area.Y1 - 9 || r.X2 > area.X2 + 9 || r.Y2 > area.Y2 + 9;
-            var host = new DrawingHost { Drawing = FigureDrawing(f), Scale = _k, Width = f.W * _k, Height = f.H * _k, Background = Brushes.Transparent };
+            double fwm = f.WAt(pf.Scale), fhm = f.HAt(pf.Scale);
+            var host = new DrawingHost { Drawing = FigureDrawing(f, pf.Scale), Scale = _k, Width = fwm * _k, Height = fhm * _k, Background = Brushes.Transparent };
             var bd = new Border
             {
                 Child = host, Tag = pf, Cursor = Cursors.SizeAll, ToolTip = f.Caption,
                 BorderThickness = new Thickness(pf.Id == _selFig || bad ? 1.5 : 0.6),
                 BorderBrush = bad ? Brushes.Red : pf.Id == _selFig ? Brushes.DodgerBlue : new SolidColorBrush(Color.FromArgb(70, 30, 110, 200))
             };
-            Canvas.SetLeft(bd, 20 + pf.X * _k); Canvas.SetTop(bd, 20 + (ph - pf.Y - f.H) * _k);
+            Canvas.SetLeft(bd, 20 + pf.X * _k); Canvas.SetTop(bd, 20 + (ph - pf.Y - fhm) * _k);
             bd.MouseLeftButtonDown += Fig_MouseDown;
             _canvas.Children.Add(bd);
         }
@@ -352,8 +412,9 @@ public sealed class DetailSheetWindow : Window
         if (Math.Abs(p.X - _dragStart.X) < 2 && Math.Abs(p.Y - _dragStart.Y) < 2) return;
         var (pw, ph) = sh.Size;
         double x = (Canvas.GetLeft(bd) - 20) / _k, top = (Canvas.GetTop(bd) - 20) / _k;
-        pf.X = Math.Round(Math.Clamp(x, 0, Math.Max(0, pw - f.W)), 1);
-        pf.Y = Math.Round(Math.Clamp(ph - top - f.H, 0, Math.Max(0, ph - f.H)), 1);
+        double fwm = f.WAt(pf.Scale), fhm = f.HAt(pf.Scale);
+        pf.X = Math.Round(Math.Clamp(x, 0, Math.Max(0, pw - fwm)), 1);
+        pf.Y = Math.Round(Math.Clamp(ph - top - fhm, 0, Math.Max(0, ph - fhm)), 1);
         if (!sh.Locked) { sh.Locked = true; SetStatus("Tờ " + sh.No + " đã chỉnh tay → tự khoá (giữ nguyên khi tự dàn trang)."); }
         Changed();
         RefreshSheets();
@@ -371,7 +432,7 @@ public sealed class DetailSheetWindow : Window
     private void AddSheet()
     {
         int at = Math.Max(0, _sheets.SelectedIndex + 1);
-        Set.Sheets.Insert(Math.Min(at, Set.Sheets.Count), new DetailSheet { Paper = Set.Paper, Title = "BẢN VẼ MỚI", Locked = true });
+        Set.Sheets.Insert(Math.Min(at, Set.Sheets.Count), new DetailSheet { Paper = Set.DefaultPaper, Title = "BẢN VẼ MỚI", Locked = true });
         SheetLayoutEngine.Renumber(Set, _cat);
         Changed(); RefreshSheets();
         _sheets.SelectedIndex = Math.Min(at, Set.Sheets.Count - 1);
@@ -478,7 +539,7 @@ public sealed class DetailSheetWindow : Window
 
     private static PageMediaSizeName MediaName(string paper) => paper switch
     {
-        "A0" => PageMediaSizeName.ISOA0, "A1" => PageMediaSizeName.ISOA1, "A2" => PageMediaSizeName.ISOA2, _ => PageMediaSizeName.ISOA3
+        "A0" => PageMediaSizeName.ISOA0, "A1" => PageMediaSizeName.ISOA1, "A2" => PageMediaSizeName.ISOA2, "A4" => PageMediaSizeName.ISOA4, _ => PageMediaSizeName.ISOA3
     };
 
     /// <summary>Trang in: tờ vừa vùng in (xoay 90° nếu hợp hơn); oneToOne = không thu nhỏ (cắt phần ngoài khổ máy in).</summary>

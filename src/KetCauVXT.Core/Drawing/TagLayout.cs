@@ -75,6 +75,7 @@ public static class SheetComposer
     /// <summary>Khổ giấy (mm in): A1 = 841×594, A3 = 420×297.</summary>
     public static (double W, double H) Paper(string size) => size switch
     {
+        "A4" => (297.0, 210.0),
         "A3" => (420.0, 297.0),
         "A2" => (594.0, 420.0),
         "A0" => (1189.0, 841.0),

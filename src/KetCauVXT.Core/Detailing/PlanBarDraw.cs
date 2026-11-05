@@ -7,6 +7,9 @@ namespace KetCauVXT.Detailing;
 /// (không kéo đường dẫn dài), và ĐƯỜNG PHẠM VI RẢI vuông góc với thanh: nét mảnh có gạch xiên 45° ở hai đầu, chấm tại giao với thanh.</summary>
 public static class PlanBarDraw
 {
+    /// <summary>Vùng chiếm chỗ dùng chung khi vẽ một mặt bằng (null = không tránh). Hàm vẽ mặt bằng đặt rồi xoá sau khi vẽ.</summary>
+    [ThreadStatic] public static TagLayout Tags;
+
     /// <summary>Thanh thẳng theo phương nằm ngang (horizontal = true: dọc trục X) hoặc dọc (trục Y).
     /// a, b: toạ độ đầu – cuối thanh dọc theo phương thanh; pos: toạ độ vuông góc (vị trí thanh đại diện).
     /// hookA / hookB: chiều dài móc / đoạn bẻ ở đầu (vẽ vuông góc, về phía hookSide: +1 / −1), 0 = không.
@@ -38,11 +41,37 @@ public static class PlanBarDraw
             w.Dot(Lay.KyHieu, xd, yd, 0.18 * th);
         }
 
-        // chữ trên thanh + vòng số hiệu ngay sau chữ
-        double tw = DxfWriter.TagTextWidth(text, th) * w.WidthFactor;
+        // chữ trên thanh + vòng số hiệu ngay sau chữ (bề rộng chữ ước lớn hơn 10 % để luôn có khe hở chữ ↔ vòng số hiệu)
+        double tw = DxfWriter.TagTextWidth(text, th) * w.WidthFactor * 1.1;
         double r = w.MarkR;
         double gap = DxfWriter.TagGapFactor * th;
         double total = tw + (mark > 0 ? gap + 2 * r : 0);
+        Rect2 BoxAt(double atq, int sd)
+        {
+            double mid0 = a + (b - a) * atq, s00 = mid0 - total / 2;
+            double lo0 = sd > 0 ? pos : pos - 0.35 * th - Math.Max(th, mark > 0 ? 2 * r : 0);
+            double hi0 = sd > 0 ? pos + 0.35 * th + Math.Max(th, mark > 0 ? 0.85 * th + r : th) : pos;
+            if (sd < 0) lo0 = Math.Min(lo0, pos - (0.35 * th + 0.5 * th) - r);
+            return horizontal ? new Rect2(s00, lo0, s00 + total, hi0) : new Rect2(-hi0 + 2 * pos, s00, -lo0 + 2 * pos, s00 + total);
+        }
+        // tránh chồng nhãn khác trên cùng mặt bằng (Tags do hàm vẽ mặt bằng đặt): thử dời dọc thanh rồi đổi bên
+        if (Tags != null)
+        {
+            bool found = false;
+            foreach (int side in new[] { labelSide, -labelSide })
+            {
+                foreach (double dt in new[] { 0.0, 0.1, -0.1, 0.2, -0.2, 0.3, -0.3 })
+                {
+                    double atc = Math.Clamp(textAt + dt, 0.12, 0.88);
+                    var bx = BoxAt(atc, side);
+                    if (!Tags.IsFree(bx)) continue;
+                    textAt = atc; labelSide = side; found = true; Tags.Reserve(bx);
+                    break;
+                }
+                if (found) break;
+            }
+            if (!found) Tags.Reserve(BoxAt(textAt, labelSide));
+        }
         double mid = a + (b - a) * textAt;
         double s0 = mid - total / 2;
         double off = labelSide * 0.35 * th;

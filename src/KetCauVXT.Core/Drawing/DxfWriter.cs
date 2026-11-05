@@ -101,7 +101,35 @@ public sealed partial class DxfWriter
     public Rect2 Extents => _ext;
     public int EntityCount => _ents.Count;
 
-    public DxfWriter(double scale = 50) { Scale = scale <= 0 ? 1 : scale; }
+    public DxfWriter(double scale = 50) { Scale = MapScale(scale <= 0 ? 1 : scale); }
+
+    // ---- vẽ lại hình ở tỷ lệ khác (dàn trang in – Detailing/SheetLayout.cs) ----
+    [ThreadStatic] private static Func<double, double> _scaleMap;
+
+    /// <summary>Mẫu số tỷ lệ sau khi áp phép đổi tỷ lệ đang có hiệu lực (không có → giữ nguyên).</summary>
+    public static double MapScale(double scale)
+    {
+        if (_scaleMap == null || scale <= 1.0001) return scale;   // bảng (tỷ lệ 1/1) không đổi
+        double s = _scaleMap(scale);
+        return s > 0 && !double.IsNaN(s) ? s : scale;
+    }
+
+    /// <summary>Trong phạm vi using: mọi DxfWriter mới tạo (và chữ "tl: 1/…") đổi mẫu số tỷ lệ theo map ⇒ hàm vẽ có sẵn
+    /// vẽ lại hình ở tỷ lệ mới với chữ, vòng số hiệu, đầu trục… đúng cỡ in (toạ độ hình học giữ mm thật).</summary>
+    public static IDisposable OverrideScales(Func<double, double> map)
+    {
+        var prev = _scaleMap;
+        _scaleMap = map;
+        return new ScaleScope(prev);
+    }
+
+    private sealed class ScaleScope : IDisposable
+    {
+        private readonly Func<double, double> _prev;
+        private bool _done;
+        public ScaleScope(Func<double, double> prev) { _prev = prev; }
+        public void Dispose() { if (_done) return; _done = true; _scaleMap = _prev; }
+    }
 
     public static readonly (string Name, int Color, string LType)[] LayerDefs =
     {
@@ -651,7 +679,7 @@ internal static class DrawUtil
 
     public static string BarTag(int count, int dia) => $"{count}Ø{dia}";
 
-    public static string ScaleText(double denom) => "tl: 1/" + Math.Round(denom).ToString("0", Inv);
+    public static string ScaleText(double denom) => "tl: 1/" + Math.Round(DxfWriter.MapScale(denom)).ToString("0", Inv);
 
     public static int RolePriority(string role)
     {

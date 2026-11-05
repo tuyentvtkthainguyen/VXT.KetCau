@@ -135,6 +135,30 @@ public static class StructuralPlanDrawing
         // cấu kiện: móng / sàn / ô văng / cầu thang trước (nằm dưới), dầm, lanh tô, cột sau cùng
         int Order(PlanItem it) => it.Kind switch { PlanKinds.Footing => 0, PlanKinds.Slab => 1, PlanKinds.Stair => 2, PlanKinds.Canopy => 3, PlanKinds.Beam => 4, PlanKinds.Lintel => 5, _ => 6 };
         var labeledCols = new HashSet<string>();
+        // vùng chiếm chỗ: thân cột + nhãn cột, thân dầm (trục song song) giữ trước ⇒ nhãn dầm, lanh tô, ô văng, thép sàn tránh đè
+        var tags = new TagLayout(0.25 * th);
+        foreach (var it in items)
+        {
+            if (it.Kind == PlanKinds.Column)
+            {
+                var (cb, ch) = ColumnSize(it, map);
+                double x = it.X1 * 1000, y = it.Y1 * 1000;
+                tags.Reserve(new Rect2(x - cb / 2, y - ch / 2, x + cb / 2, y + ch / 2));
+                tags.Reserve(w.TextBox(x + cb / 2 + 0.3 * th, y + ch / 2 + 0.3 * th, 0.9 * th, string.IsNullOrEmpty(it.Member) ? "C?" : it.Member, 0, 0, 0));
+            }
+            else if (it.Kind == PlanKinds.Beam || it.Kind == PlanKinds.Lintel)
+            {
+                double bw = it.Kind == PlanKinds.Beam ? BeamWidth(it, map) : (Get<ManualLintel>(map, it.Member)?.Bw ?? 0.22) * 1000;
+                double x1 = it.X1 * 1000, y1 = it.Y1 * 1000, x2 = it.X2 * 1000, y2 = it.Y2 * 1000;
+                if (Math.Abs(y2 - y1) < 1) tags.Reserve(new Rect2(Math.Min(x1, x2), y1 - bw / 2, Math.Max(x1, x2), y1 + bw / 2));
+                else if (Math.Abs(x2 - x1) < 1) tags.Reserve(new Rect2(x1 - bw / 2, Math.Min(y1, y2), x1 + bw / 2, Math.Max(y1, y2)));
+            }
+        }
+        _tags = tags;
+        var prevBarTags = PlanBarDraw.Tags;
+        PlanBarDraw.Tags = tags;
+        try
+        {
         foreach (var it in items.OrderBy(Order))
         {
             switch (it.Kind)
@@ -148,6 +172,8 @@ public static class StructuralPlanDrawing
                 case PlanKinds.Column: DrawColumn(w, it, map, plan, columnsOnly, labeledCols); break;
             }
         }
+        }
+        finally { _tags = null; PlanBarDraw.Tags = prevBarTags; }
 
         // đường cắt mặt cắt thép sàn
         if (!columnsOnly)
@@ -178,6 +204,48 @@ public static class StructuralPlanDrawing
     }
 
     // ------------------------------------------------------------------
+    /// <summary>Vùng chiếm chỗ của mặt bằng đang vẽ (nhãn tránh nhau); null ngoài hàm Level.</summary>
+    [ThreadStatic] private static TagLayout _tags;
+
+    private static (double B, double H) ColumnSize(PlanItem it, Dictionary<string, (IDetailMember M, DetailResult R)> map)
+    {
+        var c = Get<ManualColumn>(map, it.Member);
+        double b = (c?.B ?? 0.22) * 1000, h = (c?.H ?? 0.22) * 1000;
+        if (Math.Abs(Math.Abs(it.Rotation) - 90) < 1) (b, h) = (h, b);
+        return (b, h);
+    }
+
+    private static double BeamWidth(PlanItem it, Dictionary<string, (IDetailMember M, DetailResult R)> map)
+    {
+        var m = map.TryGetValue(it.Member ?? "", out var v) ? v.M : null;
+        return m switch { ManualBeam mb => mb.B * 1000, PrestressInput pr => pr.B * 1000, ManualStrip st => (st.BUsed > 0 ? st.BUsed : st.B > 0 ? st.B : 1.0) * 1000, _ => 220 };
+    }
+
+    /// <summary>Đặt nhãn dọc cấu kiện thẳng: thử giữa đoạn rồi dời dọc (±6 %, ±12 %… chiều dài), rồi phía bên kia; giữ chỗ nhãn đã đặt.
+    /// side0 = +1: phía pháp tuyến n (chữ trên đường), −1: phía ngược (chữ treo dưới).</summary>
+    private static void LabelAlong(DxfWriter w, PlanItem it, double off, double h, string text, int side0)
+    {
+        var (ux, uy, nx, ny, ang) = Dir(it);
+        double len = it.Length * 1000;
+        double cx = (it.X1 + it.X2) * 500, cy = (it.Y1 + it.Y2) * 500;
+        (double X, double Y, int Va) At(int side, double t) => (cx + ux * t + nx * side * off, cy + uy * t + ny * side * off, side > 0 ? 0 : 3);
+        var tags = _tags;
+        if (tags != null)
+            foreach (int side in new[] { side0, -side0 })
+                foreach (double f in new[] { 0.0, 0.06, -0.06, 0.12, -0.12, 0.18, -0.18, 0.26, -0.26, 0.34, -0.34 })
+                {
+                    var (x, y, va) = At(side, f * len);
+                    var box = w.TextBox(x, y, h, text, ang, 1, va);
+                    if (!tags.IsFree(box)) continue;
+                    tags.Reserve(box);
+                    w.Text(Lay.Chu, x, y, h, text, ang, 1, va);
+                    return;
+                }
+        var (x0, y0, va0) = At(side0, 0);
+        tags?.Reserve(w.TextBox(x0, y0, h, text, ang, 1, va0));
+        w.Text(Lay.Chu, x0, y0, h, text, ang, 1, va0);
+    }
+
     private static void DrawColumn(DxfWriter w, PlanItem it, Dictionary<string, (IDetailMember M, DetailResult R)> map, StructuralPlan plan, bool locate, HashSet<string> labeled)
     {
         var c = Get<ManualColumn>(map, it.Member);
@@ -283,8 +351,7 @@ public static class StructuralPlanDrawing
         // dầm dưới sàn: nét đứt; dầm móng / giằng móng: nét liền
         DoubleLine(w, it, b, foundation ? null : "DASHED");
         var (ux, uy, nx, ny, ang) = Dir(it);
-        double mx = (it.X1 + it.X2) * 500 + nx * (b / 2 + 0.4 * th), my = (it.Y1 + it.Y2) * 500 + ny * (b / 2 + 0.4 * th);
-        w.Text(Lay.Chu, mx, my, th, label, ang, 1, 0);
+        LabelAlong(w, it, b / 2 + 0.4 * th, th, label, 1);
         // định vị dầm lệch trục: kích thước từ trục song song gần nhất tới tim dầm (tại 1/4 đoạn)
         bool alongX = Math.Abs(uy) < 1e-3, alongY = Math.Abs(ux) < 1e-3;
         double qx = it.X1 * 1000 + (it.X2 - it.X1) * 250, qy = it.Y1 * 1000 + (it.Y2 - it.Y1) * 250;
@@ -311,7 +378,7 @@ public static class StructuralPlanDrawing
         // gạch chéo ký hiệu lanh tô trên ô cửa
         w.Line(Lay.KyHieu, x1 - nx * b / 2, y1 - ny * b / 2, x2 + nx * b / 2, y2 + ny * b / 2);
         string nm = string.IsNullOrEmpty(it.Member) ? "LT?" : it.Member;
-        w.Text(Lay.Chu, (x1 + x2) / 2 - nx * (b / 2 + 0.4 * th), (y1 + y2) / 2 - ny * (b / 2 + 0.4 * th), 0.9 * th, nm, ang, 1, 3);
+        LabelAlong(w, it, b / 2 + 0.4 * th, 0.9 * th, nm, -1);
     }
 
     private static void DrawCanopy(DxfWriter w, PlanItem it)
@@ -325,7 +392,20 @@ public static class StructuralPlanDrawing
             double ax = Math.Max(0, d), ay = ax - d, bx = Math.Min(x1 - x0, (y1 - y0) + d), by = bx - d;
             if (bx - ax > 1) w.Line(Lay.KyHieu, x0 + ax, y0 + ay, x0 + bx, y0 + by);
         }
-        w.Text(Lay.Chu, (x0 + x1) / 2, y1 + 0.4 * th, 0.9 * th, "Ô VĂNG " + (string.IsNullOrEmpty(it.Member) ? "" : "(" + it.Member + ")"), 0, 1, 0);
+        string cap = "Ô VĂNG " + (string.IsNullOrEmpty(it.Member) ? "" : "(" + it.Member + ")");
+        // nhãn ô văng: phía ngoài ô văng (trên / dưới / giữa ô) – chọn chỗ không đè dầm, nhãn khác
+        var cands = new[] { ((x0 + x1) / 2, y1 + 0.4 * th, 0), ((x0 + x1) / 2, y0 - 0.4 * th, 3), ((x0 + x1) / 2, (y0 + y1) / 2, 2), (x1 + 0.6 * th, (y0 + y1) / 2, 2) };
+        int pick = 0;
+        if (_tags != null)
+            for (int i = 0; i < cands.Length; i++)
+            {
+                var c0 = cands[i];
+                var bx = w.TextBox(c0.Item1, c0.Item2, 0.9 * th, cap, 0, i == 3 ? 0 : 1, c0.Item3);
+                if (_tags.IsFree(bx)) { pick = i; break; }
+            }
+        var cc = cands[pick];
+        _tags?.Reserve(w.TextBox(cc.Item1, cc.Item2, 0.9 * th, cap, 0, pick == 3 ? 0 : 1, cc.Item3));
+        w.Text(Lay.Chu, cc.Item1, cc.Item2, 0.9 * th, cap, 0, pick == 3 ? 0 : 1, cc.Item3);
     }
 
     private static void DrawStair(DxfWriter w, PlanItem it)
@@ -367,6 +447,8 @@ public static class StructuralPlanDrawing
         }
         double t = m switch { ManualSlab s => s.T, ManualSlabPlan sp => sp.T, _ => 0 };
         FramingPlan.SlabNameBox(w, cx, cy, nm);
+        // ô tên sàn + chiều dày: giữ chỗ để thép sàn trên mặt bằng không đè
+        _tags?.Reserve(new Rect2(cx - 2.2 * th - 0.35 * th * nm.Length, cy - 2.8 * th, cx + 2.2 * th + 0.35 * th * nm.Length, cy + 1.6 * th));
         if (t > 0) w.Text(Lay.Chu, cx, cy - 1.6 * th, 0.8 * th, "h=" + DxfWriter.N0(t * 1000), 0, 1, 3);
         if (m is ManualSlab sl) DrawSlabBars(w, x0, y0, x1, y1, sl, v.R);
         else if (m is ManualSlabPlan spl) w.Text(Lay.Chu, cx, cy - 2.8 * th, 0.8 * th, "THÉP SÀN XEM MẶT BẰNG THÉP " + (spl.Name ?? "").ToUpperInvariant(), 0, 1, 3);
@@ -539,15 +621,17 @@ public static class StructuralPlanDrawing
             double mid = (q.T0 + q.T1) / 2;
             // lớp dưới theo phương cắt = đường thép; lớp còn lại = chấm
             double dA = bAlong?.Dia ?? 0;
+            // [Shop/ghi chú cấu tạo] lớp dưới: thép PHƯƠNG NGẮN đặt trước (sát đáy, cánh tay đòn lớn), phương dài đặt trên
+            double dLow = shortAlong ? 0 : (bAcross?.Dia ?? 0);   // cắt theo phương dài: chấm phương ngắn nằm dưới đường thép
             if (bAlong != null)
             {
-                double vb = -t + cv + dA / 2;
+                double vb = -t + cv + dLow + dA / 2;
                 w.Line(Lay.Thep, q.T0 - bwE / 2 + cv, vb, q.T1 + bwE / 2 - cv, vb);
                 w.LeaderTag(q.T0 + (q.T1 - q.T0) * 0.40, vb, q.T0 + (q.T1 - q.T0) * 0.40 + 1.5 * th, -t - 3.2 * th, Dt.Spaced(bAlong.Dia, bAlong.Spacing), bAlong.Mark);
             }
             if (bAcross != null)
             {
-                double vd = -t + cv + dA + bAcross.Dia / 2.0, sp = Math.Max(bAcross.Spacing * 1000, 100);
+                double vd = (shortAlong ? -t + cv + dA : -t + cv) + bAcross.Dia / 2.0, sp = Math.Max(bAcross.Spacing * 1000, 100);
                 double first = q.T0 + 50, lastX = first;
                 for (double u = first; u <= q.T1 - 50 + 1e-6; u += sp) { w.Dot(Lay.Thep, u, vd, Math.Max(bAcross.Dia / 2.0, 0.12 * th)); lastX = u; }
                 double tagU = first + Math.Floor((q.T1 - q.T0) * 0.65 / sp) * sp;
@@ -559,7 +643,8 @@ public static class StructuralPlanDrawing
             {
                 double ext = tAlong.Segments.Count > 0 ? tAlong.Segments[0] : Ls / 4 + bwE / 2;
                 double inner = Ls / 4, outer = Math.Max(ext - inner, bwE / 2);
-                double vt = -cv - tAlong.Dia / 2.0, legDown = Math.Max(t - 2 * cv, 40);
+                // lớp trên: thép mũ PHƯƠNG NGẮN nằm trên cùng (đặt sau), mũ phương dài nằm dưới nó
+                double vt = -cv - (shortAlong ? 0 : (Role("Mũ gối cạnh dài")?.Dia ?? 0)) - tAlong.Dia / 2.0, legDown = Math.Max(t - 2 * cv, 40);
                 bool fixedSides = (shortAlong ? sl.FixedLongEdges : sl.FixedShortEdges) >= 1;
                 int sides = shortAlong ? sl.FixedLongEdges : sl.FixedShortEdges;
                 if (!fixedSides) sides = 1;
