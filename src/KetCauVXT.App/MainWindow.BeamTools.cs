@@ -704,6 +704,7 @@ public partial class MainWindow
     private void PlanHost_RightUp(object sender, MouseButtonEventArgs e)
     {
         if (_coordBox != null && _coordBox.IsMouseOver) return;
+        if (BeamEditAuto() || CancelBeamEdit()) { e.Handled = true; return; }   // [Sửa dầm] Extend tự động / huỷ bước dở
         if (IsLineMode && _lineStart != null)
         {
             _lineStart = null; _arcEnd = null;
@@ -714,7 +715,7 @@ public partial class MainWindow
             return;
         }
         if (_winDrag) { _winDrag = false; DrawHover(); e.Handled = true; return; }
-        if ((IsLineMode || IsBeamToolMode) && rbModeSelect != null)
+        if ((IsLineMode || IsBeamToolMode || IsBeamEditMode) && rbModeSelect != null)
         {
             rbModeSelect.IsChecked = true;   // chuột phải lần nữa: thoát công cụ (như ETABS)
             e.Handled = true;

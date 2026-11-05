@@ -18,7 +18,8 @@ public partial class MainWindow
 {
     private enum PlanEditMode { Select, AddSlab, Balcony, Stair, Void, WC, Delete, AddBeam, AddWall, AssignWall, AssignBuildUp, AddCurvedBeam,
         /* [BeamTools] MainWindow.BeamTools.cs */ QuickGridBeam, SecondaryBeam, CantileverBeam, MultiSelect,
-        /* [Sàn hạ cốt] MainWindow.SlabDrop.cs */ SlabDropMode }
+        /* [Sàn hạ cốt] MainWindow.SlabDrop.cs */ SlabDropMode,
+        /* [Sửa dầm] MainWindow.BeamEdit.cs */ StretchBeam, MoveBeam, TrimBeam, ExtendBeam, PickCad }
 
     private PlanEditMode _mode = PlanEditMode.Select;
 
@@ -43,6 +44,7 @@ public partial class MainWindow
         PlanEditMode.Void => "Thêm giếng trời: bấm vào ô sàn / ô kín bởi dầm để biến thành giếng trời, thông tầng.",
         PlanEditMode.WC => "Sàn vệ sinh: bấm vào ô sàn để đổi thành sàn vệ sinh; bấm lại ô WC để trả về phòng ở.",
         PlanEditMode.SlabDropMode => SlabDropHint,   // [Sàn hạ cốt]
+        PlanEditMode.StretchBeam or PlanEditMode.MoveBeam or PlanEditMode.TrimBeam or PlanEditMode.ExtendBeam or PlanEditMode.PickCad => BeamEditHint(m),   // [Sửa dầm]
         PlanEditMode.Delete => "Xoá: bấm vào tường, dầm, cột (hỏi lại), ô sàn hoặc lỗ sàn (cầu thang, giếng trời) để xoá.",
         PlanEditMode.AddBeam => "Thêm dầm: bấm điểm đầu rồi điểm cuối (bắt đầu dầm, nút, giao trục, giao điểm, trung điểm, vuông góc, điểm trên dầm – bật/tắt ở thanh 'Bắt điểm'); gõ số để nhập toạ độ x,y | @dx,dy | L<góc | L; bấm tiếp để vẽ nối; chuột phải / Esc để dừng.",
         PlanEditMode.QuickGridBeam or PlanEditMode.SecondaryBeam or PlanEditMode.CantileverBeam or PlanEditMode.MultiSelect => BeamToolHint(m),   // [BeamTools]
@@ -58,6 +60,7 @@ public partial class MainWindow
         if (sender is not FrameworkElement fe || fe.Tag is not string tag || !Enum.TryParse(tag, out PlanEditMode m)) return;
         _mode = m;
         _lineStart = null; _arcEnd = null;
+        ResetBeamEdit();   // [Sửa dầm]
         if (planHost != null) planHost.Cursor = m == PlanEditMode.Select ? null : Cursors.Cross;
         _hover = null;
         if (planOverlay != null) DrawHover();
@@ -117,6 +120,7 @@ public partial class MainWindow
             return;
         }
         if (BeamToolClick(s, st)) return;   // [BeamTools] vẽ nhanh theo lưới, dầm phụ, công xôn – MainWindow.BeamTools.cs
+        if (BeamEditClick(s, st)) return;   // [Sửa dầm] kéo, dời, trim, extend, pick CAD – MainWindow.BeamEdit.cs
         var (x, y) = S2W(s);
         // dầm / tường: bấm điểm đầu (chưa sửa mô hình)
         (double X, double Y) pEnd = default, pStart = default;
@@ -311,6 +315,7 @@ public partial class MainWindow
     private bool HandlePlanEditKey(Key key, bool ctrl)
     {
         if (_p == null) return false;
+        if (key == Key.Enter && !ctrl && !IsTextInputFocused() && BeamEditAuto()) return true;   // [Sửa dầm] Extend tự động
         bool del = key == Key.Delete && !ctrl, esc = key == Key.Escape, undo = ctrl && key == Key.Z;
         if (!del && !esc && !undo) return false;
         if (IsTextInputFocused()) return false; // để ô nhập / bảng tự xử lý
@@ -322,6 +327,7 @@ public partial class MainWindow
             SetStatus(ModeHint(_mode));
             return true;
         }
+        if (esc && CancelBeamEdit()) return true;   // [Sửa dầm] huỷ bước đang dở
         if (esc && CancelBeamTool()) return true;   // [BeamTools] khung chọn / chọn nhiều
         if (esc)
         {

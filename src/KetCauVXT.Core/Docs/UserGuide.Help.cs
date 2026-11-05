@@ -66,6 +66,11 @@ public static class HelpContext
         ["CantileverBeam"] = "mo-hinh.dam-etabs",
         ["MultiSelect"] = "mo-hinh.dam-etabs",
         ["SlabDropMode"] = "mo-hinh.san-ha-cot",
+        ["StretchBeam"] = "mo-hinh.sua-dam",
+        ["MoveBeam"] = "mo-hinh.sua-dam",
+        ["TrimBeam"] = "mo-hinh.sua-dam",
+        ["ExtendBeam"] = "mo-hinh.sua-dam",
+        ["PickCad"] = "mo-hinh.sua-dam",
     };
 
     /// <summary>Cửa sổ / hộp thoại (tên lớp) → mục hướng dẫn.</summary>

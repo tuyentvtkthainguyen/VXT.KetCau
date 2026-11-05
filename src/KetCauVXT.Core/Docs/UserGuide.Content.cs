@@ -653,6 +653,18 @@ public static partial class UserGuide
                 "**Sàn vệ sinh**: bấm vào ô sàn → hoàn thiện 2,0 kN/m² (chống thấm, hạ cốt); bấm lại để trả về phòng ở.",
                 "Xoá lỗ sàn (chế độ **Xoá**) sẽ đặt lại sàn.");
 
+        c.Sec("mo-hinh.sua-dam", "Kéo, trim, extend dầm; pick đối tượng CAD")
+            .P("Sửa dầm như AutoCAD – không cần nhớ kích thước: các nút ở hàng **Sửa dầm** (khung *Dầm kiểu ETABS*) hoặc menu **Vẽ**. Mọi thao tác hoàn tác được (Ctrl+Z); nút giao được chia lại để mô hình chạy phân tích ngay.")
+            .Steps("**Kéo dầm** ({m:stretchBeam}): bấm gần ĐẦU dầm cần kéo → bấm điểm mới (bắt nút, giao trục, điểm trên dầm, nét bản vẽ link). Đầu dầm đang nối cột / dầm khác được tách sang nút mới, không kéo theo cấu kiện khác. "
+                + "Giữ **Shift** khi bấm dầm để dời cả dầm.",
+                "**Dời dầm** ({m:moveBeam}): bấm dầm tại điểm gốc (hoặc dùng các dầm đã *Chọn nhiều*) → bấm điểm đích; dầm dời song song.",
+                "**Trim** ({m:trimBeam}): bấm vào đoạn dầm cần bỏ – phần giữa hai dầm / cột giao gần nhất, hoặc phần nhô quá dầm giao, bị cắt; đoạn còn lại giữ tiết diện và tải.",
+                "**Extend** ({m:extendBeam}): bấm gần đầu dầm cần kéo dài → bấm dầm đích (kể cả khi phải vượt qua dầm gần hơn), hoặc **chuột phải / Enter** để tự kéo tới dầm vuông góc gần nhất phía trước. Dầm đích được chia tại điểm nối.",
+                "**Nối dầm hở** ({m:joinBeams}): mọi đầu dầm hở của tầng đang xem tự kéo dài tới dầm vuông góc gần nhất trong **khoảng nối** (mặc định 1500 mm) – dùng sau khi vẽ nhanh theo bản vẽ kiến trúc.",
+                "**Pick CAD** ({m:pickCad}): nạp mặt bằng kiến trúc sơ bộ bằng {m:cadLinks}, chọn ô **tạo**: *Dầm* – bấm giữa hai mép dầm / tường song song (100…600 mm) → dầm đúng trục, bề rộng đo được (tự tạo tiết diện b×h, h theo tiết diện đang chọn); "
+                + "bấm sát một nét → dầm theo nét; *Sàn / Cầu thang / Giếng trời / Chỉ dầm bao* – bấm trong đa tuyến kín → dầm bao các cạnh còn thiếu + ô sàn / ô thang / lỗ.")
+            .Tip("Vẽ nhanh theo kiến trúc: Pick CAD các dầm → **Nối dầm hở** → Pick CAD *Sàn* trong từng phòng → Pick CAD *Cầu thang* ở ô thang.");
+
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")
             .Steps("Thanh sửa mặt bằng: nhập độ hạ ở ô **Hạ cốt (mm)** (vd. −50; gõ 50 cũng hiểu là hạ 50 mm).",

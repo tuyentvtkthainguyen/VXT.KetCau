@@ -365,6 +365,7 @@ public partial class MainWindow
         planOverlay.Children.Clear();
         if (DrawCadAlignOverlay()) return;   // [CadLink] căn bản vẽ theo 2 điểm – MainWindow.CadLink.cs
         if (DrawBeamToolOverlay()) return;   // [BeamTools] chọn nhiều, khung chọn, công cụ dầm – MainWindow.BeamTools.cs
+        if (DrawBeamEditOverlay()) return;   // [Sửa dầm] kéo, trim, extend, pick CAD – MainWindow.BeamEdit.cs
         if (_p != null && !_panning && IsLineMode) { DrawLineToolOverlay(); return; }
         if (_p == null || _hover == null || _panning) return;
         if (ReferenceEquals(_hover, _selWall)) return;
@@ -504,7 +505,7 @@ public partial class MainWindow
         if (!_panning)
         {
             _lastMouse = e.GetPosition(planHost);
-            if (IsLineMode || IsBeamToolMode || CadAlignActive) { DrawHover(); return; }   // [CadLink] CadAlignActive   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
+            if (IsLineMode || IsBeamToolMode || IsBeamEditMode || CadAlignActive) { DrawHover(); return; }   // [CadLink] CadAlignActive   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
             UpdateHover(_lastMouse.Value);
             return;
         }

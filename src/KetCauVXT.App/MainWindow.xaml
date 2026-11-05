@@ -100,6 +100,12 @@
                 <MenuItem Header="Dầm phụ" Tag="SecondaryBeam" Click="MnuDrawMode_Click"/>
                 <MenuItem Header="Dầm công xôn" Tag="CantileverBeam" Click="MnuDrawMode_Click"/>
                 <MenuItem Header="Dầm theo toạ độ / trục…" Click="MnuBeamByPos_Click"/>
+                <MenuItem Header="Kéo đầu dầm / kéo dầm" Tag="StretchBeam" Click="MnuDrawMode_Click" ToolTip="Bấm gần đầu dầm rồi bấm điểm mới; Shift + bấm dầm để dời cả dầm (MainWindow.BeamEdit.cs)"/>
+                <MenuItem Header="Dời dầm song song" Tag="MoveBeam" Click="MnuDrawMode_Click"/>
+                <MenuItem Header="Trim dầm (cắt tại dầm giao)" Tag="TrimBeam" Click="MnuDrawMode_Click"/>
+                <MenuItem Header="Extend dầm (kéo dài tới dầm chọn / vuông góc)" Tag="ExtendBeam" Click="MnuDrawMode_Click"/>
+                <MenuItem Header="Nối dầm hở vào dầm vuông góc gần nhất" Click="MnuJoinBeams_Click"/>
+                <MenuItem Header="Pick đối tượng CAD: dầm / sàn / thang / lỗ" Tag="PickCad" Click="MnuDrawMode_Click" ToolTip="Bấm vào nét bản vẽ AutoCAD liên kết để tạo dầm đúng trục, bề rộng; bấm trong đa tuyến kín để tạo ô sàn / cầu thang / lỗ"/>
                 <Separator/>
                 <MenuItem Header="Ô sàn" Tag="AddSlab" Click="MnuDrawMode_Click"/>
                 <MenuItem Header="Ban công" Tag="Balcony" Click="MnuDrawMode_Click"/>
