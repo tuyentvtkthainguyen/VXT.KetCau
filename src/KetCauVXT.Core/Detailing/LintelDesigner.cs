@@ -377,7 +377,12 @@ public class ManualLintel : IDetailMember
         w.Text(Lay.Chu, lo / 2, -below / 2, th, "Ô CỬA " + Dt.Mm(Lo), 0, 1, 2);
         // lanh tô
         w.Rect(Lay.BeTong, -la, 0, lo + la, hl);
-        lay.Reserve(new Rect2(-pier, -below, lo + pier, hl + wallUp));
+        // vùng chiếm chỗ: tường hai bên, lanh tô, tường trên, chữ "Ô CỬA", dải kích thước dưới (nhãn đặt trong ô cửa, không đè kích thước)
+        lay.Reserve(new Rect2(-pier, -below, 0, hl + wallUp));
+        lay.Reserve(new Rect2(lo, -below, lo + pier, hl + wallUp));
+        lay.Reserve(new Rect2(-la, 0, lo + la, hl + wallUp));
+        lay.Reserve(new Rect2(lo / 2 - 5 * th, -below / 2 - 0.8 * th, lo / 2 + 5 * th, -below / 2 + 0.8 * th));
+        lay.Reserve(new Rect2(-la - th, -below - 7 * th, lo + la + th, -below + 1.5 * th));
         var bot = Find(r, "Lanh tô dưới"); var top = Find(r, "Lanh tô trên"); var st = Find(r, "Đai lanh tô");
         double yb = c + (bot?.Dia ?? 10) / 2.0, yt = hl - c - (top?.Dia ?? 10) / 2.0;
         w.Line(Lay.Thep, -la + c, yb, lo + la - c, yb);
@@ -429,6 +434,7 @@ public class ManualLintel : IDetailMember
             w.Polyline(Lay.BeTong, new List<(double, double)> { (0, h), (-lc, h), (-lc, h - tt), (0, h - tr) }, false);
             if (Upstand && upH > 0 && upT > 0) w.Rect(Lay.BeTong, -lc, h, -lc + upT, h + upH);
             lay.Reserve(new Rect2(-lc, h - tr, 0, h + (Upstand ? upH : 0)));
+            lay.Reserve(new Rect2(-lc - th, h + (Upstand ? upH : 0) + 0.5 * th, th, h + (Upstand ? upH : 0) + 3.5 * th));   // kích thước chiều vươn
             // rãnh nhỏ giọt mặt dưới gần mút
             double xg = -lc + Math.Max(30, 0.08 * lc), yg = h - tt - (tr - tt) * (lc + xg) / lc;
             w.Polyline(Lay.BeTong, new List<(double, double)> { (xg - 10, yg), (xg - 10, yg + 10), (xg + 10, yg + 10), (xg + 10, yg) }, false);
