@@ -97,7 +97,7 @@ public class ManualBeam : IDetailMember
     public const string ExtStd = "L0/3 gối giữa, L0/4 gối biên", ExtL4 = "L0/4", ExtL5 = "L0/5", ExtShort = "Qua hết nhịp ngắn";
     private const string HookChoices = HookYes + "|" + HookNo, CutChoices = CutC01 + "|" + CutL7 + "|" + CutL8 + "|" + CutAnchor, ExtChoices = ExtStd + "|" + ExtL4 + "|" + ExtL5 + "|" + ExtShort;
 
-    [Field("Thép dưới chạy suốt – Ø", Unit = "mm", Group = "Thép dọc", Row = "bot", RowTitle = "① Dưới chạy suốt", Short = "Ø")] public int BotD { get; set; } = 16;
+    [Field("Thép dưới chạy suốt – Ø", Unit = "mm", Group = "Thép dọc", Row = "bot", RowTitle = "Dưới chạy suốt", Short = "Ø")] public int BotD { get; set; } = 16;
     [Field("Thép dưới chạy suốt – số thanh", Group = "Thép dọc", Row = "bot", Short = "thanh/hàng")] public int BotN { get; set; } = 2;
     [Field("Thép dưới chạy suốt – neo ở gối biên", Group = "Thép dọc", Row = "bot", Short = "neo", Choices = HookChoices)] public string BotHook { get; set; } = HookYes;
     [Field("Thép trên chạy suốt – Ø", Unit = "mm", Group = "Thép dọc", Row = "top", RowTitle = "Trên chạy suốt", Short = "Ø")] public int TopD { get; set; } = 16;

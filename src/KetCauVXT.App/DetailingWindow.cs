@@ -425,8 +425,10 @@ public sealed class DetailingWindow : Window
         var head = new TextBlock { Text = KindTitle(m) + " " + m.Name, FontSize = 16, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 6) };
         _form.Children.Add(head);
         string lastGroup = null;
-        foreach (var pi in type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead && p.CanWrite))
+        var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.CanRead && p.CanWrite).ToList();
+        for (int pIdx = 0; pIdx < props.Count; pIdx++)
         {
+            var pi = props[pIdx];
             var fa = pi.GetCustomAttribute<FieldAttribute>();
             if (fa != null)
             {
@@ -434,6 +436,38 @@ public sealed class DetailingWindow : Window
                 {
                     _form.Children.Add(new TextBlock { Text = fa.Group.ToUpperInvariant(), FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x5F, 0xA8)), Margin = new Thickness(0, 10, 0, 3) });
                     lastGroup = fa.Group;
+                }
+                if (!string.IsNullOrEmpty(fa.Row))
+                {
+                    // hàng gộp: các ô liên tiếp cùng Row trên một dòng, vd. "① Dưới chạy suốt  Ø [16] × số thanh/hàng [2] … neo [Bẻ mỏ]"
+                    var rowPanel = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+                    var cells = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
+                    string rowTitle = fa.RowTitle, rowHint = "";
+                    int qIdx = pIdx;
+                    for (; qIdx < props.Count; qIdx++)
+                    {
+                        var qa = props[qIdx].GetCustomAttribute<FieldAttribute>();
+                        if (qa == null || qa.Row != fa.Row) break;
+                        if (string.IsNullOrEmpty(rowTitle)) rowTitle = qa.RowTitle;
+                        if (string.IsNullOrEmpty(rowHint)) rowHint = qa.Hint;
+                        var ed = Editor(m, props[qIdx], qa);
+                        if (ed == null) continue;
+                        ed.Width = ed is ComboBox ? 175 : ed is CheckBox ? double.NaN : 52;
+                        ed.Margin = new Thickness(0, 1, 8, 1);
+                        string sh = !string.IsNullOrEmpty(qa.Short) ? qa.Short : qa.Label;
+                        var cellLab = new TextBlock { Text = sh + (string.IsNullOrEmpty(qa.Unit) || qa.Unit == "mm" && sh == "Ø" ? "" : " (" + qa.Unit + ")"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 3, 0), ToolTip = qa.Label };
+                        var cell = new StackPanel { Orientation = Orientation.Horizontal };
+                        cell.Children.Add(cellLab); cell.Children.Add(ed);
+                        cells.Children.Add(cell);
+                    }
+                    var rowLab = new TextBlock { Text = rowTitle, Width = 215, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, ToolTip = string.IsNullOrEmpty(rowHint) ? null : rowHint };
+                    DockPanel.SetDock(rowLab, Dock.Left);
+                    rowPanel.Children.Add(rowLab);
+                    rowPanel.Children.Add(cells);
+                    _form.Children.Add(rowPanel);
+                    if (!string.IsNullOrEmpty(rowHint)) _form.Children.Add(new TextBlock { Text = rowHint, Foreground = Brushes.Gray, FontSize = 11, Margin = new Thickness(215, 0, 0, 2), TextWrapping = TextWrapping.Wrap });
+                    pIdx = qIdx - 1;
+                    continue;
                 }
                 var editor = Editor(m, pi, fa);
                 if (editor == null) continue;

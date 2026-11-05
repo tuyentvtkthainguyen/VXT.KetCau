@@ -315,9 +315,13 @@ public static partial class UserGuide
 
         c.Sec("che-do-ho-so.dam-cot-san", "Dầm, cột, sàn – nhập kích thước, chọn thép")
             .Bullets("**Dầm**: b × h, **các nhịp tim – tim** (vd. \"4,2; 3,6\" hoặc \"3*4,2\"), bề rộng gối, cao độ đỉnh; thép dưới / trên chạy suốt (≥ 2 thanh), tăng cường dưới mỗi nhịp, mũ gối; đai Ø, bước vùng gối / giữa nhịp, số nhánh. "
-                + "Nhập M nhịp, M gối, Q (tuỳ chọn) → kiểm tra M ≤ Mu, Q ≤ Qb + Qsw, dải nén 0,3Rb·b·h0 (TCVN 5574:2018 mục 8.1). Luôn kiểm tra cấu tạo: μ ≥ 0,1 %, bước đai, khe hở thép 1 lớp.",
+                + "Nhập M nhịp, M gối, Q (tuỳ chọn) → kiểm tra M ≤ Mu, Q ≤ Qb + Qsw, dải nén 0,3Rb·b·h0 (TCVN 5574:2018 mục 8.1). Luôn kiểm tra cấu tạo: μ ≥ 0,1 %, bước đai, khe hở thép 1 lớp. "
+                + "Mỗi nhóm thép nhập trên **một dòng**: Ø × số thanh × hàng; thép chạy suốt chọn **bẻ mỏ neo vào gối** hoặc **neo thẳng** (cảnh báo khi đoạn neo thẳng < 10d); "
+                + "tối đa 3 nhóm tăng cường dưới (2)(3)(4) cắt tại 0,1·L0 / L0/7 / L0/8 từ mép gối hoặc kéo vào gối, có / không bẻ mỏ; tối đa 3 nhóm mũ gối vươn L0/3 (gối giữa) – L0/4 (gối biên) / L0/4 / L0/5 / qua hết nhịp ngắn; "
+                + "nhóm đặt hàng 2 (hoặc hàng 1 không đủ khe hở) → h0 tính theo trọng tâm thép, Mu kể đủ các nhóm.",
                 "**Cột**: b × h, chiều cao các tầng, cao độ chân, chiều cao dầm tại nút; Ø, số thanh mỗi cạnh, đai đầu / giữa cột. Nhập N, Mx, My tầng dưới → kiểm tra nén lệch tâm xiên (Bresler) có kể độ lệch tâm ngẫu nhiên; "
-                + "vị trí nối thép tự đặt ngoài vùng nguy hiểm, so le 2 nhóm ≥ 1,3·ll.",
+                + "vị trí nối thép: **tự gợi ý** (giữa chiều cao thông thuỷ, ngoài vùng nguy hiểm lcr = max(hc; H/6; 450 mm), vùng gợi ý ghi trong thuyết minh), **nối trên mặt sàn** (nhà thấp tầng) hoặc **ống nối ren**; "
+                + "tuỳ chọn so le 50 % số thanh (≥ 1,3·ll) và **nhấn cổ chai 1:6** đầu thanh tầng dưới (thể hiện trên mặt đứng cột và bảng thống kê).",
                 "**Sàn**: Lx, Ly, t, số cạnh ngàm; tĩnh tải hoàn thiện, hoạt tải (tiêu chuẩn) → q tính toán, phân tải Marcus, mô men dải 1 m; thép lớp dưới 2 phương, mũ gối (0 = tự chọn Ø6…Ø12, bước 100…200).",
                 "**Vị trí dầm**: Dầm tầng / **Dầm móng (giằng móng)** / Dầm mái. Dầm móng: lớp bảo vệ ≥ 35 mm, **bê tông lót** (vươn mỗi bên, mặc định 100 mm) và chọn **Dầm móng sát ranh đất** (trái / phải) – "
                 + "phía sát ranh bê tông lót và bê tông dầm không vươn sang đất nhà bên, thành dầm xây gạch làm khuôn (có trong khối lượng).",
