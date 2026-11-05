@@ -98,6 +98,12 @@ jobs:
           for f in files[:30]:
               try:
                   doc = ezdxf.readfile(f)
+                  import re
+                  dec = lambda t: re.sub(r"\\U\+([0-9A-Fa-f]{4})", lambda m: chr(int(m.group(1), 16)), t or "")
+                  for e in doc.modelspace().query("TEXT"):
+                      e.dxf.text = dec(e.dxf.text)
+                  for e in doc.modelspace().query("MTEXT"):
+                      e.text = dec(e.text)
                   fig = plt.figure(figsize=(22, 15.5))
                   ax = fig.add_axes([0, 0, 1, 1])
                   ctx = RenderContext(doc)

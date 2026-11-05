@@ -643,9 +643,9 @@ public class ManualSlab : IDetailMember
         double hk = 0.9 * w.Th, e0 = -bw / 2 + 25, e1x = lx + bw / 2 - 25, e1y = ly + bw / 2 - 25;
         // lớp dưới: thanh đại diện chạy suốt ô, móc 2 đầu, chữ trên thanh, đường phạm vi rải vuông góc
         if (bX != null)
-            PlanBarDraw.Bar(w, true, e0, e1x, ly * 0.42, Dt.Spaced(bX.Dia, bX.Spacing), bX.Mark, hk, hk, 1, 0.62, (50, ly - 50), 0.22);
+            PlanBarDraw.Bar(w, true, e0, e1x, ly * 0.55, Dt.Spaced(bX.Dia, bX.Spacing), bX.Mark, hk, hk, 1, 0.24, (50, ly - 50), 0.82);
         if (bY != null)
-            PlanBarDraw.Bar(w, false, e0, e1y, lx * 0.58, Dt.Spaced(bY.Dia, bY.Spacing), bY.Mark, hk, hk, -1, 0.70, (50, lx - 50), 0.18);
+            PlanBarDraw.Bar(w, false, e0, e1y, lx * 0.66, Dt.Spaced(bY.Dia, bY.Spacing), bY.Mark, hk, hk, -1, 0.40, (50, lx - 50), 0.12);
         // thép mũ: thanh từ mép ngoài dầm vào trong ô, bẻ xuống ở đầu trong; phạm vi rải dọc cạnh
         var tL = Find("Mũ gối cạnh dài"); var tS = Find("Mũ gối cạnh ngắn");
         if (tL != null)
@@ -653,7 +653,7 @@ public class ManualSlab : IDetailMember
             double ext = (tL.Segments.Count > 0 ? tL.Segments[0] : lx / 4);
             for (int side = 0; side < Math.Clamp(FixedLongEdges, 1, 2); side++)
             {
-                double y = side == 0 ? ly * 0.20 : ly * 0.80;
+                double y = side == 0 ? ly * 0.30 : ly * 0.76;
                 if (side == 0) PlanBarDraw.Bar(w, true, e0, e0 + ext, y, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark, 0, hk, -1, 0.55, (50, ly - 50), 0.30);
                 else PlanBarDraw.Bar(w, true, e1x - ext, e1x, y, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark, hk, 0, -1, 0.45, (50, ly - 50), 0.70);
             }
@@ -663,7 +663,7 @@ public class ManualSlab : IDetailMember
             double ext = (tS.Segments.Count > 0 ? tS.Segments[0] : lx / 4);
             for (int side = 0; side < Math.Clamp(FixedShortEdges, 1, 2); side++)
             {
-                double x = side == 0 ? lx * 0.22 : lx * 0.82;
+                double x = lx * 0.40;
                 if (side == 0) PlanBarDraw.Bar(w, false, e0, e0 + ext, x, Dt.Spaced(tS.Dia, tS.Spacing), tS.Mark, 0, hk, 1, 0.55, (50, lx - 50), 0.30, -1);
                 else PlanBarDraw.Bar(w, false, e1y - ext, e1y, x, Dt.Spaced(tS.Dia, tS.Spacing), tS.Mark, hk, 0, 1, 0.45, (50, lx - 50), 0.70, -1);
             }
