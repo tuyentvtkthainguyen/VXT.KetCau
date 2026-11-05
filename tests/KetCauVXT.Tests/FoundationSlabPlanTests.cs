@@ -50,7 +50,7 @@ public static class FoundationSlabPlanTests
         check("Đài lồng thép: vẫn có lưới trên + râu cọc", B(r3.Bars.Any(b => b.Role.StartsWith("Lớp trên"))) + B(r3.Bars.Any(b => b.Role == "Râu thép đầu cọc")), 2, 0);
         check("Đài lồng thép: mọi thanh có số hiệu", B(r3.Bars.All(b => b.Mark > 0)), 1, 0);
         var f3 = c3.Draw(r3, s);
-        string d3 = string.Concat(f3.Select(f => f.W.ToDxfString()));
+        string d3 = string.Concat(f3.Select(f => f.W.ToDxfStringDec()));
         check("Bản vẽ đài lồng thép: có râu cọc, ĐẬP ĐẦU CỌC, thép đứng", B(d3.Contains("râu cọc")) + B(d3.Contains("ĐẬP ĐẦU CỌC")) + B(d3.Contains("thép đứng")), 3, 0);
         check("Bản vẽ đài lồng thép: thép trên có ghi chú (trên)", B(d3.Contains("(trên)")), 1, 0);
         figs.AddRange(f3);
@@ -95,7 +95,7 @@ public static class FoundationSlabPlanTests
         var t2 = p.Plan.Levels.First(l => l.Name == "Tầng 2");
         string title2 = StructuralPlanDrawing.LevelTitle(t2);
         var planFigs = StructuralPlanDrawing.Build(p, res);
-        string dPlan = planFigs.First(f => f.Name == title2).W.ToDxfString();
+        string dPlan = planFigs.First(f => f.Name == title2).W.ToDxfStringDec();
         check("Mặt bằng tầng: có thép sàn lớp dưới " + Dt.Spaced(bS.Dia, bS.Spacing), B(dPlan.Contains(Dt.Spaced(bS.Dia, bS.Spacing))), 1, 0);
         var tL = rsl.Bars.FirstOrDefault(b => b.Role == "Mũ gối cạnh dài");
         check("Mặt bằng tầng: có thép mũ gối", B(tL == null || dPlan.Contains(Dt.Spaced(tL.Dia, tL.Spacing))), 1, 0);
@@ -111,12 +111,12 @@ public static class FoundationSlabPlanTests
         check("Mặt cắt 1-1 xuất ngay sau mặt bằng Tầng 2", B(iPlan >= 0 && iPlan + 1 < figs2.Count && figs2[iPlan + 1].Name == "MẶT CẮT 1-1 (tl 1/25)"), 1, 0);
         var sec = figs2.First(f => f.Name == "MẶT CẮT 1-1 (tl 1/25)");
         check("Mặt cắt tỷ lệ 1/25", sec.W.Scale, 25, 0);
-        string dSec = sec.W.ToDxfString();
+        string dSec = sec.W.ToDxfStringDec();
         check("Mặt cắt: tiêu đề MẶT CẮT 1-1, tên dầm D1 bị cắt, tên ô S1", B(dSec.Contains("MẶT CẮT 1-1")) + B(dSec.Contains("D1")) + B(dSec.Contains("S1")), 3, 0);
         var bL = rsl.Bars.First(b => b.Role == "Lớp dưới phương dài");
         // ô S1: 3,6 × 4,5 → cạnh ngắn theo X; đường cắt dọc Y → thanh phương dài thể hiện là đường, phương ngắn là chấm
         check("Mặt cắt: có ghi thép lớp dưới hai phương", B(dSec.Contains(Dt.Spaced(bL.Dia, bL.Spacing))) + B(dSec.Contains(Dt.Spaced(bS.Dia, bS.Spacing))), 2, 0);
-        string dPlan2 = figs2[iPlan].W.ToDxfString();
+        string dPlan2 = figs2[iPlan].W.ToDxfStringDec();
         check("Mặt bằng: có ký hiệu đường cắt (chữ 1)", B(dPlan2.Length > dPlan.Length), 1, 0);
         var gT2 = StructuralPlan.GroupForTree(p).First(g => g.Kind == "Tang" && g.Level?.Name == "Tầng 2");
         var pv = StructuralPlanDrawing.ForGroup(p, res, gT2);
@@ -128,7 +128,7 @@ public static class FoundationSlabPlanTests
         // đường cắt không qua cấu kiện
         p.Plan.Sections.Add(new SectionMark { Name = "9-9", Level = "Tầng 2", X1 = 20, Y1 = 20, X2 = 25, Y2 = 20 });
         var empty = StructuralPlanDrawing.SlabSection(p.Plan, t2, p.Plan.Sections[^1], map, s);
-        check("Đường cắt ngoài mặt bằng: ghi chú không cắt qua ô sàn", B(empty.ToDxfString().Contains("không qua ô sàn")), 1, 0);
+        check("Đường cắt ngoài mặt bằng: ghi chú không cắt qua ô sàn", B(empty.ToDxfStringDec().Contains("không qua ô sàn")), 1, 0);
         p.Plan.Sections.RemoveAt(p.Plan.Sections.Count - 1);
 
         // cắt hình chữ nhật (Liang–Barsky)
@@ -151,4 +151,12 @@ public static class FoundationSlabPlanTests
         SheetComposer.Compose(figs, sc, new SheetComposer.SheetInfo { ProjectName = "Kiểm thử móng – sàn – mặt cắt", Title = "ĐÀI CỌC LỒNG THÉP – MÓNG BĂNG VÁT – MẶT CẮT SÀN", SheetNo = "KC-MS" }, paper).Save(file);
         check("Lưu DXF đài cọc – móng băng – mặt cắt sàn", B(File.Exists(file) && new FileInfo(file).Length > 1000), 1, 0);
     }
+}
+
+internal static class DxfDecodeExt
+{
+    /// <summary>DXF với chữ đã giải mã \U+XXXX (để kiểm tra nội dung chữ tiếng Việt).</summary>
+    public static string ToDxfStringDec(this DxfWriter w) =>
+        System.Text.RegularExpressions.Regex.Replace(w.ToDxfString(), @"\\U\+([0-9A-Fa-f]{4})",
+            m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
 }

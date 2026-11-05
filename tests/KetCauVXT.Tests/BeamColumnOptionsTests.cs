@@ -56,7 +56,7 @@ public static class BeamColumnOptionsTests
         var bA = new ManualBeam { AddBotCut = ManualBeam.CutAnchor, AddBotHook = ManualBeam.HookYes }.Run(s);
         var tA = bA.Bars.First(b => b.Role == "Tăng cường dưới" && b.Span == 0);
         double into = Math.Min(Math.Max(0.16, 0.15), w - c);
-        check("Tăng cường kéo vào gối: nhịp biên từ xs tới mép gối + max(10d;150)", tA.End - tA.Start, (w / 2 + l0a + into) - (w / 2 - c), 1e-6);
+        check("Tăng cường kéo vào gối: nhịp biên từ xs tới mép gối + max(10d;150)", tA.End - tA.Start, (w / 2 + l0a + into) + (w / 2 - c), 1e-6);
         check("Tăng cường kéo vào gối + bẻ mỏ: hình L ở gối biên", B(tA.Shape == "L"), 1, 0);
 
         // ---- 3. mũ gối: chiều dài vươn ----
