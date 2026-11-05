@@ -424,6 +424,15 @@ public static partial class UserGuide
                 "**Xuất PDF toàn bộ…**: một file PDF dạng nét, mỗi tờ một trang đúng khổ giấy, nét theo layer (màu, bề dày in), chữ tiếng Việt bằng phông Arial / Times New Roman của máy (nhúng vào PDF); tuỳ chọn **đen trắng**.",
                 "**In…**: chọn máy in đã cài driver trên máy, số bản, khoảng trang; tờ tự thu vừa khổ giấy máy in (xoay nếu hợp hơn) hoặc chọn **In 1:1**. **Xuất DWG/DXF…**: mỗi tờ một file AutoCAD theo định dạng xuất đang chọn.")
             .Note("In và xuất PDF chỉ dùng máy in, phông chữ có sẵn trên máy – không kết nối mạng, không gửi dữ liệu đi đâu.");
+
+        c.Sec("che-do-ho-so.khung-ten", "Khung tên, tên và số hiệu bản vẽ")
+            .Bullets("Cửa sổ **Dàn trang in** → mục **KHUNG TÊN** chọn: **Mặc định** (khung tên dựng sẵn), **Tự tạo** hoặc **Tải lên (AutoCAD)**.",
+                "**Thiết kế khung tên…**: bảng các ô – hàng, trường (Đơn vị thiết kế, Công trình, Hạng mục, Địa điểm, Chủ đầu tư, Chủ trì, Thiết kế, Kiểm tra, Duyệt, Tên bản vẽ, Số hiệu, Tỷ lệ, Ngày, Ghi chú, Lần sửa, Tờ số…), nhãn ô, bề rộng (mm), cỡ chữ, bật / tắt ô, hiện nhãn; chiều cao từng hàng; vị trí **góc phải dưới** hoặc **dải dọc bên phải**. Bấm **Xem trước**, **Khôi phục mặc định**, **Dùng khung tên này**.",
+                "**Tải khung tên AutoCAD (DWG/DXF)…**: lấy đường, đa tuyến, cung, tròn, chữ, block chèn; trường điền tự động lấy từ thuộc tính ATTDEF/ATTRIB (thẻ TENBANVE, SOHIEU, TYLE, NGAY, CONGTRINH… – có / không dấu, có / không gạch nối) hoặc chữ giữ chỗ **{TEN_BAN_VE}**, **{SO_HIEU}**, **{TY_LE}**, **{NGAY}**, **{CONG_TRINH}**, **{CHU_DAU_TU}**, **{THIET_KE}**, **{TRANG}/{TONG_TRANG}**… Khung ngoài cùng bằng khổ giấy A0…A4 (kể cả vẽ theo tỷ lệ 1/10…1/200) được nhận là **khung bao toàn tờ** và co vừa khổ từng tờ; nếu chỉ là bảng nhỏ thì đặt vào **góc phải dưới** khung viền. Hồ sơ lưu bản sao khung tên – mở lại không cần file gốc (đường dẫn file gốc lưu tương đối so với thư mục hồ sơ).",
+                "**Thông tin khung tên…**: nhập Đơn vị thiết kế, Hạng mục, Chủ trì, Kiểm tra, Duyệt, Lần sửa, Ghi chú. Tên công trình, chủ đầu tư, địa điểm, người thiết kế lấy từ Thông tin hồ sơ; tên bản vẽ, số hiệu, tỷ lệ, ngày, tờ số điền theo từng tờ. Khung tên dùng chung cho xem trước, DWG/DXF, PDF và in.",
+                "**Tên bản vẽ tự động theo cây thư mục công trình**: tờ mặt bằng mang tên mặt bằng (MẶT BẰNG KẾT CẤU MÓNG, MẶT BẰNG KẾT CẤU TẦNG 2…); tờ chi tiết ngay sau mặt bằng của nó, tên ghi loại và cấu kiện trên tờ – vd. CHI TIẾT MÓNG ĐƠN M1, M2; CHI TIẾT DẦM D1–D3; tờ thống kê ghi tên bảng. Danh mục bản vẽ tự cập nhật.",
+                "**Đánh số bản vẽ**: tiền tố (KC, KT, KCM…), mẫu **KC-01** (liên tục), **KC01** (không gạch) hoặc **KC-1.01** (theo nhóm mặt bằng – tờ danh mục là nhóm 0), số bắt đầu, số chữ số → **Đánh số lại**.",
+                "**Đổi tên bản vẽ**: sửa ô **Tên bản vẽ** / **Số hiệu** của tờ đang chọn (nháy đúp vào tờ trong danh sách để sửa nhanh). Tên / số đã sửa tay được giữ khi tự dàn trang và đánh số lại; **Đặt lại tên tự động** trả tờ đang chọn về tên – số tự động (giữ Shift khi bấm: mọi tờ).");
         return c;
     }
 

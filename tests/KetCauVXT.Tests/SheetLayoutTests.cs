@@ -35,9 +35,10 @@ public static class SheetLayoutTests
         var s2 = SheetLayoutEngine.FindSpot(sh0, rects, 100, 80);
         check("Hình thứ hai: bên phải hình đầu, cách ≥ 10 mm", B(s2 is { } b2 && Math.Abs(b2.X - (35 + 100 + SheetGeometry.Gap)) < 1e-9), 1, 0);
         check("Hình lớn hơn khổ: không có chỗ", B(SheetLayoutEngine.FindSpot(sh0, new List<Rect2>(), 500, 100) == null), 1, 0);
-        // hình chiếm gần hết chiều cao không được đè khung tên
-        var s3 = SheetLayoutEngine.FindSpot(sh0, new List<Rect2>(), 360, 250);
-        check("Hình cao ở khổ A3: không đè khung tên", B(s3 is { } b3 && !SheetGeometry.Overlap(new Rect2(b3.X, b3.Y, b3.X + 360, b3.Y + 250), SheetGeometry.TitleZone("A3"))), 1, 0);
+        // hình cao (cao hơn phần trên khung tên) đặt ở cột bên trái khung tên; hình vừa cao vừa rộng không có chỗ trên A3 (phải nâng khổ)
+        var s3 = SheetLayoutEngine.FindSpot(sh0, new List<Rect2>(), 170, 240);
+        check("Hình cao ở khổ A3: đặt cột trái, không đè khung tên", B(s3 is { } b3 && !SheetGeometry.Overlap(new Rect2(b3.X, b3.Y, b3.X + 170, b3.Y + 240), SheetGeometry.TitleZone("A3"))), 1, 0);
+        check("Hình 360 × 250 trên A3: không có chỗ (tránh khung tên) → nâng khổ", B(SheetLayoutEngine.FindSpot(sh0, new List<Rect2>(), 360, 250) == null), 1, 0);
 
         // ---- tự dàn trang hồ sơ mẫu ----
         var p = DetailingProject.Sample();

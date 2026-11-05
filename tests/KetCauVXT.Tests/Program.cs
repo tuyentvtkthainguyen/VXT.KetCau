@@ -597,6 +597,8 @@ Console.WriteLine("64. Nhân bản tầng, vẽ / nhập mặt bằng KC, lanh t
 StoreyPlanLintelTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("65. Dàn trang in, xuất PDF toàn bộ, in trực tiếp (Triển khai hồ sơ)");
 SheetLayoutTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("66. Khung tên dàn trang in: tự tạo, tải lên DWG/DXF, tên – số hiệu theo cây thư mục, đổi tên");
+TitleBlockTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

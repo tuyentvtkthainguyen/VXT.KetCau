@@ -395,9 +395,9 @@ public static class SheetLayoutEngine
                         // hình lớn hơn khổ đã chọn → nâng khổ cho tờ này
                         foreach (var cand in SheetGeometry.Papers.SkipWhile(x => x != paper))
                         {
-                            var d = SheetGeometry.Drawable(cand);
                             pp = cand;
-                            if (f.W <= d.W && f.H <= d.H - SheetGeometry.TitleH) break;
+                            // khổ đủ chỗ cho hình trên tờ trống (đã tránh khung tên đang dùng)
+                            if (FindSpot(new DetailSheet { Paper = cand }, new List<Rect2>(), f.W, f.H, set) != null) break;
                         }
                         cur = new DetailSheet { Paper = pp, Title = grp.First().SectionTitle };
                         rects = new List<Rect2>();
@@ -428,6 +428,15 @@ public static class SheetLayoutEngine
         var all = locked.Select(s => (Section: SecOf(s), S: s, Order: set.Sheets.IndexOf(s))).Concat(fresh.Select((t, i) => (t.Section, t.S, Order: 10000 + i)))
             .OrderBy(t => t.Section).ThenBy(t => t.Order).Select(t => t.S).ToList();
         var oldIndex = set.Sheets.FirstOrDefault(s => s.IsIndex);
+        // tờ chưa khoá bố cục nhưng đã sửa tên / số hiệu tay: chuyển tên – số cho tờ mới chứa cùng hình đầu tiên
+        foreach (var old in set.Sheets.Where(s => !s.Locked && !s.IsIndex && (s.NameLocked || s.NumberLocked) && s.Figures.Count > 0))
+        {
+            string first = old.Figures[0].Id;
+            var nw = fresh.Select(t => t.S).FirstOrDefault(s => s.Figures.Any(pf => pf.Id == first));
+            if (nw == null) continue;
+            if (old.NameLocked) { nw.Title = old.Title; nw.NameLocked = true; }
+            if (old.NumberLocked) { nw.No = old.No; nw.NumberLocked = true; }
+        }
         set.Sheets = all;
         if (set.IndexSheet)
         {
