@@ -581,6 +581,8 @@ Console.WriteLine("56. Lanh tô cửa, ô văng cửa");
 LintelTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("57. Sửa dầm: kéo, trim, extend, nối dầm hở; pick đối tượng CAD");
 BeamEditTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("58. Lưới trục và tầng: lấy kích thước từ mặt bằng tải lên (CAD / ảnh)");
+GridFromPlanTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

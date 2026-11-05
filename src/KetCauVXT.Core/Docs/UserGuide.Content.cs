@@ -483,6 +483,9 @@ public static partial class UserGuide
             .Steps("{m:new} (Ctrl+N) – mẫu định dạng mặc định (nếu đã đặt) được áp dụng tự động.",
                 "Nhập **Thông tin công trình** (tên, địa điểm, chủ đầu tư, người thiết kế – dùng cho khung tên, trang bìa thuyết minh).",
                 "Nhập **Bước cột theo X (trục 1, 2, 3...)** và **Bước cột theo Y (trục A, B, C...)**: các khoảng cách cách nhau dấu cách, viết gọn được \"3*3.3\" = 3.3 3.3 3.3.",
+                "Không nhớ kích thước? Bấm **Tải mặt bằng để lấy kích thước…** (ngay dưới ô Liên kết chân cột): mở **bản vẽ CAD DWG/DXF** – chương trình tự đọc trục (layer nhóm Trục và tên trục; không có thì theo tim tường), "
+                + "chọn mặt bằng tầng, chiều cao tầng lấy theo các mặt bằng tầng nếu có; hoặc mở **ảnh chụp / scan mặt bằng** (JPG, PNG): ① bấm 2 điểm của một kích thước đã biết và nhập chiều dài thật (mm), "
+                + "② bấm lần lượt các trục đứng 1, 2, 3…, ③ bấm các trục ngang A, B, C… – chương trình tính bước trục (làm tròn 10 / 50 / 100 mm). Kiểm tra rồi **Đồng ý** để điền vào các ô.",
                 "**Chiều cao các tầng (dưới → trên)**, **Cao độ chân cột (m)** (thường âm, vd. −0,6 … −1,5), **Liên kết chân cột** (Ngàm / bỏ chọn = khớp).",
                 "Chọn **Tiết diện mặc định** (cột, dầm phương X, dầm phương Y, sàn), **Tải trọng**, **Gió**, **Động đất**, **Vật liệu**, **Nền đất dưới móng đơn**.",
                 "Bấm **Tạo mô hình** ({m:buildGrid} cùng tác dụng). Sau này chỉ đổi thông số (không xoá mô hình) thì bấm **Áp dụng thông số**.")
