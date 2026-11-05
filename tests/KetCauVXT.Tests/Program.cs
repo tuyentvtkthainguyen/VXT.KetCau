@@ -573,6 +573,10 @@ Console.WriteLine("52. Bê tông dự ứng lực (tổn hao, ứng suất, Mu, 
 PrestressTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("53. Bể nước BTCT (áp lực nước / đất, nứt, đẩy nổi)");
 WaterTankTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("54. Lấy kích thước từ AutoCAD (lệnh VXT_KT → Triển khai hồ sơ)");
+AcadPickTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("55. Mặt bằng sàn: hạ cốt, nhấn thép, khoét lỗ, thép tự động / thủ công");
+SlabPlanTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

@@ -34,6 +34,13 @@ public class ManualFooting : IDetailMember
     [Field("Thép phương B – Ø", Unit = "mm", Group = "Thép")] public int DiaB { get; set; }
     [Field("Thép phương B – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double SB { get; set; }
 
+    [Field("Sát ranh theo phương L", Group = "Sát ranh đất (móng lệch tâm)", Choices = "Không|Ranh bên trái|Ranh bên phải",
+        Hint = "móng và bê tông lót không vươn sang đất nhà bên – cột lệch về mép móng")] public string BoundaryL { get; set; } = "Không";
+    [Field("Sát ranh theo phương B", Group = "Sát ranh đất (móng lệch tâm)", Choices = "Không|Ranh phía dưới|Ranh phía trên")] public string BoundaryB { get; set; } = "Không";
+    [Field("Mép ngoài cột cách ranh", Unit = "mm", Scale = 1000, Group = "Sát ranh đất (móng lệch tâm)")] public double Setback { get; set; }
+    [Field("Có dầm móng cân bằng mô men lệch tâm N·e", Group = "Sát ranh đất (móng lệch tâm)", Hint = "bỏ chọn: áp lực đáy móng kể thêm mô men N·e")] public bool BalanceBeam { get; set; } = true;
+    [Field("Bê tông lót vươn ra (phía không sát ranh)", Unit = "mm", Scale = 1000, Group = "Sát ranh đất (móng lệch tâm)")] public double LeanOverhang { get; set; } = 0.10;
+
     public static readonly int[] Dias = { 10, 12, 14, 16, 18, 20 };
 
     /// <summary>Áp lực đáy móng tiêu chuẩn: ptb = Ntc/A + γtb·Df; pmax,min = ptb ± 6ML/(B·L²) ± 6MB/(L·B²).</summary>
@@ -59,6 +66,12 @@ public class ManualFooting : IDetailMember
         }
         double ntc = Ntc > 0 ? Ntc : N / 1.15, kTc = ntc / N;
         double mLt = ML * kTc, mBt = MB * kTc;
+        // ---- sát ranh: cột lệch về mép móng; e = L/2 − (bc/2 + khoảng lùi) ----
+        bool bL = (BoundaryL ?? "").StartsWith("Ranh"), bB = (BoundaryB ?? "").StartsWith("Ranh");
+        double EL(double ll) => bL ? Math.Max(ll / 2 - ColL / 2 - Math.Max(Setback, 0), 0) : 0;
+        double EB(double bb) => bB ? Math.Max(bb / 2 - ColB / 2 - Math.Max(Setback, 0), 0) : 0;
+        double AddL(double ll) => BalanceBeam ? 0 : ntc * EL(ll);
+        double AddB(double bb) => BalanceBeam ? 0 : ntc * EB(bb);
         // ---- kích thước đáy ----
         double l = L, b = B;
         if (l <= 0 || b <= 0)
@@ -70,14 +83,31 @@ public class ManualFooting : IDetailMember
             l = l > 0 ? l : RcSection.CeilTo(a0 / b, 0.1);
             for (int it = 0; it < 60; it++)
             {
-                var pp = Pressure(ntc, mLt, mBt, l, b, GammaTb, Df);
+                var pp = Pressure(ntc, mLt + AddL(l), mBt + AddB(b), l, b, GammaTb, Df);
                 if (pp.Ptb <= R && pp.Pmax <= 1.2 * R && pp.Pmin >= 0) break;
                 if (L <= 0) l += 0.1;
                 if (B <= 0 && (it % 2 == 1 || L > 0)) b += 0.1;
                 l = Math.Round(l, 2); b = Math.Round(b, 2);
             }
         }
-        var (ptb, pmax, pmin) = Pressure(ntc, mLt, mBt, l, b, GammaTb, Df);
+        var (ptb, pmax, pmin) = Pressure(ntc, mLt + AddL(l), mBt + AddB(b), l, b, GammaTb, Df);
+        if (bL || bB)
+        {
+            var sides = new List<string>();
+            if (bL) sides.Add((BoundaryL ?? "").Contains("trái") ? "trái" : "phải");
+            if (bB) sides.Add((BoundaryB ?? "").Contains("dưới") ? "dưới" : "trên");
+            f.Eccentric = new KetCauVXT.Design.Foundation.EccentricInfo
+            {
+                Boundary = true, Sides = string.Join(", ", sides),
+                OffsetX = bL ? ((BoundaryL ?? "").Contains("trái") ? 1 : -1) * EL(l) : 0,
+                OffsetY = bB ? ((BoundaryB ?? "").Contains("dưới") ? 1 : -1) * EB(b) : 0
+            };
+            double me = N * Math.Sqrt(EL(l) * EL(l) + EB(b) * EB(b));
+            r.Calc.Add("Móng sát ranh (" + f.Eccentric.Sides + "): móng và bê tông lót không vươn sang đất bên cạnh; tim cột lệch tâm móng eL = " + Dt.Mm(EL(l)) + " mm, eB = "
+                       + Dt.Mm(EB(b)) + " mm → mô men lệch tâm M = N·e = " + Dt.F(me, "0.0") + " kN.m"
+                       + (BalanceBeam ? " do dầm móng cân bằng chịu (tính dầm móng với mô men này ở đầu dầm)" : " – kể vào áp lực đáy móng"));
+            if (BalanceBeam) r.Messages.Add("Dầm móng cân bằng nối móng " + Name + " với móng bên trong phải chịu M = N·e = " + Dt.F(me, "0.0") + " kN.m (nhập vào dầm móng: Vị trí = Dầm móng)");
+        }
         f.L = l; f.B = b; f.Ptb = ptb; f.Pmax = pmax; f.Pmin = pmin; f.N = N; f.Mx = MB; f.My = ML; f.Ntc = ntc;
         r.Calc.Add("## Móng đơn " + Name + " – cột " + Dt.Mm(ColL) + "x" + Dt.Mm(ColB) + ", N = " + Dt.F(N, "0.0") + " kN, ML = " + Dt.F(ML, "0.0") + ", MB = " + Dt.F(MB, "0.0") + " kN.m");
         r.Calc.Add("Đáy móng L × B = " + Dt.F(l) + " × " + Dt.F(b) + " m; Ntc = " + Dt.F(ntc, "0.0") + " kN (TCVN 9362:2012)");
@@ -92,8 +122,12 @@ public class ManualFooting : IDetailMember
         double pnetMax = pnet + 6 * Math.Abs(ML) / (b * l * l) + 6 * Math.Abs(MB) / (l * b * b);
         (double F, double Fu) Punch(double h0)
         {
-            double ap = Math.Min((ColL + 2 * h0) * (ColB + 2 * h0), l * b);
-            double u = 2 * (ColL + ColB + 2 * h0);
+            // tháp chọc thủng bị cắt ở cạnh sát ranh (cột sát mép móng)
+            double sbk = Math.Max(Setback, 0);
+            double ax = bL ? ColL + sbk + h0 : ColL + 2 * h0, ay = bB ? ColB + sbk + h0 : ColB + 2 * h0;
+            double ap = Math.Min(ax * ay, l * b);
+            double lenL = bL ? sbk + ColL + h0 / 2 : ColL + h0, lenB = bB ? sbk + ColB + h0 / 2 : ColB + h0;
+            double u = (bB ? 1 : 2) * lenL + (bL ? 1 : 2) * lenB;
             return (N - pnet * ap, conc.Rbt * u * h0);
         }
         double hh = H;
@@ -107,11 +141,11 @@ public class ManualFooting : IDetailMember
         f.H = hh; f.Hb = Hb > 0 && Hb < hh ? Hb : hh;
         double h0 = hh - c - 0.012;
         var (fP, fuP) = Punch(h0);
-        r.Calc.Add("Chọc thủng: h0 = " + Dt.Mm(h0) + " mm, u = 2(bc + hc + 2h0) = " + Dt.F(2 * (ColL + ColB + 2 * h0), "0.00") + " m; F = N − pnet·(bc + 2h0)(hc + 2h0) = "
+        r.Calc.Add("Chọc thủng: h0 = " + Dt.Mm(h0) + " mm, u = " + (bL || bB ? "chu vi tháp chọc thủng bị cắt ở cạnh sát ranh" : "2(bc + hc + 2h0)") + "; F = N − pnet·Atháp = "
                    + Dt.F(fP, "0.0") + " kN ≤ Rbt·u·h0 = " + Dt.F(fuP, "0.0") + " kN");
         r.Checks.Add(Dt.Check("Chọc thủng cột – móng F ≤ Rbt·u·h0", fP, fuP, "kN", "TCVN 5574:2018 mục 8.1.6.3"));
         // ---- thép: mô men tại mép cột với áp lực hình thang ----
-        double l1 = (l - ColL) / 2, b1 = (b - ColB) / 2;
+        double l1 = bL ? l - ColL - Math.Max(Setback, 0) : (l - ColL) / 2, b1 = bB ? b - ColB - Math.Max(Setback, 0) : (b - ColB) / 2;
         double pL1 = pnetMax - (pnetMax - (2 * pnet - pnetMax)) * l1 / l;
         double mL = b * l1 * l1 * (2 * pnetMax + pL1) / 6;
         double mB = l * b1 * b1 * pnet / 2 * (1 + 2 * Math.Abs(MB) / Math.Max(N * b, 1e-9));
@@ -142,7 +176,9 @@ public class ManualFooting : IDetailMember
         double vol = l * b * f.Hb + (f.H - f.Hb) / 3 * (l * b + ColL * ColB + Math.Sqrt(l * b * ColL * ColB));
         r.ConcreteVolume = vol;
         r.FormworkArea = 2 * (l + b) * f.Hb;
-        r.LeanVolume = (l + 0.2) * (b + 0.2) * s.LeanThickness;
+        double ov = Math.Max(LeanOverhang, 0);
+        r.LeanVolume = (l + (bL ? 1 : 2) * ov) * (b + (bB ? 1 : 2) * ov) * s.LeanThickness;
+        if (bL || bB) r.Extra.Add(("Xây gạch / tấm khuôn để lại cho thành móng sát ranh", "m²", ((bL ? b : 0) + (bB ? l : 0)) * f.Hb));
         r.Extra.Add(("Đào đất hố móng (mở taluy 1:0,5 mỗi bên 0,3 m)", "m³", (l + 0.6 + 0.5 * Df) * (b + 0.6 + 0.5 * Df) * Df));
         return r;
     }
@@ -182,6 +218,9 @@ public class ManualStrip : IDetailMember
     [Field("Chiều dày mép bản", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Hf { get; set; } = 0.25;
     [Field("Bề rộng sườn (dầm móng)", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Bs { get; set; } = 0.35;
     [Field("Chiều cao sườn tổng (0 = tự chọn)", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Hs { get; set; }
+    [Field("Bố trí cánh", Group = "Kích thước", Choices = "Cánh 2 bên|Cánh 1 bên – sát ranh đất",
+        Hint = "sát ranh: bản đáy và bê tông lót không vươn sang đất nhà bên, sườn đặt sát ranh")] public string FlangeSide { get; set; } = "Cánh 2 bên";
+    [Field("Bê tông lót vươn ra (phía không sát ranh)", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double LeanOverhang { get; set; } = 0.10;
     [Field("Sức chịu tải nền R", Unit = "kN/m²", Group = "Nền")] public double R { get; set; } = 150;
     [Field("Hệ số nền k (0 = 120·R theo Bowles)", Unit = "kN/m³", Group = "Nền")] public double K { get; set; }
     [Field("Độ sâu chôn móng Df", Unit = "m", Group = "Nền")] public double Df { get; set; } = 1.5;
@@ -310,12 +349,19 @@ public class ManualStrip : IDetailMember
         if (sL > 2) r.Messages.Add("Đai sườn " + sL + " nhánh: đai kín ngoài + đai kín trong (thống kê 2 bộ đai)");
         if (!Dt.FitsInLayer(Bs, cb, StirD, nb, BotD, false)) r.Messages.Add("Thép dưới sườn " + Dt.Bars(nb, BotD) + " không đủ khe hở 1 lớp – đặt 2 lớp hoặc tăng bề rộng sườn");
         // ---- bản cánh: console từ mép sườn, M = p·l²/2 ----
-        double lc = (b - Bs) / 2, pn = sumN / (b * Length) * (pMax - gD) / Math.Max(pTb - gD, 1e-9);
+        bool oneSide = (FlangeSide ?? "").Contains("1 bên");
+        double lc = oneSide ? b - Bs : (b - Bs) / 2, pn = sumN / (b * Length) * (pMax - gD) / Math.Max(pTb - gD, 1e-9);
         double mF = pn * lc * lc / 2, h0f = Hf - c - 0.006;
         double asF = RcSection.DesignRect(mF, 1.0, h0f, c, conc, main, 0.10).As;
         var fl = FlangeD > 0 && FlangeS > 0 ? (FlangeD, FlangeS) : Dt.ChooseSpaced(asF, new[] { 10, 12, 14, 16 }, 0.20, 0.10);
         double muF = RcSection.MomentCapacity(1.0, h0f, Dt.AreaPerM(fl.Item1, fl.Item2), 0, c, conc, main);
-        r.Calc.Add("Bản cánh console l = (B − bs)/2 = " + Dt.F(lc) + " m, p = " + Dt.F(pn, "0.0") + " kN/m² → M = p·l²/2 = " + Dt.F(mF, "0.00") + " kN.m/m → " + Dt.Spaced(fl.Item1, fl.Item2));
+        if (oneSide)
+        {
+            double et = (b - Bs) / 2;
+            r.Calc.Add("Móng băng sát ranh (cánh 1 bên): tải cột lệch so với tâm bản đáy e = (B − bs)/2 = " + Dt.Mm(et) + " mm → mô men xoắn phân bố mt = q·e; cần dầm móng ngang (giằng) kéo về móng trong để cân bằng, hoặc tăng độ cứng sườn");
+            r.Messages.Add("Móng băng sát ranh: bố trí giằng móng ngang nối sang móng bên trong (cân bằng mô men lệch tâm ΣN·e = " + Dt.F(sumN * et / Math.Max(cols.Count, 1), "0.0") + " kN.m/cột)");
+        }
+        r.Calc.Add("Bản cánh console l = " + (oneSide ? "B − bs" : "(B − bs)/2") + " = " + Dt.F(lc) + " m, p = " + Dt.F(pn, "0.0") + " kN/m² → M = p·l²/2 = " + Dt.F(mF, "0.00") + " kN.m/m → " + Dt.Spaced(fl.Item1, fl.Item2));
         r.Checks.Add(Dt.Check("Bản cánh chịu uốn (thép ngang " + Dt.Spaced(fl.Item1, fl.Item2) + ")", mF, muF, "kN.m/m"));
         // cắt bản cánh tại mép sườn (không đặt cốt đai): Q ≤ 0,5·Rbt·b·h0·(2,5)… lấy Qb,min = 0,5·Rbt·b·h0 (mục 8.1.3.3)
         double qF = pn * Math.Max(lc - h0f, 0), qbF = 0.5 * conc.Rbt * 1.0 * h0f * 2.5 / 1.0;
@@ -336,13 +382,15 @@ public class ManualStrip : IDetailMember
         double hk = Dt.R10(Math.Max(Hf - 2 * c, 0.10));
         r.Bars.Add(Dt.Hooked("Lớp dưới phương ngang", fl.Item1, (int)Math.Floor(lenRib / fl.Item2) + 1, Dt.R10(b - 2 * c), hk, hk, false, fl.Item2));
         var dist = Dt.ChooseSpaced(0.2 * Dt.AreaPerM(fl.Item1, fl.Item2), new[] { 10, 12 }, 0.25, 0.15);
-        r.Bars.Add(Dt.Straight("Lớp dưới phương dọc", dist.D, 2 * Dt.CountAcross(lc + 0.05, 0.05, dist.S), lenRib, false, dist.S));
+        r.Bars.Add(Dt.Straight("Lớp dưới phương dọc", dist.D, (oneSide ? 1 : 2) * Dt.CountAcross(lc + 0.05, 0.05, dist.S), lenRib, false, dist.S));
         if (lenRib > s.StockLength) r.Messages.Add("Thép dọc dài " + Dt.F(lenRib) + " m > " + Dt.F(s.StockLength) + " m: nối thép dưới tại giữa nhịp, thép trên tại vị trí cột (ngoài vùng mô men lớn), so le 50 %");
         RebarNumbering.Renumber(r.Bars);
         double area = b * Hf + Bs * (hs - Hf) + (b - Bs) / 2 * 0;   // bỏ qua vát cánh
         r.ConcreteVolume = area * Length;
         r.FormworkArea = (2 * Hf + 2 * (hs - Hf)) * Length + 2 * area;
-        r.LeanVolume = (b + 0.2) * (Length + 0.2) * s.LeanThickness;
+        double ovs = Math.Max(LeanOverhang, 0);
+        r.LeanVolume = (b + (oneSide ? 1 : 2) * ovs) * (Length + 2 * ovs) * s.LeanThickness;
+        if (oneSide) r.Extra.Add(("Xây gạch / tấm khuôn để lại cho thành móng băng sát ranh", "m²", hs * Length));
         r.Extra.Add(("Đào đất hố móng", "m³", (b + 0.6 + 0.5 * Df) * (Length + 0.6) * Df));
         return r;
     }
@@ -397,8 +445,22 @@ public class ManualStrip : IDetailMember
         double Ss = 25;
         var x2 = new DxfWriter(Ss);
         double B = BUsed * 1000, bs = Bs * 1000;
-        x2.Polyline(Lay.BeTong, new List<(double, double)> { (-B / 2, 0), (B / 2, 0), (B / 2, hf), (bs / 2, hf), (bs / 2, hs), (-bs / 2, hs), (-bs / 2, hf), (-B / 2, hf) }, true);
-        x2.Rect(Lay.KyHieu, -B / 2 - 100, -s.LeanThickness * 1000, B / 2 + 100, 0);
+        bool one = (FlangeSide ?? "").Contains("1 bên");
+        double ovl = Math.Max(LeanOverhang, 0) * 1000;
+        if (one)
+        {
+            // sườn sát ranh bên trái: bản đáy chỉ vươn sang phải
+            x2.Polyline(Lay.BeTong, new List<(double, double)> { (-B / 2, 0), (B / 2, 0), (B / 2, hf), (-B / 2 + bs, hf), (-B / 2 + bs, hs), (-B / 2, hs) }, true);
+            x2.Rect(Lay.KyHieu, -B / 2, -s.LeanThickness * 1000, B / 2 + ovl, 0);
+            x2.Line(Lay.KyHieu, -B / 2, -s.LeanThickness * 1000 - 300, -B / 2, hs + 300, "CENTER");
+            x2.Text(Lay.Chu, -B / 2 - 0.6 * x2.Th, -s.LeanThickness * 1000 - 300, 0.8 * x2.Th, "RANH ĐẤT", 90, 0, 2);
+        }
+        else
+        {
+            x2.Polyline(Lay.BeTong, new List<(double, double)> { (-B / 2, 0), (B / 2, 0), (B / 2, hf), (bs / 2, hf), (bs / 2, hs), (-bs / 2, hs), (-bs / 2, hf), (-B / 2, hf) }, true);
+            x2.Rect(Lay.KyHieu, -B / 2 - ovl, -s.LeanThickness * 1000, B / 2 + ovl, 0);
+        }
+        double rx = one ? -B / 2 + bs / 2 : 0;   // tim sườn
         var fl = r.Bars.FirstOrDefault(b => b.Role == "Lớp dưới phương ngang");
         if (fl != null)
         {
@@ -408,21 +470,21 @@ public class ManualStrip : IDetailMember
         if (st != null)
         {
             double cs = s.CoverBeam * 1000;
-            x2.Rect(Lay.Dai, -bs / 2 + cs, c + 10, bs / 2 - cs, hs - cs);
-            x2.LeaderTag(bs / 2 - cs, hs * 0.55, bs / 2 + 400, hs * 0.55 + 200, Dt.Spaced(st.Dia, st.Spacing), st.Mark);
+            x2.Rect(Lay.Dai, rx - bs / 2 + cs, c + 10, rx + bs / 2 - cs, hs - cs);
+            x2.LeaderTag(rx + bs / 2 - cs, hs * 0.55, rx + bs / 2 + 400, hs * 0.55 + 200, Dt.Spaced(st.Dia, st.Spacing), st.Mark);
         }
         void Row(BarMark b, double y, bool up)
         {
             if (b == null) return;
             double cs = s.CoverBeam * 1000 + b.Dia / 2.0;
             int n = Math.Max(b.Count, 2);
-            for (int i = 0; i < n; i++) x2.Dot(Lay.Thep, -bs / 2 + cs + i * (bs - 2 * cs) / (n - 1), y, b.Dia / 2.0);
-            x2.LeaderTag(0, y, 300, up ? hs + 500 : -900, Dt.Bars(b.Count, b.Dia), b.Mark);
+            for (int i = 0; i < n; i++) x2.Dot(Lay.Thep, rx - bs / 2 + cs + i * (bs - 2 * cs) / (n - 1), y, b.Dia / 2.0);
+            x2.LeaderTag(rx, y, rx + 300, up ? hs + 500 : -900, Dt.Bars(b.Count, b.Dia), b.Mark);
         }
         Row(top, hs - s.CoverBeam * 1000 - (top?.Dia ?? 0) / 2.0, true);
         Row(bot, c + 20 + (bot?.Dia ?? 0) / 2.0, false);
         x2.Dim(-B / 2, 0, B / 2, 0, -1300);
-        x2.Dim(-bs / 2, hs, bs / 2, hs, 300);
+        x2.Dim(rx - bs / 2, hs, rx + bs / 2, hs, 300);
         x2.Dim(B / 2, 0, B / 2, hf, 400);
         x2.Dim(B / 2, 0, B / 2, hs, 900);
         x2.Title(0, -1800, "1-1", DrawUtil.ScaleText(Ss), true);
@@ -454,6 +516,13 @@ public class ManualPileCap : IDetailMember
     [Field("Chiều cao đài H (0 = tự chọn)", Unit = "mm", Scale = 1000, Group = "Đài")] public double H { get; set; }
     [Field("Độ sâu đáy đài Df", Unit = "m", Group = "Đài")] public double Df { get; set; } = 1.5;
     [Field("γtb đất + đài", Unit = "kN/m³", Group = "Đài")] public double GammaTb { get; set; } = 20;
+    [Field("Sát ranh theo phương X", Group = "Sát ranh đất", Choices = "Không|Ranh bên trái|Ranh bên phải",
+        Hint = "đài và bê tông lót không vươn sang đất bên; tim cọc cách ranh ≥ khoảng lùi ép cọc")] public string BoundaryX { get; set; } = "Không";
+    [Field("Sát ranh theo phương Y", Group = "Sát ranh đất", Choices = "Không|Ranh phía dưới|Ranh phía trên")] public string BoundaryY { get; set; } = "Không";
+    [Field("Tim cọc cách ranh tối thiểu (máy ép)", Unit = "mm", Scale = 1000, Group = "Sát ranh đất")] public double PileSetback { get; set; } = 0.50;
+    [Field("Mép ngoài cột cách ranh", Unit = "mm", Scale = 1000, Group = "Sát ranh đất")] public double ColSetback { get; set; }
+    [Field("Có dầm móng cân bằng mô men lệch tâm N·e", Group = "Sát ranh đất")] public bool BalanceBeam { get; set; } = true;
+    [Field("Bê tông lót vươn ra (phía không sát ranh)", Unit = "mm", Scale = 1000, Group = "Sát ranh đất")] public double LeanOverhang { get; set; } = 0.10;
     [Field("Thép phương X – Ø (0 = tự chọn)", Unit = "mm", Group = "Thép")] public int DiaX { get; set; }
     [Field("Thép phương X – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double SX { get; set; }
     [Field("Thép phương Y – Ø", Unit = "mm", Group = "Thép")] public int DiaY { get; set; }
@@ -470,6 +539,30 @@ public class ManualPileCap : IDetailMember
     public double CapB { get; private set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public double CapH { get; private set; }
+    /// <summary>Tâm đài so với tim cột (m) – khác 0 khi đài sát ranh.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public double CapCx { get; private set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public double CapCy { get; private set; }
+
+    /// <summary>Kích thước đài theo nhóm cọc (toạ độ quanh trọng tâm nhóm), có xét sát ranh: mép đài trùng ranh, tim cọc gần ranh cách ranh ≥ max(edge; PileSetback).
+    /// Trả về L, B, toạ độ tim cột (xc, yc) và tâm đài (cx, cy) so với trọng tâm nhóm cọc.</summary>
+    public void Geometry(List<(double X, double Y)> piles, double edge, out double L, out double B, out double xc, out double yc, out double cx, out double cy)
+    {
+        double x0 = piles.Min(p => p.X), x1 = piles.Max(p => p.X), y0 = piles.Min(p => p.Y), y1 = piles.Max(p => p.Y);
+        bool left = (BoundaryX ?? "").Contains("trái"), right = (BoundaryX ?? "").Contains("phải");
+        bool down = (BoundaryY ?? "").Contains("dưới"), up = (BoundaryY ?? "").Contains("trên");
+        double eB = Math.Max(edge, PileSetback);
+        double cx0 = x0 - (left ? eB : edge), cx1 = x1 + (right ? eB : edge);
+        double cy0 = y0 - (down ? eB : edge), cy1 = y1 + (up ? eB : edge);
+        double cs = Math.Max(ColSetback, 0);
+        xc = left ? cx0 + cs + ColX / 2 : right ? cx1 - cs - ColX / 2 : 0;
+        yc = down ? cy0 + cs + ColY / 2 : up ? cy1 - cs - ColY / 2 : 0;
+        // đài phải bao cột (+150 mm mỗi phía không sát ranh)
+        cx0 = Math.Min(cx0, xc - ColX / 2 - (left ? cs : 0.15)); cx1 = Math.Max(cx1, xc + ColX / 2 + (right ? cs : 0.15));
+        cy0 = Math.Min(cy0, yc - ColY / 2 - (down ? cs : 0.15)); cy1 = Math.Max(cy1, yc + ColY / 2 + (up ? cs : 0.15));
+        L = cx1 - cx0; B = cy1 - cy0; cx = (cx0 + cx1) / 2; cy = (cy0 + cy1) / 2;
+    }
 
     /// <summary>Lực cọc: Pi = (N + G)/n + Mx·yi/Σy² + My·xi/Σx² (TCVN 10304:2014, đài cứng).</summary>
     public static double[] Forces(double n, double mx, double my, double g, IList<(double X, double Y)> piles)
@@ -493,18 +586,28 @@ public class ManualPileCap : IDetailMember
         double edge = Edge > 0 ? Edge : Math.Max(PileD, 0.7 * PileD + 0.15);
         bool longX = Math.Abs(My) >= Math.Abs(Mx);
         int n = NumPiles > 0 ? NumPiles : Math.Max(1, (int)Math.Ceiling(1.15 * N / Pa));
-        double[] P = Array.Empty<double>(); List<(double X, double Y)> piles = new(); double L = 0, B = 0, G = 0;
+        double[] P = Array.Empty<double>(); List<(double X, double Y)> piles = new(); double L = 0, B = 0, G = 0, xc = 0, yc = 0, capCx = 0, capCy = 0;
         for (int it = 0; it < 30; it++)
         {
             piles = PileCapDesigner.Layout(n, sp, longX);
-            L = piles.Max(p => p.X) - piles.Min(p => p.X) + 2 * edge;
-            B = piles.Max(p => p.Y) - piles.Min(p => p.Y) + 2 * edge;
-            L = Math.Max(L, ColX + 0.3); B = Math.Max(B, ColY + 0.3);
+            Geometry(piles, edge, out L, out B, out xc, out yc, out capCx, out capCy);
             G = 1.1 * GammaTb * L * B * Df;
-            P = Forces(N, Mx, My, G, piles);
+            // cột lệch so với trọng tâm nhóm cọc (sát ranh): kể N·e vào lực cọc nếu không có dầm cân bằng
+            P = Forces(N, Mx + (BalanceBeam ? 0 : N * yc), My + (BalanceBeam ? 0 : N * xc), G, piles);
             if (NumPiles > 0 || (P.Max() <= Pa && P.Min() >= -Pt) || n >= 25) break;
             n++;
         }
+        bool bX = (BoundaryX ?? "").StartsWith("Ranh"), bY = (BoundaryY ?? "").StartsWith("Ranh");
+        if (bX || bY)
+        {
+            double me = N * Math.Sqrt(xc * xc + yc * yc);
+            r.Calc.Add("Đài sát ranh: đài và bê tông lót không vươn sang đất bên; tim cọc cách ranh ≥ " + Dt.Mm(PileSetback) + " mm (vị trí máy ép); tim cột lệch trọng tâm nhóm cọc ex = "
+                       + Dt.Mm(Math.Abs(xc)) + ", ey = " + Dt.Mm(Math.Abs(yc)) + " mm → M = N·e = " + Dt.F(me, "0.0") + " kN.m" + (BalanceBeam ? " do dầm móng cân bằng chịu" : " – kể vào lực cọc"));
+            if (BalanceBeam && me > 1e-6) r.Messages.Add("Dầm móng cân bằng nối đài " + Name + " với đài bên trong phải chịu M = N·e = " + Dt.F(me, "0.0") + " kN.m");
+        }
+        // toạ độ cọc tính từ tim cột (để kiểm tra chọc thủng, cắt, mô men mép cột và vẽ)
+        piles = piles.Select(pp => (pp.X - xc, pp.Y - yc)).ToList();
+        CapCx = capCx - xc; CapCy = capCy - yc;
         Piles = piles; PileForces = P; CapL = L; CapB = B;
         r.Calc.Add("## Đài cọc " + Name + ": " + n + " cọc " + (Round ? "D" : "") + Dt.Mm(PileD) + (Round ? "" : "x" + Dt.Mm(PileD)) + ", khoảng cách " + Dt.F(sp) + " m, đài "
                    + Dt.F(L) + " × " + Dt.F(B) + " m");
@@ -605,7 +708,8 @@ public class ManualPileCap : IDetailMember
         RebarNumbering.Renumber(r.Bars);
         r.ConcreteVolume = L * B * hh;
         r.FormworkArea = 2 * (L + B) * hh;
-        r.LeanVolume = (L + 0.2) * (B + 0.2) * s.LeanThickness;
+        double ov = Math.Max(LeanOverhang, 0);
+        r.LeanVolume = (L + (bX ? 1 : 2) * ov) * (B + (bY ? 1 : 2) * ov) * s.LeanThickness;
         r.Extra.Add(("Cọc " + (Round ? "D" : "") + Dt.Mm(PileD) + (Round ? "" : "x" + Dt.Mm(PileD)), "cọc", n));
         r.Extra.Add(("Đập đầu cọc", "cọc", n));
         return r;
@@ -618,8 +722,11 @@ public class ManualPileCap : IDetailMember
         double S = 50;
         var w = new DxfWriter(S);
         double L = CapL * 1000, B = CapB * 1000, d = PileD * 1000;
-        w.Rect(Lay.BeTong, -L / 2, -B / 2, L / 2, B / 2);
+        double ox = CapCx * 1000, oy = CapCy * 1000;
+        w.Rect(Lay.BeTong, ox - L / 2, oy - B / 2, ox + L / 2, oy + B / 2);
         w.Rect(Lay.BeTong, -ColX * 500, -ColY * 500, ColX * 500, ColY * 500);
+        if ((BoundaryX ?? "").StartsWith("Ranh")) { double bx0 = (BoundaryX.Contains("trái") ? ox - L / 2 : ox + L / 2); w.Line(Lay.KyHieu, bx0, oy - B / 2 - 600, bx0, oy + B / 2 + 600, "CENTER"); w.Text(Lay.Chu, bx0 - 0.6 * w.Th, oy, 0.8 * w.Th, "RANH ĐẤT", 90, 1, 2); }
+        if ((BoundaryY ?? "").StartsWith("Ranh")) { double by0 = (BoundaryY.Contains("dưới") ? oy - B / 2 : oy + B / 2); w.Line(Lay.KyHieu, ox - L / 2 - 600, by0, ox + L / 2 + 600, by0, "CENTER"); w.Text(Lay.Chu, ox, by0 - 0.6 * w.Th, 0.8 * w.Th, "RANH ĐẤT", 0, 1, 3); }
         w.Line(Lay.Truc, 0, -B / 2 - 800, 0, B / 2 + 800, "CENTER");
         w.Line(Lay.Truc, -L / 2 - 800, 0, L / 2 + 800, 0, "CENTER");
         for (int i = 0; i < Piles.Count; i++)
@@ -632,22 +739,23 @@ public class ManualPileCap : IDetailMember
         }
         var bx = r.Bars.FirstOrDefault(b => b.Role == "Lớp dưới phương X"); var by = r.Bars.FirstOrDefault(b => b.Role == "Lớp dưới phương Y");
         double c = Math.Max(s.CoverFooting, 0.05) * 1000;
-        if (bx != null) { w.Line(Lay.Thep, -L / 2 + c, -B / 4, L / 2 - c, -B / 4); w.LeaderTag(L / 6, -B / 4, L / 6 + 300, -B / 2 - 500, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark); }
-        if (by != null) { w.Line(Lay.Thep, -L / 4, -B / 2 + c, -L / 4, B / 2 - c); w.LeaderTag(-L / 4, B / 6, -L / 2 - 300, B / 6 + 300, Dt.Spaced(by.Dia, by.Spacing), by.Mark, -1); }
-        var xs = new List<double> { -L / 2 }; xs.AddRange(Piles.Select(p => p.X * 1000).Distinct().OrderBy(x => x)); xs.Add(L / 2);
-        var ys = new List<double> { -B / 2 }; ys.AddRange(Piles.Select(p => p.Y * 1000).Distinct().OrderBy(x => x)); ys.Add(B / 2);
-        w.DimChainH(xs, -B / 2, -B / 2 - 900);
-        w.Dim(-L / 2, -B / 2, L / 2, -B / 2, -1500);
-        w.DimChainV(ys, L / 2, L / 2 + 900);
-        w.Dim(L / 2, -B / 2, L / 2, B / 2, 1500);
-        w.Title(0, -B / 2 - 2100, RebarSchedule.MemberLabel("MẶT BẰNG ĐÀI " + Name, r.Quantity), DrawUtil.ScaleText(S));
+        if (bx != null) { w.Line(Lay.Thep, ox - L / 2 + c, oy - B / 4, ox + L / 2 - c, oy - B / 4); w.LeaderTag(ox + L / 6, oy - B / 4, ox + L / 6 + 300, oy - B / 2 - 500, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark); }
+        if (by != null) { w.Line(Lay.Thep, ox - L / 4, oy - B / 2 + c, ox - L / 4, oy + B / 2 - c); w.LeaderTag(ox - L / 4, oy + B / 6, ox - L / 2 - 300, oy + B / 6 + 300, Dt.Spaced(by.Dia, by.Spacing), by.Mark, -1); }
+        var xs = new List<double> { ox - L / 2 }; xs.AddRange(Piles.Select(p => p.X * 1000).Distinct().OrderBy(x => x)); xs.Add(ox + L / 2);
+        var ys = new List<double> { oy - B / 2 }; ys.AddRange(Piles.Select(p => p.Y * 1000).Distinct().OrderBy(x => x)); ys.Add(oy + B / 2);
+        w.DimChainH(xs, oy - B / 2, oy - B / 2 - 900);
+        w.Dim(ox - L / 2, oy - B / 2, ox + L / 2, oy - B / 2, -1500);
+        w.DimChainV(ys, ox + L / 2, ox + L / 2 + 900);
+        w.Dim(ox + L / 2, oy - B / 2, ox + L / 2, oy + B / 2, 1500);
+        w.Title(ox, oy - B / 2 - 2100, RebarSchedule.MemberLabel("MẶT BẰNG ĐÀI " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, Name, true));
 
         // mặt cắt 1-1 phương X
         var x2 = new DxfWriter(S);
         double H = CapH * 1000, em = Embed * 1000;
-        x2.Rect(Lay.BeTong, -L / 2, 0, L / 2, H);
-        x2.Rect(Lay.KyHieu, -L / 2 - 100, -s.LeanThickness * 1000, L / 2 + 100, 0, "DASHED");
+        x2.Rect(Lay.BeTong, ox - L / 2, 0, ox + L / 2, H);
+        double lo = Math.Max(LeanOverhang, 0) * 1000;
+        x2.Rect(Lay.KyHieu, ox - L / 2 - ((BoundaryX ?? "").Contains("trái") ? 0 : lo), -s.LeanThickness * 1000, ox + L / 2 + ((BoundaryX ?? "").Contains("phải") ? 0 : lo), 0, "DASHED");
         x2.Rect(Lay.BeTong, -ColX * 500, H, ColX * 500, H + 700);
         x2.BreakH(Lay.BeTong, -ColX * 500 - 100, ColX * 500 + 100, H + 700);
         foreach (var px in Piles.Select(p => p.X * 1000).Distinct())
@@ -658,12 +766,12 @@ public class ManualPileCap : IDetailMember
         if (bx != null)
         {
             double leg = bx.Segments.Count > 2 ? bx.Segments[0] : 0;
-            x2.Polyline(Lay.Thep, new List<(double, double)> { (-L / 2 + c, em + c + leg), (-L / 2 + c, em + c), (L / 2 - c, em + c), (L / 2 - c, em + c + leg) }, false);
+            x2.Polyline(Lay.Thep, new List<(double, double)> { (ox - L / 2 + c, em + c + leg), (ox - L / 2 + c, em + c), (ox + L / 2 - c, em + c), (ox + L / 2 - c, em + c + leg) }, false);
             x2.LeaderTag(0, em + c, 400, -700, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark);
         }
-        x2.Dim(L / 2, 0, L / 2, H, 600);
-        x2.Dim(-L / 2, 0, L / 2, 0, -1600);
-        x2.ElevMark(-L / 2 - 300, 0, DxfWriter.ElevText(-Df));
+        x2.Dim(ox + L / 2, 0, ox + L / 2, H, 600);
+        x2.Dim(ox - L / 2, 0, ox + L / 2, 0, -1600);
+        x2.ElevMark(ox - L / 2 - 300, 0, DxfWriter.ElevText(-Df));
         x2.Title(0, -2300, "1-1", DrawUtil.ScaleText(S), true);
         figs.Add(new Figure(x2, Name + " mặt cắt"));
         return figs;

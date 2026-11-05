@@ -80,7 +80,12 @@ public static class BeamDrawing
 
         // ---- bối cảnh sàn hai bên dầm (cánh sàn mặt cắt, dải sàn mặt đứng) – Drawing/BeamSlabContext.cs ----
         Func<double, BeamSlabSection> slabAt = null;
-        if (style.ShowSlabFlanges && p != null)
+        if (style.ShowSlabFlanges && d.ManualSlab != null)   // [Triển khai hồ sơ] sàn hai bên nhập tay
+        {
+            var ms = d.ManualSlab;
+            slabAt = x => new BeamSlabSection { X = x, Left = ms.Left, Right = ms.Right, LeftOpening = ms.LeftOpening, RightOpening = ms.RightOpening, Offset = ms.Offset };
+        }
+        else if (style.ShowSlabFlanges && p != null)
         {
             var cache = new Dictionary<long, BeamSlabSection>();
             slabAt = x =>

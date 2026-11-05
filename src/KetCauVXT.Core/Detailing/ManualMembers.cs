@@ -78,6 +78,18 @@ public class ManualBeam : IDetailMember
     [Field("Các nhịp tim – tim", Unit = "m", Group = "Tiết diện", Hint = "vd. 4,2; 3,6 hoặc 3*4,2")] public string Spans { get; set; } = "4,2; 3,6";
     [Field("Bề rộng gối (cột)", Unit = "mm", Scale = 1000, Group = "Tiết diện")] public double SupportWidth { get; set; } = 0.22;
     [Field("Cao độ đỉnh dầm", Unit = "m", Group = "Tiết diện")] public double TopElevation { get; set; } = 3.6;
+    [Field("Vị trí dầm", Group = "Chung", Choices = "Dầm tầng|Dầm móng (giằng móng)|Dầm mái")] public string Position { get; set; } = "Dầm tầng";
+
+    [Field("Cánh sàn (mặt cắt dầm)", Group = "Sàn hai bên dầm", Choices = "Chữ T – sàn 2 bên|Chữ L – sàn bên trái|Chữ L – sàn bên phải|Không có sàn")] public string Flange { get; set; } = "Chữ T – sàn 2 bên";
+    [Field("Chiều dày sàn", Unit = "mm", Scale = 1000, Group = "Sàn hai bên dầm")] public double SlabT { get; set; } = 0.10;
+    [Field("Hạ cốt sàn bên trái Δ (≤ 0)", Unit = "mm", Scale = 1000, Group = "Sàn hai bên dầm", Hint = "vd. −50 sàn vệ sinh; mặt cắt vẽ bậc sàn và thép mũ nhấn / neo")] public double DropLeft { get; set; }
+    [Field("Hạ cốt sàn bên phải Δ (≤ 0)", Unit = "mm", Scale = 1000, Group = "Sàn hai bên dầm")] public double DropRight { get; set; }
+    [Field("Thép sàn lớp dưới (thể hiện)", Group = "Sàn hai bên dầm", Hint = "vd. Ø8a200")] public string SlabBot { get; set; } = "Ø8a200";
+    [Field("Thép mũ sàn qua dầm (thể hiện)", Group = "Sàn hai bên dầm")] public string SlabTop { get; set; } = "Ø8a200";
+
+    [Field("Bê tông lót dầm móng – vươn mỗi bên", Unit = "mm", Scale = 1000, Group = "Dầm móng: bê tông lót, sát ranh")] public double LeanOverhang { get; set; } = 0.10;
+    [Field("Dầm móng sát ranh đất", Group = "Dầm móng: bê tông lót, sát ranh", Choices = "Không sát ranh|Sát ranh bên trái|Sát ranh bên phải",
+        Hint = "sát ranh: bê tông lót và bê tông dầm không vươn sang đất nhà bên; thành sát ranh xây gạch làm khuôn")] public string Boundary { get; set; } = "Không sát ranh";
 
     [Field("Thép dưới chạy suốt – số thanh", Group = "Thép dọc")] public int BotN { get; set; } = 2;
     [Field("Thép dưới chạy suốt – Ø", Unit = "mm", Group = "Thép dọc")] public int BotD { get; set; } = 16;
@@ -120,7 +132,8 @@ public class ManualBeam : IDetailMember
         }
         if (BotN < 2 || TopN < 2) d.Messages.Add("LỖI thép chạy suốt tối thiểu 2 thanh (ở 2 góc đai) cho cả lớp trên và lớp dưới");
         int ns = spans.Count;
-        double c = s.CoverBeam, w = Math.Max(SupportWidth, 0);
+        bool isFound = (Position ?? "").StartsWith("Dầm móng"), isRoof = (Position ?? "").StartsWith("Dầm mái");
+        double c = isFound ? Math.Max(s.CoverBeam, 0.035) : s.CoverBeam, w = Math.Max(SupportWidth, 0);
         var nodeX = new double[ns + 1];
         for (int k = 0; k < ns; k++) nodeX[k + 1] = nodeX[k] + spans[k];
         double xEnd = nodeX[ns];
@@ -246,7 +259,49 @@ public class ManualBeam : IDetailMember
         double clear = lcl.Sum();
         r.ConcreteVolume = B * H * clear;
         r.FormworkArea = (B + 2 * H) * clear;
+        d.ManualSlab = SlabContext(this);
+        bool leftB = (Boundary ?? "").Contains("trái"), rightB = (Boundary ?? "").Contains("phải");
+        if (isFound)
+        {
+            r.Kind = "Dầm móng";
+            double over = Math.Max(LeanOverhang, 0);
+            double lw = B + (leftB ? 0 : over) + (rightB ? 0 : over);
+            r.LeanVolume = lw * s.LeanThickness * (clear + 0.0);
+            r.FormworkArea = (leftB || rightB ? 1 : 2) * H * clear;   // đáy đổ trên lót, không ván khuôn đáy
+            r.Calc.Add("Dầm móng: lớp bảo vệ ≥ 35 mm (tiếp xúc đất, có bê tông lót); bê tông lót " + s.LeanConcrete + " dày " + Dt.Mm(s.LeanThickness) + " mm rộng "
+                       + Dt.Mm(lw) + " mm" + (leftB || rightB ? " – sát ranh " + (leftB ? "bên trái" : "bên phải") + ": lót và dầm không vươn sang đất bên cạnh" : " (vươn " + Dt.Mm(over) + " mm mỗi bên)"));
+            if (leftB || rightB)
+            {
+                r.Extra.Add(("Xây gạch làm khuôn thành dầm móng sát ranh (không tháo)", "m²", H * clear));
+                d.Messages.Add("Dầm móng sát ranh: thành phía ranh dùng gạch xây / tấm khuôn để lại, không vươn bê tông lót sang đất nhà bên");
+            }
+            if ((Flange ?? "").StartsWith("Chữ T") || (Flange ?? "").StartsWith("Chữ L")) d.Messages.Add("Dầm móng có sàn nền (cánh) – kiểm tra lại lựa chọn \"Cánh sàn\" nếu nền không đổ liền khối");
+        }
+        else if (isRoof)
+        {
+            r.Kind = "Dầm mái";
+            d.Messages.Add("Dầm mái: chống thấm mặt trên sàn mái, đổ bê tông liên tục; thép cột tầng mái uốn mỏ neo vào dầm (khoá đầu cột)");
+        }
         return r;
+    }
+
+    /// <summary>Bối cảnh sàn nhập tay cho mặt cắt dầm: chữ T / L, hạ cốt từng bên (mm), thép sàn thể hiện.</summary>
+    public static BeamSlabSection SlabContext(ManualBeam b)
+    {
+        string f = b.Flange ?? "";
+        if (f.StartsWith("Không")) return new BeamSlabSection();
+        SlabSideInfo Side(double drop)
+        {
+            var si = new SlabSideInfo { Hs = Math.Max(b.SlabT, 0.04) * 1000, Dz = Math.Min(drop, 0) * 1000, Label = "S" };
+            if (BeamSlabContext.TryParseBar(b.SlabBot ?? "", out int db, out double sb)) { si.BotPerpDia = si.BotParDia = db; si.BotPerpSpacing = si.BotParSpacing = sb; si.BotFromDesign = true; }
+            if (BeamSlabContext.TryParseBar(b.SlabTop ?? "", out int dt, out double st)) { si.TopDia = dt; si.TopSpacing = st; si.TopFromDesign = true; }
+            return si;
+        }
+        return new BeamSlabSection
+        {
+            Left = f.StartsWith("Chữ T") || f.Contains("trái") ? Side(b.DropLeft) : null,
+            Right = f.StartsWith("Chữ T") || f.Contains("phải") ? Side(b.DropRight) : null
+        };
     }
 
     public List<Figure> Draw(DetailResult r, DetailSettings s) =>
@@ -265,6 +320,11 @@ public class ManualColumn : IDetailMember
     [Field("Chiều cao các tầng (từ dưới lên)", Unit = "m", Group = "Tiết diện", Hint = "vd. 3,9; 3,6; 3,6")] public string Stories { get; set; } = "3,9; 3,6";
     [Field("Cao độ chân cột (mặt móng)", Unit = "m", Group = "Tiết diện")] public double BaseElevation { get; set; } = -1.0;
     [Field("Chiều cao dầm tại nút (đỉnh tầng)", Unit = "mm", Scale = 1000, Group = "Tiết diện")] public double JointDepth { get; set; } = 0.40;
+
+    [Field("Chân cột", Group = "Vị trí cột", Choices = "Từ móng – thép chờ trong móng|Trên dầm / sàn – thép chờ trong dầm đỡ")] public string BaseType { get; set; } = "Từ móng – thép chờ trong móng";
+    [Field("Chiều cao móng / dầm đỡ (chỗ đặt thép chờ)", Unit = "mm", Scale = 1000, Group = "Vị trí cột")] public double SupportDepth { get; set; } = 0.40;
+    [Field("Thép chờ trên mặt móng – cổ cột (0 = max(30d; ll))", Unit = "mm", Scale = 1000, Group = "Vị trí cột")] public double StarterLen { get; set; }
+    [Field("Đỉnh cột", Group = "Vị trí cột", Choices = "Tầng mái – khoá đầu cột uốn mỏ|Chờ nối lên tầng trên")] public string TopType { get; set; } = "Tầng mái – khoá đầu cột uốn mỏ";
 
     [Field("Thép dọc – Ø", Unit = "mm", Group = "Thép")] public int Dia { get; set; } = 16;
     [Field("Số thanh trên cạnh b (kể cả góc)", Group = "Thép")] public int NB { get; set; } = 2;
@@ -331,6 +391,30 @@ public class ManualColumn : IDetailMember
             foreach (var (g, cc) in new[] { ("A", cA[t]), ("B", cB[t]) })
                 d.Splices.Add(new SpliceInfo { Dia = Dia, Span = t, Center = cc, Lap = lap, Group = g, Count = g == "A" ? (nTot + 1) / 2 : nTot / 2, ZoneA = za, ZoneB = zbb, Note = "nối chồng ll = " + Dt.Mm(lap) + " mm" });
         }
+        // ---- thép chờ chân cột (cổ cột) và khoá đầu cột tầng mái ----
+        bool fromFooting = !(BaseType ?? "").StartsWith("Trên dầm"), roofTop = !(TopType ?? "").StartsWith("Chờ");
+        double lan = Math.Max(30 * dm, RebarDetailing.AnchorageLength(conc, main, Dia));
+        double starter = StarterLen > 0 ? StarterLen : RcSection.CeilTo(Math.Max(30 * dm, lap), 0.05);
+        double embedC = fromFooting ? Math.Max(s.CoverFooting, 0.035) + 0.03 : s.CoverBeam + 0.02;   // tựa lên lưới thép đáy móng / thép dưới dầm
+        double embed = Math.Max(SupportDepth - embedC, 0.15);
+        double footLeg = Dt.R10(Math.Max(Math.Max(0.20, 12 * dm), lan - embed));
+        if (footLeg > 0.6) footLeg = 0.6;
+        var sb0 = Dt.Hooked(fromFooting ? "Thép chờ cột (trong móng)" : "Thép chờ cột (trong dầm đỡ)", Dia, nTot, Dt.R10(embed + starter), footLeg, 0);
+        sb0.Start = -embed; sb0.End = starter; sb0.Span = 0;
+        d.Bars.Add(sb0);
+        r.Calc.Add("Thép chờ chân cột: chôn " + Dt.Mm(embed) + " mm vào " + (fromFooting ? "móng" : "dầm đỡ") + ", bẻ chân " + Dt.Mm(footLeg) + " mm tựa lưới thép; nhô khỏi mặt "
+                   + (fromFooting ? "móng (cổ cột)" : "dầm") + " " + Dt.Mm(starter) + " mm ≥ max(30d = " + Dt.Mm(30 * dm) + "; ll = " + Dt.Mm(lap) + ") mm (TCVN 5574:2018 mục 10.3.6.3)");
+        if (StarterLen > 0 && StarterLen < Math.Max(30 * dm, lap) - 1e-6)
+            d.Messages.Add("LỖI thép chờ " + Dt.Mm(StarterLen) + " mm < max(30d; ll) = " + Dt.Mm(Math.Max(30 * dm, lap)) + " mm");
+        double roofHook = 0;
+        if (roofTop)
+        {
+            double inBeam = Math.Max(JointDepth - s.CoverBeam, 0.1);
+            roofHook = Dt.R10(Math.Max(Math.Max(12 * dm, 0.15), lan - inBeam));
+            r.Calc.Add("Khoá đầu cột tầng mái: thép dọc kéo lên sát mặt dầm mái (cách mặt " + Dt.Mm(s.CoverBeam) + " mm) rồi uốn mỏ vào trong dầm đoạn "
+                       + Dt.Mm(roofHook) + " mm ≥ max(12d; lan − (hd − c)) – tổng neo ≥ lan = " + Dt.Mm(lan) + " mm");
+        }
+        else r.Calc.Add("Đỉnh cột chờ nối lên tầng trên: thép nhô khỏi mặt sàn ll = " + Dt.Mm(lap) + " mm");
         for (int si = 0; si < ns; si++)
         {
             var st = d.Stories[si];
@@ -340,10 +424,10 @@ public class ManualColumn : IDetailMember
             foreach (var (grp, cnt) in new[] { ("A", nA), ("B", nTot - nA) })
             {
                 if (cnt <= 0) continue;
-                double start = bottom ? z0 - FootingAnchor : (grp == "A" ? cA[si] : cB[si]) - lap / 2;
-                double end = top ? z1 - s.CoverBeam : (grp == "A" ? cA[si + 1] : cB[si + 1]) + lap / 2;
-                double vert = Dt.R10(end - start), hook = Dt.R10(20 * dm), foot = Dt.R10(Math.Max(0.20, 10 * dm));
-                var bm = Dt.Hooked(grp == "A" ? "Thép dọc" : "Thép dọc (so le)", Dia, cnt, vert, bottom ? foot : 0, top ? hook : 0);
+                double start = bottom ? z0 : (grp == "A" ? cA[si] : cB[si]) - lap / 2;
+                double end = top ? (roofTop ? z1 - s.CoverBeam : z1 + lap) : (grp == "A" ? cA[si + 1] : cB[si + 1]) + lap / 2;
+                double vert = Dt.R10(end - start);
+                var bm = Dt.Hooked(grp == "A" ? "Thép dọc" : "Thép dọc (so le)", Dia, cnt, vert, 0, top && roofTop ? roofHook : 0);
                 bm.Start = start; bm.End = end; bm.Span = si;
                 d.Bars.Add(bm);
             }

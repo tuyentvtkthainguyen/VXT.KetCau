@@ -30,7 +30,7 @@ namespace KetCauVXT.AcadLink
             catch (System.Exception ex)
             {
                 AcApp.DocumentManager.MdiActiveDocument?.Editor.WriteMessage("\nKhông mở được bảng lệnh: " + ex.Message +
-                    "\nDùng trực tiếp các lệnh VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI.");
+                    "\nDùng trực tiếp các lệnh VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI, VXT_KT (lấy kích thước → Triển khai hồ sơ).");
             }
         }
 
@@ -64,6 +64,7 @@ namespace KetCauVXT.AcadLink
             flow.Controls.Add(Btn("Xoá gán nhóm", "VXT_XOA", false));
             flow.Controls.Add(Btn("Tạo / chuyển đổi layer kết cấu", "VXT_LAYER", false));
             flow.Controls.Add(Btn("GỬI SANG KẾT CẤU VXT", "VXT_GUI", true));
+            flow.Controls.Add(Btn("Lấy kích thước → Triển khai hồ sơ", "VXT_KT", false));
             var refresh = new Button { Text = "Làm mới số liệu", Width = 230, Height = 26, Margin = new Padding(3, 10, 3, 3) };
             refresh.Click += (s, e) => RefreshCounts();
             flow.Controls.Add(refresh);

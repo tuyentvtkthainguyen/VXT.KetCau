@@ -159,6 +159,9 @@ public class BeamSpanResult
 
 public class BeamLineDesign : MemberDesignBase
 {
+    /// <summary>[Triển khai hồ sơ] bối cảnh sàn hai bên dầm nhập tay (cánh chữ T / L, hạ cốt) – BeamDrawing dùng thay cho việc dò mô hình.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public KetCauVXT.Drawing.BeamSlabSection ManualSlab { get; set; }
     public List<int> Frames { get; set; } = new();
     public double B { get; set; }
     public double H { get; set; }

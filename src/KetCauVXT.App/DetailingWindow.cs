@@ -42,6 +42,8 @@ public sealed class DetailingWindow : Window
     private IDetailMember _cur;
 
     public static string SelfTestOut { get; set; }
+    private DateTime _lastPick = DateTime.Now;
+    private readonly DispatcherTimer _pickTimer = new() { Interval = TimeSpan.FromSeconds(2) };
 
     public DetailingWindow(string file = null)
     {
@@ -56,7 +58,19 @@ public sealed class DetailingWindow : Window
         BuildUi();
         if (!string.IsNullOrEmpty(file) && File.Exists(file)) OpenFile(file);
         else NewProject(true);
-        Closing += (s, e) => { if (!ConfirmDiscard()) e.Cancel = true; };
+        Closing += (s, e) => { if (!ConfirmDiscard()) e.Cancel = true; else _pickTimer.Stop(); };
+        // nhận kích thước AutoCAD tự động: lệnh VXT_KT ghi file JSON vào %AppData%\KetCauVXT\AcadPick
+        _pickTimer.Tick += (s, e) =>
+        {
+            if (SelfTestOut != null || !IsActive && !IsVisible) return;
+            AcadPickData d = null;
+            try { d = AcadPick.Latest(_lastPick); } catch { }
+            if (d == null) return;
+            _lastPick = d.Time;
+            _pickTimer.Stop();
+            try { ApplyPick(d); } finally { _pickTimer.Start(); }
+        };
+        _pickTimer.Start();
         PreviewKeyDown += OnKey;
     }
 
@@ -86,7 +100,8 @@ public sealed class DetailingWindow : Window
             I("Mở hồ sơ _mẫu", OpenSample), new Separator(),
             I("Chuyển sang chế độ Thiết kế – _chạy nội lực (mô hình như ETABS)", SwitchToModel), I("Chọn chế độ làm việc khi khởi động…", ChooseStartMode),
             new Separator(), I("_Thoát", Close)));
-        menu.Items.Add(M("_Cấu kiện", add, I("_Nhân bản cấu kiện đang chọn", Duplicate, "Ctrl+D"), I("_Xoá cấu kiện đang chọn", DeleteCurrent, "Delete")));
+        menu.Items.Add(M("_Cấu kiện", add, I("_Nhân bản cấu kiện đang chọn", Duplicate, "Ctrl+D"), I("_Xoá cấu kiện đang chọn", DeleteCurrent, "Delete"), new Separator(),
+            I("Lấy kích thước từ _AutoCAD (lệnh VXT_KT)…", PickFromAcad, "Ctrl+K")));
         menu.Items.Add(M("Tính _toán", I("Tính cấu kiện đang chọn", Recalc, "F9"), I("Tính _toàn bộ hồ sơ", RecalcAll, "F5")));
         menu.Items.Add(M("_Xuất hồ sơ",
             I("Bản vẽ DXF – _gộp 1 file…", () => ExportDrawings(false)), I("Bản vẽ DXF – _tách từng cấu kiện…", () => ExportDrawings(true)),
@@ -104,10 +119,11 @@ public sealed class DetailingWindow : Window
         foreach (var (key, title, _) in _prj.Groups)
         {
             string k = key;
-            string shortName = key switch { "MongCoc" => "Móng cọc", "DuUngLuc" => "DƯL", "BeNuoc" => "Bể nước", _ => title };
+            string shortName = key switch { "MongCoc" => "Móng cọc", "DuUngLuc" => "DƯL", "BeNuoc" => "Bể nước", "San" => "Ô sàn", _ => title };
             B("＋ " + shortName, () => AddMember(k), "Thêm " + title.ToLowerInvariant());
         }
         bar.Items.Add(new Separator());
+        B("⇩ Từ AutoCAD", PickFromAcad, "Lấy kích thước từ AutoCAD: trong AutoCAD gõ VXT_KT, chọn đối tượng (dầm, cột, sàn, móng, móng băng)");
         B("Tính toàn bộ (F5)", RecalcAll, "Tính lại mọi cấu kiện");
         B("Xuất tất cả…", ExportAll, "Bản vẽ DXF (gộp + tách), Excel khối lượng, Word thuyết minh vào một thư mục");
         bar.Items.Add(new Separator());
@@ -189,6 +205,7 @@ public sealed class DetailingWindow : Window
         else if (ctrl && e.Key == Key.O) { OpenDialog(); e.Handled = true; }
         else if (ctrl && e.Key == Key.N) { NewProject(false); e.Handled = true; }
         else if (ctrl && e.Key == Key.D) { Duplicate(); e.Handled = true; }
+        else if (ctrl && e.Key == Key.K) { PickFromAcad(); e.Handled = true; }
         else if (e.Key == Key.F5) { RecalcAll(); e.Handled = true; }
         else if (e.Key == Key.F9) { Recalc(); e.Handled = true; }
         else if (e.Key == Key.F1 && Keyboard.Modifiers == ModifierKeys.None) { OpenGuide(HelpId); e.Handled = true; }
@@ -294,6 +311,76 @@ public sealed class DetailingWindow : Window
     }
 
     // ==================================================================
+    // Lấy kích thước từ AutoCAD (add-in: lệnh VXT_KT → Detailing/AcadPick.cs)
+    // ==================================================================
+    private void PickFromAcad()
+    {
+        AcadPickData d = null;
+        try { d = AcadPick.Latest(); } catch (Exception ex) { SetStatus("Không đọc được dữ liệu AutoCAD: " + ex.Message); }
+        if (d == null)
+        {
+            MessageBox.Show(this, "Chưa có dữ liệu từ AutoCAD.\n\nTrong AutoCAD (đã nạp add-in Kết cấu VXT) gõ lệnh VXT_KT → chọn loại (Dầm / Cột / Sàn / Móng / Móng băng) → chọn đối tượng.\n"
+                            + "Kết cấu VXT nhận kích thước tự động trong vài giây, hoặc bấm lại nút này.\n\nThư mục trao đổi: " + AcadPick.Folder, Title, MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        _lastPick = d.Time;
+        ApplyPick(d);
+    }
+
+    private static bool Compatible(IDetailMember m, string kind) => (kind ?? "").ToLowerInvariant() switch
+    {
+        "dam" => m is ManualBeam, "cot" => m is ManualColumn, "san" => m is ManualSlab || m is ManualSlabPlan,
+        "mong" => m is ManualFooting || m is ManualPileCap, "mongbang" => m is ManualStrip, _ => false
+    };
+
+    private void ApplyPick(AcadPickData d)
+    {
+        if (d.Items.Count == 0)
+        {
+            MessageBox.Show(this, "Dữ liệu AutoCAD không có đối tượng hợp lệ" + (d.Errors.Count > 0 ? ":\n" + string.Join("\n", d.Errors.Take(6)) : "."), Title);
+            return;
+        }
+        Activate();
+        bool canApply = _cur != null && Compatible(_cur, d.Kind);
+        string head = "Nhận từ AutoCAD: " + d.KindTitle + " – " + d.Items.Count + " đối tượng (" + Path.GetFileName(d.File) + ").";
+        var ans = MessageBox.Show(this, head + (canApply
+                ? "\n\nCó: áp kích thước vào cấu kiện đang chọn " + _cur.Name + " (giữ thép, nội lực đã nhập)\nKhông: tạo " + d.Items.Count + " cấu kiện mới\nHuỷ: bỏ qua"
+                : "\n\nTạo " + d.Items.Count + " cấu kiện mới?"), Title,
+            canApply ? MessageBoxButton.YesNoCancel : MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (canApply && ans == MessageBoxResult.Yes)
+        {
+            var log = AcadPick.ApplyTo(_cur, d.Items[0]);
+            _dirty = true; UpdateTitle();
+            var m = _cur;
+            Recalc(); ShowMember(m); RefreshTree(m);
+            SetStatus("Đã áp kích thước AutoCAD vào " + m.Name + ": " + string.Join("; ", log));
+            return;
+        }
+        if (!(ans == MessageBoxResult.No || (!canApply && ans == MessageBoxResult.OK))) return;
+        IDetailMember first = null;
+        var names = new HashSet<string>(_prj.All.Select(x => x.Name));
+        foreach (var m in AcadPick.CreateMembers(d))
+        {
+            var g = _prj.Groups.FirstOrDefault(x => x.List.GetType().IsGenericType && x.List.GetType().GetGenericArguments()[0] == m.GetType());
+            if (g.List == null) continue;
+            if (string.IsNullOrWhiteSpace(m.Name) || names.Contains(m.Name))
+            {
+                string prefix = new string((m.Name ?? "").TakeWhile(ch => !char.IsDigit(ch)).ToArray());
+                if (prefix.Length == 0) prefix = "CK";
+                int k = 1; while (names.Contains(prefix + k)) k++;
+                m.Name = prefix + k;
+            }
+            names.Add(m.Name);
+            g.List.Add(m);
+            _res[m] = DetailingProject.RunSafe(m, _prj.Settings);
+            first ??= m;
+        }
+        _dirty = true; UpdateTitle();
+        RefreshTree(first);
+        SetStatus(first == null ? "Không tạo được cấu kiện từ dữ liệu AutoCAD." : "Đã tạo cấu kiện từ AutoCAD – bổ sung thép / nội lực rồi kiểm tra kết quả.");
+    }
+
+    // ==================================================================
     // Bảng nhập tự sinh từ [Field]
     // ==================================================================
     private void ShowMember(IDetailMember m)
@@ -353,12 +440,15 @@ public sealed class DetailingWindow : Window
     {
         "RaftColumn" => "CỘT TRÊN MÓNG BÈ (toạ độ từ góc móng)",
         "StripColumn" => "CỘT TRÊN MÓNG BĂNG (vị trí từ đầu băng)",
+        "SlabPanelRow" => "Ô SÀN KHÁC MẶC ĐỊNH (hạ cốt, chiều dày, công năng, lỗ thông tầng)",
+        "SlabOpening" => "LỖ KHOÉT SÀN (toạ độ góc dưới trái từ giao trục đầu tiên)",
+        "SlabBarRow" => "THÉP SÀN VẼ THỦ CÔNG (chỉ dùng khi Cách bố trí = Thủ công)",
         _ => "DANH SÁCH"
     };
 
     private static string KindTitle(IDetailMember m) => m switch
     {
-        ManualBeam => "Dầm", ManualColumn => "Cột", ManualSlab => "Ô sàn", ManualFooting => "Móng đơn", ManualStrip => "Móng băng",
+        ManualBeam => "Dầm", ManualColumn => "Cột", ManualSlab => "Ô sàn", ManualSlabPlan => "Mặt bằng sàn", ManualFooting => "Móng đơn", ManualStrip => "Móng băng",
         ManualPileCap => "Đài cọc", RaftInput => "Móng bè", PrestressInput => "Cấu kiện dự ứng lực", WaterTankInput => "Bể nước", _ => "Cấu kiện"
     };
 

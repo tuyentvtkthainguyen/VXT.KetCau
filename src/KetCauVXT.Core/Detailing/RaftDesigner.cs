@@ -126,6 +126,8 @@ public class RaftInput : IDetailMember
     [Field("Chiều rộng bè Ly", Unit = "m", Group = "Kích thước")] public double Ly { get; set; } = 9.0;
     [Field("Chiều dày bè", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double T { get; set; } = 0.50;
     [Field("Độ sâu chôn móng Df", Unit = "m", Group = "Nền")] public double Df { get; set; } = 1.5;
+    [Field("Cạnh móng bè sát ranh đất", Group = "Nền", Choices = "Không|Trái|Phải|Trái + phải (nhà phố)|Trái + phải + sau",
+        Hint = "cạnh sát ranh: bê tông lót và bản móng không vươn sang đất nhà bên")] public string Boundary { get; set; } = "Không";
     [Field("Sức chịu tải tiêu chuẩn R", Unit = "kN/m²", Group = "Nền")] public double R { get; set; } = 150;
     [Field("γtb móng + đất", Unit = "kN/m³", Group = "Nền")] public double GammaTb { get; set; } = 20;
 
@@ -167,7 +169,14 @@ public class RaftInput : IDetailMember
         double c = s.CoverFooting;
         r.ConcreteVolume = Math.Max(0, Lx * Ly * T);
         r.FormworkArea = Math.Max(0, 2 * (Lx + Ly) * T);
-        r.LeanVolume = Math.Max(0, (Lx + 0.2) * (Ly + 0.2) * s.LeanThickness);
+        string bd = Boundary ?? "";
+        int nxB = (bd.Contains("Trái") ? 1 : 0) + (bd.Contains("phải") || bd.StartsWith("Phải") ? 1 : 0), nyB = bd.Contains("sau") ? 1 : 0;
+        r.LeanVolume = Math.Max(0, (Lx + (2 - nxB) * 0.1) * (Ly + (2 - nyB) * 0.1) * s.LeanThickness);
+        if (nxB + nyB > 0)
+        {
+            r.Calc.Add("Móng bè sát ranh (" + bd + "): bản móng và bê tông lót không vươn sang đất bên cạnh; thành móng phía ranh dùng gạch xây / tấm khuôn để lại; cột biên sát ranh kiểm tra chọc thủng theo chu vi cắt (cột biên / góc).");
+            r.Extra.Add(("Xây gạch / tấm khuôn để lại cho thành móng bè sát ranh", "m²", (nxB * Ly + nyB * Lx) * T));
+        }
         if (Lx <= 0 || Ly <= 0 || T <= 2 * c + 0.05)
         {
             r.Messages.Add("LỖI kích thước bè không hợp lệ (Lx, Ly > 0; chiều dày > 2 lớp bảo vệ + 50 mm)");

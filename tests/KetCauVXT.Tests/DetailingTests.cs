@@ -108,10 +108,51 @@ public static class DetailingTests
         check("Đài cọc: khối lượng cọc trong Extra", rpc.Extra.First(e => e.Unit == "cọc").Qty, pc.Piles.Count, 0);
         check("Đài cọc: vẽ mặt bằng + mặt cắt", pc.Draw(rpc, s).Count, 2, 0);
 
+        // ---- vị trí dầm / cột, sát ranh (yêu cầu bổ sung) ----
+        var bm2 = new ManualBeam { Position = "Dầm móng (giằng móng)", Boundary = "Sát ranh bên trái", B = 0.22, H = 0.40, Spans = "4,2", SupportWidth = 0.22, Flange = "Chữ L – sàn bên phải", DropRight = -0.05 };
+        var rbm2 = bm2.Run(s);
+        check("Dầm móng: nhóm khối lượng 'Dầm móng'", B(rbm2.Kind == "Dầm móng"), 1, 0);
+        check("Dầm móng sát ranh trái: bê tông lót rộng b + 100 (1 bên)", rbm2.LeanVolume, (0.22 + 0.10) * s.LeanThickness * (4.2 - 0.22), 1e-9);
+        var ctx = ((KetCauVXT.Design.BeamLineDesign)rbm2.Source).ManualSlab;
+        check("Dầm cánh chữ L phải: không có sàn trái, sàn phải hạ 50", B(ctx.Left == null && ctx.Right != null && Math.Abs(ctx.Right.Dz + 50) < 1e-9 && ctx.Shape == "L"), 1, 0);
+        check("Dầm chữ T mặc định: sàn 2 bên", B(((KetCauVXT.Design.BeamLineDesign)rb.Source).ManualSlab.Shape == "T"), 1, 0);
+        check("Dầm cánh chữ L: vẽ được", B(bm2.Draw(rbm2, s).Count >= 2), 1, 0);
+        var starter = rc.Bars.First(b => b.Role.StartsWith("Thép chờ cột"));
+        double lapC = Math.Max(30 * 0.016, RebarDetailing.LapLength(conc, main, 16));
+        check("Cột: thép chờ nhô khỏi mặt móng ≥ max(30d; ll)", B(starter.End >= lapC - 1e-9 && starter.End >= 30 * 0.016), 1, 0);
+        check("Cột: thép chờ đủ số thanh (6)", starter.Count, 6, 0);
+        var topBar = rc.Bars.Where(b => b.Role.StartsWith("Thép dọc")).OrderByDescending(b => b.End).First();
+        check("Cột tầng mái: khoá đầu cột uốn mỏ ≥ 12d", B(topBar.Shape == "L" && topBar.Segments[^1] >= 12 * 16 - 1e-6), 1, 0);
+        var rcUp = new ManualColumn { TopType = "Chờ nối lên tầng trên" }.Run(s);
+        check("Cột chờ nối lên tầng trên: không uốn mỏ", B(rcUp.Bars.Where(b => b.Role.StartsWith("Thép dọc")).All(b => b.Shape == "Thẳng")), 1, 0);
+        var fb = new ManualFooting { N = 600, ML = 0, MB = 0, BoundaryL = "Ranh bên trái", L = 2.0, B = 1.8, H = 0.5 };
+        var rfb = fb.Run(s);
+        var fdb = (KetCauVXT.Design.FootingDesign)rfb.Source;
+        check("Móng sát ranh trái: tim cột lệch e = L/2 − bc/2", fdb.Eccentric.OffsetX, 2.0 / 2 - 0.22 / 2, 1e-9);
+        check("Móng sát ranh trái: bê tông lót (L + 100)(B + 200)", rfb.LeanVolume, (2.0 + 0.1) * (1.8 + 0.2) * s.LeanThickness, 1e-9);
+        double h0b = 0.5 - Math.Max(s.CoverFooting, 0.035) - 0.012;
+        double uB = 2 * (0.22 + h0b / 2) + (0.30 + h0b);
+        check("Móng sát ranh: chu vi chọc thủng bị cắt u = 2(bc + h0/2) + (hc + h0)", rfb.Checks.First(c => c.Name.StartsWith("Chọc thủng")).Capacity, conc.Rbt * uB * h0b, 1e-9);
+        check("Móng sát ranh: có ghi chú dầm cân bằng", B(rfb.Messages.Any(m => m.Contains("Dầm móng cân bằng"))), 1, 0);
+        var rfb2 = new ManualFooting { N = 600, ML = 0, MB = 0, BoundaryL = "Ranh bên trái", L = 2.0, B = 1.8, H = 0.5, BalanceBeam = false }.Run(s);
+        var fd2 = (KetCauVXT.Design.FootingDesign)rfb2.Source;
+        check("Móng sát ranh không dầm cân bằng: pmax kể N·e", fd2.Pmax - fd2.Ptb, 6 * (600 / 1.15) * (1.0 - 0.11) / (1.8 * 4.0), 1e-9);
+        check("Móng sát ranh: vẽ được", fb.Draw(rfb, s).Count, 2, 0);
+        var pcb = new ManualPileCap { N = 1200, Mx = 0, My = 0, Pa = 400, BoundaryX = "Ranh bên trái" };
+        var rpcb = pcb.Run(s);
+        double boundaryX = pcb.CapCx - pcb.CapL / 2;
+        check("Đài sát ranh: tim cọc gần ranh cách ranh ≥ 500 mm", B(pcb.Piles.Min(pp => pp.X) - boundaryX >= 0.5 - 1e-9), 1, 0);
+        check("Đài sát ranh: cột (mép) sát ranh", -0.30 / 2 - boundaryX, 0, 1e-9);
+        check("Đài sát ranh: vẽ được", pcb.Draw(rpcb, s).Count, 2, 0);
+        var st1 = new ManualStrip { FlangeSide = "Cánh 1 bên – sát ranh đất", B = 1.4 };
+        var rst1 = st1.Run(s);
+        check("Móng băng cánh 1 bên: có ghi chú giằng cân bằng", B(rst1.Messages.Any(m => m.Contains("giằng móng ngang"))), 1, 0);
+        check("Móng băng cánh 1 bên: vẽ được", st1.Draw(rst1, s).Count, 2, 0);
+
         // ---- hồ sơ JSON + xuất ----
         var prj = DetailingProject.Sample();
         var prj2 = DetailingProject.FromJson(prj.ToJson());
-        check("Hồ sơ *.kcvxth: đọc lại đủ 9 nhóm cấu kiện", prj2.All.Count(), prj.All.Count(), 0);
+        check("Hồ sơ *.kcvxth: đọc lại đủ 10 nhóm cấu kiện", prj2.All.Count(), prj.All.Count(), 0);
         check("Hồ sơ *.kcvxth: giữ thông số (nhịp dầm, cột móng băng)", B(prj2.Beams[0].Spans == prj.Beams[0].Spans && prj2.Strips[0].Columns.Count == 4), 1, 0);
         var added = prj2.AddNew("Dam");
         check("Thêm dầm mới: tên D2 (không trùng)", B(added.Name == "D2"), 1, 0);
@@ -119,7 +160,7 @@ public static class DetailingTests
         foreach (var (mm, rr) in res.Where(x => !x.Result.Ok))
             foreach (var msg in rr.Messages.Where(x => x.StartsWith("LỖI"))) Console.WriteLine("    [mẫu " + mm.Name + "] " + msg);
         check("Hồ sơ mẫu: mọi cấu kiện đạt", res.Count(x => !x.Result.Ok), 0, 0);
-        check("Tính toàn bộ hồ sơ mẫu: 9 kết quả, không ngoại lệ", B(res.Count == 9 && res.All(r => !r.Result.Messages.Any(m => m.StartsWith("LỖI tính toán")))), 1, 0);
+        check("Tính toàn bộ hồ sơ mẫu: 10 kết quả, không ngoại lệ", B(res.Count == 10 && res.All(r => !r.Result.Messages.Any(m => m.StartsWith("LỖI tính toán")))), 1, 0);
         var sum = DetailingExport.Summary(res);
         var rows = RebarSchedule.BuildRows(sum);
         check("Bảng thống kê: có thép móng bè / bể nước / DƯL (DesignSummary.Others)", B(new[] { "Móng bè", "Bể nước", "Dự ứng lực", "Móng cọc", "Sàn" }.All(c => rows.Any(r => r.Category == c))), 1, 0);
@@ -133,7 +174,7 @@ public static class DetailingTests
         var many = DetailingExport.Drawings(prj, res, Path.Combine(dir, "TachRoi"), true, log);
         foreach (var l in log) Console.WriteLine("    " + l);
         check("Xuất bản vẽ gộp: 1 file DXF", one.Count, 1, 0);
-        check("Xuất bản vẽ tách rời: 9 cấu kiện + 1 thống kê thép", many.Count, 10, 0);
+        check("Xuất bản vẽ tách rời: 10 cấu kiện + 1 thống kê thép", many.Count, 11, 0);
         check("Xuất bản vẽ: không lỗi vẽ", log.Count, 0, 0);
         check("Bản vẽ gộp có chữ tiếng Việt mã hoá", B(File.ReadAllText(one[0]).Contains(DxfWriter.Encode("THỐNG KÊ"))), 1, 0);
         string xl = Path.Combine(dir, "KhoiLuong_TrienKhai.xlsx"), wd = Path.Combine(dir, "ThuyetMinh_TrienKhai.docx");
@@ -142,6 +183,6 @@ public static class DetailingTests
         check("Excel khối lượng ghi được", B(new FileInfo(xl).Length > 2000), 1, 0);
         check("Word thuyết minh ghi được", B(new FileInfo(wd).Length > 4000), 1, 0);
         prj.Save(Path.Combine(dir, "HoSoMau" + DetailingProject.Extension));
-        check("Lưu / mở file *.kcvxth", DetailingProject.Load(Path.Combine(dir, "HoSoMau" + DetailingProject.Extension)).All.Count(), 9, 0);
+        check("Lưu / mở file *.kcvxth", DetailingProject.Load(Path.Combine(dir, "HoSoMau" + DetailingProject.Extension)).All.Count(), 10, 0);
     }
 }

@@ -319,13 +319,35 @@ public static partial class UserGuide
                 "**Cột**: b × h, chiều cao các tầng, cao độ chân, chiều cao dầm tại nút; Ø, số thanh mỗi cạnh, đai đầu / giữa cột. Nhập N, Mx, My tầng dưới → kiểm tra nén lệch tâm xiên (Bresler) có kể độ lệch tâm ngẫu nhiên; "
                 + "vị trí nối thép tự đặt ngoài vùng nguy hiểm, so le 2 nhóm ≥ 1,3·ll.",
                 "**Sàn**: Lx, Ly, t, số cạnh ngàm; tĩnh tải hoàn thiện, hoạt tải (tiêu chuẩn) → q tính toán, phân tải Marcus, mô men dải 1 m; thép lớp dưới 2 phương, mũ gối (0 = tự chọn Ø6…Ø12, bước 100…200).",
+                "**Vị trí dầm**: Dầm tầng / **Dầm móng (giằng móng)** / Dầm mái. Dầm móng: lớp bảo vệ ≥ 35 mm, **bê tông lót** (vươn mỗi bên, mặc định 100 mm) và chọn **Dầm móng sát ranh đất** (trái / phải) – "
+                + "phía sát ranh bê tông lót và bê tông dầm không vươn sang đất nhà bên, thành dầm xây gạch làm khuôn (có trong khối lượng).",
+                "**Cánh sàn (mặt cắt dầm)**: Chữ T – sàn 2 bên / Chữ L – sàn bên trái hoặc phải / Không có sàn; chiều dày sàn, **hạ cốt sàn từng bên** (vd. −50 sàn vệ sinh), thép sàn thể hiện. "
+                + "Mặt cắt dầm vẽ cánh sàn, bậc sàn hạ cốt và thép sàn qua dầm như Kết cấu Soft / XSCad.",
+                "**Cột – vị trí**: Chân cột từ móng (thép chờ chôn trong móng, bẻ chân tựa lưới thép đáy) hoặc trên dầm / sàn; **thép chờ nhô khỏi mặt móng (cổ cột) ≥ max(30d; ll)** – để 0 chương trình tự lấy; "
+                + "**Đỉnh cột**: Tầng mái – khoá đầu cột **uốn mỏ** vào dầm mái (đoạn uốn ≥ max(12d; lan − (hd − c))) hoặc chờ nối lên tầng trên (nhô ll).",
                 "Bản vẽ dùng chung bộ vẽ của chế độ mô hình: mặt đứng dầm – chuỗi vùng đai, nhãn thép, mặt cắt 1-1 / 2-2; mặt đứng cột, mặt cắt; mặt bằng thép sàn + mặt cắt. Số hiệu thép theo quy tắc Kết cấu Soft.");
+
+        c.Sec("che-do-ho-so.mat-bang-san", "Mặt bằng sàn – hạ cốt, nhấn thép, khoét lỗ, thép tự động / thủ công")
+            .Bullets("＋ Mặt bằng sàn: khai báo **nhịp trục X, Y** (tim dầm), chiều dày, tải. Bảng **ô sàn khác mặc định**: cột / hàng của ô, **hạ cốt Δ** (vd. −50 vệ sinh, ban công), chiều dày riêng, công năng (Lỗ thông tầng = bỏ ô).",
+                "**Cách bố trí**: Tự động theo diện tích – chương trình tính từng ô (cạnh liên tục khi chênh cốt ≤ ngưỡng bậc), chọn thép lớp dưới, thép mũ qua dầm; hoặc **Thủ công** – kỹ sư tự khai báo vùng thép (lớp, phương, Ø, bước, toạ độ), chương trình kiểm tra từng ô còn thiếu thép.",
+                "**Nhấn thép**: tại dầm có hai ô chênh cốt |Δ| ≤ ngưỡng nhấn (mặc định 50 mm) thép mũ được **bẻ xiên 1:6** vắt qua dầm; lớn hơn thì cắt thép, neo riêng từng ô vào dầm.",
+                "**Lỗ khoét sàn**: toạ độ góc dưới trái, kích thước; chương trình cắt thép qua lỗ, đặt **thép gia cường mép lỗ**, cảnh báo lỗ lớn cần dầm bo.");
+
+        c.Sec("che-do-ho-so.autocad", "Lấy kích thước từ AutoCAD (lệnh VXT_KT)")
+            .Steps("Trong AutoCAD đã nạp add-in Kết cấu VXT: gõ **VXT_KT** (hoặc nút **Lấy kích thước → Triển khai hồ sơ** trên bảng VXT).",
+                "Chọn loại: **Dam** (chọn trục dầm, các hình chữ nhật cột → nhịp; 2 cạnh dầm → b; nhập h), **Cot** (các hình chữ nhật → b × h, tên lấy theo chữ bên trong), **San** (các đường trục → nhịp X, Y; đa tuyến kín bên trong → lỗ khoét), "
+                + "**Mong** (hình chữ nhật móng + cột bên trong), **MongBang** (trục băng + cột).",
+                "Kết cấu VXT (cửa sổ Triển khai hồ sơ) tự nhận trong vài giây và hỏi: **Có** – áp vào cấu kiện đang chọn (giữ thép, nội lực), **Không** – tạo cấu kiện mới; hoặc bấm **⇩ Từ AutoCAD** (Ctrl+K).")
+            .Bullets("Đơn vị bản vẽ lấy theo INSUNITS (mm / m); dữ liệu trao đổi qua thư mục %AppData%\\KetCauVXT\\AcadPick.");
 
         c.Sec("che-do-ho-so.mong", "Móng đơn, móng băng, móng cọc")
             .Bullets("**Móng đơn**: kích thước cột, N, ML, MB tính toán (N tiêu chuẩn = N/1,15 nếu để 0), R, Df. L, B, H = 0 → tự chọn: ptb ≤ R, pmax ≤ 1,2R, không tách đáy; H theo chọc thủng F ≤ Rbt·u·h0 và móng cứng; thép mép cột với áp lực hình thang.",
                 "**Móng băng** (dầm móng chữ T ngược dưới dãy cột): chiều dài băng, bề rộng bản (0 = tự chọn), bản mép, sườn; bảng **cột trên móng băng** (vị trí X, N, M). Tính dầm trên nền đàn hồi Winkler (k = 120·R nếu để 0): "
                 + "áp lực nền, M+ tại cột (thép dưới), M− giữa nhịp (thép trên), Q (đai); bản cánh tính console.",
                 "**Móng cọc**: cột, N, Mx, My; cọc D, [P] nén, [Pk] nhổ, số cọc (0 = tự chọn), khoảng cách (0 = 3D), tim cọc tới mép đài. Kiểm tra Pmax ≤ [P], nhổ, khoảng cách 3D, chọc thủng cột và cọc góc, cắt tiết diện nghiêng, thép mép cột.",
+                "**Sát ranh đất** (móng đơn: phương L / B; đài cọc: phương X / Y; móng băng: cánh 1 bên; móng bè: cạnh sát ranh): bê tông móng và bê tông lót **không vươn sang đất nhà bên** (lót chỉ vươn phía trong), "
+                + "cột lệch về mép móng → móng lệch tâm: có **dầm móng cân bằng** (chương trình ghi mô men N·e cho dầm) hoặc kể N·e vào áp lực đáy móng / lực cọc; chu vi chọc thủng bị cắt ở cạnh ranh; "
+                + "đài cọc giữ tim cọc cách ranh ≥ 500 mm (máy ép). Bản vẽ ghi **RANH ĐẤT**, thành sát ranh xây gạch / tấm khuôn để lại (có trong khối lượng).",
                 "Khối lượng kèm theo: bê tông lót, đào đất hố móng, số cọc, đập đầu cọc.");
 
         c.Sec("che-do-ho-so.mong-be", "Móng bè")
