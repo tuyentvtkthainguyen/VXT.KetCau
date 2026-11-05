@@ -23,6 +23,7 @@ public sealed class DetailSheetWindow : Window
 {
     private readonly DetailingProject _prj;
     private readonly Action _changed;
+    private readonly string _dir;
     private List<SheetFigure> _cat = new();
     private Dictionary<string, SheetFigure> _map = new();
     private readonly Dictionary<string, System.Windows.Media.Drawing> _figDraw = new();
@@ -36,6 +37,14 @@ public sealed class DetailSheetWindow : Window
     private readonly CheckBox _portrait = new() { Content = "Khổ đứng", Margin = new Thickness(0, 4, 0, 0) };
     private readonly CheckBox _locked = new() { Content = "Khoá tờ (giữ khi tự dàn trang)", Margin = new Thickness(0, 4, 0, 0) };
     private readonly TextBox _title = new();
+    private readonly TextBox _no = new();
+    private readonly TextBlock _nameState = new() { Foreground = Brushes.DimGray, FontSize = 11, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBox _prefix = new() { Width = 50 };
+    private readonly ComboBox _style = new() { ItemsSource = DetailSheetSet.NumberStyles, Width = 80 };
+    private readonly TextBox _startNo = new() { Width = 36 };
+    private readonly TextBox _digits = new() { Width = 30 };
+    private readonly ComboBox _tbKind = new() { ItemsSource = DetailTitleBlock.Kinds, MinWidth = 150 };
+    private readonly TextBlock _tbInfo = new() { Foreground = Brushes.DimGray, FontSize = 11, TextWrapping = TextWrapping.Wrap };
     private readonly ComboBox _setPaper = new() { ItemsSource = SheetGeometry.Papers, Width = 70 };
     private readonly CheckBox _autoPaper = new() { Content = "Tự chọn khổ nhỏ nhất vừa hình", Margin = new Thickness(0, 4, 0, 0) };
     private readonly CheckBox _index = new() { Content = "Có tờ danh mục bản vẽ", Margin = new Thickness(0, 4, 0, 0) };
@@ -57,9 +66,9 @@ public sealed class DetailSheetWindow : Window
     private DetailSheetSet Set => _prj.Sheets;
     private DetailSheet Cur => _sheets.SelectedIndex >= 0 && _sheets.SelectedIndex < Set.Sheets.Count ? Set.Sheets[_sheets.SelectedIndex] : null;
 
-    public DetailSheetWindow(DetailingProject prj, List<(IDetailMember, DetailResult)> results, Action changed)
+    public DetailSheetWindow(DetailingProject prj, List<(IDetailMember, DetailResult)> results, Action changed, string projectDir = null)
     {
-        _prj = prj; _changed = changed;
+        _prj = prj; _changed = changed; _dir = projectDir;
         Title = "Dàn trang in – " + prj.ProjectName;
         Width = 1360; Height = 860; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var log = new List<string>();
@@ -80,7 +89,8 @@ public sealed class DetailSheetWindow : Window
         B("＋ Thêm tờ", AddSheet, "Thêm tờ trống sau tờ đang chọn");
         B("✕ Xoá tờ", RemoveSheet, "Xoá tờ đang chọn (các hình trên tờ chuyển về danh sách chưa đặt)");
         B("🔒 Khoá / mở tờ", ToggleLock, "Tờ khoá được giữ nguyên khi tự dàn trang");
-        B("Đánh số lại", () => { SheetLayoutEngine.Renumber(Set); Changed(); RefreshSheets(); }, "Đánh số KC-01, KC-02… theo thứ tự tờ");
+        B("Đánh số lại", Renumber, "Đánh số theo mẫu (KC-01 / KC01 / KC-1.01 theo nhóm mặt bằng); tờ đã sửa số hiệu tay giữ nguyên");
+        B("Đặt lại tên tự động", ResetNames, "Tên và số hiệu tự động theo cây thư mục công trình cho tờ đang chọn (giữ Shift: mọi tờ)");
         B("▲", () => MoveSheet(-1), "Đưa tờ lên trước");
         B("▼", () => MoveSheet(1), "Đưa tờ xuống sau");
         bar.Items.Add(new Separator());
@@ -113,7 +123,9 @@ public sealed class DetailSheetWindow : Window
         var right = new StackPanel { Margin = new Thickness(10, 6, 10, 6) };
         TextBlock H(string t) => new() { Text = t, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 8, 0, 4) };
         right.Children.Add(H("TỜ ĐANG CHỌN"));
-        right.Children.Add(new TextBlock { Text = "Tên bản vẽ" }); right.Children.Add(_title);
+        right.Children.Add(new TextBlock { Text = "Số hiệu" }); right.Children.Add(_no);
+        right.Children.Add(new TextBlock { Text = "Tên bản vẽ (sửa tay → giữ nguyên khi tự dàn trang)", Margin = new Thickness(0, 4, 0, 0) }); right.Children.Add(_title);
+        right.Children.Add(_nameState);
         var pr = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
         pr.Children.Add(new TextBlock { Text = "Khổ giấy  ", VerticalAlignment = VerticalAlignment.Center }); pr.Children.Add(_paper);
         right.Children.Add(pr); right.Children.Add(_portrait); right.Children.Add(_locked);
@@ -131,6 +143,21 @@ public sealed class DetailSheetWindow : Window
         sp.Children.Add(new TextBlock { Text = "Khổ mặc định  ", VerticalAlignment = VerticalAlignment.Center }); sp.Children.Add(_setPaper);
         right.Children.Add(sp); right.Children.Add(_autoPaper); right.Children.Add(_index);
         right.Children.Add(new TextBlock { Text = "Ngày ghi khung tên (để trống = không ghi)", Margin = new Thickness(0, 4, 0, 0) }); right.Children.Add(_date);
+        right.Children.Add(H("ĐÁNH SỐ BẢN VẼ"));
+        var nr = new WrapPanel();
+        nr.Children.Add(new TextBlock { Text = "Tiền tố ", VerticalAlignment = VerticalAlignment.Center }); nr.Children.Add(_prefix);
+        nr.Children.Add(new TextBlock { Text = "  Mẫu ", VerticalAlignment = VerticalAlignment.Center }); nr.Children.Add(_style);
+        right.Children.Add(nr);
+        var nr2 = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+        nr2.Children.Add(new TextBlock { Text = "Số bắt đầu ", VerticalAlignment = VerticalAlignment.Center }); nr2.Children.Add(_startNo);
+        nr2.Children.Add(new TextBlock { Text = "  Số chữ số ", VerticalAlignment = VerticalAlignment.Center }); nr2.Children.Add(_digits);
+        right.Children.Add(nr2);
+        right.Children.Add(H("KHUNG TÊN"));
+        right.Children.Add(_tbKind);
+        right.Children.Add(Btn("Thiết kế khung tên…", EditBuilder));
+        right.Children.Add(Btn("Tải khung tên AutoCAD (DWG/DXF)…", ImportTitle));
+        right.Children.Add(Btn("Thông tin khung tên…", EditTitleValues));
+        right.Children.Add(_tbInfo);
         right.Children.Add(new TextBlock
         {
             Text = "Kéo hình để dời vị trí (tờ chỉnh tay tự khoá). Khung đỏ = hình chồng hình khác / đè khung tên / ra ngoài khung.",
@@ -142,7 +169,32 @@ public sealed class DetailSheetWindow : Window
         Content = dock;
 
         _sheets.SelectionChanged += (s, e) => { LoadSheetProps(); Render(); };
-        _title.LostFocus += (s, e) => { if (_loading || Cur == null || Cur.Title == _title.Text) return; Cur.Title = _title.Text; Changed(); RefreshSheets(); };
+        _title.LostFocus += (s, e) => { if (_loading || Cur == null || Cur.Title == _title.Text) return; Cur.Title = _title.Text; Cur.NameLocked = true; Changed(); RefreshSheets(); };
+        _no.LostFocus += (s, e) => { if (_loading || Cur == null || Cur.No == _no.Text) return; Cur.No = _no.Text.Trim(); Cur.NumberLocked = true; Changed(); RefreshSheets(); };
+        _sheets.MouseDoubleClick += (s, e) => { if (Cur == null) return; _title.Focus(); _title.SelectAll(); };
+        void NumOpt()
+        {
+            if (_loading) return;
+            Set.NumberPrefix = _prefix.Text.Trim();
+            if (_style.SelectedItem is string st) Set.NumberStyle = st;
+            if (int.TryParse(_startNo.Text, out int sn)) Set.StartNo = Math.Clamp(sn, 0, 9999);
+            if (int.TryParse(_digits.Text, out int dg)) Set.Digits = Math.Clamp(dg, 1, 4);
+            Changed();
+        }
+        _prefix.LostFocus += (s, e) => NumOpt(); _startNo.LostFocus += (s, e) => NumOpt(); _digits.LostFocus += (s, e) => NumOpt();
+        _style.SelectionChanged += (s, e) => NumOpt();
+        _tbKind.SelectionChanged += (s, e) =>
+        {
+            if (_loading || _tbKind.SelectedItem is not string k) return;
+            Set.TitleBlock ??= new DetailTitleBlock();
+            if (k == DetailTitleBlock.KindBuilder && (Set.TitleBlock.Cells == null || Set.TitleBlock.Cells.Count == 0))
+            {
+                var d = DetailTitleBlock.DefaultBuilder();
+                Set.TitleBlock.Cells = d.Cells; Set.TitleBlock.RowHeights = d.RowHeights;
+            }
+            if (k == DetailTitleBlock.KindImported && Set.TitleBlock.Imported == null) { ImportTitle(); return; }
+            Set.TitleBlock.Kind = k; Changed(); TitleBlockChanged();
+        };
         _paper.SelectionChanged += (s, e) => { if (_loading || Cur == null || _paper.SelectedItem is not string p) return; Cur.Paper = p; Cur.Locked = true; Changed(); RefreshSheets(); };
         _portrait.Click += (s, e) => { if (Cur == null) return; Cur.Portrait = _portrait.IsChecked == true; Cur.Locked = true; Changed(); RefreshSheets(); };
         _locked.Click += (s, e) => { if (Cur == null) return; Cur.Locked = _locked.IsChecked == true; Changed(); RefreshSheets(); };
@@ -155,6 +207,10 @@ public sealed class DetailSheetWindow : Window
 
         _loading = true;
         _setPaper.SelectedItem = Set.Paper; _autoPaper.IsChecked = Set.AutoPaper; _index.IsChecked = Set.IndexSheet; _date.Text = Set.Date ?? "";
+        Set.TitleBlock ??= new DetailTitleBlock();
+        _prefix.Text = Set.NumberPrefix ?? ""; _style.SelectedItem = Set.NumberStyle; _startNo.Text = Set.StartNo.ToString(); _digits.Text = Set.Digits.ToString();
+        _tbKind.SelectedItem = Set.TitleBlock.Kind;
+        UpdateTbInfo();
         _loading = false;
         RefreshSheets();
         if (Set.Sheets.Count > 0) _sheets.SelectedIndex = 0;
@@ -192,7 +248,8 @@ public sealed class DetailSheetWindow : Window
     {
         var c = Cur;
         _loading = true;
-        _title.Text = c?.Title ?? ""; _paper.SelectedItem = c?.Paper; _portrait.IsChecked = c?.Portrait == true; _locked.IsChecked = c?.Locked == true;
+        _title.Text = c?.Title ?? ""; _no.Text = c?.No ?? "";
+        _nameState.Text = c == null ? "" : (c.NameLocked ? "Tên sửa tay (giữ khi tự dàn trang)" : "Tên tự động theo cây thư mục") + " · " + (c.NumberLocked ? "số hiệu sửa tay" : "số hiệu tự động"); _paper.SelectedItem = c?.Paper; _portrait.IsChecked = c?.Portrait == true; _locked.IsChecked = c?.Locked == true;
         _loading = false;
     }
 
@@ -245,7 +302,7 @@ public sealed class DetailSheetWindow : Window
         _canvas.Children.Add(bg);
         var rects = SheetLayoutEngine.PlacedRects(sh, _map);
         var area = SheetGeometry.Drawable(sh.Paper, sh.Portrait);
-        var tz = SheetGeometry.TitleZone(sh.Paper, sh.Portrait);
+        var tz = SheetLayoutEngine.TitleZone(Set, sh);
         int i = 0;
         foreach (var pf in sh.Figures)
         {
@@ -315,7 +372,7 @@ public sealed class DetailSheetWindow : Window
     {
         int at = Math.Max(0, _sheets.SelectedIndex + 1);
         Set.Sheets.Insert(Math.Min(at, Set.Sheets.Count), new DetailSheet { Paper = Set.Paper, Title = "BẢN VẼ MỚI", Locked = true });
-        SheetLayoutEngine.Renumber(Set);
+        SheetLayoutEngine.Renumber(Set, _cat);
         Changed(); RefreshSheets();
         _sheets.SelectedIndex = Math.Min(at, Set.Sheets.Count - 1);
     }
@@ -325,7 +382,7 @@ public sealed class DetailSheetWindow : Window
         var c = Cur; if (c == null) return;
         if (MessageBox.Show(this, "Xoá tờ " + c.No + " – " + c.Title + "? Các hình trên tờ chuyển về danh sách chưa đặt.", Title, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         Set.Sheets.Remove(c);
-        SheetLayoutEngine.Renumber(Set);
+        SheetLayoutEngine.Renumber(Set, _cat);
         Changed(); RefreshSheets();
     }
 
@@ -482,5 +539,208 @@ public sealed class DetailSheetWindow : Window
         }
         catch (Exception ex) { MessageBox.Show(this, "Lỗi in: " + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); }
         finally { Mouse.OverrideCursor = null; }
+    }
+
+    // ------------------------------------------------------------------
+    // Tên, số hiệu
+    // ------------------------------------------------------------------
+    private void Renumber()
+    {
+        SheetLayoutEngine.Renumber(Set, _cat);
+        Changed(); RefreshSheets();
+        SetStatus("Đã đánh số theo mẫu " + Set.NumberStyle + " (tờ sửa số hiệu tay giữ nguyên).");
+    }
+
+    private void ResetNames()
+    {
+        bool all = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        foreach (var sh in all ? Set.Sheets : Cur == null ? new List<DetailSheet>() : new List<DetailSheet> { Cur }) { sh.NameLocked = false; sh.NumberLocked = false; }
+        SheetLayoutEngine.ApplyNames(Set, _cat);
+        SheetLayoutEngine.Renumber(Set, _cat);
+        Changed(); RefreshSheets();
+        SetStatus(all ? "Đã đặt lại tên, số hiệu tự động cho mọi tờ." : "Đã đặt lại tên, số hiệu tự động cho tờ đang chọn.");
+    }
+
+    // ------------------------------------------------------------------
+    // Khung tên
+    // ------------------------------------------------------------------
+    private void UpdateTbInfo()
+    {
+        var tb = Set.TitleBlock;
+        _tbInfo.Text = tb.Kind switch
+        {
+            DetailTitleBlock.KindImported when tb.Imported != null => "Khung tên tải lên: " + (tb.Imported.Source ?? "") + " – " + Math.Round(tb.Imported.W) + "×" + Math.Round(tb.Imported.H) + " mm" +
+                (string.IsNullOrEmpty(tb.DetectedPaper) ? ", ô khung tên góc phải dưới" : ", khung bao toàn tờ " + tb.DetectedPaper) + "; " + tb.Imported.UsedFields().Count + " trường.",
+            DetailTitleBlock.KindBuilder => "Khung tên tự tạo: " + tb.Cells.Count(c => c.Enabled) + " ô, " + tb.Position.ToLowerInvariant() + ".",
+            _ => "Khung tên mặc định của chương trình."
+        };
+    }
+
+    private void TitleBlockChanged()
+    {
+        UpdateTbInfo();
+        Render();
+        // vùng khung tên đổi: báo hình đè khung tên (khung đỏ) – người dùng có thể Tự dàn trang lại
+        int bad = 0;
+        foreach (var sh in Set.Sheets)
+        {
+            var tz = SheetLayoutEngine.TitleZone(Set, sh);
+            bad += SheetLayoutEngine.PlacedRects(sh, _map).Count(r => SheetGeometry.Overlap(r, tz));
+        }
+        SetStatus(bad > 0 ? bad + " hình đè lên khung tên mới – bấm Tự dàn trang để xếp lại." : "Đã đổi khung tên.");
+    }
+
+    private void ImportTitle()
+    {
+        var dlg = new OpenFileDialog { Filter = "Khung tên AutoCAD (*.dwg;*.dxf)|*.dwg;*.dxf|Ảnh khung tên (*.png;*.jpg)|*.png;*.jpg;*.jpeg", Title = "Chọn file khung tên" };
+        if (dlg.ShowDialog(this) != true) { _loading = true; _tbKind.SelectedItem = Set.TitleBlock.Kind; _loading = false; return; }
+        try
+        {
+            Mouse.OverrideCursor = Cursors.Wait;
+            string msg = Set.TitleBlock.Import(dlg.FileName, _dir);
+            Changed();
+            _loading = true; _tbKind.SelectedItem = Set.TitleBlock.Kind; _loading = false;
+            TitleBlockChanged();
+            MessageBox.Show(this, msg, "Khung tên", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, "Không đọc được khung tên: " + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error);
+            _loading = true; _tbKind.SelectedItem = Set.TitleBlock.Kind; _loading = false;
+        }
+        finally { Mouse.OverrideCursor = null; }
+    }
+
+    /// <summary>Nhập giá trị các trường khung tên (Đơn vị thiết kế, Hạng mục, Chủ trì, Kiểm tra…). Tên công trình, chủ đầu tư, địa điểm, thiết kế lấy từ thông tin hồ sơ.</summary>
+    private void EditTitleValues()
+    {
+        var tb = Set.TitleBlock;
+        tb.Values ??= new();
+        var keys = new[] { KetCauVXT.Model.TitleFields.CongTy, DetailTitleBlock.HangMuc, KetCauVXT.Model.TitleFields.ChuTri, KetCauVXT.Model.TitleFields.KiemTra, KetCauVXT.Model.TitleFields.Duyet, KetCauVXT.Model.TitleFields.LanSua, DetailTitleBlock.GhiChu };
+        var labels = new[] { "Đơn vị thiết kế", "Hạng mục", "Chủ trì", "Kiểm tra", "Duyệt", "Lần sửa", "Ghi chú" };
+        var w = new Window { Title = "Thông tin khung tên", Width = 460, SizeToContent = SizeToContent.Height, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner, ResizeMode = ResizeMode.NoResize };
+        var sp = new StackPanel { Margin = new Thickness(12) };
+        sp.Children.Add(new TextBlock { Text = "Tên công trình, chủ đầu tư, địa điểm, người thiết kế lấy từ Thông tin hồ sơ. Tên bản vẽ, số hiệu, tỷ lệ, ngày điền tự động từng tờ.", TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DimGray, Margin = new Thickness(0, 0, 0, 8) });
+        var boxes = new List<TextBox>();
+        for (int i = 0; i < keys.Length; i++)
+        {
+            sp.Children.Add(new TextBlock { Text = labels[i], Margin = new Thickness(0, 4, 0, 0) });
+            var t = new TextBox { Text = tb.Values.TryGetValue(keys[i], out var v) ? v : "" };
+            boxes.Add(t); sp.Children.Add(t);
+        }
+        var ok = new Button { Content = "Đồng ý", IsDefault = true, Padding = new Thickness(14, 2, 14, 2), Margin = new Thickness(0, 12, 6, 0) };
+        ok.Click += (o, e) => { for (int i = 0; i < keys.Length; i++) tb.Values[keys[i]] = boxes[i].Text; w.DialogResult = true; };
+        var cancel = new Button { Content = "Huỷ", IsCancel = true, Padding = new Thickness(14, 2, 14, 2), Margin = new Thickness(0, 12, 0, 0) };
+        sp.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Children = { ok, cancel } });
+        w.Content = sp;
+        if (w.ShowDialog() == true) { Changed(); Render(); }
+    }
+
+    /// <summary>Trình tạo khung tên: bảng ô (hàng, trường, nhãn, bề rộng, cỡ chữ, bật/tắt), chiều cao hàng, vị trí; xem trước.</summary>
+    private void EditBuilder()
+    {
+        var tb = Set.TitleBlock;
+        tb.RowHeights ??= new();
+        if (tb.Cells == null || tb.Cells.Count == 0) { var d0 = DetailTitleBlock.DefaultBuilder(); tb.Cells = d0.Cells; tb.RowHeights = d0.RowHeights; }
+        var rows = tb.Cells.Select(c => new CellRow
+        {
+            Row = c.Row, Field = FieldLabel(c.Key), Label = c.Label, Width = c.Width, TextH = c.TextH, Enabled = c.Enabled, ShowLabel = c.ShowLabel
+        }).ToList();
+        var w = new Window { Title = "Thiết kế khung tên", Width = 980, Height = 640, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner };
+        var dock = new DockPanel { Margin = new Thickness(10) };
+        var top = new WrapPanel { Margin = new Thickness(0, 0, 0, 6) };
+        var pos = new ComboBox { ItemsSource = DetailTitleBlock.Positions, SelectedItem = tb.Position, Width = 150 };
+        var hts = new TextBox { Text = string.Join(" ", tb.RowHeights.Select(h => h.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))), Width = 220 };
+        top.Children.Add(new TextBlock { Text = "Vị trí ", VerticalAlignment = VerticalAlignment.Center }); top.Children.Add(pos);
+        top.Children.Add(new TextBlock { Text = "   Chiều cao hàng 0, 1, 2… (mm) ", VerticalAlignment = VerticalAlignment.Center }); top.Children.Add(hts);
+        DockPanel.SetDock(top, Dock.Top); dock.Children.Add(top);
+        var hint = new TextBlock
+        {
+            Text = "Hàng 0 là hàng dưới cùng (vị trí góc phải dưới) hoặc hàng trên cùng (dải dọc bên phải). Các ô cùng hàng xếp trái → phải theo thứ tự bảng. Bỏ chọn \"Dùng\" để ẩn ô.",
+            TextWrapping = TextWrapping.Wrap, Foreground = Brushes.DimGray, Margin = new Thickness(0, 0, 0, 6)
+        };
+        DockPanel.SetDock(hint, Dock.Top); dock.Children.Add(hint);
+        var bottom = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0) };
+        DockPanel.SetDock(bottom, Dock.Bottom); dock.Children.Add(bottom);
+        var preview = new DrawingHost { Background = Brushes.White, Height = 170, Margin = new Thickness(0, 8, 0, 0) };
+        DockPanel.SetDock(preview, Dock.Bottom); dock.Children.Add(preview);
+        var grid = new DataGrid { ItemsSource = new System.Collections.ObjectModel.ObservableCollection<CellRow>(rows), AutoGenerateColumns = false, CanUserAddRows = true, CanUserDeleteRows = true, HeadersVisibility = DataGridHeadersVisibility.Column };
+        var fieldNames = DetailTitleBlock.FieldChoices().Select(f => f.Label).ToList();
+        grid.Columns.Add(new DataGridTextColumn { Header = "Hàng", Binding = new System.Windows.Data.Binding(nameof(CellRow.Row)), Width = 50 });
+        grid.Columns.Add(new DataGridComboBoxColumn { Header = "Trường", ItemsSource = fieldNames, SelectedItemBinding = new System.Windows.Data.Binding(nameof(CellRow.Field)), Width = 160 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Nhãn ô", Binding = new System.Windows.Data.Binding(nameof(CellRow.Label)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Rộng (mm)", Binding = new System.Windows.Data.Binding(nameof(CellRow.Width)), Width = 80 });
+        grid.Columns.Add(new DataGridTextColumn { Header = "Cỡ chữ (mm)", Binding = new System.Windows.Data.Binding(nameof(CellRow.TextH)), Width = 90 });
+        grid.Columns.Add(new DataGridCheckBoxColumn { Header = "Dùng", Binding = new System.Windows.Data.Binding(nameof(CellRow.Enabled)), Width = 50 });
+        grid.Columns.Add(new DataGridCheckBoxColumn { Header = "Hiện nhãn", Binding = new System.Windows.Data.Binding(nameof(CellRow.ShowLabel)), Width = 75 });
+        dock.Children.Add(grid);
+
+        DetailTitleBlock Collect()
+        {
+            var t = new DetailTitleBlock { Kind = DetailTitleBlock.KindBuilder, Position = pos.SelectedItem as string ?? DetailTitleBlock.PosBottomRight, Values = tb.Values };
+            foreach (var part in (hts.Text ?? "").Split(new[] { ' ', ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                if (double.TryParse(part.Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double h)) t.RowHeights.Add(Math.Clamp(h, 3, 60));
+            foreach (var r in ((IEnumerable<CellRow>)grid.ItemsSource).Where(r => r != null))
+                t.Cells.Add(new TitleCell { Row = Math.Max(0, r.Row), Key = FieldKey(r.Field), Label = r.Label ?? "", Width = Math.Clamp(r.Width, 5, 400), TextH = Math.Clamp(r.TextH, 1, 10), Enabled = r.Enabled, ShowLabel = r.ShowLabel });
+            return t;
+        }
+        void Preview()
+        {
+            try
+            {
+                var t = Collect();
+                var def = t.BuildDef();
+                var fig = KetCauVXT.Drawing.SheetBuilder.TitleDefFigure(def, null);
+                var e = fig.Extents;
+                if (e.IsEmpty) { preview.Drawing = null; preview.InvalidateVisual(); return; }
+                double k = Math.Min(Math.Max(100, w.ActualWidth - 40) / (e.W + 4), 160 / (e.H + 4)) / SheetRender.DipPerMm;
+                preview.Drawing = SheetRender.Render(new[] { (fig, 1.0, 2 - e.X1, 2 - e.Y1) }, 0, e.H + 4, 0.1, x => x.GetPrimitives());
+                preview.Scale = SheetRender.DipPerMm * k;
+                preview.InvalidateVisual();
+            }
+            catch (Exception) { /* xem trước: bỏ qua */ }
+        }
+        var bPrev = new Button { Content = "Xem trước", Padding = new Thickness(12, 2, 12, 2), Margin = new Thickness(0, 0, 6, 0) };
+        bPrev.Click += (o, e) => Preview();
+        var bDef = new Button { Content = "Khôi phục mặc định", Padding = new Thickness(12, 2, 12, 2), Margin = new Thickness(0, 0, 6, 0) };
+        bDef.Click += (o, e) =>
+        {
+            var d0 = DetailTitleBlock.DefaultBuilder();
+            grid.ItemsSource = new System.Collections.ObjectModel.ObservableCollection<CellRow>(d0.Cells.Select(c => new CellRow { Row = c.Row, Field = FieldLabel(c.Key), Label = c.Label, Width = c.Width, TextH = c.TextH, Enabled = c.Enabled, ShowLabel = c.ShowLabel }));
+            hts.Text = string.Join(" ", d0.RowHeights);
+            pos.SelectedItem = DetailTitleBlock.PosBottomRight;
+            Preview();
+        };
+        var ok = new Button { Content = "Dùng khung tên này", IsDefault = true, Padding = new Thickness(12, 2, 12, 2), Margin = new Thickness(0, 0, 6, 0) };
+        ok.Click += (o, e) => { grid.CommitEdit(DataGridEditingUnit.Row, true); var t = Collect(); tb.Cells = t.Cells; tb.RowHeights = t.RowHeights; tb.Position = t.Position; tb.Kind = DetailTitleBlock.KindBuilder; w.DialogResult = true; };
+        var cancel = new Button { Content = "Huỷ", IsCancel = true, Padding = new Thickness(12, 2, 12, 2) };
+        bottom.Children.Add(bPrev); bottom.Children.Add(bDef); bottom.Children.Add(ok); bottom.Children.Add(cancel);
+        w.Content = dock;
+        w.Loaded += (o, e) => Preview();
+        if (w.ShowDialog() == true)
+        {
+            Changed();
+            _loading = true; _tbKind.SelectedItem = tb.Kind; _loading = false;
+            TitleBlockChanged();
+        }
+    }
+
+    private static string FieldLabel(string key) => DetailTitleBlock.FieldChoices().FirstOrDefault(f => f.Key == key).Label ?? key;
+    private static string FieldKey(string label)
+    {
+        var f = DetailTitleBlock.FieldChoices().FirstOrDefault(x => x.Label == label);
+        return f.Key ?? KetCauVXT.Model.TitleFields.KeyOf(label ?? "");
+    }
+
+    /// <summary>Dòng bảng ô khung tên (trình tạo khung tên).</summary>
+    public sealed class CellRow
+    {
+        public int Row { get; set; }
+        public string Field { get; set; } = "";
+        public string Label { get; set; } = "";
+        public double Width { get; set; } = 60;
+        public double TextH { get; set; } = 2.5;
+        public bool Enabled { get; set; } = true;
+        public bool ShowLabel { get; set; } = true;
     }
 }

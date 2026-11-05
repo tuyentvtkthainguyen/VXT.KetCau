@@ -45,7 +45,7 @@ public static class SheetLayoutTests
         var log = new List<string>();
         var cat = SheetLayoutEngine.Catalog(p, res, log);
         var map = cat.ToDictionary(f => f.Id);
-        check("Danh mục hình: có mặt bằng, chi tiết, thống kê", B(cat.Any(f => f.Id.StartsWith("MB:"))) + B(cat.Any(f => f.Section == 4)) + B(cat.Any(f => f.Section == 9)), 3, 0);
+        check("Danh mục hình: có mặt bằng, chi tiết, thống kê", B(cat.Any(f => f.Id.StartsWith("MB:"))) + B(cat.Any(f => f.Part == 1)) + B(cat.Any(f => f.Part == 2 && f.Section == cat.Max(x => x.Section))), 3, 0);
         check("Danh mục hình: mã hình không trùng", cat.Select(f => f.Id).Distinct().Count(), cat.Count, 0);
         var set = new DetailSheetSet();
         SheetLayoutEngine.AutoLayout(set, cat, log);
@@ -78,9 +78,11 @@ public static class SheetLayoutTests
         for (int i = 1; i < secs.Count; i++) if (secs[i] < secs[i - 1]) desc++;
         check("Thứ tự tờ theo mục hồ sơ (móng → cột → dầm → … → thống kê)", desc, 0, 0);
         check("Tờ đầu sau danh mục: mục đầu tiên của hồ sơ (mặt bằng móng nếu có)", B(secs.Count > 0 && secs[0] == cat.Min(f => f.Section)), 1, 0);
-        check("Thống kê vật liệu ở cuối bộ", B(secs.Count > 0 && secs[^1] == 9), 1, 0);
+        check("Thống kê vật liệu ở cuối bộ", B(secs.Count > 0 && secs[^1] == cat.Max(f => f.Section)), 1, 0);
         int mixed = set.Sheets.Where(s => !s.IsIndex).Count(s => s.Figures.Select(pf => map[pf.Id].Section).Distinct().Count() > 1);
         check("Mỗi tờ chỉ chứa hình của một mục", mixed, 0, 0);
+        int mixedPart = set.Sheets.Where(s => !s.IsIndex).Count(s => s.Figures.Select(pf => map[pf.Id].Part).Distinct().Count() > 1);
+        check("Mặt bằng và chi tiết thuộc mặt bằng nằm ở tờ riêng", mixedPart, 0, 0);
 
         // ---- tờ khoá giữ nguyên khi dàn lại ----
         var lockS = set.Sheets[Math.Min(2, set.Sheets.Count - 1)];

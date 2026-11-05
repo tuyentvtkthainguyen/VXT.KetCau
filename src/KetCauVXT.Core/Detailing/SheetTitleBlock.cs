@@ -85,7 +85,7 @@ public class DetailTitleBlock
         return l;
     }
 
-    public double RowH(int row) => row >= 0 && row < RowHeights.Count && RowHeights[row] > 1 ? RowHeights[row] : 8;
+    public double RowH(int row) => RowHeights != null && row >= 0 && row < RowHeights.Count && RowHeights[row] > 1 ? RowHeights[row] : 8;
 
     /// <summary>Khung tên tự tạo → TitleBlockDef (mm giấy). Góc phải dưới: gốc = góc phải dưới bảng; dải dọc: gốc = góc phải trên.</summary>
     public TitleBlockDef BuildDef()

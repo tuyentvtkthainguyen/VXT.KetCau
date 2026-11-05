@@ -1089,7 +1089,7 @@ public sealed partial class DetailingWindow : Window
     {
         try
         {
-            var w = new DetailSheetWindow(_prj, Results(), () => { _dirty = true; UpdateTitle(); }) { Owner = this };
+            var w = new DetailSheetWindow(_prj, Results(), () => { _dirty = true; UpdateTitle(); }, _path != null ? Path.GetDirectoryName(_path) : null) { Owner = this };
             w.ShowDialog();
         }
         catch (Exception ex) { MessageBox.Show(this, "Không mở được dàn trang: " + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); }
