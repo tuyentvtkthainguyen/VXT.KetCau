@@ -333,6 +333,13 @@ public static partial class UserGuide
                 "**Nhấn thép**: tại dầm có hai ô chênh cốt |Δ| ≤ ngưỡng nhấn (mặc định 50 mm) thép mũ được **bẻ xiên 1:6** vắt qua dầm; lớn hơn thì cắt thép, neo riêng từng ô vào dầm.",
                 "**Lỗ khoét sàn**: toạ độ góc dưới trái, kích thước; chương trình cắt thép qua lỗ, đặt **thép gia cường mép lỗ**, cảnh báo lỗ lớn cần dầm bo.");
 
+        c.Sec("che-do-ho-so.lanh-to", "Lanh tô cửa, ô văng cửa")
+            .Bullets("＋ Lanh tô: chọn **Lanh tô**, **Lanh tô + ô văng liền khối** hoặc **Ô văng** (console từ dầm / lanh tô có sẵn); nhập bề rộng lỗ cửa, chiều dày tường, chiều cao lanh tô (0 = tự chọn), đoạn gối mỗi bên (≥ 200 mm).",
+                "Tải tường phía trên: khi tường cao ≥ Lo/3 và không có sàn tựa trong phạm vi lỗ cửa chỉ lấy tường cao Lo/3 (hiệu ứng vòm); có sàn / dầm tựa thì cộng tải đó.",
+                "Ô văng: chiều vươn, chiều dày gốc / mút, gờ chắn nước; tải sửa chữa phân bố hoặc lực tập trung ở mút; thép chịu lực lớp trên neo vào lanh tô. Kiểm tra uốn, cắt lanh tô, **xoắn** lanh tô do ô văng, "
+                + "**chống lật** khi lanh tô không liền cột / giằng tường.",
+                "Bản vẽ: mặt đứng lanh tô và mặt cắt 1-1 (lanh tô + ô văng, dốc thoát nước, gờ chắn, rãnh nhỏ giọt).");
+
         c.Sec("che-do-ho-so.autocad", "Lấy kích thước từ AutoCAD (lệnh VXT_KT)")
             .Steps("Trong AutoCAD đã nạp add-in Việt Const: gõ **VXT_KT** (hoặc nút **Lấy kích thước → Triển khai hồ sơ** trên bảng VXT).",
                 "Chọn loại: **Dam** (chọn trục dầm, các hình chữ nhật cột → nhịp; 2 cạnh dầm → b; nhập h), **Cot** (các hình chữ nhật → b × h, tên lấy theo chữ bên trong), **San** (các đường trục → nhịp X, Y; đa tuyến kín bên trong → lỗ khoét), "

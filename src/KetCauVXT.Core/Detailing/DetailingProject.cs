@@ -24,6 +24,7 @@ public class DetailingProject
     public List<ManualColumn> Columns { get; set; } = new();
     public List<ManualSlab> Slabs { get; set; } = new();
     public List<ManualSlabPlan> SlabPlans { get; set; } = new();
+    public List<ManualLintel> Lintels { get; set; } = new();
     public List<ManualFooting> Footings { get; set; } = new();
     public List<ManualStrip> Strips { get; set; } = new();
     public List<ManualPileCap> PileCaps { get; set; } = new();
@@ -35,7 +36,7 @@ public class DetailingProject
     [JsonIgnore]
     public IEnumerable<(string Key, string Title, System.Collections.IList List)> Groups => new (string, string, System.Collections.IList)[]
     {
-        ("Dam", "Dầm", Beams), ("Cot", "Cột", Columns), ("San", "Sàn (ô bản)", Slabs), ("MatBangSan", "Mặt bằng sàn", SlabPlans),
+        ("Dam", "Dầm", Beams), ("Cot", "Cột", Columns), ("San", "Sàn (ô bản)", Slabs), ("MatBangSan", "Mặt bằng sàn", SlabPlans), ("LanhTo", "Lanh tô – ô văng", Lintels),
         ("MongDon", "Móng đơn", Footings), ("MongBang", "Móng băng", Strips), ("MongCoc", "Móng cọc (đài cọc)", PileCaps),
         ("MongBe", "Móng bè", Rafts), ("DuUngLuc", "Dự ứng lực", Prestress), ("BeNuoc", "Bể nước", Tanks)
     };
@@ -49,7 +50,7 @@ public class DetailingProject
         var g = Groups.First(x => x.Key == key);
         IDetailMember m = key switch
         {
-            "Dam" => new ManualBeam(), "Cot" => new ManualColumn(), "San" => new ManualSlab(), "MatBangSan" => ManualSlabPlan.Sample(),
+            "Dam" => new ManualBeam(), "Cot" => new ManualColumn(), "San" => new ManualSlab(), "MatBangSan" => ManualSlabPlan.Sample(), "LanhTo" => ManualLintel.Sample(),
             "MongDon" => new ManualFooting(), "MongBang" => new ManualStrip(), "MongCoc" => new ManualPileCap(),
             "MongBe" => RaftInput.Sample(), "DuUngLuc" => PrestressSample(), _ => new WaterTankInput()
         };
@@ -73,7 +74,7 @@ public class DetailingProject
     {
         var p = JsonSerializer.Deserialize<DetailingProject>(json, Json) ?? new DetailingProject();
         p.Settings ??= new DetailSettings();
-        p.Beams ??= new(); p.Columns ??= new(); p.Slabs ??= new(); p.SlabPlans ??= new(); p.Footings ??= new(); p.Strips ??= new();
+        p.Beams ??= new(); p.Columns ??= new(); p.Slabs ??= new(); p.SlabPlans ??= new(); p.Lintels ??= new(); p.Footings ??= new(); p.Strips ??= new();
         p.PileCaps ??= new(); p.Rafts ??= new(); p.Prestress ??= new(); p.Tanks ??= new();
         return p;
     }
@@ -109,6 +110,7 @@ public class DetailingProject
         p.Columns.Add(new ManualColumn { N = 650, Mx = 25, My = 12 });
         p.Slabs.Add(new ManualSlab());
         p.SlabPlans.Add(ManualSlabPlan.Sample());
+        p.Lintels.Add(ManualLintel.Sample());
         p.Footings.Add(new ManualFooting());
         p.Strips.Add(new ManualStrip());
         p.PileCaps.Add(new ManualPileCap());

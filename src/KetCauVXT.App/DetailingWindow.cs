@@ -119,7 +119,7 @@ public sealed class DetailingWindow : Window
         foreach (var (key, title, _) in _prj.Groups)
         {
             string k = key;
-            string shortName = key switch { "MongCoc" => "Móng cọc", "DuUngLuc" => "DƯL", "BeNuoc" => "Bể nước", "San" => "Ô sàn", _ => title };
+            string shortName = key switch { "MongCoc" => "Móng cọc", "DuUngLuc" => "DƯL", "BeNuoc" => "Bể nước", "San" => "Ô sàn", "LanhTo" => "Lanh tô", _ => title };
             B("＋ " + shortName, () => AddMember(k), "Thêm " + title.ToLowerInvariant());
         }
         bar.Items.Add(new Separator());
@@ -448,7 +448,7 @@ public sealed class DetailingWindow : Window
 
     private static string KindTitle(IDetailMember m) => m switch
     {
-        ManualBeam => "Dầm", ManualColumn => "Cột", ManualSlab => "Ô sàn", ManualSlabPlan => "Mặt bằng sàn", ManualFooting => "Móng đơn", ManualStrip => "Móng băng",
+        ManualBeam => "Dầm", ManualColumn => "Cột", ManualSlab => "Ô sàn", ManualSlabPlan => "Mặt bằng sàn", ManualLintel => "Lanh tô – ô văng", ManualFooting => "Móng đơn", ManualStrip => "Móng băng",
         ManualPileCap => "Đài cọc", RaftInput => "Móng bè", PrestressInput => "Cấu kiện dự ứng lực", WaterTankInput => "Bể nước", _ => "Cấu kiện"
     };
 

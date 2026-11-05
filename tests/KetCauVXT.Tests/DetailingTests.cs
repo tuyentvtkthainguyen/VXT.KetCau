@@ -152,7 +152,7 @@ public static class DetailingTests
         // ---- hồ sơ JSON + xuất ----
         var prj = DetailingProject.Sample();
         var prj2 = DetailingProject.FromJson(prj.ToJson());
-        check("Hồ sơ *.kcvxth: đọc lại đủ 10 nhóm cấu kiện", prj2.All.Count(), prj.All.Count(), 0);
+        check("Hồ sơ *.kcvxth: đọc lại đủ 11 nhóm cấu kiện", prj2.All.Count(), prj.All.Count(), 0);
         check("Hồ sơ *.kcvxth: giữ thông số (nhịp dầm, cột móng băng)", B(prj2.Beams[0].Spans == prj.Beams[0].Spans && prj2.Strips[0].Columns.Count == 4), 1, 0);
         var added = prj2.AddNew("Dam");
         check("Thêm dầm mới: tên D2 (không trùng)", B(added.Name == "D2"), 1, 0);
@@ -160,7 +160,7 @@ public static class DetailingTests
         foreach (var (mm, rr) in res.Where(x => !x.Result.Ok))
             foreach (var msg in rr.Messages.Where(x => x.StartsWith("LỖI"))) Console.WriteLine("    [mẫu " + mm.Name + "] " + msg);
         check("Hồ sơ mẫu: mọi cấu kiện đạt", res.Count(x => !x.Result.Ok), 0, 0);
-        check("Tính toàn bộ hồ sơ mẫu: 10 kết quả, không ngoại lệ", B(res.Count == 10 && res.All(r => !r.Result.Messages.Any(m => m.StartsWith("LỖI tính toán")))), 1, 0);
+        check("Tính toàn bộ hồ sơ mẫu: 11 kết quả, không ngoại lệ", B(res.Count == 11 && res.All(r => !r.Result.Messages.Any(m => m.StartsWith("LỖI tính toán")))), 1, 0);
         var sum = DetailingExport.Summary(res);
         var rows = RebarSchedule.BuildRows(sum);
         check("Bảng thống kê: có thép móng bè / bể nước / DƯL (DesignSummary.Others)", B(new[] { "Móng bè", "Bể nước", "Dự ứng lực", "Móng cọc", "Sàn" }.All(c => rows.Any(r => r.Category == c))), 1, 0);
@@ -174,7 +174,7 @@ public static class DetailingTests
         var many = DetailingExport.Drawings(prj, res, Path.Combine(dir, "TachRoi"), true, log);
         foreach (var l in log) Console.WriteLine("    " + l);
         check("Xuất bản vẽ gộp: 1 file DXF", one.Count, 1, 0);
-        check("Xuất bản vẽ tách rời: 10 cấu kiện + 1 thống kê thép", many.Count, 11, 0);
+        check("Xuất bản vẽ tách rời: 11 cấu kiện + 1 thống kê thép", many.Count, 12, 0);
         check("Xuất bản vẽ: không lỗi vẽ", log.Count, 0, 0);
         check("Bản vẽ gộp có chữ tiếng Việt mã hoá", B(File.ReadAllText(one[0]).Contains(DxfWriter.Encode("THỐNG KÊ"))), 1, 0);
         string xl = Path.Combine(dir, "KhoiLuong_TrienKhai.xlsx"), wd = Path.Combine(dir, "ThuyetMinh_TrienKhai.docx");
@@ -183,6 +183,6 @@ public static class DetailingTests
         check("Excel khối lượng ghi được", B(new FileInfo(xl).Length > 2000), 1, 0);
         check("Word thuyết minh ghi được", B(new FileInfo(wd).Length > 4000), 1, 0);
         prj.Save(Path.Combine(dir, "HoSoMau" + DetailingProject.Extension));
-        check("Lưu / mở file *.kcvxth", DetailingProject.Load(Path.Combine(dir, "HoSoMau" + DetailingProject.Extension)).All.Count(), 10, 0);
+        check("Lưu / mở file *.kcvxth", DetailingProject.Load(Path.Combine(dir, "HoSoMau" + DetailingProject.Extension)).All.Count(), 11, 0);
     }
 }

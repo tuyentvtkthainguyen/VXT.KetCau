@@ -577,6 +577,8 @@ Console.WriteLine("54. Lấy kích thước từ AutoCAD (lệnh VXT_KT → Tri�
 AcadPickTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("55. Mặt bằng sàn: hạ cốt, nhấn thép, khoét lỗ, thép tự động / thủ công");
 SlabPlanTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("56. Lanh tô cửa, ô văng cửa");
+LintelTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
