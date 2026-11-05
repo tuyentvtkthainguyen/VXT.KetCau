@@ -82,8 +82,8 @@ public static class SheetLayoutTests
         check("Thống kê vật liệu ở cuối bộ", B(secs.Count > 0 && secs[^1] == cat.Max(f => f.Section)), 1, 0);
         int mixed = set.Sheets.Where(s => !s.IsIndex).Count(s => s.Figures.Select(pf => map[pf.Id].Section).Distinct().Count() > 1);
         check("Mỗi tờ chỉ chứa hình của một mục", mixed, 0, 0);
-        int mixedPart = set.Sheets.Where(s => !s.IsIndex).Count(s => s.Figures.Select(pf => map[pf.Id].Part).Distinct().Count() > 1);
-        check("Mặt bằng và chi tiết thuộc mặt bằng nằm ở tờ riêng", mixedPart, 0, 0);
+        int mixedPart = set.Sheets.Where(s => !s.IsIndex && !s.Figures.Any(pf => map[pf.Id].KeepWithPlan)).Count(s => s.Figures.Select(pf => map[pf.Id].Part).Distinct().Count() > 1);
+        check("Mặt bằng và chi tiết thuộc mặt bằng nằm ở tờ riêng (trừ lanh tô đi cùng mặt bằng lanh tô)", mixedPart, 0, 0);
 
         // ---- tờ khoá giữ nguyên khi dàn lại ----
         var lockS = set.Sheets[Math.Min(2, set.Sheets.Count - 1)];

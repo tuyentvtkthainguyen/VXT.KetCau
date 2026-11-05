@@ -13,7 +13,7 @@ public static class BeamSplitTests
     private static bool IsStirrup(BarMark b) => (b.Shape ?? "").StartsWith("Đai") || (b.Role ?? "").StartsWith("Đai") || b.Spacing > 0;
     private static double TitleL(string t)
     {
-        var m = System.Text.RegularExpressions.Regex.Match(t ?? "", @"L=(\d+)");
+        var m = System.Text.RegularExpressions.Regex.Match(t ?? "", @"; L=(\d+)");
         return m.Success ? double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
     }
 
