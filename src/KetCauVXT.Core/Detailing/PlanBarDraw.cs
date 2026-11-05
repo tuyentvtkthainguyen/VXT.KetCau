@@ -41,7 +41,7 @@ public static class PlanBarDraw
         // chữ trên thanh + vòng số hiệu ngay sau chữ
         double tw = DxfWriter.TextWidth(text, th) * w.WidthFactor;
         double r = w.MarkR;
-        double total = tw + (mark > 0 ? 0.4 * th + 2 * r : 0);
+        double total = tw + (mark > 0 ? 0.9 * th + 2 * r : 0);
         double mid = a + (b - a) * textAt;
         double s0 = mid - total / 2;
         double off = labelSide * 0.35 * th;
@@ -50,7 +50,7 @@ public static class PlanBarDraw
         {
             double ty = pos + off + (labelSide > 0 ? 0 : -th);
             w.Text(Lay.Chu, s0, ty, th, text, 0, 0, 0);
-            if (mark > 0) w.MarkCircle(s0 + tw + 0.4 * th + r, pos + labelSide * (0.35 * th + 0.5 * th), mark);
+            if (mark > 0) w.MarkCircle(s0 + tw + 0.9 * th + r, pos + labelSide * (0.35 * th + 0.5 * th), mark);
             box = new Rect2(s0, Math.Min(pos, ty), s0 + total, Math.Max(pos, ty + th));
         }
         else
@@ -58,7 +58,7 @@ public static class PlanBarDraw
             // chữ xoay 90°, đọc từ dưới lên, đặt bên trái thanh (labelSide = +1) hoặc bên phải (−1)
             double tx = pos - off - (labelSide > 0 ? 0 : -th);
             w.Text(Lay.Chu, tx, s0, th, text, 90, 0, 0);
-            if (mark > 0) w.MarkCircle(pos - labelSide * (0.35 * th + 0.5 * th), s0 + tw + 0.4 * th + r, mark, 90);
+            if (mark > 0) w.MarkCircle(pos - labelSide * (0.35 * th + 0.5 * th), s0 + tw + 0.9 * th + r, mark, 90);
             box = new Rect2(Math.Min(pos, tx - th), s0, Math.Max(pos, tx), s0 + total);
         }
         return box;

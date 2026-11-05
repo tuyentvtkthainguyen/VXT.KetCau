@@ -320,7 +320,7 @@ public sealed partial class DxfWriter
     public Rect2 TagBox(double kx, double ky, string text, int mark, int dir = 1, bool vertical = false)
     {
         double th = TagTh, r = MarkR;
-        double sh = TextWidth(text, th) * WidthFactor + 0.6 * th;
+        double sh = TextWidth(text, th) * WidthFactor + 1.0 * th;
         double total = sh + (mark > 0 ? 2 * r : 0);
         double lo = mark > 0 ? r : 0.2 * th;
         double hi = Math.Max(1.4 * th, mark > 0 ? r : 0);
@@ -334,7 +334,7 @@ public sealed partial class DxfWriter
         bool vertical = false, bool dot = true)
     {
         double th = TagTh, r = MarkR;
-        double sh = TextWidth(text, th) * WidthFactor + 0.6 * th;
+        double sh = TextWidth(text, th) * WidthFactor + 1.0 * th;
         // nhóm "nhãn thép": chọn/dời cả nhãn; chấm giữ tại thanh, đường dẫn chỉ dời điểm cuối (DxfWriter.Keys.cs)
         var g0 = BeginGroup("TAG|" + text + "|" + mark.ToString(Inv) + "|" + KeyNum(px) + "|" + KeyNum(py));
         _role = "anchor";

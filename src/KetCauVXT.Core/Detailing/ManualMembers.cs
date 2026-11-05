@@ -670,7 +670,7 @@ public class ManualSlab : IDetailMember
         }
         w.Dim(0, -bw / 2, lx, -bw / 2, -3 * w.Th);
         w.Dim(-bw / 2, 0, -bw / 2, ly, 3 * w.Th);
-        w.Text(Lay.Chu, lx * 0.30, ly * 0.55, w.Th, "S1 – h = " + Dt.Mm(T), 0, 1, 2);
+        w.Text(Lay.Chu, lx * 0.18, ly * 0.10, w.Th, "h = " + Dt.Mm(T), 0, 1, 2);
         w.Title(lx / 2, -bw / 2 - 7 * w.Th, RebarSchedule.MemberLabel("MẶT BẰNG THÉP SÀN " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, "Sàn " + Name));
 

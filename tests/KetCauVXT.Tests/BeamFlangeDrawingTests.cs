@@ -119,7 +119,7 @@ public static class BeamFlangeDrawingTests
         {
             check("Mặt cắt chữ T: 2 đường cắt lửng đầu cánh", Breaks(tSec, hsK).Count, 2, 0);
             check("Mặt cắt chữ T: kích thước \"hs=100\"", B(tSec.Texts().Contains("hs=100")), 1, 0);
-            check("Mặt cắt chữ T: nhãn thép sàn \"(thép sàn)\"", B(tSec.Texts().Any(t => t.EndsWith("(thép sàn)", StringComparison.Ordinal))), 1, 0);
+            check("Mặt cắt chữ T: nhãn thép sàn \"(sàn)\"", B(tSec.Texts().Any(t => t.EndsWith("(sàn)", StringComparison.Ordinal))), 1, 0);
             check("Mặt cắt chữ T: vẫn có tên \"n-n\" và \"tl: 1/25\"", B(tSec.Texts().Contains("tl: 1/25") && tSec.Texts().Any(t => t.Length >= 3 && t[0] == t[^1] && t.Contains('-'))), 1, 0);
             var lay = tSec.UsedLayers();
             check("Mặt cắt chữ T: chỉ dùng lớp chuẩn (BE_TONG, THEP, DAI, KICH_THUOC, CHU, KY_HIEU, TRUC)",
@@ -165,8 +165,8 @@ public static class BeamFlangeDrawingTests
         var sNoBar = def.Clone(); sNoBar.ShowSlabRebarInFlange = false;
         List<Figure> figNb;
         using (DrawingStyle.Use(sNoBar)) figNb = BuildWith(p, dB, fB, ds, st, z2);
-        check("Tắt thép sàn trong cánh: không còn nhãn \"(thép sàn)\", vẫn có cánh",
-            B(!figNb.Any(f => f.W.Texts().Any(t => t.Contains("(thép sàn)"))) && figNb.Skip(1).Any(f => RangeX(f.W, Lay.BeTong).X1 < -0.5 * Lf)), 1, 0);
+        check("Tắt thép sàn trong cánh: không còn nhãn \"(sàn)\", vẫn có cánh",
+            B(!figNb.Any(f => f.W.Texts().Any(t => t.Contains("(sàn)"))) && figNb.Skip(1).Any(f => RangeX(f.W, Lay.BeTong).X1 < -0.5 * Lf)), 1, 0);
 
         // ---------------- 6. tắt cánh sàn: về mặt cắt chữ nhật cũ ----------------
         var sOff = def.Clone(); sOff.ShowSlabFlanges = false;
@@ -179,7 +179,7 @@ public static class BeamFlangeDrawingTests
                 var (a, e) = RangeX(f.W, Lay.BeTong);
                 return pr.Count == 1 && pr[0].Closed && Math.Abs(a) < 1e-6 && Math.Abs(e - b) < 1e-6;
             })), 1, 0);
-        check("Tắt cánh sàn: không có \"hs=\" và \"(thép sàn)\"", B(!figOff.Any(f => f.W.Texts().Any(t => t.StartsWith("hs=", StringComparison.Ordinal) || t.Contains("(thép sàn)")))), 1, 0);
+        check("Tắt cánh sàn: không có \"hs=\" và \"(thép sàn)\"", B(!figOff.Any(f => f.W.Texts().Any(t => t.StartsWith("hs=", StringComparison.Ordinal) || t.Contains("(sàn)")))), 1, 0);
         check("Tắt cánh sàn: ít thực thể hơn (mặt đứng + mặt cắt)", B(figOff.Sum(f => f.W.EntityCount) < figB.Sum(f => f.W.EntityCount)), 1, 0);
         check("Tắt cánh sàn: mặt đứng không có ghi chú sàn", B(!figOff[0].W.Texts().Any(t => t.StartsWith("Sàn liền khối", StringComparison.Ordinal))), 1, 0);
         check("Tắt cánh sàn: số mặt cắt không nhiều hơn khi bật", B(figOff.Count <= figB.Count), 1, 0);

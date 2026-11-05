@@ -209,7 +209,7 @@ internal sealed class DrawingStyleWindow : Window
         Chk("Khối GHI CHÚ CHUNG", "Một khối ghi chú chung cho mỗi bản vẽ KC-01…KC-06 (đơn vị, bê tông, thép, lớp bảo vệ, neo nối)", s => s.ShowGeneralNotes, (s, v) => s.ShowGeneralNotes = v);
         Chk("Cánh sàn trên mặt cắt dầm", "Mặt cắt dầm thể hiện cánh sàn liền khối theo mô hình (kiểu Kết cấu Soft / XSCad): chữ T – sàn hai bên, chữ L – dầm biên, " +
             "chữ nhật – không có sàn (lỗ cầu thang, giếng trời); kích thước hs, đường cắt ở đầu cánh; mặt đứng dầm có nét mép dưới sàn", s => s.ShowSlabFlanges, (s, v) => s.ShowSlabFlanges = v);
-        Chk("Thép sàn trong cánh", "Thép lớp dưới, thép mũ vắt qua dầm và thép phân bố trong cánh sàn, nhãn \"Ø8a200 (thép sàn)\" theo kết quả thiết kế sàn " +
+        Chk("Thép sàn trong cánh", "Thép lớp dưới, thép mũ vắt qua dầm và thép phân bố trong cánh sàn, nhãn \"Ø8a200 (sàn)\" theo kết quả thiết kế sàn " +
             "(chưa thiết kế sàn: thể hiện quy ước nét đứt)", s => s.ShowSlabRebarInFlange, (s, v) => s.ShowSlabRebarInFlange = v);
         var brkPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 16, 2) };
         brkPanel.Children.Add(new TextBlock { Text = "Đường cắt đầu cánh sàn:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });

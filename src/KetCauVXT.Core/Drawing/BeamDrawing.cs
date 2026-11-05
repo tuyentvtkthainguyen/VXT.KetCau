@@ -570,7 +570,7 @@ public static class BeamDrawing
             for (double t = 125; t < f.Len - 0.2 * hs; t += 250) w.Dot(Lay.Thep, xFace + sg * t * k, yT2, Math.Max(3 * k, rMin));
             // ---- nhãn nhẹ ----
             double xm = (xFace + xEnd) / 2;
-            string tb = si.BotPerpText + " (thép sàn)";
+            string tb = si.BotPerpText + " (sàn)";
             if (tagged.Add("B|" + tb))
             {
                 double ky = yb - 1.6 * th;
@@ -578,7 +578,7 @@ public static class BeamDrawing
                 var (_, dy) = layout.Place(box, 0, -1.8 * th);
                 w.LeaderTag(xm, yB1, xm, ky + dy, tb, 0, sg);
             }
-            string tt = si.TopText + " (thép sàn)";
+            string tt = si.TopText + " (sàn)";
             if (tagged.Add("T|" + tt))
             {
                 double ky = H + 1.6 * th;

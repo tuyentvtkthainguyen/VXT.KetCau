@@ -721,7 +721,7 @@ public static partial class UserGuide
 
         c.Sec("mo-hinh.canh-san", "Dầm có cánh sàn (chữ T / L) trên bản vẽ")
             .Bullets("Bản vẽ chi tiết dầm (KC-04) thể hiện **cánh sàn liền khối theo mô hình** (kiểu Kết cấu Soft / XSCad): chữ **T** khi có sàn hai bên, chữ **L** ở dầm biên, chữ nhật khi không có sàn (lỗ cầu thang, giếng trời); ghi kích thước hs, đường cắt ở đầu cánh; mặt đứng dầm có nét mép dưới sàn. Cánh lấy theo ô sàn thực tế hai bên từng mặt cắt (lỗ sàn, độ lệch tim dầm so với trục).",
-                "Tuỳ chọn ở {m:drawStyle} (tab **Tỷ lệ, cỡ chữ, chú thích**): **Cánh sàn trên mặt cắt dầm** (bật/tắt), **Thép sàn trong cánh** (thép lớp dưới, thép mũ vắt qua dầm, thép phân bố, nhãn \"Ø8a200 (thép sàn)\" theo kết quả thiết kế sàn; chưa thiết kế sàn thì vẽ quy ước nét đứt), **Chiều dài cánh sàn thể hiện (mỗi bên dầm)** (100…3000 mm, mặc định 400), **Đường cắt đầu cánh sàn**: Dích dắc / Nét thẳng.")
+                "Tuỳ chọn ở {m:drawStyle} (tab **Tỷ lệ, cỡ chữ, chú thích**): **Cánh sàn trên mặt cắt dầm** (bật/tắt), **Thép sàn trong cánh** (thép lớp dưới, thép mũ vắt qua dầm, thép phân bố, nhãn \"Ø8a200 (sàn)\" theo kết quả thiết kế sàn; chưa thiết kế sàn thì vẽ quy ước nét đứt), **Chiều dài cánh sàn thể hiện (mỗi bên dầm)** (100…3000 mm, mặc định 400), **Đường cắt đầu cánh sàn**: Dích dắc / Nét thẳng.")
             .Warn("**Thiết kế** dầm vẫn theo tiết diện chữ nhật b×h (tính uốn bằng tiết diện chữ nhật – không kể cánh chịu nén), thiên về an toàn. Cánh sàn chỉ là thể hiện bản vẽ.");
 
         c.Sec("mong.dia-chat", "Địa chất – hố khoan (tab Địa chất)")

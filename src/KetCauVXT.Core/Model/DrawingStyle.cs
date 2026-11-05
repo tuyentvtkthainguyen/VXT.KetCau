@@ -162,7 +162,7 @@ public class DrawingStyle
     public bool ShowSlabFlanges { get; set; } = true;
     /// <summary>Chiều dài cánh sàn thể hiện mỗi bên dầm (mm thật, tính từ mặt bên dầm tới đường cắt)</summary>
     public double SlabFlangeLength { get; set; } = 400;
-    /// <summary>Thể hiện thép sàn trong cánh (lớp dưới, thép mũ vắt qua dầm) kèm nhãn "Ø8a200 (thép sàn)"</summary>
+    /// <summary>Thể hiện thép sàn trong cánh (lớp dưới, thép mũ vắt qua dầm) kèm nhãn "Ø8a200 (sàn)"</summary>
     public bool ShowSlabRebarInFlange { get; set; } = true;
     /// <summary>Kiểu đường cắt ở đầu cánh sàn</summary>
     public SlabBreakStyle SlabBreak { get; set; } = SlabBreakStyle.ZigZag;
