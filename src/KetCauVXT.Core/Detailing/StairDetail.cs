@@ -123,6 +123,7 @@ public class ManualStair : IDetailMember
                     });
                 }
             }
+            for (int i = 0; i < r.Bars.Count; i++) r.Bars[i].Mark = i + 1;   // đánh số liên tục qua các vế / chiếu nghỉ – mỗi số hiệu một thanh
             r.Calc.Add("## Cầu thang " + Name + " – " + sd.TypeText + ", " + sd.SupportText);
             r.Calc.Add("Chiều cao tầng H = " + Dt.F(sd.Height) + " m; " + sd.Risers + " cổ bậc h = " + Dt.Mm(sd.Riser) + " mm, mặt bậc b = " + Dt.Mm(sd.Tread)
                        + " mm; 2h + b = " + Dt.Mm(sd.Check2hb) + " mm (600…650); vế rộng " + Dt.Mm(sd.FlightWidth) + " mm, bản thang " + Dt.Mm(sd.WaistT) + " mm, cos α = " + Dt.F(sd.CosA, "0.000"));

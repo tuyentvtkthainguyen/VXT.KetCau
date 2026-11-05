@@ -99,7 +99,7 @@ public static class DrawingFinishTests
             check("Thống kê vật liệu: tổng thép = bảng khối lượng", total.Steel, kg, Math.Max(0.5, kg * 0.005));
             check("Thống kê vật liệu: có thép 3 nhóm đường kính", B(total.S10 > 0 && total.S18 > 0), 1, 0);
         }
-        check("Thống kê vật liệu: có nhóm cầu thang", B(rows.Any(r => r.Kind == "group" && r.Name.Contains("Cầu thang"))), 1, 0);
+        check("Thống kê vật liệu: có nhóm cầu thang", B(rows.Any(r => r.Kind == "group" && r.Name.ToUpperInvariant().Contains("CẦU THANG"))), 1, 0);
         List<Figure> tfigs;
         using (DrawingStyle.Use(def)) tfigs = MaterialTable.Build(dp, results);
         var ttexts = tfigs.SelectMany(f => f.W.Texts()).ToList();
