@@ -589,6 +589,8 @@ Console.WriteLine("60. Hoàn thiện bản vẽ: chân dim, mặt cắt dầm, c
 DrawingFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("61. Tuỳ chọn thép dầm (bẻ mỏ, tăng cường, mũ gối), nối thép cột, nhấn cổ chai, khoảng hở nhãn thép");
 BeamColumnOptionsTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("62. Đài cọc lớp trên / lồng thép, râu cọc, móng băng vát, thép sàn trên mặt bằng, mặt cắt sàn, cây theo mặt bằng");
+FoundationSlabPlanTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
