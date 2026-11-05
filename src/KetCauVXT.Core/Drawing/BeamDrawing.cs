@@ -329,6 +329,33 @@ public static class BeamDrawing
         return figs;
     }
 
+    /// <summary>Vị trí (mm từ tim gối đầu) và số hiệu các mặt cắt của dầm – như trên mặt đứng (dùng cho mặt bằng kết cấu, kiểm tra).</summary>
+    public static List<(double X, int Num)> SectionCuts(BeamLineDesign d)
+    {
+        var res = new List<(double X, int Num)>();
+        if (d == null) return res;
+        var spans = d.Spans ?? new List<BeamSpanResult>();
+        if (spans.Count == 0) return res;
+        var xs = new List<double> { 0 };
+        foreach (var sp in spans) xs.Add(xs[^1] + sp.L * 1000);
+        int ns = xs.Count;
+        var sw = new double[ns];
+        for (int i = 0; i < ns; i++)
+        {
+            double v = i == 0 ? spans[0].SupportWidthLeft : i == ns - 1 ? spans[^1].SupportWidthRight : Math.Max(spans[i - 1].SupportWidthRight, spans[i].SupportWidthLeft);
+            sw[i] = v > 1e-6 ? v * 1000 : 220;
+        }
+        double h = d.H > 0 ? d.H * 1000 : 400;
+        Func<double, BeamSlabSection> slabAt = null;
+        if (d.ManualSlab != null && DrawingStyle.Current.ShowSlabFlanges)
+        {
+            var ms = d.ManualSlab;
+            slabAt = x => new BeamSlabSection { X = x, Left = ms.Left, Right = ms.Right, LeftOpening = ms.LeftOpening, RightOpening = ms.RightOpening, Offset = ms.Offset };
+        }
+        foreach (var c in ComputeCuts(d, xs, sw, h, slabAt)) res.Add((c.X, c.Num));
+        return res;
+    }
+
     // ==================================================================
     internal sealed class Cut
     {
@@ -373,9 +400,10 @@ public static class BeamDrawing
         {
             double a = xs[i] + sw[i] / 2, e = xs[i + 1] - sw[i + 1] / 2;
             double off = Math.Min(Math.Max(h, 300), (e - a) / 5);
+            // mỗi nhịp đều có mặt cắt tại HAI gối (gần mép gối) và giữa nhịp – mặt cắt giống nhau dùng chung số hiệu
             pos.Add(a + off);
             pos.Add((a + e) / 2);
-            if (i == xs.Count - 2) pos.Add(e - off);
+            pos.Add(e - off);
         }
         var cuts = new List<Cut>();
         var keys = new Dictionary<string, int>();

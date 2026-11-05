@@ -179,6 +179,7 @@ public static class StructuralPlanDrawing
         if (!columnsOnly)
             foreach (var sm in (plan.Sections ?? new()).Where(q => q.Level == lv.Name && q.Length > 1e-6))
                 DrawSectionMark(w, sm);
+        if (!columnsOnly) CalloutDrawing.DrawOnPlan(w, plan, lv, map);   // chi tiết trích + vạch cắt dầm (Detailing/DetailCallout.cs)
 
         // kích thước: dưới + trái (nhịp, tổng); trên + phải (nhịp)
         if (xs.Count >= 2)
@@ -528,6 +529,7 @@ public static class StructuralPlanDrawing
         if (plan == null || lv == null) return figs;
         foreach (var sm in (plan.Sections ?? new()).Where(q => q.Level == lv.Name && q.Length > 1e-6))
             figs.Add(new Figure(SlabSection(plan, lv, sm, map, st), SectionTitle(sm), false));
+        figs.AddRange(CalloutDrawing.Figures(plan, lv, map, st));   // chi tiết trích (khoanh vùng) của mặt bằng
         return figs;
     }
 
