@@ -165,7 +165,8 @@ public static class DetailingExport
             if (split)
             {
                 info.Title = (r.Kind + " " + m.Name).ToUpperInvariant(); info.SheetNo = "KC-" + no.ToString("00");
-                var w = SheetComposer.Compose(figs, 100, info, "A1");
+                var (sc, paper) = SheetFor(figs);
+                var w = SheetComposer.Compose(figs, sc, info, paper);
                 string f = Path.Combine(folder, info.SheetNo + "_" + Safe(r.Kind + "_" + m.Name) + ".dxf");
                 w.Save(f); files.Add(f); no++;
             }
@@ -183,11 +184,35 @@ public static class DetailingExport
         {
             all.AddRange(sch);
             info.Title = "HỒ SƠ TRIỂN KHAI KẾT CẤU"; info.SheetNo = "KC-01";
-            var w = SheetComposer.Compose(all, 100, info, "A1");
+            var w = SheetComposer.Compose(all, SheetFor(all).Scale, info, "A1");
             string f = Path.Combine(folder, Safe(p.ProjectName) + "_BoBanVe.dxf");
             w.Save(f); files.Add(f);
         }
         return files;
+    }
+
+    /// <summary>Tỷ lệ tờ = tỷ lệ thô nhất của các hình (hình chi tiết hơn được phóng đúng tỷ lệ riêng khi ghép);
+    /// khổ giấy nhỏ nhất (A3 → A2 → A1) chứa được các hình sau khi xếp (ước lượng theo diện tích, hệ số lấp đầy 0,45).</summary>
+    public static (double Scale, string Paper) SheetFor(IList<Figure> figs)
+    {
+        var list = figs.Where(f => f?.W != null && f.W.EntityCount > 0).ToList();
+        if (list.Count == 0) return (50, "A3");
+        double sc = list.Max(f => f.W.Scale > 0 ? f.W.Scale : 50);
+        double area = 0, maxW = 0, maxH = 0;
+        foreach (var f in list)
+        {
+            double k = sc / (f.W.Scale > 0 ? f.W.Scale : sc);
+            var e = f.W.Extents;
+            double w = e.W * k / sc, h = e.H * k / sc;   // mm giấy
+            area += (w + 12) * (h + 12); maxW = Math.Max(maxW, w); maxH = Math.Max(maxH, h);
+        }
+        foreach (var p in new[] { "A3", "A2", "A1" })
+        {
+            var (pw, ph) = SheetComposer.Paper(p);
+            double uw = pw - 25 - 10 - 24, uh = ph - 20 - 24 - 45 * 0.5;
+            if (maxW <= uw && maxH <= uh && area <= 0.45 * uw * uh) return (sc, p);
+        }
+        return (sc, "A1");
     }
 
     /// <summary>Dòng tổng hợp khối lượng: (nhóm, tên công tác, đơn vị, khối lượng).</summary>

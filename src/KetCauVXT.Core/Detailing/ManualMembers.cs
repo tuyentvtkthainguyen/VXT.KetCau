@@ -644,13 +644,13 @@ public class ManualSlab : IDetailMember
         {
             double y = ly * 0.40;
             w.Polyline(Lay.Thep, new List<(double, double)> { (-bw / 2 + 25, y), (lx + bw / 2 - 25, y) }, false);
-            w.LeaderTag(lx * 0.35, y, lx * 0.35 + 300, y + 600, Dt.Spaced(bX.Dia, bX.Spacing), bX.Mark);
+            w.LeaderTag(lx * 0.35, y, lx * 0.35 + 2.4 * w.Th, y + 4.8 * w.Th, Dt.Spaced(bX.Dia, bX.Spacing), bX.Mark);
         }
         if (bY != null)
         {
             double x = lx * 0.60;
             w.Line(Lay.Thep, x, -bw / 2 + 25, x, ly + bw / 2 - 25);
-            w.LeaderTag(x, ly * 0.65, x + 400, ly * 0.65 + 400, Dt.Spaced(bY.Dia, bY.Spacing), bY.Mark);
+            w.LeaderTag(x, ly * 0.65, x + 3.2 * w.Th, ly * 0.65 + 3.2 * w.Th, Dt.Spaced(bY.Dia, bY.Spacing), bY.Mark);
         }
         var tL = Find("Mũ gối cạnh dài"); var tS = Find("Mũ gối cạnh ngắn");
         if (tL != null)
@@ -661,7 +661,7 @@ public class ManualSlab : IDetailMember
                 double x0 = side == 0 ? -bw / 2 + 25 : lx + bw / 2 - 25, x1 = side == 0 ? x0 + ext : x0 - ext, y = ly * 0.25;
                 w.Line(Lay.Thep, x0, y, x1, y);
                 w.Line(Lay.Thep, x1, y, x1, y - 60);
-                w.LeaderTag((x0 + x1) / 2, y, (x0 + x1) / 2 + 200, y - 500, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark);
+                w.LeaderTag((x0 + x1) / 2, y, (x0 + x1) / 2 + 1.6 * w.Th, y - 4.0 * w.Th, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark);
             }
         }
         if (tS != null)
@@ -672,7 +672,7 @@ public class ManualSlab : IDetailMember
                 double y0 = side == 0 ? -bw / 2 + 25 : ly + bw / 2 - 25, y1 = side == 0 ? y0 + ext : y0 - ext, x = lx * 0.25;
                 w.Line(Lay.Thep, x, y0, x, y1);
                 w.Line(Lay.Thep, x, y1, x - 60, y1);
-                w.LeaderTag(x, (y0 + y1) / 2, x - 700, (y0 + y1) / 2 + 250, Dt.Spaced(tS.Dia, tS.Spacing), tS.Mark, -1);
+                w.LeaderTag(x, (y0 + y1) / 2, x - 5.6 * w.Th, (y0 + y1) / 2 + 2.0 * w.Th, Dt.Spaced(tS.Dia, tS.Spacing), tS.Mark, -1);
             }
         }
         w.Dim(0, 0, lx, 0, -900);
@@ -690,7 +690,7 @@ public class ManualSlab : IDetailMember
         if (bX != null)
         {
             sct.Line(Lay.Thep, -bw / 2, -t + c, lx + bw / 2, -t + c);
-            sct.LeaderTag(lx * 0.5, -t + c, lx * 0.5 + 250, -t - 500, Dt.Spaced(bX.Dia, bX.Spacing), bX.Mark);
+            sct.LeaderTag(lx * 0.5, -t + c, lx * 0.5 + 2.0 * sct.Th, -t - 4.0 * sct.Th, Dt.Spaced(bX.Dia, bX.Spacing), bX.Mark);
         }
         if (bY != null)
             for (double x = 100; x < lx; x += Math.Max(bY.Spacing * 1000, 100)) sct.Dot(Lay.Thep, x, -t + c + (bX?.Dia ?? 8), bY.Dia / 2.0);
@@ -699,7 +699,7 @@ public class ManualSlab : IDetailMember
             double ext = tL.Segments.Count > 0 ? tL.Segments[0] : lx / 4;
             sct.Polyline(Lay.Thep, new List<(double, double)> { (-bw / 2, -c - (t - 2 * c)), (-bw / 2, -c), (-bw / 2 + ext, -c), (-bw / 2 + ext, -c - 60) }, false);
             sct.Polyline(Lay.Thep, new List<(double, double)> { (lx + bw / 2, -c - (t - 2 * c)), (lx + bw / 2, -c), (lx + bw / 2 - ext, -c), (lx + bw / 2 - ext, -c - 60) }, false);
-            sct.LeaderTag(ext * 0.6, -c, ext * 0.6 + 200, 500, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark);
+            sct.LeaderTag(ext * 0.6, -c, ext * 0.6 + 1.6 * sct.Th, 500, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark);
         }
         sct.Dim(0, -t, lx, -t, -bh - 400);
         sct.Dim(lx + bw, -t, lx + bw, 0, 500);

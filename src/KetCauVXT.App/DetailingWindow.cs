@@ -892,7 +892,8 @@ public sealed class DetailingWindow : Window
         if (figs.Count == 0) return;
         var dlg = new SaveFileDialog { Filter = "AutoCAD DXF (*.dxf)|*.dxf", FileName = SafeName(KindTitle(_cur) + "_" + _cur.Name) + ".dxf" };
         if (dlg.ShowDialog(this) != true) return;
-        SheetComposer.Compose(figs, 100, Info(KindTitle(_cur).ToUpperInvariant() + " " + _cur.Name, "KC-01"), "A1").Save(dlg.FileName);
+        var (sc, paper) = DetailingExport.SheetFor(figs);
+        SheetComposer.Compose(figs, sc, Info(KindTitle(_cur).ToUpperInvariant() + " " + _cur.Name, "KC-01"), paper).Save(dlg.FileName);
         SetStatus("Đã xuất " + dlg.FileName);
     }
 

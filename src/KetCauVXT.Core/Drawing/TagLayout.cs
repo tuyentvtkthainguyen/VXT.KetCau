@@ -105,7 +105,10 @@ public static class SheetComposer
 
         foreach (var f in list)
         {
-            var e = f.W.Extents;
+            // hình vẽ ở tỷ lệ riêng (vd. mặt cắt 1/25 trên tờ 1/50): phóng k = tỷ lệ tờ / tỷ lệ hình để in đúng tỷ lệ của hình
+            double kf = Math.Abs(f.W.Scale - S) < 1e-9 || f.W.Scale <= 0 ? 1 : S / f.W.Scale;
+            var e0 = f.W.Extents;
+            var e = new Rect2(e0.X1 * kf, e0.Y1 * kf, e0.X2 * kf, e0.Y2 * kf);
             double w = e.W, h = e.H;
             bool fitsRow = cx + w <= usableRight + 1e-6;
             if (f.NewRow || !fitsRow)
@@ -134,7 +137,12 @@ public static class SheetComposer
             double ox = i * (fw + 20 * S);
             DrawFrame(outW, ox, 0, fw, fh, mL, mO, tbW, tbH, info, i, nSheets);
         }
-        foreach (var (f, _, dx, dy) in placements) outW.Append(f.W, dx, dy);
+        foreach (var (f, _, dx, dy) in placements)
+        {
+            double kf = Math.Abs(f.W.Scale - S) < 1e-9 || f.W.Scale <= 0 ? 1 : S / f.W.Scale;
+            if (kf == 1) outW.Append(f.W, dx, dy);
+            else outW.AppendScaled(f.W, kf, dx, dy);
+        }
         return outW;
     }
 

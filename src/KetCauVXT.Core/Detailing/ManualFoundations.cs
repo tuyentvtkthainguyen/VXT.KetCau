@@ -418,19 +418,19 @@ public class ManualStrip : IDetailMember
         {
             double leg = bot.Segments.Count > 2 ? bot.Segments[0] : 0;
             w.Polyline(Lay.Thep, new List<(double, double)> { (c, c + leg), (c, c), (L - c, c), (L - c, c + leg) }, false);
-            w.LeaderTag(L * 0.3, c, L * 0.3 + 300, -700, Dt.Bars(bot.Count, bot.Dia), bot.Mark);
+            w.LeaderTag(L * 0.3, c, L * 0.3 + 2.4 * w.Th, -700, Dt.Bars(bot.Count, bot.Dia), bot.Mark);
         }
         if (top != null)
         {
             double leg = top.Segments.Count > 2 ? top.Segments[0] : 0;
             w.Polyline(Lay.Thep, new List<(double, double)> { (c, hs - c - leg), (c, hs - c), (L - c, hs - c), (L - c, hs - c - leg) }, false);
-            w.LeaderTag(L * 0.6, hs - c, L * 0.6 + 300, hs + 1100, Dt.Bars(top.Count, top.Dia), top.Mark);
+            w.LeaderTag(L * 0.6, hs - c, L * 0.6 + 2.4 * w.Th, hs + 8.8 * w.Th, Dt.Bars(top.Count, top.Dia), top.Mark);
         }
         var st = r.Bars.FirstOrDefault(b => b.Role == "Đai");
         if (st != null)
         {
             for (double x = 2 * c; x < L - c; x += Math.Max(st.Spacing * 1000, 100) * 4) w.Line(Lay.Dai, x, c, x, hs - c);
-            w.LeaderTag(L * 0.45, hs / 2, L * 0.45 + 400, hs / 2 + 300, Dt.Spaced(st.Dia, st.Spacing), st.Mark);
+            w.LeaderTag(L * 0.45, hs / 2, L * 0.45 + 3.2 * w.Th, hs / 2 + 2.4 * w.Th, Dt.Spaced(st.Dia, st.Spacing), st.Mark);
         }
         var xsCol = new List<double> { 0 };
         xsCol.AddRange(Columns.Where(x => x.N > 0).Select(x => x.X * 1000).OrderBy(x => x));
@@ -465,13 +465,13 @@ public class ManualStrip : IDetailMember
         if (fl != null)
         {
             x2.Polyline(Lay.Thep, new List<(double, double)> { (-B / 2 + c, hf - c), (-B / 2 + c, c), (B / 2 - c, c), (B / 2 - c, hf - c) }, false);
-            x2.LeaderTag(-B / 4, c, -B / 4 - 200, -600, Dt.Spaced(fl.Dia, fl.Spacing), fl.Mark, -1);
+            x2.LeaderTag(-B / 4, c, -B / 4 - 1.6 * x2.Th, -600, Dt.Spaced(fl.Dia, fl.Spacing), fl.Mark, -1);
         }
         if (st != null)
         {
             double cs = s.CoverBeam * 1000;
             x2.Rect(Lay.Dai, rx - bs / 2 + cs, c + 10, rx + bs / 2 - cs, hs - cs);
-            x2.LeaderTag(rx + bs / 2 - cs, hs * 0.55, rx + bs / 2 + 400, hs * 0.55 + 200, Dt.Spaced(st.Dia, st.Spacing), st.Mark);
+            x2.LeaderTag(rx + bs / 2 - cs, hs * 0.55, rx + bs / 2 + 3.2 * x2.Th, hs * 0.55 + 1.6 * x2.Th, Dt.Spaced(st.Dia, st.Spacing), st.Mark);
         }
         void Row(BarMark b, double y, bool up)
         {
@@ -479,7 +479,7 @@ public class ManualStrip : IDetailMember
             double cs = s.CoverBeam * 1000 + b.Dia / 2.0;
             int n = Math.Max(b.Count, 2);
             for (int i = 0; i < n; i++) x2.Dot(Lay.Thep, rx - bs / 2 + cs + i * (bs - 2 * cs) / (n - 1), y, b.Dia / 2.0);
-            x2.LeaderTag(rx, y, rx + 300, up ? hs + 500 : -900, Dt.Bars(b.Count, b.Dia), b.Mark);
+            x2.LeaderTag(rx, y, rx + 2.4 * x2.Th, up ? hs + 4.0 * x2.Th : -900, Dt.Bars(b.Count, b.Dia), b.Mark);
         }
         Row(top, hs - s.CoverBeam * 1000 - (top?.Dia ?? 0) / 2.0, true);
         Row(bot, c + 20 + (bot?.Dia ?? 0) / 2.0, false);
@@ -739,8 +739,8 @@ public class ManualPileCap : IDetailMember
         }
         var bx = r.Bars.FirstOrDefault(b => b.Role == "Lớp dưới phương X"); var by = r.Bars.FirstOrDefault(b => b.Role == "Lớp dưới phương Y");
         double c = Math.Max(s.CoverFooting, 0.05) * 1000;
-        if (bx != null) { w.Line(Lay.Thep, ox - L / 2 + c, oy - B / 4, ox + L / 2 - c, oy - B / 4); w.LeaderTag(ox + L / 6, oy - B / 4, ox + L / 6 + 300, oy - B / 2 - 500, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark); }
-        if (by != null) { w.Line(Lay.Thep, ox - L / 4, oy - B / 2 + c, ox - L / 4, oy + B / 2 - c); w.LeaderTag(ox - L / 4, oy + B / 6, ox - L / 2 - 300, oy + B / 6 + 300, Dt.Spaced(by.Dia, by.Spacing), by.Mark, -1); }
+        if (bx != null) { w.Line(Lay.Thep, ox - L / 2 + c, oy - B / 4, ox + L / 2 - c, oy - B / 4); w.LeaderTag(ox + L / 6, oy - B / 4, ox + L / 6 + 2.4 * w.Th, oy - B / 2 - 4.0 * w.Th, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark); }
+        if (by != null) { w.Line(Lay.Thep, ox - L / 4, oy - B / 2 + c, ox - L / 4, oy + B / 2 - c); w.LeaderTag(ox - L / 4, oy + B / 6, ox - L / 2 - 2.4 * w.Th, oy + B / 6 + 2.4 * w.Th, Dt.Spaced(by.Dia, by.Spacing), by.Mark, -1); }
         var xs = new List<double> { ox - L / 2 }; xs.AddRange(Piles.Select(p => p.X * 1000).Distinct().OrderBy(x => x)); xs.Add(ox + L / 2);
         var ys = new List<double> { oy - B / 2 }; ys.AddRange(Piles.Select(p => p.Y * 1000).Distinct().OrderBy(x => x)); ys.Add(oy + B / 2);
         w.DimChainH(xs, oy - B / 2, oy - B / 2 - 900);
