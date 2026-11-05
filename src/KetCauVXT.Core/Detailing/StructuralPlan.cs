@@ -42,7 +42,7 @@ public static class PlanKinds
         Slab => m is ManualSlab || m is ManualSlabPlan || m is RaftInput || m is WaterTankInput,
         Lintel => m is ManualLintel,
         Canopy => m is ManualLintel,
-        Stair => m is ManualStair,
+        Stair => m is ManualStair || m is ManualLiftPit,
         _ => false
     };
 }
@@ -79,6 +79,14 @@ public class PlanLevel
     /// <summary>Mặt bằng móng (vẽ móng, giằng móng, cột chân).</summary>
     public bool IsFoundation { get; set; }
     public List<PlanItem> Items { get; set; } = new();
+    /// <summary>Ánh xạ (xref) mặt bằng kiến trúc của tầng – file DXF/DWG (đường dẫn tuyệt đối lúc chọn); chỉ để tham chiếu, không sửa.</summary>
+    public string Underlay { get; set; } = "";
+    /// <summary>Đường dẫn ánh xạ tương đối so với thư mục hồ sơ (ưu tiên khi mở hồ sơ ở máy khác).</summary>
+    public string UnderlayRel { get; set; } = "";
+    /// <summary>Dời ánh xạ (m) để trục kiến trúc trùng trục kết cấu.</summary>
+    public double UnderlayDx { get; set; }
+    public double UnderlayDy { get; set; }
+    public bool UnderlayVisible { get; set; } = true;
 }
 
 /// <summary>Đường cắt mặt cắt thép sàn do người dùng đặt trên một mặt bằng (vd. "1-1" cắt qua ô sàn điển hình).</summary>
@@ -109,7 +117,7 @@ public class PlanTreeGroup
     public List<IDetailMember> Members { get; set; } = new();
 }
 
-public class StructuralPlan
+public partial class StructuralPlan
 {
     /// <summary>Bước trục X (trục đứng 1, 2, 3…), m – "3.6 4.2" hoặc "3*3.6".</summary>
     public string SpansX { get; set; } = "";
@@ -178,12 +186,16 @@ public class StructuralPlan
             string nm = (lv.Name ?? "").Trim();
             string title = nm.StartsWith("Mái", StringComparison.OrdinalIgnoreCase) ? "Mặt bằng kết cấu mái" : "Mặt bằng kết cấu " + nm;
             var g = new PlanTreeGroup { Title = title, Kind = "Tang", Level = lv };
+            // lanh tô – ô văng: nhóm riêng "Mặt bằng lanh tô – ô văng <tầng>" ngay sau mặt bằng tầng (mục lanh tô cửa các tầng)
+            var gl = new PlanTreeGroup { Title = LintelGroupTitle(lv), Kind = LintelGroupKind, Level = lv };
             foreach (var m in On(lv, (i, mm) => i.Kind != PlanKinds.Column))
             {
                 if (FoundBeam(m)) { if (!gB.Members.Contains(m)) gB.Members.Add(m); }
+                else if (m is ManualLintel && lv.Items.Where(i => i.Member == m.Name).All(i => i.Kind == PlanKinds.Lintel || i.Kind == PlanKinds.Canopy)) gl.Members.Add(m);
                 else g.Members.Add(m);
             }
             tangs.Add(g);
+            if (gl.Members.Count > 0) tangs.Add(gl);
         }
         foreach (var lv in levels)
             foreach (var m in On(lv, (i, mm) => i.Kind == PlanKinds.Column))
@@ -395,6 +407,14 @@ public class StructuralPlan
             case ManualStair cs when PlanKinds.IsRect(it.Kind):
                 double sw = it.MaxX - it.MinX, sh = it.MaxY - it.MinY;
                 if (sw > 0.8 && sh > 1.5) { cs.WellWidth = Math.Round(Math.Min(sw, sh), 3); cs.WellLength = Math.Round(Math.Max(sw, sh), 3); return "ô thang " + Dt.F(cs.WellWidth) + " × " + Dt.F(cs.WellLength) + " m"; }
+                break;
+            case ManualLiftPit lp when PlanKinds.IsRect(it.Kind):
+                double lw = it.MaxX - it.MinX, lh = it.MaxY - it.MinY;
+                if (lw - 2 * lp.Wall > 0.8 && lh - 2 * lp.Wall > 0.8)
+                {
+                    lp.ShaftW = Math.Round(lw - 2 * lp.Wall, 3); lp.ShaftD = Math.Round(lh - 2 * lp.Wall, 3);
+                    return "giếng thang " + Dt.F(lp.ShaftW) + " × " + Dt.F(lp.ShaftD) + " m (mép ngoài vách)";
+                }
                 break;
             case RaftInput r when PlanKinds.IsRect(it.Kind):
                 double rw = it.MaxX - it.MinX, rh = it.MaxY - it.MinY;

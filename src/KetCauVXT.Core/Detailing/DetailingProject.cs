@@ -32,15 +32,19 @@ public class DetailingProject
     public List<PrestressInput> Prestress { get; set; } = new();
     public List<WaterTankInput> Tanks { get; set; } = new();
     public List<ManualStair> Stairs { get; set; } = new();
+    public List<ManualLiftPit> LiftPits { get; set; } = new();
 
     /// <summary>Mặt bằng kết cấu: lưới trục, các mặt bằng, vị trí cấu kiện (Detailing/StructuralPlan.cs).</summary>
     public StructuralPlan Plan { get; set; } = new();
+
+    /// <summary>Dàn trang in (Detailing/SheetLayout.cs); null = chưa dàn trang (tự dàn khi mở cửa sổ Dàn trang in).</summary>
+    public DetailSheetSet Sheets { get; set; }
 
     /// <summary>Các nhóm cấu kiện theo thứ tự hiển thị: (khoá, tên nhóm, danh sách).</summary>
     [JsonIgnore]
     public IEnumerable<(string Key, string Title, System.Collections.IList List)> Groups => new (string, string, System.Collections.IList)[]
     {
-        ("Dam", "Dầm", Beams), ("Cot", "Cột", Columns), ("San", "Sàn (ô bản)", Slabs), ("MatBangSan", "Mặt bằng sàn", SlabPlans), ("LanhTo", "Lanh tô – ô văng", Lintels), ("CauThang", "Cầu thang bộ", Stairs),
+        ("Dam", "Dầm", Beams), ("Cot", "Cột", Columns), ("San", "Sàn (ô bản)", Slabs), ("MatBangSan", "Mặt bằng sàn", SlabPlans), ("LanhTo", "Lanh tô – ô văng", Lintels), ("CauThang", "Cầu thang bộ", Stairs), ("HoPit", "Hố pít – vách thang máy", LiftPits),
         ("MongDon", "Móng đơn", Footings), ("MongBang", "Móng băng", Strips), ("MongCoc", "Móng cọc (đài cọc)", PileCaps),
         ("MongBe", "Móng bè", Rafts), ("DuUngLuc", "Dự ứng lực", Prestress), ("BeNuoc", "Bể nước", Tanks)
     };
@@ -54,7 +58,7 @@ public class DetailingProject
         var g = Groups.First(x => x.Key == key);
         IDetailMember m = key switch
         {
-            "Dam" => new ManualBeam(), "Cot" => new ManualColumn(), "San" => new ManualSlab(), "MatBangSan" => ManualSlabPlan.Sample(), "LanhTo" => ManualLintel.Sample(), "CauThang" => ManualStair.Sample(),
+            "Dam" => new ManualBeam(), "Cot" => new ManualColumn(), "San" => new ManualSlab(), "MatBangSan" => ManualSlabPlan.Sample(), "LanhTo" => ManualLintel.Sample(), "CauThang" => ManualStair.Sample(), "HoPit" => ManualLiftPit.Sample(),
             "MongDon" => new ManualFooting(), "MongBang" => new ManualStrip(), "MongCoc" => new ManualPileCap(),
             "MongBe" => RaftInput.Sample(), "DuUngLuc" => PrestressSample(), _ => new WaterTankInput()
         };
@@ -79,11 +83,17 @@ public class DetailingProject
         var p = JsonSerializer.Deserialize<DetailingProject>(json, Json) ?? new DetailingProject();
         p.Settings ??= new DetailSettings();
         p.Beams ??= new(); p.Columns ??= new(); p.Slabs ??= new(); p.SlabPlans ??= new(); p.Lintels ??= new(); p.Footings ??= new(); p.Strips ??= new();
-        p.PileCaps ??= new(); p.Rafts ??= new(); p.Prestress ??= new(); p.Tanks ??= new(); p.Stairs ??= new();
+        p.PileCaps ??= new(); p.Rafts ??= new(); p.Prestress ??= new(); p.Tanks ??= new(); p.Stairs ??= new(); p.LiftPits ??= new();
         p.Plan ??= new StructuralPlan();
         p.Plan.Levels ??= new();
         foreach (var l in p.Plan.Levels) l.Items ??= new();
         p.Plan.Sections ??= new();
+        if (p.Sheets != null)
+        {
+            p.Sheets.Sheets ??= new();
+            p.Sheets.Sheets.RemoveAll(x => x == null);
+            foreach (var sh in p.Sheets.Sheets) { sh.Figures ??= new(); sh.Figures.RemoveAll(f => f == null || string.IsNullOrEmpty(f.Id)); }
+        }
         return p;
     }
     public void Save(string path) => File.WriteAllText(path, ToJson(), new System.Text.UTF8Encoding(false));
@@ -126,6 +136,7 @@ public class DetailingProject
         p.Prestress.Add(PrestressSample());
         p.Tanks.Add(new WaterTankInput());
         p.Stairs.Add(ManualStair.Sample());
+        p.LiftPits.Add(ManualLiftPit.Sample());
         p.Plan = StructuralPlan.Sample();   // mặt bằng: móng M1 + cột C1 ở 6 giao trục, dầm D1, sàn S1, lanh tô LT1, cầu thang CT1
         p.Plan.SyncQuantities(p);           // SL cấu kiện = số vị trí trên mặt bằng
         return p;
@@ -199,9 +210,28 @@ public static class DetailingExport
             string key = f.Name == StructuralPlanDrawing.TitleFoundation ? "MB_KetCauMong" : f.Name == StructuralPlanDrawing.TitleColumns ? "MB_DinhViCot" : "MB_" + f.Name.Replace(StructuralPlanDrawing.TitleLevelPrefix, "").Split('(')[0].Trim();
             Sheet(new List<Figure> { f }, f.Name, key);
         }
-        // 2. chi tiết cấu kiện
+        // 2. chi tiết cấu kiện; lanh tô – ô văng đặt trên mặt bằng: gộp theo tầng (mặt bằng lanh tô tầng + chi tiết) – mục lanh tô cửa các tầng
+        List<(PlanLevel Level, Figure Plan, List<IDetailMember> Members)> lsh;
+        try { lsh = LintelPlanDrawing.Sheets(p, results); }
+        catch (Exception e) { log.Add("Không lập được mặt bằng lanh tô: " + e.Message); lsh = new(); }
+        var lintelDone = new HashSet<IDetailMember>();
         foreach (var (m, r) in results)
         {
+            if (lintelDone.Contains(m)) continue;
+            var ls = lsh.FirstOrDefault(x => x.Members.Contains(m));
+            if (ls.Members != null)
+            {
+                var lf = new List<Figure>();
+                if (ls.Plan != null) lf.Add(ls.Plan);
+                foreach (var lm in ls.Members)
+                {
+                    lintelDone.Add(lm);
+                    var lr = results.FirstOrDefault(x => ReferenceEquals(x.Member, lm)).Result;
+                    if (lr != null) lf.AddRange(FiguresOf(lm, lr, p.Settings, log));
+                }
+                Sheet(lf, "LANH TÔ – Ô VĂNG " + (ls.Level?.Name ?? "").ToUpperInvariant(), "LanhTo_" + (ls.Level?.Name ?? ""));
+                continue;
+            }
             var figs = FiguresOf(m, r, p.Settings, log);
             Sheet(figs, (r.Kind + " " + m.Name).ToUpperInvariant(), r.Kind + "_" + m.Name);
         }

@@ -374,12 +374,38 @@ public static partial class UserGuide
             .P("Bể ngầm hoặc bể trên mái: kích thước trong, chiều cao nước, chiều dày thành / đáy / nắp; đất (γ, φ, phụ tải, mực nước ngầm). Tính thành bể theo phương pháp dải (Grashof) với áp lực nước / đất, "
                + "kiểm tra bề rộng vết nứt ≤ 0,2 mm (tự tăng thép nếu cần), đáy, nắp, chống đẩy nổi khi bể rỗng; khối lượng kèm băng cản nước, chống thấm.");
 
+        c.Sec("che-do-ho-so.cau-thang", "Cầu thang bộ – bản thang, bậc gạch / BTCT, zíc zắc, xương cá, thang thép")
+            .Bullets("**Bản thang thường** (mặc định): chỉ thiết kế kết cấu **bản thang + chiếu nghỉ** (dầm chiếu nghỉ, dầm cốn nếu chọn); **bậc xây gạch** (thông dụng ở Việt Nam) chỉ là tải trọng và khối lượng xây bậc, không có thép.",
+                "Bản vẽ: mặt bằng thang, **mặt bằng bố trí thép bản thang** (thanh đại diện có móc, chữ Ø..a.. + vòng số hiệu, đường phạm vi rải; dầm chiếu nghỉ / dầm chiếu tới nét đứt; mũi tên LÊN; vạch cắt 1-1, A-A), "
+                + "mặt cắt dọc vế 1-1, **mặt cắt ngang bản thang A-A**, chi tiết chiếu nghỉ, dầm – số hiệu khớp bảng thống kê thép.",
+                "**Bậc: Đổ BTCT liền khối**: cộng bê tông bậc tam giác ½·b·h·B, trọng lượng bậc; mỗi bậc 1 thanh Ø8 (hoặc Ø6) góc mũi bậc + thép chữ L Ø6a200 ôm bậc; chiều dày tính toán vẫn là bản thang (không kể bậc vào h0); có hình **chi tiết bậc BTCT**.",
+                "**Kết cấu thang → Thang zíc zắc**: bản gấp khúc dày t (không có bản nghiêng): tải bản thân 25·t·(b + h)/b, bản tựa đơn trên hình chiếu bằng M = q·L²/8, thép chịu lực đi theo đường gấp khúc, "
+                + "**thép góc chữ L tại góc lõm** (không uốn thép vòng qua góc lõm), kiểm tra cắt và độ mảnh L/t ≤ 20.",
+                "**Thang xương cá**: dầm cốn giữa b × h đỡ bậc công xôn hai bên / một bên: bậc M = q·l²/2 + P·l (P = 1 kN ở mút), thép lớp trên neo qua dầm cốn; dầm cốn chịu uốn, cắt và **xoắn** (bậc một bên / hoạt tải lệch) – đai kín, thép dọc chịu xoắn theo TCVN 5574:2018.",
+                "**Thang thép hình**: 2 cốn U160…U240, I, H hoặc hộp; mác CCT34 / CCT38 / Q235 / SS400; kiểm tra σ = M/W ≤ f·γc, τ, độ võng ≤ L/250; thép góc đỡ bậc L50×5 / L63×6 / L75×6; bản mã + 2 bu lông neo M16; "
+                + "khối lượng thép (kg), sơn chống gỉ (m²); bản vẽ mặt đứng cốn, mặt cắt, chi tiết chân cốn.");
+
+        c.Sec("che-do-ho-so.thang-may", "Hố pít – vách thang máy")
+            .Bullets("＋ **Hố pít – vách thang máy**: kích thước giếng thông thuỷ, chiều dày vách, chiều sâu hố pít (thường 1,2…1,5 m), đáy hố, số tầng, chiều cao tầng, OH, lỗ cửa tầng; đất (γ, φ, phụ tải), mực nước ngầm, sức chịu tải nền; tải cabin, đối trọng.",
+                "Thành hố pít tính như thành bể ngầm (áp lực đất chủ động + nước ngầm, phương pháp dải, vết nứt ≤ 0,2 mm); đáy hố chịu đẩy nổi / phản lực nền, chọc thủng dưới giảm chấn R = 4·(P + Q)·g; chống đẩy nổi khi thi công G ≥ 1,1·U.",
+                "Vách giếng BTCT: thép 2 lớp mỗi phương, hàm lượng μ ≥ 0,25 %; lỗ cửa tầng có thép gia cường mép lỗ 2Ø14, thép xiên góc 2Ø12, dầm lanh tô cửa; chọn **vách đặt trên dầm móng** (mặc định) hoặc trên hố pít.",
+                "Bản vẽ: mặt bằng giếng, mặt cắt 1-1 qua hố pít, chi tiết thép lỗ cửa; khối lượng bê tông, ván khuôn, thép, băng cản nước, chống thấm, đào đất.");
+
         c.Sec("che-do-ho-so.xuat", "Xuất hồ sơ")
             .Bullets("Xuất hồ sơ → **Bản vẽ DXF – gộp 1 file** (các khung A1 đặt cạnh nhau + bảng thống kê cốt thép) hoặc **tách từng cấu kiện** (KC-01_Dầm_D1.dxf … + KC-xx_ThongKeThep.dxf).",
                 "**Bảng khối lượng Excel**: tổng hợp bê tông, bê tông lót, ván khuôn, cốt thép theo nhóm Ø ≤ 10 / 10–18 / > 18, cáp DƯL, công tác khác; trang theo cấu kiện (hàm lượng kg/m³); thống kê cốt thép đầy đủ.",
                 "**Thuyết minh tính toán Word**: căn cứ pháp lý – tiêu chuẩn, vật liệu, từng cấu kiện (công thức thay số, bảng kiểm tra, thông báo), tổng hợp khối lượng.",
                 "**Xuất tất cả vào thư mục…**: cả bản vẽ gộp, bản vẽ tách, Excel và Word.")
             .Note("Ở chế độ triển khai, nội lực do kỹ sư nhập (từ tính tay, chế độ mô hình hoặc phần mềm khác) – chương trình không kiểm tra nội lực đó có đúng với sơ đồ kết cấu hay không.");
+
+        c.Sec("che-do-ho-so.dan-trang", "Dàn trang in, xuất PDF toàn bộ, in trực tiếp")
+            .Bullets("Thanh công cụ → **🖨 Dàn trang in** mở cửa sổ dàn trang: danh sách tờ bên trái, tờ đang chọn ở giữa (khung, khung tên, các hình đúng tỷ lệ in), hình chưa đặt và thuộc tính tờ bên phải.",
+                "**⟳ Tự dàn trang**: xếp mọi hình theo thứ tự hồ sơ – mặt bằng kết cấu móng → chi tiết móng → mặt bằng định vị cột → chi tiết cột → mặt bằng tầng, chi tiết dầm → sàn → lanh tô, ô văng → cầu thang → bể nước, hố pít, kết cấu khác → thống kê thép, vật liệu. Mỗi mục bắt đầu tờ mới; hình xếp trái → phải, trên → dưới, cách nhau ≥ 10 mm, không đè khung tên; tự chọn khổ nhỏ nhất (A3 → A2 → A1 → A0) vừa các hình của mục (bỏ chọn để dùng khổ mặc định).",
+                "Tờ đầu là **danh mục bản vẽ** (số hiệu, tên, khổ, tỷ lệ); tờ đánh số KC-01, KC-02… Mỗi hình in đúng tỷ lệ riêng (mặt bằng 1/100, chi tiết 1/50, mặt cắt 1/25), khung tên ghi các tỷ lệ của tờ.",
+                "**Dàn trang tay**: kéo hình để dời; chọn hình rồi **Chuyển** sang tờ khác hoặc **Gỡ hình khỏi tờ**; đặt hình chưa đặt vào tờ đang chọn; thêm / xoá / đổi thứ tự tờ, đổi khổ giấy, khổ đứng, tên tờ, ngày ghi khung tên. Tờ đã chỉnh tay **tự khoá** – lần tự dàn trang sau giữ nguyên tờ khoá. Khung đỏ báo hình chồng hình khác, đè khung tên hoặc ra ngoài khung. Bố cục lưu cùng hồ sơ .kcvxth.",
+                "**Xuất PDF toàn bộ…**: một file PDF dạng nét, mỗi tờ một trang đúng khổ giấy, nét theo layer (màu, bề dày in), chữ tiếng Việt bằng phông Arial / Times New Roman của máy (nhúng vào PDF); tuỳ chọn **đen trắng**.",
+                "**In…**: chọn máy in đã cài driver trên máy, số bản, khoảng trang; tờ tự thu vừa khổ giấy máy in (xoay nếu hợp hơn) hoặc chọn **In 1:1**. **Xuất DWG/DXF…**: mỗi tờ một file AutoCAD theo định dạng xuất đang chọn.")
+            .Note("In và xuất PDF chỉ dùng máy in, phông chữ có sẵn trên máy – không kết nối mạng, không gửi dữ liệu đi đâu.");
         return c;
     }
 

@@ -18,7 +18,7 @@ namespace KetCauVXT.App;
 /// <summary>Chế độ TRIỂN KHAI HỒ SƠ: danh sách cấu kiện bên trái (dầm, cột, sàn, móng đơn / băng / cọc / bè, dự ứng lực, bể nước),
 /// bảng nhập thông số ở giữa (tự sinh từ [Field] của Core/Detailing), kết quả kiểm tra – thuyết minh – xem trước bản vẽ – khối lượng bên phải.
 /// Mọi thay đổi tính lại ngay cấu kiện đang chọn. Xuất bản vẽ DXF (gộp / tách), Excel khối lượng, Word thuyết minh.</summary>
-public sealed class DetailingWindow : Window
+public sealed partial class DetailingWindow : Window
 {
     public const string HelpId = "che-do-ho-so.giao-dien";
     private DetailingProject _prj = new();
@@ -128,12 +128,13 @@ public sealed class DetailingWindow : Window
         foreach (var (key, title, _) in _prj.Groups)
         {
             string k = key;
-            string shortName = key switch { "MongCoc" => "Móng cọc", "DuUngLuc" => "DƯL", "BeNuoc" => "Bể nước", "San" => "Ô sàn", "LanhTo" => "Lanh tô", "CauThang" => "Cầu thang", _ => title };
+            string shortName = key switch { "MongCoc" => "Móng cọc", "DuUngLuc" => "DƯL", "BeNuoc" => "Bể nước", "San" => "Ô sàn", "LanhTo" => "Lanh tô", "CauThang" => "Cầu thang", "HoPit" => "Thang máy", _ => title };
             B("＋ " + shortName, () => AddMember(k), "Thêm " + title.ToLowerInvariant());
         }
         bar.Items.Add(new Separator());
         B("⇩ Từ AutoCAD", PickFromAcad, "Lấy kích thước từ AutoCAD: trong AutoCAD gõ VXT_KT, chọn đối tượng (dầm, cột, sàn, móng, móng băng)");
         B("Tính toàn bộ (F5)", RecalcAll, "Tính lại mọi cấu kiện");
+        B("🖨 Dàn trang in", OpenSheetLayout, "Tự dàn trang / dàn trang tay các tờ in, xuất PDF toàn bộ hồ sơ, in trực tiếp qua máy in đã cài");
         B("Xuất tất cả…", ExportAll, "Bản vẽ AutoCAD (gộp + tách: mặt bằng kết cấu, chi tiết cấu kiện, thống kê thép – vật liệu), Excel khối lượng, Word thuyết minh vào một thư mục");
         bar.Items.Add(new TextBlock { Text = " Định dạng xuất: ", VerticalAlignment = VerticalAlignment.Center });
         _fmt.ItemsSource = Formats.Select(f => f.Label).ToList();
@@ -172,6 +173,7 @@ public sealed class DetailingWindow : Window
             {
                 if (!ReferenceEquals(m, _cur) && _pvSource.SelectedItem is string ps && ps != PreviewMember) _pvSource.SelectedItem = PreviewMember;
                 ShowMember(m);
+                OnTreeMember(ti, m);
             }
             else if (ti.Tag is PlanTreeGroup pg) ShowPlanGroup(pg);
         };
@@ -219,6 +221,7 @@ public sealed class DetailingWindow : Window
         // tab 4: không gian vẽ mặt bằng kết cấu (đặt, đánh dấu, đặt tên cấu kiện → chi tiết cấu kiện)
         _plan = new DetailingPlanCanvas(this, () => _prj, PlanChanged, m => { RefreshTree(m); ShowMember(m); _tabs.SelectedIndex = 0; });
         _tabs.Items.Add(new TabItem { Header = "Mặt bằng kết cấu", Content = _plan });
+        InitPlanLink();
         _tabs.SelectionChanged += (s, e) => { if (e.Source == _tabs) { if (_tabs.SelectedIndex == 2) { FillPreviewSources(); RefreshPreview(); } if (_tabs.SelectedIndex == 3) RefreshQuantities(); if (_tabs.SelectedIndex == 4) _plan.Redraw(); } };
         Grid.SetColumn(_tabs, 4); grid.Children.Add(_tabs);
         dock.Children.Add(grid);
@@ -299,6 +302,7 @@ public sealed class DetailingWindow : Window
             else foreach (var x in pg.Members) g.Items.Add(Leaf(x));
             _tree.Items.Add(g);
         }
+        pick = PreferLeaf(select) ?? pick;
         if (pick != null) { pick.IsSelected = true; pick.BringIntoView(); }
         else if (select == null) ShowMember(null);
     }
@@ -311,6 +315,7 @@ public sealed class DetailingWindow : Window
             "Mong" or "DamMong" => StructuralPlanDrawing.TitleFoundation,
             "Cot" => StructuralPlanDrawing.TitleColumns,
             "Tang" => StructuralPlanDrawing.LevelTitle(g.Level),
+            StructuralPlan.LintelGroupKind => LintelPlanDrawing.Title(g.Level),
             _ => null
         };
         if (name == null) return;
@@ -553,7 +558,7 @@ public sealed class DetailingWindow : Window
     private static string KindTitle(IDetailMember m) => m switch
     {
         ManualBeam => "Dầm", ManualColumn => "Cột", ManualSlab => "Ô sàn", ManualSlabPlan => "Mặt bằng sàn", ManualLintel => "Lanh tô – ô văng", ManualFooting => "Móng đơn", ManualStrip => "Móng băng",
-        ManualPileCap => "Đài cọc", ManualStair => "Cầu thang bộ", RaftInput => "Móng bè", PrestressInput => "Cấu kiện dự ứng lực", WaterTankInput => "Bể nước", _ => "Cấu kiện"
+        ManualPileCap => "Đài cọc", ManualStair => "Cầu thang bộ", ManualLiftPit => "Hố pít – vách thang máy", RaftInput => "Móng bè", PrestressInput => "Cấu kiện dự ứng lực", WaterTankInput => "Bể nước", _ => "Cấu kiện"
     };
 
     private FrameworkElement Editor(object target, PropertyInfo pi, FieldAttribute fa)
@@ -777,7 +782,7 @@ public sealed class DetailingWindow : Window
     }
     private bool _loadingPv;
 
-    private List<Figure> PlanFigures() => StructuralPlanDrawing.Build(_prj, Results());
+    private List<Figure> PlanFigures() => StructuralPlanDrawing.Build(_prj, Results()).Concat(LintelPlanFigures()).ToList();
 
     /// <summary>Hình đang xem trước: cấu kiện đang chọn hoặc mặt bằng kết cấu đã chọn ở ô nguồn.</summary>
     private List<Figure> PreviewFigures()
@@ -1077,6 +1082,17 @@ public sealed class DetailingWindow : Window
         if (dlg.ShowDialog(this) != true) return;
         try { DetailingExport.Word(_prj, Results(), dlg.FileName); SetStatus("Đã xuất " + dlg.FileName); }
         catch (Exception ex) { MessageBox.Show(this, "Không xuất được Word:\n" + ex.Message, Title); }
+    }
+
+    /// <summary>Cửa sổ dàn trang in (DetailSheetWindow): bố cục tờ lưu trong hồ sơ.</summary>
+    private void OpenSheetLayout()
+    {
+        try
+        {
+            var w = new DetailSheetWindow(_prj, Results(), () => { _dirty = true; UpdateTitle(); }) { Owner = this };
+            w.ShowDialog();
+        }
+        catch (Exception ex) { MessageBox.Show(this, "Không mở được dàn trang: " + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void ExportAll()

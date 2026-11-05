@@ -37,6 +37,8 @@ public class ManualLintel : IDetailMember
     [Field("Chiều cao lanh tô (0 = tự chọn)", Unit = "mm", Scale = 1000, Group = "Lanh tô", Hint = "tự chọn: max(Lo/10; 150 mm), làm tròn lên 50 mm")] public double Hl { get; set; }
     [Field("Chiều dài gối mỗi bên (0 = max(200; h))", Unit = "mm", Scale = 1000, Group = "Lanh tô", Hint = "gối lên tường ≥ 200 mm")] public double La { get; set; }
     [Field("Lớp bảo vệ tới mép cốt dọc", Unit = "mm", Scale = 1000, Group = "Lanh tô")] public double Cover { get; set; } = 0.02;
+    [Field("Cường độ chịu nén tính toán khối xây dưới gối R", Unit = "MPa", Group = "Lanh tô",
+        Hint = "TCVN 5573:2011 – gạch đặc M75, vữa M50 ≈ 1,3 MPa; gạch M100 vữa M75 ≈ 1,7 MPa; gạch rỗng / bê tông nhẹ nhỏ hơn")] public double BrickR { get; set; } = 1.3;
     [Field("Lanh tô hai đầu liền cột / giằng tường (chịu xoắn)", Group = "Lanh tô",
         Hint = "bỏ chọn: lanh tô chỉ gác lên tường → kiểm tra chống lật ô văng")] public bool AnchoredEnds { get; set; } = true;
 
@@ -100,6 +102,41 @@ public class ManualLintel : IDetailMember
     /// <summary>Lanh tô + ô văng cửa đi 1,2 m, tường 220, hai đầu liền giằng tường – đạt mọi kiểm tra.</summary>
     public static ManualLintel Sample() => new() { Name = "LT1", Type = TypeCombined, Lo = 1.2, Bw = 0.22, Lc = 0.6, AnchoredEnds = true };
 
+    /// <summary>Tường mỏng (≤ 120 mm – tường 110): áp dụng gợi ý an toàn lanh tô tường 110.</summary>
+    public const double Thin = 0.12;
+    /// <summary>Ô cửa lớn trong tường 110: Lo &gt; 1,8 m → khuyến nghị bổ trụ BTCT / lanh tô liền giằng – cột.</summary>
+    public const double LargeDoor110 = 1.8;
+
+    /// <summary>Chiều cao lanh tô tường 110 tự chọn: max(Lo/10; 150 mm), Lo &gt; 1,5 m lấy ≥ 200 mm; làm tròn lên 50 mm.</summary>
+    public static double AutoHeight110(double lo) => RcSection.CeilTo(Math.Max(Math.Max(lo / 10, 0.15), lo > 1.5 + 1e-9 ? 0.20 : 0), 0.05);
+
+    /// <summary>Gối (ngàm) lanh tô tường 110 mỗi bên: ≥ 200 mm (Lo ≤ 1,5 m), ≥ 250 mm (Lo &gt; 1,5 m), và ≥ h.</summary>
+    public static double MinBearing110(double lo) => lo > 1.5 + 1e-9 ? 0.25 : 0.20;
+    public static double AutoBearing110(double lo, double h) => Math.Max(MinBearing110(lo), h);
+
+    /// <summary>Khả năng chịu nén cục bộ của khối xây dưới đầu lanh tô (kN): N ≤ ψ·d·R·Ac, ψ = 0,5 (ứng suất tam giác dưới đầu dầm uốn),
+    /// d = 1,5 − 0,5·ψ = 1,25, Ac = t·a (TCVN 5573:2011 mục nén cục bộ, lấy hệ số tăng cường ξ = 1 thiên an toàn). R MPa, t, a m.</summary>
+    public static double BearingCapacity(double rMpa, double t, double a) => 0.5 * 1.25 * Math.Max(rMpa, 0) * 1000 * t * a;
+
+    /// <summary>Gợi ý an toàn lanh tô tường 110 (cửa đi các phòng, cửa đi lớn): chiều cao, gối mỗi bên, nén cục bộ khối xây, ô cửa lớn.</summary>
+    private void Wall110(DetailResult r, double hl, double la)
+    {
+        double hMin = AutoHeight110(Lo), aMin = MinBearing110(Lo);
+        r.Calc.Add("## Tường 110 – gợi ý an toàn lanh tô: h ≥ max(Lo/10; 150 mm" + (Lo > 1.5 ? "; 200 mm khi Lo > 1,5 m" : "") + ") = " + Dt.Mm(hMin)
+                   + " mm; gối mỗi bên ≥ " + Dt.Mm(aMin) + " mm (Lo " + (Lo > 1.5 ? "> " : "≤ ") + "1,5 m); bề rộng lanh tô = chiều dày tường " + Dt.Mm(Bw) + " mm");
+        r.Messages.Add("Gợi ý (tường 110): tiết diện lanh tô " + Dt.Mm(Bw) + "×" + Dt.Mm(Math.Max(hl, hMin)) + " mm, gối (ngàm) vào tường mỗi bên ≥ " + Dt.Mm(aMin)
+                       + " mm, thép dưới ≥ 2Ø10, đai Ø6a150; xây tường phía trên sau khi bê tông lanh tô đủ cường độ");
+        r.Checks.Add(Dt.Check("Tường 110: chiều cao lanh tô h ≥ " + Dt.Mm(hMin) + " mm", hMin * 1000, hl * 1000, "mm"));
+        r.Checks.Add(Dt.Check("Tường 110: gối mỗi bên a ≥ " + Dt.Mm(aMin) + " mm", aMin * 1000, la * 1000, "mm"));
+        double nu = BearingCapacity(BrickR, Bw, la);
+        r.Calc.Add("Nén cục bộ khối xây dưới gối lanh tô: N = Q = " + Dt.F(V, "0.00") + " kN ≤ ψ·d·R·t·a = 0,5·1,25·" + Dt.F(BrickR, "0.0#") + "·10³·" + Dt.F(Bw, "0.###") + "·" + Dt.F(la, "0.###")
+                   + " = " + Dt.F(nu, "0.00") + " kN (TCVN 5573:2011, ξ = 1)");
+        r.Checks.Add(Dt.Check("Tường 110: nén cục bộ khối xây dưới gối lanh tô", Math.Max(V, 0), nu, "kN", "R = " + Dt.F(BrickR, "0.0#") + " MPa"));
+        if (Lo > LargeDoor110 + 1e-9)
+            r.Messages.Add("Gợi ý (tường 110, cửa lớn Lo = " + Dt.F(Lo) + " m > " + Dt.F(LargeDoor110) + " m): trụ gạch 110 hai bên cửa chịu gối yếu – nên bổ trụ BTCT 110×220 hai bên ô cửa "
+                           + "(thép 4Ø12, đai Ø6a150, neo vào dầm / sàn trên dưới) và đổ lanh tô liền trụ, hoặc thay lanh tô bằng dầm BTCT gác lên cột");
+    }
+
     /// <summary>Chiều cao lanh tô tự chọn: max(Lo/10; 0,15 m), làm tròn lên 50 mm.</summary>
     public static double AutoHeight(double lo) => RcSection.CeilTo(Math.Max(lo / 10, 0.15), 0.05);
 
@@ -150,8 +187,9 @@ public class ManualLintel : IDetailMember
         }
         double c = Math.Max(Cover, 0.015);
         double b = Bw;
-        double hl = Hl > 0 ? Hl : AutoHeight(Lo);
-        double la = La > 0 ? La : Math.Max(0.20, hl);
+        bool thin = Bw <= Thin + 1e-9;
+        double hl = Hl > 0 ? Hl : thin ? AutoHeight110(Lo) : AutoHeight(Lo);
+        double la = La > 0 ? La : thin ? AutoBearing110(Lo, hl) : Math.Max(0.20, hl);
         HlUsed = hl; LaUsed = la;
         double ltot = Lo + 2 * la;
         CanopyLen = CanopyLength > 0 ? CanopyLength : ltot;
@@ -294,6 +332,7 @@ public class ManualLintel : IDetailMember
             r.Checks.Add(Dt.Check("Thép dưới lanh tô ≥ 2Ø10", 2 * Dt.Area(10) * 1e4, asBot * 1e4, "cm²"));
             if (!Dt.FitsInLayer(b, c, sd, bn, bd, false)) r.Messages.Add("Thép dưới lanh tô " + Dt.Bars(bn, bd) + " không đủ khe hở trên bề rộng " + Dt.Mm(b) + " mm – đặt 2 lớp hoặc tăng h");
             if (la < 0.20 - 1e-9) r.Messages.Add("Cảnh báo: gối lanh tô " + Dt.Mm(la) + " mm < 200 mm – không đảm bảo gối tựa lên khối xây");
+            if (thin) Wall110(r, hl, la);
 
             double len = Dt.R10(ltot - 2 * c);
             var bot = Dt.Straight("Lanh tô dưới", bd, bn, len);

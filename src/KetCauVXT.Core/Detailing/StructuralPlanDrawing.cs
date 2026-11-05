@@ -75,6 +75,12 @@ public static class StructuralPlanDrawing
                 if (colLevel != null) figs.Add(new Figure(Level(plan, colLevel, map, TitleColumns, true), TitleColumns, true));
                 break;
             }
+            case StructuralPlan.LintelGroupKind:
+            {
+                var lf = LintelPlanDrawing.PlanFigure(plan, g.Level, map);
+                if (lf != null) figs.Add(lf);
+                break;
+            }
             case "Tang":
                 if (g.Level != null)
                 {

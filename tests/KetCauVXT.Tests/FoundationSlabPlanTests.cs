@@ -78,8 +78,10 @@ public static class FoundationSlabPlanTests
         check("Cây: Mặt bằng dầm móng chứa D1 (đặt trên mặt bằng móng)", B(G("DamMong")?.Members.Any(m => m.Name == "D1") == true), 1, 0);
         check("Cây: Mặt bằng định vị cột chứa C1", B(G("Cot")?.Members.Any(m => m.Name == "C1") == true), 1, 0);
         var t2g = groups.FirstOrDefault(g => g.Kind == "Tang" && g.Level?.Name == "Tầng 2");
-        check("Cây: Mặt bằng kết cấu Tầng 2 chứa sàn S1, lanh tô LT1, cầu thang CT1, không chứa cột",
-              B(t2g != null && t2g.Members.Any(m => m.Name == "S1") && t2g.Members.Any(m => m.Name == "LT1") && t2g.Members.Any(m => m.Name == "CT1") && !t2g.Members.Any(m => m is ManualColumn)), 1, 0);
+        var t2l = groups.FirstOrDefault(g => g.Kind == StructuralPlan.LintelGroupKind && g.Level?.Name == "Tầng 2");
+        check("Cây: Mặt bằng kết cấu Tầng 2 chứa sàn S1, cầu thang CT1, không chứa cột; lanh tô LT1 ở mục Mặt bằng lanh tô – ô văng Tầng 2",
+              B(t2g != null && t2g.Members.Any(m => m.Name == "S1") && t2l != null && t2l.Members.Any(m => m.Name == "LT1") && !t2g.Members.Any(m => m.Name == "LT1")
+                && t2g.Members.Any(m => m.Name == "CT1") && !t2g.Members.Any(m => m is ManualColumn)), 1, 0);
         var union = groups.SelectMany(g => g.Members).Distinct().Count();
         check("Cây: mọi cấu kiện hồ sơ đều có trong cây (đặt hoặc chưa đặt)", union, p.All.Count(), 0);
         var un = G("ChuaDat");

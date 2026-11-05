@@ -146,6 +146,18 @@ public static class SheetComposer
         return outW;
     }
 
+    /// <summary>Khung tờ + khung tên tại gốc (0, 0) cho tờ pw × ph (mm giấy) ở tỷ lệ w.Scale (dàn trang in – Detailing/SheetLayout.cs);
+    /// ghi thêm tỷ lệ các hình và ngày (nếu người dùng nhập).</summary>
+    public static void Frame(DxfWriter w, double pw, double ph, SheetInfo info, string scaleText = "", string date = "")
+    {
+        double S = w.Scale;
+        double mL = 25 * S, mO = 10 * S, tbH = 45 * S, tbW = 180 * S;
+        DrawFrame(w, 0, 0, pw * S, ph * S, mL, mO, tbW, tbH, info, 0, 1);
+        double x2 = pw * S - mO, y1 = mO, rowH = tbH * 0.25, c2 = x2 - 40 * S;
+        if (!string.IsNullOrWhiteSpace(scaleText)) w.Text(Lay.KhungTen, c2 - 2 * S, y1 + rowH / 2, 0.8 * w.Th, "Tỷ lệ: " + scaleText, 0, 2, 2);
+        if (!string.IsNullOrWhiteSpace(date)) w.Text(Lay.KhungTen, c2 - 2 * S, y1 + 2 * rowH + rowH / 2, 0.8 * w.Th, "Ngày: " + date, 0, 2, 2);
+    }
+
     private static void DrawFrame(DxfWriter w, double ox, double oy, double fw, double fh, double mL, double mO,
         double tbW, double tbH, SheetInfo info, int idx, int count)
     {

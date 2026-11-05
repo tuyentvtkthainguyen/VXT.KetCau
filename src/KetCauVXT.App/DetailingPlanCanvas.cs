@@ -12,7 +12,7 @@ namespace KetCauVXT.App;
 /// công cụ đặt Cột / Móng / Dầm / Sàn / Lanh tô / Ô văng / Cầu thang (bắt điểm giao trục, đường trục), chọn – đặt tên – gán cấu kiện,
 /// xoá; thu phóng bằng con lăn, kéo hình bằng nút giữa (hoặc Ctrl + kéo trái). Vị trí chưa gán → tạo cấu kiện mới và suy kích thước
 /// (Core/Detailing/StructuralPlan.cs) nên hồ sơ chi tiết đi từ mặt bằng tới chi tiết cấu kiện.</summary>
-public sealed class DetailingPlanCanvas : DockPanel
+public sealed partial class DetailingPlanCanvas : DockPanel
 {
     private readonly Func<DetailingProject> _prj;
     private readonly Action _changed;
@@ -62,14 +62,16 @@ public sealed class DetailingPlanCanvas : DockPanel
         top.Children.Add(r2);
         var r3 = new WrapPanel();
         foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (PlanKinds.Slab, "Sàn"),
-                     (PlanKinds.Lintel, "Lanh tô"), (PlanKinds.Canopy, "Ô văng"), (PlanKinds.Stair, "Cầu thang"), (ToolSection, "Mặt cắt"), ("Xoa", "Xoá") })
+                     (PlanKinds.Lintel, "Lanh tô"), (PlanKinds.Canopy, "Ô văng"), (PlanKinds.Stair, "Cầu thang"), (ToolSection, "Mặt cắt"),
+                     (ToolSlabBay, "Sàn trong ô dầm"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), ("Xoa", "Xoá") })
         {
             var rb = new RadioButton { Content = label, GroupName = "plantool", Margin = new Thickness(0, 2, 10, 2), IsChecked = key == "Chon", Tag = key };
-            rb.Checked += (s, e) => { _tool = (string)rb.Tag; _first = null; FillMembers(); UpdateHint(); Redraw(); };
+            rb.Checked += (s, e) => { _tool = (string)rb.Tag; _first = null; _moveItem = null; FillMembers(); UpdateHint(); Redraw(); };
             _tools[key] = rb; r3.Children.Add(rb);
         }
         r3.Children.Add(Lbl("  Cấu kiện:")); r3.Children.Add(_member);
         top.Children.Add(r3);
+        top.Children.Add(BuildToolsRow());
         top.Children.Add(_status);
         DockPanel.SetDock(top, Dock.Top);
         Children.Add(top);
@@ -87,7 +89,12 @@ public sealed class DetailingPlanCanvas : DockPanel
         _cv.MouseDown += OnDown;
         _cv.MouseMove += OnMove;
         _cv.MouseUp += (s, e) => { if (_panFrom != null) { _panFrom = null; _cv.ReleaseMouseCapture(); } };
-        _cv.KeyDown += (s, e) => { if (e.Key == Key.Escape) { _first = null; _sel = null; Redraw(); UpdateHint(); } else if (e.Key == Key.Delete && _sel != null) DeleteItem(_sel); };
+        _cv.KeyDown += (s, e) =>
+        {
+            if (e.Key == Key.Escape) { _first = null; _sel = null; _moveItem = null; Redraw(); UpdateHint(); }
+            else if (e.Key == Key.Delete && _sel != null) DeleteItem(_sel);
+            else if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control) { Undo(); e.Handled = true; }
+        };
         Reload();
     }
 
@@ -124,10 +131,11 @@ public sealed class DetailingPlanCanvas : DockPanel
 
     private void FillMembers()
     {
-        if (!PlanKinds.All.Contains(_tool)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
+        string kind = _tool == ToolSlabBay ? PlanKinds.Slab : _tool;
+        if (!PlanKinds.All.Contains(kind)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
         _member.IsEnabled = true;
         var names = new List<string> { NewMember };
-        names.AddRange(P.All.Where(m => PlanKinds.Accepts(_tool, m)).Select(m => m.Name));
+        names.AddRange(P.All.Where(m => PlanKinds.Accepts(kind, m)).Select(m => m.Name));
         _member.ItemsSource = names;
         _member.SelectedIndex = names.Count > 1 ? 1 : 0;
     }
@@ -140,7 +148,10 @@ public sealed class DetailingPlanCanvas : DockPanel
             "Xoa" => "Xoá: bấm vào vị trí cấu kiện (hoặc đường cắt) cần xoá khỏi mặt bằng (cấu kiện trong hồ sơ vẫn giữ).",
             ToolSection => _first == null ? "Mặt cắt: bấm điểm đầu đường cắt (cắt qua ô sàn điển hình, vuông góc dầm) – mặt cắt thép sàn tl 1/25 xuất cùng mặt bằng."
                                           : "Mặt cắt: bấm điểm cuối đường cắt – Esc huỷ. Chuột phải lên đường cắt: đổi tên / xoá.",
-            _ when PlanKinds.IsPoint(_tool) => PlanKinds.Title(_tool) + ": bấm vào giao trục (tự bắt điểm) để đặt.",
+            ToolSlabBay => "Sàn trong ô dầm: bấm vào bên trong ô được bao bởi dầm (hoặc trục) – tự lấy kích thước ô.",
+            ToolCanopyDoor => "Ô văng trên cửa: bấm vào ô cửa của ánh xạ kiến trúc (cửa ở tường ngoài) – tạo ô văng OV… liền lanh tô, vươn ra phía ngoài.",
+            ToolMove => _moveItem == null ? "Di chuyển: bấm chọn cấu kiện cần dời (bắt điểm gốc)." : "Di chuyển: bấm điểm đích – Esc huỷ.",
+            _ when PlanKinds.IsPoint(_tool) =>PlanKinds.Title(_tool) + ": bấm vào giao trục (tự bắt điểm) để đặt.",
             _ when PlanKinds.IsSegment(_tool) => PlanKinds.Title(_tool) + (_first == null ? ": bấm điểm đầu (bắt giao trục / đường trục)." : ": bấm điểm cuối – Esc huỷ."),
             _ => PlanKinds.Title(_tool) + (_first == null ? ": bấm góc thứ nhất của hình chữ nhật." : ": bấm góc đối diện – Esc huỷ.")
         };
@@ -233,6 +244,8 @@ public sealed class DetailingPlanCanvas : DockPanel
             return;
         }
         if (e.ChangedButton != MouseButton.Left) return;
+        if (_tool != "Chon") _undo.Push(Plan);
+        if (HandleExtraTool(lv, w, tol)) return;
         if (_tool == "Chon")
         {
             _sel = StructuralPlan.HitTest(lv, w.X, w.Y, tol);
@@ -242,6 +255,7 @@ public sealed class DetailingPlanCanvas : DockPanel
                 var m = P.All.FirstOrDefault(x => x.Name == _sel.Member);
                 _status.Text = PlanKinds.Title(_sel.Kind) + " " + (string.IsNullOrEmpty(_sel.Member) ? "(chưa gán)" : _sel.Member) + (m != null ? " – SL " + m.Quantity + ", đặt " + Plan.Count(m.Name) + " vị trí" : "")
                                + " – bấm đúp để mở chi tiết cấu kiện.";
+                if (m != null) Picked?.Invoke(m, lv);
                 if (e.ClickCount >= 2 && m != null) _select(m);
             }
             return;
@@ -267,7 +281,7 @@ public sealed class DetailingPlanCanvas : DockPanel
             if (hit != null) DeleteItem(hit);
             return;
         }
-        var sp = Plan.Snap(w.X, w.Y, tol);
+        var sp = SnapW(lv, w, tol);
         string member = _member.SelectedItem as string;
         if (member == NewMember) member = "";
         if (PlanKinds.IsPoint(_tool))
@@ -301,12 +315,13 @@ public sealed class DetailingPlanCanvas : DockPanel
             _ox += p.X - _panFrom.Value.X; _oy += p.Y - _panFrom.Value.Y; _panFrom = p; _fitted = true; Redraw(); return;
         }
         var w = ToW(p);
-        _mouseW = _tool == ToolSection ? w : Plan.Snap(w.X, w.Y, 12 / _k);
-        if (_first != null || PlanKinds.All.Contains(_tool)) Redraw();
+        _mouseW = _tool == ToolSection ? w : SnapW(Level, w, 12 / _k);
+        if (_first != null || _moveItem != null || PlanKinds.All.Contains(_tool)) Redraw();
     }
 
     private void DeleteItem(PlanItem it)
     {
+        _undo.Push(Plan);
         Level?.Items.Remove(it);
         if (_sel == it) _sel = null;
         _changed(); UpdateHint(); Redraw();
@@ -408,6 +423,7 @@ public sealed class DetailingPlanCanvas : DockPanel
             Bubble(gx1, ys[j], StructuralPlan.NameY(j), 1, 0);
         }
         var lv = Level;
+        DrawUnderlay(lv);
         if (lv != null)
         {
             // mặt bằng móng nhìn mờ cột tầng trên & ngược lại: chỉ vẽ mặt bằng đang xem
@@ -435,6 +451,7 @@ public sealed class DetailingPlanCanvas : DockPanel
             else { Line(a.X, a.Y, b.X, a.Y, br, 1.5, true); Line(b.X, a.Y, b.X, b.Y, br, 1.5, true); Line(b.X, b.Y, a.X, b.Y, br, 1.5, true); Line(a.X, b.Y, a.X, a.Y, br, 1.5, true); }
             Text(((a.X + b.X) / 2), ((a.Y + b.Y) / 2), Dim(Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y))), br, 11);
         }
+        DrawMovePreview();
         if (PlanKinds.All.Contains(_tool))
         {
             var c = ToS(_mouseW.X, _mouseW.Y);

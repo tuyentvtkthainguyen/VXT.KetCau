@@ -10,13 +10,14 @@ namespace KetCauVXT.Detailing;
 // CẦU THANG BỘ – chế độ Triển khai hồ sơ: dùng lại bộ thiết kế / bản vẽ / khối lượng cầu thang của chế độ mô hình
 // (Model/Stair.cs, Design/Concrete/StairDesigner.cs, Drawing/StairDrawing.cs, Report/StairQuantity.cs) trên một
 // dự án mini: 1 ô thang (lưới 1 × 1 nhịp = kích thước ô thang tim trục), 2 tầng cao H, lỗ cầu thang ở tầng trên.
-// Bê tông chỉ gồm bản thang, chiếu nghỉ, dầm chiếu nghỉ, dầm cốn (nếu có); bậc xây gạch, ốp đá / gỗ tính công tác riêng.
+// Bê tông chỉ gồm bản thang, chiếu nghỉ, dầm chiếu nghỉ, dầm cốn (nếu có); bậc xây gạch (mặc định – thông dụng ở Việt Nam), ốp đá / gỗ tính công tác riêng.
+// Các dạng đặc biệt (zíc zắc, xương cá, thép hình) và bậc đổ BTCT liền khối: StairForms.cs; mặt bằng bố trí thép bản thang: StairPlanRebar.cs.
 // =====================================================================
 public class ManualStair : IDetailMember
 {
     [Field("Tên cầu thang", Group = "Chung")] public string Name { get; set; } = "CT1";
     [Field("Số lượng (tầng giống nhau)", Group = "Chung")] public int Quantity { get; set; } = 1;
-    [Field("Kiểu thang", Group = "Hình học", Choices = "2 vế chữ U|1 vế thẳng|3 vế chữ U")] public string Type { get; set; } = "2 vế chữ U";
+    [Field("Dạng mặt bằng thang", Group = "Hình học", Choices = "2 vế chữ U|1 vế thẳng|3 vế chữ U")] public string Type { get; set; } = "2 vế chữ U";
     [Field("Chiều cao tầng", Unit = "m", Group = "Hình học")] public double FloorHeight { get; set; } = 3.3;
     [Field("Ô thang – bề rộng (tim trục, ngang vế)", Unit = "m", Group = "Hình học")] public double WellWidth { get; set; } = 2.4;
     [Field("Ô thang – chiều dài (tim trục, dọc vế)", Unit = "m", Group = "Hình học")] public double WellLength { get; set; } = 4.5;
@@ -37,6 +38,21 @@ public class ManualStair : IDetailMember
     [Field("Ốp mặt bậc", Group = "Hoàn thiện, tải", Choices = "Đá granite|Gỗ|Gạch ceramic|Không ốp")] public string Finish { get; set; } = "Đá granite";
     [Field("Lan can", Group = "Hoàn thiện, tải", Choices = "Lan can thép / inox|Lan can kính|Không")] public string Railing { get; set; } = "Lan can thép / inox";
     [Field("Hoạt tải (tiêu chuẩn)", Unit = "kN/m²", Group = "Hoàn thiện, tải")] public double Live { get; set; } = 3.0;
+
+    // ---- dạng kết cấu thang ----
+    [Field("Kết cấu thang", Group = "Kết cấu thang", Choices = StairForm.Choices,
+        Hint = "Bản thang thường: chỉ thiết kế bản thang + chiếu nghỉ, bậc xây gạch (mặc định) hoặc đổ BTCT liền khối")]
+    public string Form { get; set; } = StairForm.Flat;
+    [Field("Thép góc mũi bậc BTCT Ø", Unit = "mm", Group = "Kết cấu thang", Hint = "6 hoặc 8 – chỉ khi bậc đổ BTCT liền khối")] public int StepBarDia { get; set; } = 8;
+    [Field("Xương cá – dầm cốn giữa b", Unit = "mm", Scale = 1000, Group = "Kết cấu thang")] public double SpineB { get; set; } = 0.30;
+    [Field("Xương cá – dầm cốn giữa h", Unit = "mm", Scale = 1000, Group = "Kết cấu thang")] public double SpineH { get; set; } = 0.40;
+    [Field("Xương cá – bậc công xôn", Group = "Kết cấu thang", Choices = "2 bên (đối xứng)|1 bên")] public string CantileverSides { get; set; } = "2 bên (đối xứng)";
+    [Field("Xương cá – chiều dày bậc (0 = chiều cao bậc)", Unit = "mm", Scale = 1000, Group = "Kết cấu thang")] public double StepDepth { get; set; }
+    [Field("Thang thép – tiết diện cốn", Group = "Kết cấu thang", Choices = SteelTables.SectionChoices)] public string SteelSection { get; set; } = "U200";
+    [Field("Thang thép – mác thép", Group = "Kết cấu thang", Choices = SteelTables.GradeChoices)] public string SteelGrade { get; set; } = "CCT34";
+    [Field("Thang thép – mặt bậc", Group = "Kết cấu thang", Choices = "Thép tấm gân 5 mm|Gỗ dày 40 mm|Ốp đá trên thép tấm")] public string SteelTread { get; set; } = "Thép tấm gân 5 mm";
+    [Field("Thang thép – thép góc đỡ bậc", Group = "Kết cấu thang", Choices = SteelTables.AngleChoices)] public string TreadAngle { get; set; } = "L50×5";
+    [Field("Thang thép – hệ số điều kiện làm việc γc", Group = "Kết cấu thang")] public double SteelGammaC { get; set; } = 0.95;
 
     public static ManualStair Sample() => new();
 
@@ -95,6 +111,12 @@ public class ManualStair : IDetailMember
         {
             var (p, st, err) = BuildModel(s);
             if (err != null) { r.Messages.Add(err); return r; }
+            if (!StairForm.IsFlat(Form))
+            {
+                var fr = StairForms.Design(this, st.Layout(p), s);
+                fr.Calc.Insert(0, "Kết cấu thang: " + Form + " (dạng mặt bằng " + Type + ").");
+                return fr;
+            }
             var sd = StairDesigner.DesignOne(p, st);
             // đánh số thép liên tục qua các bộ phận (vế, chiếu nghỉ, dầm) để bảng thống kê không trùng số hiệu
             int offset = 0;
@@ -109,6 +131,7 @@ public class ManualStair : IDetailMember
             var L = st.Layout(p);
             r.Messages.AddRange(sd.Messages);
             r.Checks.AddRange(sd.Checks);
+            var srcBars = new List<BarMark>();
             foreach (var part in sd.Parts)
             {
                 r.Checks.AddRange(part.Checks);
@@ -116,6 +139,7 @@ public class ManualStair : IDetailMember
                 int qn = Math.Max(1, part.Quantity);
                 foreach (var b in part.Bars.Where(b => b.Count > 0 && b.Dia > 0))
                 {
+                    srcBars.Add(b);
                     r.Bars.Add(new BarMark
                     {
                         Mark = b.Mark, Role = part.Name + " – " + b.Role, Dia = b.Dia, Count = b.Count * qn, Length = b.Length, Shape = b.Shape,
@@ -123,7 +147,9 @@ public class ManualStair : IDetailMember
                     });
                 }
             }
+            if (st.Steps == StepConstruction.Concrete) StairForms.AddStepBars(r, L, s, StepBarDia);
             for (int i = 0; i < r.Bars.Count; i++) r.Bars[i].Mark = i + 1;   // đánh số liên tục qua các vế / chiếu nghỉ – mỗi số hiệu một thanh
+            for (int i = 0; i < srcBars.Count; i++) srcBars[i].Mark = r.Bars[i].Mark;   // bản vẽ chi tiết (StairDrawing) dùng cùng số hiệu với bảng thống kê
             r.Calc.Add("## Cầu thang " + Name + " – " + sd.TypeText + ", " + sd.SupportText);
             r.Calc.Add("Chiều cao tầng H = " + Dt.F(sd.Height) + " m; " + sd.Risers + " cổ bậc h = " + Dt.Mm(sd.Riser) + " mm, mặt bậc b = " + Dt.Mm(sd.Tread)
                        + " mm; 2h + b = " + Dt.Mm(sd.Check2hb) + " mm (600…650); vế rộng " + Dt.Mm(sd.FlightWidth) + " mm, bản thang " + Dt.Mm(sd.WaistT) + " mm, cos α = " + Dt.F(sd.CosA, "0.000"));
@@ -151,10 +177,20 @@ public class ManualStair : IDetailMember
     /// <summary>Bản vẽ chi tiết cầu thang của chế độ mô hình: mặt bằng thang, mặt cắt các vế, chi tiết thép bản thang, chiếu nghỉ, dầm chiếu nghỉ / dầm cốn.</summary>
     public List<Figure> Draw(DetailResult r, DetailSettings s)
     {
+        if (r is StairFormResult fr) return StairForms.Draw(fr, s ?? new DetailSettings());
         if (r?.Source is not StairDesign sd) return new List<Figure>();
         var p = ReferenceEquals(sd, _sd) ? _p : BuildModel(s ?? new DetailSettings()).P;
         if (p == null) return new List<Figure>();
         var ds = new DesignSummary(); ds.Stairs.Add(sd);
-        return StairDrawing.Build(p, ds, sd, StairDrawing.CurrentScale);
+        var figs = StairDrawing.Build(p, ds, sd, StairDrawing.CurrentScale);
+        var st = sd.Stair ?? p.Stairs.FirstOrDefault();
+        if (st == null) return figs;
+        var L = StairLayout.Build(p, st);
+        // mặt bằng bố trí thép bản thang + mặt cắt ngang A-A: chèn sau mặt bằng thang
+        var extra = StairPlanRebar.Build(r, sd, L, s ?? new DetailSettings());
+        figs.InsertRange(Math.Min(1, figs.Count), extra);
+        if (st.Steps == StepConstruction.Concrete && L.Valid)
+            figs.Add(new Figure(StairForms.StepDetail(r, L.Riser, L.Tread, L.WaistT, StepBarDia, s ?? new DetailSettings()), "CHI TIẾT BẬC BTCT " + Name));
+        return figs;
     }
 }

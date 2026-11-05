@@ -591,6 +591,8 @@ Console.WriteLine("61. Tuỳ chọn thép dầm (bẻ mỏ, tăng cường, mũ 
 BeamColumnOptionsTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("62. Đài cọc lớp trên / lồng thép, râu cọc, móng băng vát, thép sàn trên mặt bằng, mặt cắt sàn, cây theo mặt bằng");
 FoundationSlabPlanTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("63. Thang bộ: bậc gạch / bậc BTCT, zíc zắc, xương cá, thang thép hình, mặt bằng thép bản thang; hố pít – vách thang máy");
+StairLiftTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
