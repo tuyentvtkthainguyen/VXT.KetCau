@@ -162,6 +162,13 @@ public static class SheetLayoutEngine
             if (!nm.StartsWith("MẶT CẮT ")) lastPlanSection = sec;
             Add(new SheetFigure { Id = "MB:" + nm, Section = sec, Caption = nm, F = f });
         }
+        // mặt bằng bố trí lanh tô – ô văng các tầng (mục lanh tô cửa các tầng)
+        try
+        {
+            foreach (var (lv, plan, _) in LintelPlanDrawing.Sheets(p, results))
+                if (plan != null) Add(new SheetFigure { Id = "MBLT:" + (lv?.Name ?? ""), Section = 6, Caption = plan.Name ?? "Mặt bằng lanh tô", F = plan });
+        }
+        catch (Exception e) { log.Add("Không lập được mặt bằng lanh tô: " + e.Message); }
         foreach (var (m, r) in results)
         {
             List<Figure> figs;
@@ -307,7 +314,13 @@ public static class SheetLayoutEngine
             foreach (var s in g) s.Title = s.Title + " (" + i++ + "/" + n + ")";
         }
         set.Sheets = all;
-        if (set.IndexSheet) set.Sheets.Insert(0, new DetailSheet { IsIndex = true, Title = IndexTitle, Paper = "A3" });
+        if (set.IndexSheet)
+        {
+            // khổ tờ danh mục: A3 nếu đủ dòng (7 mm / dòng), không thì khổ lớn hơn
+            double need = 12 + 7.0 * (set.Sheets.Count + 2) + SheetGeometry.TitleH;
+            string ip = SheetGeometry.Papers.FirstOrDefault(x => SheetGeometry.Drawable(x).H >= need) ?? "A0";
+            set.Sheets.Insert(0, new DetailSheet { IsIndex = true, Title = IndexTitle, Paper = ip });
+        }
         Renumber(set);
     }
 
