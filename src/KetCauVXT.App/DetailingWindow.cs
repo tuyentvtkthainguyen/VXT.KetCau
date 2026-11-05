@@ -165,7 +165,16 @@ public sealed class DetailingWindow : Window
         DockPanel.SetDock(lb, Dock.Bottom);
         left.Children.Add(lb);
         left.Children.Add(_tree);
-        _tree.SelectedItemChanged += (s, e) => { if (_tree.SelectedItem is TreeViewItem ti && ti.Tag is IDetailMember m) ShowMember(m); };
+        _tree.SelectedItemChanged += (s, e) =>
+        {
+            if (_tree.SelectedItem is not TreeViewItem ti) return;
+            if (ti.Tag is IDetailMember m)
+            {
+                if (!ReferenceEquals(m, _cur) && _pvSource.SelectedItem is string ps && ps != PreviewMember) _pvSource.SelectedItem = PreviewMember;
+                ShowMember(m);
+            }
+            else if (ti.Tag is PlanTreeGroup pg) ShowPlanGroup(pg);
+        };
         grid.Children.Add(left);
         var sp1 = new GridSplitter { Width = 4, HorizontalAlignment = HorizontalAlignment.Stretch, Background = Brushes.Gainsboro };
         Grid.SetColumn(sp1, 1); grid.Children.Add(sp1);
@@ -250,25 +259,64 @@ public sealed class DetailingWindow : Window
     // ==================================================================
     // Cây cấu kiện
     // ==================================================================
+    /// <summary>Cây cấu kiện theo MẶT BẰNG KẾT CẤU (StructuralPlan.GroupForTree): Mặt bằng móng → chi tiết móng, Mặt bằng dầm móng → dầm móng,
+    /// Mặt bằng định vị cột → cột, Mặt bằng kết cấu từng tầng → dầm, sàn, lanh tô…; cuối cùng "Chưa đặt trên mặt bằng" chia theo loại cấu kiện.
+    /// Bấm nút mặt bằng → xem trước mặt bằng đó (kèm mặt cắt thép sàn); bấm cấu kiện → chi tiết cấu kiện.</summary>
     private void RefreshTree(IDetailMember select = null)
     {
         _tree.Items.Clear();
         TreeViewItem pick = null;
-        foreach (var (key, title, list) in _prj.Groups)
+        TreeViewItem Leaf(IDetailMember m)
         {
-            var g = new TreeViewItem { Header = title + " (" + list.Count + ")", IsExpanded = list.Count > 0, FontWeight = FontWeights.SemiBold, Tag = key };
-            foreach (IDetailMember m in list)
+            _res.TryGetValue(m, out var r);
+            string mark = r == null ? "" : r.Ok ? "  ✓" : "  ✗";
+            var ti = new TreeViewItem { Header = m.Name + (m.Quantity > 1 ? " (SL=" + m.Quantity + ")" : "") + mark, Tag = m, FontWeight = FontWeights.Normal, Foreground = r != null && !r.Ok ? Brushes.Firebrick : Brushes.Black };
+            if (pick == null && ReferenceEquals(m, select)) pick = ti;
+            return ti;
+        }
+        List<PlanTreeGroup> groups;
+        try { groups = StructuralPlan.GroupForTree(_prj); }
+        catch { groups = new List<PlanTreeGroup> { new() { Title = "Chưa đặt trên mặt bằng", Kind = "ChuaDat", Members = _prj.All.ToList() } }; }
+        foreach (var pg in groups)
+        {
+            bool un = pg.Kind == "ChuaDat";
+            var g = new TreeViewItem
             {
-                _res.TryGetValue(m, out var r);
-                string mark = r == null ? "" : r.Ok ? "  ✓" : "  ✗";
-                var ti = new TreeViewItem { Header = m.Name + (m.Quantity > 1 ? " (SL=" + m.Quantity + ")" : "") + mark, Tag = m, FontWeight = FontWeights.Normal, Foreground = r != null && !r.Ok ? Brushes.Firebrick : Brushes.Black };
-                g.Items.Add(ti);
-                if (ReferenceEquals(m, select)) pick = ti;
+                Header = pg.Title + " (" + pg.Members.Count + ")", IsExpanded = pg.Members.Count > 0, FontWeight = FontWeights.SemiBold, Tag = un ? null : pg,
+                ToolTip = un ? "Cấu kiện chưa đặt vị trí ở tab Mặt bằng kết cấu" : "Bấm để xem trước mặt bằng; các cấu kiện đặt trên mặt bằng này"
+            };
+            if (un)
+            {
+                foreach (var (key, title, list) in _prj.Groups)
+                {
+                    var sub = list.Cast<IDetailMember>().Where(x => pg.Members.Contains(x)).ToList();
+                    if (sub.Count == 0) continue;
+                    var kg = new TreeViewItem { Header = title + " (" + sub.Count + ")", IsExpanded = true, FontWeight = FontWeights.SemiBold, Tag = key };
+                    foreach (var x in sub) kg.Items.Add(Leaf(x));
+                    g.Items.Add(kg);
+                }
             }
+            else foreach (var x in pg.Members) g.Items.Add(Leaf(x));
             _tree.Items.Add(g);
         }
         if (pick != null) { pick.IsSelected = true; pick.BringIntoView(); }
         else if (select == null) ShowMember(null);
+    }
+
+    /// <summary>Nút mặt bằng trên cây: chuyển tab Xem trước sang mặt bằng tương ứng.</summary>
+    private void ShowPlanGroup(PlanTreeGroup g)
+    {
+        string name = g.Kind switch
+        {
+            "Mong" or "DamMong" => StructuralPlanDrawing.TitleFoundation,
+            "Cot" => StructuralPlanDrawing.TitleColumns,
+            "Tang" => StructuralPlanDrawing.LevelTitle(g.Level),
+            _ => null
+        };
+        if (name == null) return;
+        if (_tabs.SelectedIndex != 2) _tabs.SelectedIndex = 2; else FillPreviewSources();
+        if (_pvSource.ItemsSource is List<string> l && l.Contains(name)) _pvSource.SelectedItem = name;
+        SetStatus(g.Title + ": " + g.Members.Count + " cấu kiện" + (_pvSource.SelectedItem as string == name ? " – đang xem trước mặt bằng (kèm mặt cắt thép sàn)." : " – mặt bằng chưa có lưới trục / vị trí cấu kiện để vẽ."));
     }
 
     private (string Key, IList List)? GroupOf(IDetailMember m)
@@ -665,13 +713,19 @@ public sealed class DetailingWindow : Window
 
     private void UpdateTreeLabel(IDetailMember m, DetailResult r)
     {
-        foreach (TreeViewItem g in _tree.Items)
-            foreach (TreeViewItem ti in g.Items)
+        void Walk(ItemCollection items)
+        {
+            foreach (TreeViewItem ti in items)
+            {
                 if (ReferenceEquals(ti.Tag, m))
                 {
                     ti.Header = m.Name + (m.Quantity > 1 ? " (SL=" + m.Quantity + ")" : "") + (r.Ok ? "  ✓" : "  ✗");
                     ti.Foreground = r.Ok ? Brushes.Black : Brushes.Firebrick;
                 }
+                Walk(ti.Items);
+            }
+        }
+        Walk(_tree.Items);
     }
 
     public sealed class CheckRow
@@ -730,7 +784,17 @@ public sealed class DetailingWindow : Window
     {
         if (_pvSource.SelectedItem is string src && src != PreviewMember)
         {
-            try { return PlanFigures().Where(f => f.Name == src).ToList(); }
+            try
+            {
+                // mặt bằng + các mặt cắt thép sàn đi kèm ngay sau nó
+                var all = PlanFigures();
+                int i0 = all.FindIndex(f => f.Name == src);
+                if (i0 < 0) return new List<Figure>();
+                var pick = new List<Figure> { all[i0] };
+                if (!src.StartsWith("MẶT CẮT "))
+                    for (int j = i0 + 1; j < all.Count && all[j].Name.StartsWith("MẶT CẮT "); j++) pick.Add(all[j]);
+                return pick;
+            }
             catch (Exception ex) { SetStatus("Không vẽ được mặt bằng: " + ex.Message); return new List<Figure>(); }
         }
         return CurrentFigures();
