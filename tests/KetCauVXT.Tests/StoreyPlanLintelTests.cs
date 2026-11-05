@@ -99,7 +99,7 @@ public static class StoreyPlanLintelTests
         cb.B = 0.33;
         check("Nhân bản B: sửa dầm mới không đổi dầm gốc", pb.Beams.First(x => x.Name == beamB).B, new ManualBeam().B, 1e-12);
         check("Mã tầng: Tầng 3 → T3, Mái → M, Tum → TUM", B(PlanStorey.LevelCode("Tầng 3") == "T3" && PlanStorey.LevelCode("Mái") == "M" && PlanStorey.LevelCode("Tum") == "TUM"), 1, 0);
-        check("Tên tầng kế tiếp: Tầng 2 → Tầng 5 (đã có Tầng 3)", B(PlanStorey.NextLevelName(pb.Plan, "Tầng 2") == "Tầng 4"), 1, 0);
+        check("Tên tầng kế tiếp: Tầng 2 → Tầng 4 (đã có Tầng 3)", B(PlanStorey.NextLevelName(pb.Plan, "Tầng 2") == "Tầng 4"), 1, 0);
         var lv1 = pb.Plan.CopyLevel(t2b, "Tầng X", 20, false);
         check("StructuralPlan.CopyLevel: chỉ sao vị trí", lv1.Items.Count, items0, 0);
 

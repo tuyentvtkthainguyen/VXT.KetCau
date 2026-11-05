@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using KetCauVXT.Import;
+using KetCauVXT.Import.Arch;
 
 namespace KetCauVXT.Detailing;
 

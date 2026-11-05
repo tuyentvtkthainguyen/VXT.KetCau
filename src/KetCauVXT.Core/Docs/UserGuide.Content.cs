@@ -342,7 +342,25 @@ public static partial class UserGuide
                 "Tải tường phía trên: khi tường cao ≥ Lo/3 và không có sàn tựa trong phạm vi lỗ cửa chỉ lấy tường cao Lo/3 (hiệu ứng vòm); có sàn / dầm tựa thì cộng tải đó.",
                 "Ô văng: chiều vươn, chiều dày gốc / mút, gờ chắn nước; tải sửa chữa phân bố hoặc lực tập trung ở mút; thép chịu lực lớp trên neo vào lanh tô. Kiểm tra uốn, cắt lanh tô, **xoắn** lanh tô do ô văng, "
                 + "**chống lật** khi lanh tô không liền cột / giằng tường.",
-                "Bản vẽ: mặt đứng lanh tô và mặt cắt 1-1 (lanh tô + ô văng, dốc thoát nước, gờ chắn, rãnh nhỏ giọt).");
+                "Bản vẽ: mặt đứng lanh tô và mặt cắt 1-1 (lanh tô + ô văng, dốc thoát nước, gờ chắn, rãnh nhỏ giọt).",
+                "**Tường 110** (cửa đi các phòng, cửa đi lớn): chương trình tự chọn h ≥ max(Lo/10; 150 mm), Lo > 1,5 m lấy ≥ 200 mm; gối (ngàm) vào tường mỗi bên ≥ 200 mm (≥ 250 mm khi Lo > 1,5 m); "
+                + "kiểm tra **nén cục bộ khối xây** dưới gối (nhập cường độ khối xây R, mặc định 1,3 MPa – gạch đặc M75, vữa M50); cửa rộng > 1,8 m: gợi ý **bổ trụ BTCT 110×220** hai bên ô cửa hoặc dùng dầm BTCT gác lên cột.");
+
+        c.Sec("che-do-ho-so.mat-bang-ve", "Vẽ mặt bằng kết cấu, nhân bản tầng, ánh xạ kiến trúc → lanh tô các tầng")
+            .Bullets("Tab **Mặt bằng kết cấu**: đặt cột, móng, dầm (2 điểm), sàn, lanh tô, ô văng, cầu thang; **bắt điểm** tâm cột, đầu dầm, giao trục, điểm trên tim dầm, đường trục; giữ **Shift** để vẽ vuông góc; "
+                + "**Sàn trong ô dầm**: bấm vào bên trong ô được bao bởi dầm (hoặc trục); **Di chuyển**: bấm cấu kiện rồi bấm điểm đích; **↶ Hoàn tác** (Ctrl+Z).",
+                "**⧉ Nhân bản tầng…**: sao toàn bộ cấu kiện của mặt bằng đang xem sang các tầng giống nhau về bố trí công năng (số tầng, chiều cao tầng). "
+                + "Chế độ **A – dùng chung cấu kiện**: cùng tên D1, S1…, số lượng tự nhân theo số tầng (thống kê thép, bê tông, ván khuôn nhân đúng); "
+                + "chế độ **B – tạo cấu kiện mới**: D1 → D1-T3… để sửa riêng từng tầng. Cột luôn dùng chung và được thêm một tầng vào \"Chiều cao các tầng\"; đường cắt mặt cắt sàn được sao theo.",
+                "**Nhập MB kết cấu từ CAD…**: mặt bằng kết cấu vẽ trong AutoCAD (DXF/DWG) – dầm vẽ 2 nét song song (hoặc 1 nét tim) trên layer chứa DAM / BEAM / GIANG, cột là đa tuyến kín trên layer COT / COLUMN, "
+                + "chữ tên cạnh cấu kiện \"D1 220x400\", \"C1 (220x220)\", chữ S1 trong ô sàn. Tên đã có trong hồ sơ → gán vị trí; chưa có → tạo cấu kiện mới với tiết diện đọc từ chữ. "
+                + "Trong AutoCAD có thể gõ **VXT_MB_KC** (nút **Gửi mặt bằng kết cấu → Triển khai hồ sơ**), chọn đối tượng – Việt Const tự hỏi nhận vào mặt bằng đang xem.",
+                "**Ánh xạ KT (xref)…**: gắn mặt bằng kiến trúc của tầng (DXF/DWG) làm nền tham chiếu màu xám (không sửa file gốc, tự nạp lại khi file kiến trúc thay đổi; lưu đường dẫn tương đối theo thư mục hồ sơ); "
+                + "**Dời xref…** để trục kiến trúc trùng trục kết cấu; **Ẩn / hiện xref**.",
+                "**Lanh tô theo cửa KT**: chương trình nhận các ô cửa (layer CUA / DOOR / WINDOW hoặc block cửa) và tường chứa cửa (110 / 220), đặt lanh tô trên mỗi ô cửa; các cửa giống nhau (bề rộng, chiều dày tường, loại) "
+                + "gộp thành một cấu kiện LT1, LT2… với số lượng = số ô cửa. **Ô văng trên cửa**: bấm vào ô cửa ở tường ngoài → ô văng OV… liền lanh tô vươn ra phía ngoài.",
+                "Cây thư mục: lanh tô – ô văng của mỗi tầng nằm ở mục **Mặt bằng lanh tô – ô văng «tầng»**; khi xuất hồ sơ mỗi tầng có một tờ **LANH TÔ – Ô VĂNG «TẦNG»** gồm mặt bằng lanh tô của tầng và chi tiết các lanh tô.",
+                "Bấm một cấu kiện trên mặt bằng → cây thư mục chọn đúng cấu kiện đó dưới đúng nút mặt bằng; bấm một cấu kiện trên cây → mặt bằng chuyển đúng tầng và đánh dấu vị trí; bấm đúp → mở chi tiết cấu kiện.");
 
         c.Sec("che-do-ho-so.autocad", "Lấy kích thước từ AutoCAD (lệnh VXT_KT)")
             .Steps("Trong AutoCAD đã nạp add-in Việt Const: gõ **VXT_KT** (hoặc nút **Lấy kích thước → Triển khai hồ sơ** trên bảng VXT).",

@@ -25,7 +25,6 @@ public sealed partial class DetailingPlanCanvas
     private readonly PlanUndo _undo = new();
     private PlanItem _moveItem;
     private (double X, double Y) _moveFrom;
-    private string _snapKind = "";
 
     public PlanLevel CurrentLevel => Level;
     private string Dir => ProjectDir?.Invoke();
@@ -52,7 +51,6 @@ public sealed partial class DetailingPlanCanvas
         (double X, double Y)? from = _first;
         if (from == null && _moveItem != null) from = _moveFrom;
         var s = PlanSnap.Snap(Plan, lv, w.X, w.Y, tol, from, ortho);
-        _snapKind = s.Kind;
         return (s.X, s.Y);
     }
 

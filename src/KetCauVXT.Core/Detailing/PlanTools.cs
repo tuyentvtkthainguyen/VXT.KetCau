@@ -164,7 +164,7 @@ public static class PlanStorey
         var res = new List<PlanLevel>();
         if (plan == null || src == null || count <= 0 || storeyHeight <= 0.5) return res;
         if (shiftAbove)
-            foreach (var l in plan.Levels.Where(l => !l.IsFoundation && l.Elevation > src.Elevation + 1e-9))
+            foreach (var l in plan.Levels.Where(q => !q.IsFoundation && q.Elevation > src.Elevation + 1e-9))
                 l.Elevation = Math.Round(l.Elevation + count * storeyHeight, 4);
         string prevName = src.Name;
         for (int i = 1; i <= count; i++)

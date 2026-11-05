@@ -593,6 +593,8 @@ Console.WriteLine("62. Đài cọc lớp trên / lồng thép, râu cọc, móng
 FoundationSlabPlanTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("63. Thang bộ: bậc gạch / bậc BTCT, zíc zắc, xương cá, thang thép hình, mặt bằng thép bản thang; hố pít – vách thang máy");
 StairLiftTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("64. Nhân bản tầng, vẽ / nhập mặt bằng KC, lanh tô theo cửa kiến trúc, tường 110");
+StoreyPlanLintelTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("65. Dàn trang in, xuất PDF toàn bộ, in trực tiếp (Triển khai hồ sơ)");
 SheetLayoutTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
