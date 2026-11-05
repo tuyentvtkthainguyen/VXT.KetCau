@@ -201,7 +201,7 @@
         </Menu>
 
         <!-- ================= TOOLBAR ================= -->
-        <ToolBarTray DockPanel.Dock="Top">
+        <ToolBarTray DockPanel.Dock="Top" x:Name="mainToolTray">
             <ToolBar>
                 <Button Content="Mới" Click="MnuNew_Click" Style="{StaticResource ToolButton}" ToolTip="Dự án mới (Ctrl+N)"/>
                 <Button Content="Mở" Click="MnuOpen_Click" Style="{StaticResource ToolButton}" ToolTip="Mở dự án .kcvxt (Ctrl+O)"/>
@@ -226,7 +226,7 @@
         </ToolBarTray>
 
         <!-- ================= STATUS ================= -->
-        <StatusBar DockPanel.Dock="Bottom">
+        <StatusBar DockPanel.Dock="Bottom" x:Name="mainStatus">
             <!-- [Workflow ETABS] đơn vị, tầng hiện hành, toạ độ con trỏ, hệ trục tổng thể (MainWindow.Workflow.cs) – neo phải, đặt trước để không bị chữ trạng thái dài đẩy mất -->
             <StatusBarItem DockPanel.Dock="Right" ToolTip="Hệ trục tổng thể: X sang phải, Y lên trên (mặt bằng), Z hướng lên">
                 <Canvas Width="44" Height="20">
@@ -267,8 +267,8 @@
                 <!-- [Workflow ETABS] cây mô hình (MainWindow.ModelExplorer.cs) – rộng 0 khi ẩn -->
                 <ColumnDefinition x:Name="colExplorer" Width="0"/>
                 <ColumnDefinition x:Name="colExplorerSplit" Width="0"/>
-                <ColumnDefinition Width="560" MinWidth="300"/>
-                <ColumnDefinition Width="5"/>
+                <ColumnDefinition x:Name="colLeftPanel" Width="560" MinWidth="300"/>
+                <ColumnDefinition x:Name="colLeftSplit" Width="5"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -519,7 +519,7 @@
                 </TabItem>
             </TabControl>
 
-            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="#FFE0E0E0"/>
+            <GridSplitter Grid.Column="3" x:Name="leftSplitter" Width="5" HorizontalAlignment="Stretch" Background="#FFE0E0E0"/>
 
             <!-- ===== VÙNG HIỂN THỊ ===== -->
             <Grid Grid.Column="4">
@@ -721,7 +721,7 @@
                     </TabItem>
                 </TabControl>
 
-                <Border Grid.Row="2" BorderBrush="#FFBBBBBB" BorderThickness="0,1,0,0" Height="200">
+                <Border Grid.Row="2" x:Name="infoPanel" BorderBrush="#FFBBBBBB" BorderThickness="0,1,0,0" Height="200">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="300"/>

@@ -226,6 +226,7 @@ public sealed partial class DetailingWindow : Window
         Grid.SetColumn(_tabs, 4); grid.Children.Add(_tabs);
         dock.Children.Add(grid);
         Content = dock;
+        InstallCompactUi(menu, bar, sb, left, sp1, formScroll, sp2);   // [Giao diện gọn] – DetailingWindow.Compact.cs
     }
 
     private void OnKey(object sender, KeyEventArgs e)

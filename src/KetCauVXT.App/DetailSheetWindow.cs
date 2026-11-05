@@ -202,6 +202,10 @@ public sealed class DetailSheetWindow : Window
         Grid.SetColumn(rs, 2); grid.Children.Add(rs);
         dock.Children.Add(grid);
         Content = dock;
+        // [Giao diện gọn] thanh công cụ biểu tượng, khung "Các tờ in" / thuộc tính thu gọn được, F11, Ctrl+Q – CompactShell.cs
+        CompactShell.Attach(this, "DetailSheetWindow", null, bar, sb,
+            new[] { new CompactPanel(left, "cacto", "Các tờ in", true), new CompactPanel(rs, "thuoctinh", "Thuộc tính tờ", false) },
+            null, new (string, Action)[] { ("Vừa khung", () => { _zoom = 1; Render(); }) });
 
         _sheets.SelectionChanged += (s, e) => { LoadSheetProps(); Render(); };
         _title.LostFocus += (s, e) => { if (_loading || Cur == null || Cur.Title == _title.Text) return; Cur.Title = _title.Text; Cur.NameLocked = true; Changed(); RefreshSheets(); };

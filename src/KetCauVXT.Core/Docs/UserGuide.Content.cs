@@ -241,6 +241,16 @@ public static partial class UserGuide
                 "{m:quickStart}: bảng các bước làm việc, trạng thái từng bước tự nhận biết từ dự án, nút **Làm bước này** và **Xem hướng dẫn** ({s:quy-trinh.bat-dau-nhanh}).",
                 "{m:appendix} (Shift+F1): công thức, hệ số, hệ số an toàn và giải thích của mọi phép tính mà chương trình dùng ({s:ho-so.phu-luc}).");
 
+        c.Sec("giao-dien.giao-dien-gon", "Giao diện gọn – mở rộng vùng làm việc")
+            .Bullets("Menu và thanh công cụ nằm chung **một hàng mảnh** (~28 px) ở cả chế độ Thiết kế, Triển khai hồ sơ và cửa sổ Dàn trang in. Nút lệnh hiện dạng **biểu tượng**; rê chuột để xem tên lệnh, phím tắt và giải thích. Lệnh không đủ chỗ tự vào nút **»** ở cuối thanh công cụ.",
+                "Nút **☰** (đầu hàng): ẩn / hiện thanh menu. Khi menu đang ẩn, nhấn **Alt** để hiện tạm thời (như các phần mềm Windows), chọn lệnh xong menu tự ẩn lại. **Ctrl+F1**: ẩn / hiện thanh công cụ (như ribbon Office).",
+                "Chế độ Triển khai hồ sơ: các nút thêm cấu kiện (móng đơn, móng băng, dầm, cột, sàn…) gộp vào một nút **＋ ▾** – bấm để chọn loại.",
+                "Khung bên (**Nhập liệu – kết quả** của chế độ Thiết kế; **Cấu kiện hồ sơ**, **Thông số cấu kiện** của Triển khai hồ sơ; **Các tờ in**, **Thuộc tính tờ** của Dàn trang in) có nút **«** nhỏ ở góc trên: bấm để thu khung thành dải hẹp có chữ dọc; bấm dải để mở lại. Kéo thanh chia để đổi độ rộng – phần mềm nhớ độ rộng và trạng thái thu gọn cho lần mở sau.",
+                "**F11** hoặc nút **⛶** (cuối hàng): **mở rộng vùng làm việc** – ẩn menu, thanh công cụ, thanh trạng thái, các khung bên, cây mô hình và bảng thông tin dưới mặt bằng; chỉ còn khung vẽ / xem trước và một thanh nổi nhỏ góc trên phải (khôi phục, tìm lệnh, vừa màn hình, phân tích / tính toàn bộ). **Esc** hoặc **F11** để khôi phục.",
+                "**Ctrl+Q** (hoặc **Ctrl+Shift+P**, nút **🔍**): **tìm lệnh nhanh** – gõ tên lệnh, không cần dấu (vd. \"mat bang\", \"xuat\", \"luu\"), gõ chữ đầu cũng được (\"mbkc\" → Mặt bằng kết cấu); ↑ ↓ chọn, **Enter** chạy, **Esc** đóng. Danh sách gồm mọi mục menu và nút công cụ, kể cả khi menu đang ẩn.",
+                "Nút **⋯** (cuối hàng): bật / tắt menu, thanh công cụ, từng khung bên; **Giao diện gọn** (mặc định – nút biểu tượng, chữ khung 12, thanh trạng thái 1 dòng) hoặc **Giao diện tiêu chuẩn** (biểu tượng kèm chữ) – áp dụng khi mở lại cửa sổ; **Khôi phục bố cục mặc định**.",
+                "Bố cục chỉ lưu trên máy này, trong file %AppData%\\VietConst\\ui.json (độ rộng khung, khung thu gọn, menu / thanh công cụ ẩn, mật độ giao diện) – không gửi đi đâu, không chứa dữ liệu dự án. Xoá file để trở về mặc định.");
+
         c.Sec("giao-dien.cay-mo-hinh", "Cây mô hình, menu Xem / Sửa, thanh trạng thái")
             .Bullets("{m:explorer} (**Ctrl+E**, nút **Cây mô hình**): khung neo bên trái (như Model Explorer của ETABS) gồm **Thông tin dự án**, **Lưới trục**, **Tầng**, **Vật liệu**, **Tiết diện**, **Tải trọng** (trường hợp tải, trường hợp phân tích, tổ hợp), **Đối tượng** (cột, dầm, sàn, tường, móng theo tầng – bấm để chọn và phóng tới), **Kết quả** (chu kỳ dao động, phản lực đáy) khi đã phân tích.",
                 "Bấm đúp một nút nhánh của cây để mở hộp thoại khai báo tương ứng. Chọn một trường hợp tải trên cây để lọc {m:showLoads}.",

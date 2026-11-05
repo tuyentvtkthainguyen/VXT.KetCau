@@ -605,6 +605,8 @@ Console.WriteLine("68. Trích chi tiết, mặt cắt mọi nhịp dầm, shop d
 ShopCutTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("69. Chia dầm nhiều đoạn, xuất tất cả theo bộ dàn trang");
 BeamSplitTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("70. Giao diện gọn: tìm lệnh không dấu, biểu tượng nút, lưu bố cục ui.json");
+CompactUiTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
