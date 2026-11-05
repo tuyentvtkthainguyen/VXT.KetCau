@@ -157,14 +157,14 @@ public static class TitleBlockTests
         CadFileWriters.Write(wA, Path.Combine(dir, "To_KhungTenTaiLen.dxf"), CadOutputFormat.DxfR12);
 
         // ---- khung vẽ theo tỷ lệ 1/100 ----
-        string f100 = Path.Combine(dir, "khung_A1_tl100.dxf");
+        string f100 = Path.Combine(dir, "khung_A1_tl100_DauVao.dxf");
         File.WriteAllText(f100, FrameDxf(100), new UTF8Encoding(false));
         var t100 = new DetailTitleBlock();
         t100.Import(f100);
         check("Khung vẽ theo 1/100: nhận A1, khung bao toàn tờ", B(t100.DetectedPaper == "A1" && t100.Imported.Mode == TitleBlockMode.WholeFrame), 1, 0);
 
         // ---- chỉ ô khung tên ----
-        string fBox = Path.Combine(dir, "o_khung_ten.dxf");
+        string fBox = Path.Combine(dir, "o_khung_ten_DauVao.dxf");
         File.WriteAllText(fBox, BoxDxf(), new UTF8Encoding(false));
         var tbx = new DetailTitleBlock();
         tbx.Import(fBox);
