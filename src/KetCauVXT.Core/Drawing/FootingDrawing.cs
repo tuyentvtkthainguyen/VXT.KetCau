@@ -91,7 +91,8 @@ public static class FootingDrawing
         var gx = p.GridsX.ToList(); var gy = p.GridsY.ToList();
         foreach (var g in gx) box = box.Union(g.Coord * 1000 * k, box.Cy);
         foreach (var g in gy) box = box.Union(box.Cx, g.Coord * 1000 * k);
-        double ext = 6 * th, r = w.BubbleR;
+        // kích thước trục nằm TRONG phạm vi đầu trục (bong bóng ngoài cùng)
+        double ext = w.Style.ShowGridDims ? 8 * th : 6 * th, r = w.BubbleR;
         double xL = box.X1 - ext, xR = box.X2 + ext, yB = box.Y1 - ext, yT = box.Y2 + ext;
         foreach (var g in gx)
         {
@@ -108,13 +109,13 @@ public static class FootingDrawing
             w.GridBubble(xR + r, y, g.Name);
         }
         bool gridDims = w.Style.ShowGridDims;
-        double yd1 = yB - 2 * r - 2.5 * th, yd2 = yd1 - 2.5 * th;
+        double yd1 = box.Y1 - 3.5 * th, yd2 = box.Y1 - 6 * th;
         if (gx.Count > 1 && gridDims)
         {
             w.DimChainH(gx.Select(g => g.Coord * 1000 * k).ToList(), yd1, yd1, k);
             if (gx.Count > 2) w.Dim(gx[0].Coord * 1000 * k, yd2, gx[^1].Coord * 1000 * k, yd2, 0, k);
         }
-        double xd1 = xL - 2 * r - 2.5 * th, xd2 = xd1 - 2.5 * th;
+        double xd1 = box.X1 - 3.5 * th, xd2 = box.X1 - 6 * th;
         if (gy.Count > 1 && gridDims)
         {
             w.DimChainV(gy.Select(g => g.Coord * 1000 * k).ToList(), xd1, xd1, k);

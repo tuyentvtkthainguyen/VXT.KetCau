@@ -27,7 +27,7 @@ public static class LintelPlanDrawing
             var u = lv.UnderlayVisible ? ArchUnderlay.Load(lv, projectDir) : null;
             if (u != null)
                 foreach (var s in u.Walls)
-                    w.Line(Lay.KyHieu, s.X1 + lv.UnderlayDx, s.Y1 + lv.UnderlayDy, s.X2 + lv.UnderlayDx, s.Y2 + lv.UnderlayDy);
+                    w.Line(Lay.KyHieu, (s.X1 + lv.UnderlayDx) * 1000, (s.Y1 + lv.UnderlayDy) * 1000, (s.X2 + lv.UnderlayDx) * 1000, (s.Y2 + lv.UnderlayDy) * 1000);   // bản vẽ mặt bằng: mm
         }
         catch { }
         return new Figure(w, title, true);

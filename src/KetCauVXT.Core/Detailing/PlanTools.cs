@@ -135,8 +135,9 @@ public static class PlanStorey
                 Member = it.Member != null && rename.TryGetValue(it.Member, out var nn) ? nn : it.Member, Kind = it.Kind,
                 X1 = it.X1, Y1 = it.Y1, X2 = it.X2, Y2 = it.Y2, Rotation = it.Rotation, Label = it.Label
             });
-        // cột: thêm 1 tầng
-        double dh = Math.Round(elevation - src.Elevation, 4);
+        // cột: thêm 1 tầng – chiều cao = cao độ mới − cao độ mặt bằng tầng ngay dưới (trước khi chèn)
+        double below = plan.Levels.Where(l => !l.IsFoundation && l.Elevation < elevation - 1e-9).Select(l => l.Elevation).DefaultIfEmpty(src.Elevation).Max();
+        double dh = Math.Round(elevation - below, 4);
         if (p != null && dh > 0.5)
             foreach (string cn in src.Items.Where(i => i.Kind == PlanKinds.Column).Select(i => i.Member).Where(s => !string.IsNullOrEmpty(s)).Distinct())
                 if (p.All.FirstOrDefault(x => x.Name == cn) is ManualColumn col)

@@ -211,7 +211,8 @@ public static class FramingPlan
         foreach (var g in gx) box = box.Union(g.Coord * 1000, box.IsEmpty ? 0 : box.Cy);
         foreach (var g in gy) box = box.Union(box.IsEmpty ? 0 : box.Cx, g.Coord * 1000);
         if (box.IsEmpty) return;
-        double ext = 6 * th;
+        // kích thước trục nằm TRONG phạm vi đầu trục (bong bóng ngoài cùng)
+        double ext = w.Style.ShowGridDims ? 8 * th : 6 * th;
         double xL = box.X1 - ext, xR = box.X2 + ext, yB = box.Y1 - ext, yT = box.Y2 + ext;
         double r = w.BubbleR;
         foreach (var g in gx)
@@ -229,13 +230,13 @@ public static class FramingPlan
             w.GridBubble(xR + r, y, g.Name);
         }
         if (!w.Style.ShowGridDims) return;   // tắt kích thước lưới trục (Thiết lập bản vẽ)
-        double yd1 = yB - 2 * r - 2.5 * th, yd2 = yd1 - 2.5 * th;
+        double yd1 = box.Y1 - 3.5 * th, yd2 = box.Y1 - 6 * th;
         if (gx.Count > 1)
         {
             w.DimChainH(gx.Select(g => g.Coord * 1000).ToList(), yd1, yd1);
             if (gx.Count > 2) w.Dim(gx[0].Coord * 1000, yd2, gx[^1].Coord * 1000, yd2, 0);
         }
-        double xd1 = xL - 2 * r - 2.5 * th, xd2 = xd1 - 2.5 * th;
+        double xd1 = box.X1 - 3.5 * th, xd2 = box.X1 - 6 * th;
         if (gy.Count > 1)
         {
             w.DimChainV(gy.Select(g => g.Coord * 1000).ToList(), xd1, xd1);

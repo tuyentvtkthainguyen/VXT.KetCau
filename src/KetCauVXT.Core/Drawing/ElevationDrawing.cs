@@ -135,7 +135,8 @@ public static class ElevationDrawing
         }
 
         // ---- trục cắt ngang + đầu trục + kích thước ----
-        double yB = box.Y1 - 5 * th, yT = box.Y2 + 3 * th, r0 = w.BubbleR;
+        // kích thước trục nằm TRONG phạm vi đầu trục (bong bóng ngoài cùng)
+        double yB = box.Y1 - (style.ShowGridDims && cross.Count > 1 ? 8 : 5) * th, yT = box.Y2 + 3 * th, r0 = w.BubbleR;
         foreach (var cg in cross)
         {
             double x = cg.Coord * 1000;
@@ -144,7 +145,7 @@ public static class ElevationDrawing
         }
         if (cross.Count > 1 && style.ShowGridDims)
         {
-            double yd = yB - 2 * r0 - 2.5 * th;
+            double yd = box.Y1 - 3.5 * th;
             w.DimChainH(cross.Select(c => c.Coord * 1000).ToList(), yd, yd);
             if (cross.Count > 2) w.Dim(cross[0].Coord * 1000, yd - 2.5 * th, cross[^1].Coord * 1000, yd - 2.5 * th, 0);
         }

@@ -113,8 +113,9 @@ public static class StructuralPlanDrawing
         foreach (var x in xs) foreach (var y in ys) box = box.Union(x, y);
         foreach (var it in items) { box = box.Union(it.X1 * 1000, it.Y1 * 1000); box = box.Union(it.X2 * 1000, it.Y2 * 1000); }
         if (box.IsEmpty) box = new Rect2(0, 0, 6000, 6000);
-        double ext = 1200;   // trục vươn khỏi kết cấu
-        double gx0 = box.X1 - ext, gx1 = box.X2 + ext, gy0 = box.Y1 - ext, gy1 = box.Y2 + ext;
+        // kích thước nằm TRONG phạm vi đầu trục: kết cấu → chuỗi nhịp → tổng → đầu trục (bong bóng ở ngoài cùng)
+        double dIn = 3.5 * th, dTot = 6 * th, axisOut = 8 * th;
+        double gx0 = box.X1 - axisOut, gx1 = box.X2 + axisOut, gy0 = box.Y1 - axisOut, gy1 = box.Y2 + axisOut;
 
         // lưới trục + đầu trục 2 phía
         double R = w.BubbleR;
@@ -156,17 +157,17 @@ public static class StructuralPlanDrawing
         // kích thước: dưới + trái (nhịp, tổng); trên + phải (nhịp)
         if (xs.Count >= 2)
         {
-            double yb = gy0 - 2 * R - 1.5 * th;
-            w.DimChainH(xs, gy0, yb);
-            w.Dim(xs[0], gy0, xs[^1], gy0, -(gy0 - (yb - 2.5 * th)));
-            w.DimChainH(xs, gy1, gy1 + 2 * R + 1.5 * th);
+            double yc = box.Y1 - dIn, yt = box.Y1 - dTot;
+            w.DimChainH(xs, yc, yc);
+            if (xs.Count > 2) w.Dim(xs[0], yt, xs[^1], yt, 0);
+            w.DimChainH(xs, box.Y2 + dIn, box.Y2 + dIn);
         }
         if (ys.Count >= 2)
         {
-            double xl = gx0 - 2 * R - 1.5 * th;
-            w.DimChainV(ys, gx0, xl);
-            w.Dim(gx0, ys[0], gx0, ys[^1], gx0 - (xl - 2.5 * th));
-            w.DimChainV(ys, gx1, gx1 + 2 * R + 1.5 * th);
+            double xc = box.X1 - dIn, xt = box.X1 - dTot;
+            w.DimChainV(ys, xc, xc);
+            if (ys.Count > 2) w.Dim(xt, ys[0], xt, ys[^1], 0);
+            w.DimChainV(ys, box.X2 + dIn, box.X2 + dIn);
         }
 
         var e = w.Extents;

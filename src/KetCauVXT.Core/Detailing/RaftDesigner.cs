@@ -425,7 +425,7 @@ public class RaftInput : IDetailMember
         // lưới trục qua các hàng cột
         var xs = Rows(cols.Select(x => x.X)).Select(x => x * 1000).ToList();
         var ys = Rows(cols.Select(x => x.Y)).Select(x => x * 1000).ToList();
-        double ext = 6 * th;
+        double ext = 8.5 * th;   // kích thước (−4th, −7th) nằm trong phạm vi đầu trục
         for (int i = 0; i < xs.Count; i++)
         {
             w.Line(Lay.Truc, xs[i], -ext, xs[i], B + ext, "CENTER");

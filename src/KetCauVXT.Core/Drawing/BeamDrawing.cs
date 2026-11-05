@@ -264,6 +264,9 @@ public static class BeamDrawing
         }
         int nRows = Math.Max(1, rowEnds.Count);
         double yChain = topMax + (nRows * 1.8 + 1.5) * th;
+        // đường dóng mảnh nét đứt tại ranh giới các vùng đai: từ đường kích thước xuống hết chiều cao dầm
+        foreach (double xb in zt.SelectMany(q => new[] { q.Z.From, q.Z.To }).Select(v => Math.Round(v * 1000, 1)).Distinct())
+            w.Line(Lay.KichThuoc, xb, yChain, xb, -h, "DASHED");
         for (int i = 0; i < zt.Count; i++)
         {
             var z = zt[i].Z;
