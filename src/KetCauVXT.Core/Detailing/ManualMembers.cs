@@ -410,7 +410,7 @@ public class ManualColumn : IDetailMember
         if (roofTop)
         {
             double inBeam = Math.Max(JointDepth - s.CoverBeam, 0.1);
-            roofHook = Dt.R10(Math.Max(Math.Max(12 * dm, 0.15), lan - inBeam));
+            roofHook = Math.Ceiling(Math.Max(Math.Max(12 * dm, 0.15), lan - inBeam) * 100 - 1e-9) / 100.0;   // làm tròn lên 10 mm
             r.Calc.Add("Khoá đầu cột tầng mái: thép dọc kéo lên sát mặt dầm mái (cách mặt " + Dt.Mm(s.CoverBeam) + " mm) rồi uốn mỏ vào trong dầm đoạn "
                        + Dt.Mm(roofHook) + " mm ≥ max(12d; lan − (hd − c)) – tổng neo ≥ lan = " + Dt.Mm(lan) + " mm");
         }
