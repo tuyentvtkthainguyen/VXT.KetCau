@@ -369,6 +369,7 @@ internal sealed class DrawingStyleWindow : Window
             Size("Kích thước: gạch xiên đầu đường kích thước", "mm dài", s => s.DimTickSize, (s, v) => s.DimTickSize = v, 0.2);
             Size("Kích thước: hở từ điểm đo tới đường gióng", "mm", s => s.DimExtOffset, (s, v) => s.DimExtOffset = v, 0);
             Size("Kích thước: đường gióng vượt đường kích thước", "mm", s => s.DimExtBeyond, (s, v) => s.DimExtBeyond = v, 0);
+            Size("Kích thước: chiều dài chân gióng cố định (0 = kéo tới điểm đo)", "mm", s => s.DimFixedExtLength, (s, v) => s.DimFixedExtLength = v, 0, 50);
             Size("Kích thước: đường kích thước kéo qua đường gióng", "mm", s => s.DimLineExtend, (s, v) => s.DimLineExtend = v, 0);
             Size("Kích thước: chữ số cách đường kích thước", "mm", s => s.DimTextGap, (s, v) => s.DimTextGap = v, 0);
             Size("Vòng tròn số hiệu thép", "mm đường kính", s => s.MarkDiameter, (s, v) => s.MarkDiameter = v, 1, 40);

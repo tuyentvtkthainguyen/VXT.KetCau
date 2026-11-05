@@ -82,6 +82,7 @@ public static class FramingPlan
             SlabDropDrawing.Mark(w, p, sl);   // [Sàn hạ cốt] bao nét đứt + gạch chéo + "SÀN HẠ COS -50" – Drawing/SlabDropDrawing.cs
         }
         SlabDropDrawing.Legend(w, p, st);   // [Sàn hạ cốt] chú thích (chỉ khi tầng có ô hạ cốt)
+        BeamLocateDims.Add(w, p, st);       // kích thước định vị dầm ngoài trục (dầm phụ, dầm lệch trục) – Drawing/BeamLocateDims.cs
 
         string title = $"MẶT BẰNG KẾT CẤU TẦNG {st.Name} ({DxfWriter.ElevText(st.Elevation)})";
         w.Title(extent.Cx, w.Extents.Y2 + 5 * th, title, DrawUtil.ScaleText(S));

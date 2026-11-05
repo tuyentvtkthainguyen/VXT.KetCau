@@ -386,10 +386,13 @@ public sealed partial class DxfWriter
         double dle = st.LineExtend * Scale, tick = st.TickSize * Scale, tgap = st.TextGap * Scale;
         bool arrow = st.Arrow == KetCauVXT.Model.DimArrow.ClosedArrow;
         double ax = x1 + nx * offset, ay = y1 + ny * offset, bx = x2 + nx * offset, by = y2 + ny * offset;
-        if (Math.Abs(offset) > gap)
+        // chân đường gióng: cách điểm đo "gap"; nếu đặt độ dài gióng cố định thì chỉ vẽ đoạn FixedExt sát đường kích thước (gọn, kiểu DIMFXL)
+        double start = gap;
+        if (st.FixedExt > 0) start = Math.Max(gap, Math.Abs(offset) - st.FixedExt * Scale);
+        if (Math.Abs(offset) > start)
         {
-            Line(Lay.KichThuoc, x1 + nx * gap * sg, y1 + ny * gap * sg, ax + nx * ext * sg, ay + ny * ext * sg);
-            Line(Lay.KichThuoc, x2 + nx * gap * sg, y2 + ny * gap * sg, bx + nx * ext * sg, by + ny * ext * sg);
+            Line(Lay.KichThuoc, x1 + nx * start * sg, y1 + ny * start * sg, ax + nx * ext * sg, ay + ny * ext * sg);
+            Line(Lay.KichThuoc, x2 + nx * start * sg, y2 + ny * start * sg, bx + nx * ext * sg, by + ny * ext * sg);
         }
         if (!arrow)
         {

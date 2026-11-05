@@ -78,9 +78,11 @@ public static class BeamFlangeDrawingTests
         check("Mô hình: thêm lỗ cầu thang ô 1-2/B-C", B(op.Ok), 1, 0);
         var r = FrameAnalysis.Run(p);
         var ds = ConcreteDesigner.Design(p, r);
-        var def = DrawingStyle.Default();
+        var def0 = DrawingStyle.Default();
+        check("Thiết lập mặc định: mặt cắt dầm KHÔNG vẽ thép sàn (chỉ cấu tạo dầm), vẫn vẽ cánh sàn", B(!def0.ShowSlabRebarInFlange && def0.ShowSlabFlanges), 1, 0);
+        var def = def0.Clone(); def.ShowSlabRebarInFlange = true;   // các kiểm tra thép sàn trong cánh dưới đây bật tuỳ chọn
         double S = 50, k = S / 25, b = 220 * k, Lf = def.SlabFlangeLength * k, hsK = 100 * k;
-        check("Thiết lập mặc định: bật cánh sàn, dài 400 mm, có thép sàn, đường cắt dích dắc",
+        check("Thiết lập (bật thép sàn): bật cánh sàn, dài 400 mm, có thép sàn, đường cắt dích dắc",
             B(def.ShowSlabFlanges && Math.Abs(def.SlabFlangeLength - 400) < 1e-9 && def.ShowSlabRebarInFlange && def.SlabBreak == SlabBreakStyle.ZigZag), 1, 0);
 
         var fA = LineFrames(p, st, ys[0]); var fB = LineFrames(p, st, ys[1]); var fC = LineFrames(p, st, ys[2]);

@@ -583,6 +583,10 @@ Console.WriteLine("57. Sửa dầm: kéo, trim, extend, nối dầm hở; pick �
 BeamEditTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("58. Lưới trục và tầng: lấy kích thước từ mặt bằng tải lên (CAD / ảnh)");
 GridFromPlanTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("59. Mặt bằng kết cấu triển khai hồ sơ (móng, cột, dầm, sàn, lanh tô, ô văng, cầu thang)");
+StructuralPlanTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("60. Hoàn thiện bản vẽ: chân dim, mặt cắt dầm, chi tiết thang bộ, bảng thống kê vật liệu");
+DrawingFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

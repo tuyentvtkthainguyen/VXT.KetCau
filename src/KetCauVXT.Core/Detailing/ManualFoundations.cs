@@ -435,9 +435,9 @@ public class ManualStrip : IDetailMember
         var xsCol = new List<double> { 0 };
         xsCol.AddRange(Columns.Where(x => x.N > 0).Select(x => x.X * 1000).OrderBy(x => x));
         xsCol.Add(L);
-        w.DimChainH(xsCol, 0, -1300);
-        w.Dim(0, 0, L, 0, -1900);
-        w.Dim(L, 0, L, hs, 600);
+        w.DimChainH(xsCol, 0, -3.0 * w.Th);
+        w.Dim(0, 0, L, 0, -4.5 * w.Th);
+        w.Dim(L, 0, L, hs, 2.0 * w.Th);
         w.Title(L / 2, -2500, RebarSchedule.MemberLabel("MẶT ĐỨNG MÓNG BĂNG " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, Name, true));
 
@@ -483,10 +483,10 @@ public class ManualStrip : IDetailMember
         }
         Row(top, hs - s.CoverBeam * 1000 - (top?.Dia ?? 0) / 2.0, true);
         Row(bot, c + 20 + (bot?.Dia ?? 0) / 2.0, false);
-        x2.Dim(-B / 2, 0, B / 2, 0, -1300);
-        x2.Dim(rx - bs / 2, hs, rx + bs / 2, hs, 300);
-        x2.Dim(B / 2, 0, B / 2, hf, 400);
-        x2.Dim(B / 2, 0, B / 2, hs, 900);
+        x2.Dim(-B / 2, 0, B / 2, 0, -3.0 * x2.Th);
+        x2.Dim(rx - bs / 2, hs, rx + bs / 2, hs, 1.5 * x2.Th);
+        x2.Dim(B / 2, 0, B / 2, hf, 1.5 * x2.Th);
+        x2.Dim(B / 2, 0, B / 2, hs, 2.5 * x2.Th);
         x2.Title(0, -1800, "1-1", DrawUtil.ScaleText(Ss), true);
         figs.Add(new Figure(x2, Name + " mặt cắt"));
         return figs;
@@ -744,10 +744,10 @@ public class ManualPileCap : IDetailMember
         if (by != null) PlanBarDraw.Bar(w, false, oy - B / 2 + c, oy + B / 2 - c, ox + L / 4, Dt.Spaced(by.Dia, by.Spacing), by.Mark, hkp, hkp, -1, 0.62, (ox - L / 2 + c, ox + L / 2 - c), 0.12);
         var xs = new List<double> { ox - L / 2 }; xs.AddRange(Piles.Select(p => p.X * 1000).Distinct().OrderBy(x => x)); xs.Add(ox + L / 2);
         var ys = new List<double> { oy - B / 2 }; ys.AddRange(Piles.Select(p => p.Y * 1000).Distinct().OrderBy(x => x)); ys.Add(oy + B / 2);
-        w.DimChainH(xs, oy - B / 2, oy - B / 2 - 900);
-        w.Dim(ox - L / 2, oy - B / 2, ox + L / 2, oy - B / 2, -1500);
-        w.DimChainV(ys, ox + L / 2, ox + L / 2 + 900);
-        w.Dim(ox + L / 2, oy - B / 2, ox + L / 2, oy + B / 2, 1500);
+        w.DimChainH(xs, oy - B / 2, oy - B / 2 - 2.5 * w.Th);
+        w.Dim(ox - L / 2, oy - B / 2, ox + L / 2, oy - B / 2, -4.0 * w.Th);
+        w.DimChainV(ys, ox + L / 2, ox + L / 2 + 2.5 * w.Th);
+        w.Dim(ox + L / 2, oy - B / 2, ox + L / 2, oy + B / 2, 4.0 * w.Th);
         w.Title(ox, oy - B / 2 - 2100, RebarSchedule.MemberLabel("MẶT BẰNG ĐÀI " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, Name, true));
 
@@ -770,8 +770,8 @@ public class ManualPileCap : IDetailMember
             x2.Polyline(Lay.Thep, new List<(double, double)> { (ox - L / 2 + c, em + c + leg), (ox - L / 2 + c, em + c), (ox + L / 2 - c, em + c), (ox + L / 2 - c, em + c + leg) }, false);
             x2.LeaderTag(0, em + c, 400, -700, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark);
         }
-        x2.Dim(ox + L / 2, 0, ox + L / 2, H, 600);
-        x2.Dim(ox - L / 2, 0, ox + L / 2, 0, -1600);
+        x2.Dim(ox + L / 2, 0, ox + L / 2, H, 2.0 * x2.Th);
+        x2.Dim(ox - L / 2, 0, ox + L / 2, 0, -4.0 * x2.Th);
         x2.ElevMark(ox - L / 2 - 300, 0, DxfWriter.ElevText(-Df));
         x2.Title(0, -2300, "1-1", DrawUtil.ScaleText(S), true);
         figs.Add(new Figure(x2, Name + " mặt cắt"));

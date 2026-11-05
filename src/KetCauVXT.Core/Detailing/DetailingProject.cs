@@ -31,12 +31,16 @@ public class DetailingProject
     public List<RaftInput> Rafts { get; set; } = new();
     public List<PrestressInput> Prestress { get; set; } = new();
     public List<WaterTankInput> Tanks { get; set; } = new();
+    public List<ManualStair> Stairs { get; set; } = new();
+
+    /// <summary>Mặt bằng kết cấu: lưới trục, các mặt bằng, vị trí cấu kiện (Detailing/StructuralPlan.cs).</summary>
+    public StructuralPlan Plan { get; set; } = new();
 
     /// <summary>Các nhóm cấu kiện theo thứ tự hiển thị: (khoá, tên nhóm, danh sách).</summary>
     [JsonIgnore]
     public IEnumerable<(string Key, string Title, System.Collections.IList List)> Groups => new (string, string, System.Collections.IList)[]
     {
-        ("Dam", "Dầm", Beams), ("Cot", "Cột", Columns), ("San", "Sàn (ô bản)", Slabs), ("MatBangSan", "Mặt bằng sàn", SlabPlans), ("LanhTo", "Lanh tô – ô văng", Lintels),
+        ("Dam", "Dầm", Beams), ("Cot", "Cột", Columns), ("San", "Sàn (ô bản)", Slabs), ("MatBangSan", "Mặt bằng sàn", SlabPlans), ("LanhTo", "Lanh tô – ô văng", Lintels), ("CauThang", "Cầu thang bộ", Stairs),
         ("MongDon", "Móng đơn", Footings), ("MongBang", "Móng băng", Strips), ("MongCoc", "Móng cọc (đài cọc)", PileCaps),
         ("MongBe", "Móng bè", Rafts), ("DuUngLuc", "Dự ứng lực", Prestress), ("BeNuoc", "Bể nước", Tanks)
     };
@@ -50,7 +54,7 @@ public class DetailingProject
         var g = Groups.First(x => x.Key == key);
         IDetailMember m = key switch
         {
-            "Dam" => new ManualBeam(), "Cot" => new ManualColumn(), "San" => new ManualSlab(), "MatBangSan" => ManualSlabPlan.Sample(), "LanhTo" => ManualLintel.Sample(),
+            "Dam" => new ManualBeam(), "Cot" => new ManualColumn(), "San" => new ManualSlab(), "MatBangSan" => ManualSlabPlan.Sample(), "LanhTo" => ManualLintel.Sample(), "CauThang" => ManualStair.Sample(),
             "MongDon" => new ManualFooting(), "MongBang" => new ManualStrip(), "MongCoc" => new ManualPileCap(),
             "MongBe" => RaftInput.Sample(), "DuUngLuc" => PrestressSample(), _ => new WaterTankInput()
         };
@@ -75,7 +79,10 @@ public class DetailingProject
         var p = JsonSerializer.Deserialize<DetailingProject>(json, Json) ?? new DetailingProject();
         p.Settings ??= new DetailSettings();
         p.Beams ??= new(); p.Columns ??= new(); p.Slabs ??= new(); p.SlabPlans ??= new(); p.Lintels ??= new(); p.Footings ??= new(); p.Strips ??= new();
-        p.PileCaps ??= new(); p.Rafts ??= new(); p.Prestress ??= new(); p.Tanks ??= new();
+        p.PileCaps ??= new(); p.Rafts ??= new(); p.Prestress ??= new(); p.Tanks ??= new(); p.Stairs ??= new();
+        p.Plan ??= new StructuralPlan();
+        p.Plan.Levels ??= new();
+        foreach (var l in p.Plan.Levels) l.Items ??= new();
         return p;
     }
     public void Save(string path) => File.WriteAllText(path, ToJson(), new System.Text.UTF8Encoding(false));
@@ -117,6 +124,9 @@ public class DetailingProject
         p.Rafts.Add(RaftInput.Sample());
         p.Prestress.Add(PrestressSample());
         p.Tanks.Add(new WaterTankInput());
+        p.Stairs.Add(ManualStair.Sample());
+        p.Plan = StructuralPlan.Sample();   // mặt bằng: móng M1 + cột C1 ở 6 giao trục, dầm D1, sàn S1, lanh tô LT1, cầu thang CT1
+        p.Plan.SyncQuantities(p);           // SL cấu kiện = số vị trí trên mặt bằng
         return p;
     }
 }
@@ -149,44 +159,71 @@ public static class DetailingExport
 
     private static string Safe(string name) => string.Concat((name ?? "BanVe").Select(ch => Path.GetInvalidFileNameChars().Contains(ch) || ch == ' ' ? '_' : ch));
 
-    /// <summary>Xuất bản vẽ. split = true: mỗi cấu kiện một file + file thống kê thép; false: một file gộp (các khung A1 đặt cạnh nhau).
+    /// <summary>Định dạng xuất mặc định của chế độ triển khai: DWG AutoCAD 2018 (khi chưa có bộ ghi DWG – vd. trong kiểm thử – tự về DXF R12).</summary>
+    public static KetCauVXT.Model.CadOutputFormat DefaultFormat { get; set; } = KetCauVXT.Model.CadOutputFormat.Dwg2018;
+
+    private static string Write(DxfWriter w, string pathNoExt, KetCauVXT.Model.CadOutputFormat fmt) => CadFileWriters.Write(w, pathNoExt + ".dxf", fmt);
+
+    /// <summary>Xuất bản vẽ: MẶT BẰNG KẾT CẤU (móng, định vị cột, các tầng) → chi tiết từng cấu kiện → thống kê cốt thép → bảng thống kê vật liệu.
+    /// split = true: mỗi mục một file (KC-01, KC-02…); false: một file gộp. format: DWG 2018 (mặc định) / DXF 2018 / DXF R12.
     /// Trả về danh sách file đã ghi; log ghi cảnh báo.</summary>
-    public static List<string> Drawings(DetailingProject p, List<(IDetailMember Member, DetailResult Result)> results, string folder, bool split, List<string> log)
+    public static List<string> Drawings(DetailingProject p, List<(IDetailMember Member, DetailResult Result)> results, string folder, bool split, List<string> log,
+        KetCauVXT.Model.CadOutputFormat? format = null)
     {
+        var fmt = format ?? DefaultFormat;
         Directory.CreateDirectory(folder);
         var files = new List<string>();
         var info = new SheetComposer.SheetInfo { ProjectName = p.ProjectName, Owner = p.Owner, Location = p.Location, Designer = p.Designer };
         var all = new List<Figure>();
         int no = 1;
-        foreach (var (m, r) in results)
+        void Sheet(List<Figure> figs, string title, string file)
         {
-            var figs = FiguresOf(m, r, p.Settings, log);
-            if (figs.Count == 0) continue;
+            if (figs.Count == 0) return;
             if (split)
             {
-                info.Title = (r.Kind + " " + m.Name).ToUpperInvariant(); info.SheetNo = "KC-" + no.ToString("00");
+                info.Title = title; info.SheetNo = "KC-" + no.ToString("00");
                 var (sc, paper) = SheetFor(figs);
                 var w = SheetComposer.Compose(figs, sc, info, paper);
-                string f = Path.Combine(folder, info.SheetNo + "_" + Safe(r.Kind + "_" + m.Name) + ".dxf");
-                w.Save(f); files.Add(f); no++;
+                files.Add(Write(w, Path.Combine(folder, info.SheetNo + "_" + Safe(file)), fmt));
+                no++;
             }
             else all.AddRange(figs);
         }
+        // 1. mặt bằng kết cấu
+        List<Figure> plans;
+        try { plans = StructuralPlanDrawing.Build(p, results); }
+        catch (Exception e) { log.Add("Không vẽ được mặt bằng kết cấu: " + e.Message); plans = new List<Figure>(); }
+        foreach (var f in plans)
+        {
+            string key = f.Name == StructuralPlanDrawing.TitleFoundation ? "MB_KetCauMong" : f.Name == StructuralPlanDrawing.TitleColumns ? "MB_DinhViCot" : "MB_" + f.Name.Replace(StructuralPlanDrawing.TitleLevelPrefix, "").Split('(')[0].Trim();
+            Sheet(new List<Figure> { f }, f.Name, key);
+        }
+        // 2. chi tiết cấu kiện
+        foreach (var (m, r) in results)
+        {
+            var figs = FiguresOf(m, r, p.Settings, log);
+            Sheet(figs, (r.Kind + " " + m.Name).ToUpperInvariant(), r.Kind + "_" + m.Name);
+        }
+        // 3. thống kê cốt thép
         var sch = RebarSchedule.BuildFigures(Summary(results), 1, 30);
         if (split)
         {
             info.Title = "THỐNG KÊ CỐT THÉP"; info.SheetNo = "KC-" + no.ToString("00");
             var w = SheetComposer.Compose(sch, 100, info, "A1");
-            string f = Path.Combine(folder, info.SheetNo + "_ThongKeThep.dxf");
-            w.Save(f); files.Add(f);
+            files.Add(Write(w, Path.Combine(folder, info.SheetNo + "_ThongKeThep"), fmt));
+            no++;
         }
-        else
+        else all.AddRange(sch);
+        // 4. bảng thống kê vật liệu (thép, bê tông, ván khuôn)
+        List<Figure> mat;
+        try { mat = MaterialTable.Build(p, results) ?? new List<Figure>(); }
+        catch (Exception e) { log.Add("Không lập được bảng thống kê vật liệu: " + e.Message); mat = new List<Figure>(); }
+        Sheet(mat, "THỐNG KÊ VẬT LIỆU", "ThongKeVatLieu");
+        if (!split)
         {
-            all.AddRange(sch);
             info.Title = "HỒ SƠ TRIỂN KHAI KẾT CẤU"; info.SheetNo = "KC-01";
             var w = SheetComposer.Compose(all, SheetFor(all).Scale, info, "A1");
-            string f = Path.Combine(folder, Safe(p.ProjectName) + "_BoBanVe.dxf");
-            w.Save(f); files.Add(f);
+            files.Add(Write(w, Path.Combine(folder, Safe(p.ProjectName) + "_BoBanVe"), fmt));
         }
         return files;
     }

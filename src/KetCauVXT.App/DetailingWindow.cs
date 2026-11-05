@@ -39,6 +39,14 @@ public sealed class DetailingWindow : Window
     private readonly TabControl _tabs = new();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private double _zoom = 1;
+    // định dạng xuất bản vẽ (mặc định AutoCAD DWG 2018) và nguồn xem trước (cấu kiện / mặt bằng kết cấu)
+    private readonly ComboBox _fmt = new() { Width = 150, ToolTip = "Định dạng file bản vẽ xuất ra (mặc định file AutoCAD DWG 2018)" };
+    private readonly ComboBox _pvSource = new() { Width = 260, Margin = new Thickness(8, 0, 4, 4), ToolTip = "Xem trước bản vẽ cấu kiện đang chọn hoặc mặt bằng kết cấu" };
+    private DetailingPlanCanvas _plan;
+    private static readonly (KetCauVXT.Model.CadOutputFormat F, string Label)[] Formats =
+        { (KetCauVXT.Model.CadOutputFormat.Dwg2018, "DWG (AutoCAD 2018)"), (KetCauVXT.Model.CadOutputFormat.Dxf2018, "DXF 2018"), (KetCauVXT.Model.CadOutputFormat.DxfR12, "DXF R12") };
+    private KetCauVXT.Model.CadOutputFormat Fmt => _fmt.SelectedIndex >= 0 ? Formats[_fmt.SelectedIndex].F : DetailingExport.DefaultFormat;
+    private string FmtExt => Fmt == KetCauVXT.Model.CadOutputFormat.Dwg2018 && KetCauVXT.Drawing.CadFileWriters.HasWriter ? ".dwg" : ".dxf";
     private IDetailMember _cur;
 
     public static string SelfTestOut { get; set; }
@@ -104,7 +112,8 @@ public sealed class DetailingWindow : Window
             I("Lấy kích thước từ _AutoCAD (lệnh VXT_KT)…", PickFromAcad, "Ctrl+K")));
         menu.Items.Add(M("Tính _toán", I("Tính cấu kiện đang chọn", Recalc, "F9"), I("Tính _toàn bộ hồ sơ", RecalcAll, "F5")));
         menu.Items.Add(M("_Xuất hồ sơ",
-            I("Bản vẽ DXF – _gộp 1 file…", () => ExportDrawings(false)), I("Bản vẽ DXF – _tách từng cấu kiện…", () => ExportDrawings(true)),
+            I("Bản vẽ AutoCAD – _gộp 1 file (mặt bằng + chi tiết + thống kê)…", () => ExportDrawings(false)), I("Bản vẽ AutoCAD – _tách từng bản vẽ…", () => ExportDrawings(true)),
+            I("_Mặt bằng kết cấu (vẽ, đặt tên cấu kiện)", () => _tabs.SelectedIndex = 4),
             I("Bảng _khối lượng Excel…", ExportExcel), I("_Thuyết minh tính toán Word…", ExportWord), new Separator(),
             I("Xuất _tất cả vào thư mục…", ExportAll)));
         menu.Items.Add(M("Tuỳ _chọn", I("_Vật liệu, lớp bảo vệ…", EditSettings), I("Thông tin _công trình…", EditInfo)));
@@ -119,13 +128,18 @@ public sealed class DetailingWindow : Window
         foreach (var (key, title, _) in _prj.Groups)
         {
             string k = key;
-            string shortName = key switch { "MongCoc" => "Móng cọc", "DuUngLuc" => "DƯL", "BeNuoc" => "Bể nước", "San" => "Ô sàn", "LanhTo" => "Lanh tô", _ => title };
+            string shortName = key switch { "MongCoc" => "Móng cọc", "DuUngLuc" => "DƯL", "BeNuoc" => "Bể nước", "San" => "Ô sàn", "LanhTo" => "Lanh tô", "CauThang" => "Cầu thang", _ => title };
             B("＋ " + shortName, () => AddMember(k), "Thêm " + title.ToLowerInvariant());
         }
         bar.Items.Add(new Separator());
         B("⇩ Từ AutoCAD", PickFromAcad, "Lấy kích thước từ AutoCAD: trong AutoCAD gõ VXT_KT, chọn đối tượng (dầm, cột, sàn, móng, móng băng)");
         B("Tính toàn bộ (F5)", RecalcAll, "Tính lại mọi cấu kiện");
-        B("Xuất tất cả…", ExportAll, "Bản vẽ DXF (gộp + tách), Excel khối lượng, Word thuyết minh vào một thư mục");
+        B("Xuất tất cả…", ExportAll, "Bản vẽ AutoCAD (gộp + tách: mặt bằng kết cấu, chi tiết cấu kiện, thống kê thép – vật liệu), Excel khối lượng, Word thuyết minh vào một thư mục");
+        bar.Items.Add(new TextBlock { Text = " Định dạng xuất: ", VerticalAlignment = VerticalAlignment.Center });
+        _fmt.ItemsSource = Formats.Select(f => f.Label).ToList();
+        _fmt.SelectedIndex = Math.Max(0, Array.FindIndex(Formats, f => f.F == DetailingExport.DefaultFormat));
+        _fmt.SelectionChanged += (s, e) => { if (_fmt.SelectedIndex >= 0) DetailingExport.DefaultFormat = Formats[_fmt.SelectedIndex].F; };
+        bar.Items.Add(_fmt);
         bar.Items.Add(new Separator());
         B("⇄ Thiết kế – chạy nội lực", SwitchToModel, "Mở giao diện mô hình tính như ETABS");
         DockPanel.SetDock(bar, Dock.Top);
@@ -181,7 +195,9 @@ public sealed class DetailingWindow : Window
         zb.Children.Add(Small("Thu nhỏ −", () => { _zoom /= 1.25; RefreshPreview(); }));
         zb.Children.Add(Small("Phóng to +", () => { _zoom *= 1.25; RefreshPreview(); }));
         zb.Children.Add(Small("Vừa khung", () => { _zoom = 1; RefreshPreview(); }));
-        zb.Children.Add(Small("Xuất DXF cấu kiện này…", ExportCurrentDxf));
+        zb.Children.Add(Small("Xuất bản vẽ đang xem…", ExportCurrentDxf));
+        _pvSource.SelectionChanged += (s, e) => { if (_pvSource.SelectedIndex >= 0) RefreshPreview(); };
+        zb.Children.Add(_pvSource);
         DockPanel.SetDock(zb, Dock.Top); pv.Children.Add(zb);
         _previewScroll.Content = _preview; pv.Children.Add(_previewScroll);
         _tabs.Items.Add(new TabItem { Header = "Bản vẽ (xem trước)", Content = pv });
@@ -191,7 +207,10 @@ public sealed class DetailingWindow : Window
         _qty.Columns.Add(DialogUi.Text("Đơn vị", "Unit", true, 55));
         _qty.Columns.Add(DialogUi.Num("Khối lượng", "Qty", "0.###", true, 90));
         _tabs.Items.Add(new TabItem { Header = "Khối lượng hồ sơ", Content = _qty });
-        _tabs.SelectionChanged += (s, e) => { if (e.Source == _tabs) { if (_tabs.SelectedIndex == 2) RefreshPreview(); if (_tabs.SelectedIndex == 3) RefreshQuantities(); } };
+        // tab 4: không gian vẽ mặt bằng kết cấu (đặt, đánh dấu, đặt tên cấu kiện → chi tiết cấu kiện)
+        _plan = new DetailingPlanCanvas(this, () => _prj, PlanChanged, m => { RefreshTree(m); ShowMember(m); _tabs.SelectedIndex = 0; });
+        _tabs.Items.Add(new TabItem { Header = "Mặt bằng kết cấu", Content = _plan });
+        _tabs.SelectionChanged += (s, e) => { if (e.Source == _tabs) { if (_tabs.SelectedIndex == 2) { FillPreviewSources(); RefreshPreview(); } if (_tabs.SelectedIndex == 3) RefreshQuantities(); if (_tabs.SelectedIndex == 4) _plan.Redraw(); } };
         Grid.SetColumn(_tabs, 4); grid.Children.Add(_tabs);
         dock.Children.Add(grid);
         Content = dock;
@@ -287,11 +306,14 @@ public sealed class DetailingWindow : Window
     private void DeleteCurrent()
     {
         if (_cur == null) return;
-        if (SelfTestOut == null && MessageBox.Show(this, "Xoá cấu kiện " + _cur.Name + "?", Title, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        int placed = _prj.Plan?.Count(_cur.Name) ?? 0;
+        if (SelfTestOut == null && MessageBox.Show(this, "Xoá cấu kiện " + _cur.Name + "?" + (placed > 0 ? "\n(" + placed + " vị trí trên mặt bằng kết cấu cũng bị xoá)" : ""), Title, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         var g = GroupOf(_cur);
         if (g == null) return;
         int i = g.Value.List.IndexOf(_cur);
         g.Value.List.Remove(_cur); _res.Remove(_cur);
+        if (!_prj.All.Any(x => x.Name == _cur.Name)) _prj.Plan?.RemoveMember(_cur.Name);
+        _plan?.Reload();
         _dirty = true;
         var next = g.Value.List.Count > 0 ? (IDetailMember)g.Value.List[Math.Min(i, g.Value.List.Count - 1)] : null;
         _cur = null;
@@ -449,7 +471,7 @@ public sealed class DetailingWindow : Window
     private static string KindTitle(IDetailMember m) => m switch
     {
         ManualBeam => "Dầm", ManualColumn => "Cột", ManualSlab => "Ô sàn", ManualSlabPlan => "Mặt bằng sàn", ManualLintel => "Lanh tô – ô văng", ManualFooting => "Móng đơn", ManualStrip => "Móng băng",
-        ManualPileCap => "Đài cọc", RaftInput => "Móng bè", PrestressInput => "Cấu kiện dự ứng lực", WaterTankInput => "Bể nước", _ => "Cấu kiện"
+        ManualPileCap => "Đài cọc", ManualStair => "Cầu thang bộ", RaftInput => "Móng bè", PrestressInput => "Cấu kiện dự ứng lực", WaterTankInput => "Bể nước", _ => "Cấu kiện"
     };
 
     private FrameworkElement Editor(object target, PropertyInfo pi, FieldAttribute fa)
@@ -652,6 +674,40 @@ public sealed class DetailingWindow : Window
         SetStatus(r.Ok ? "Cấu kiện " + r.Name + " đạt mọi kiểm tra." : "Cấu kiện " + r.Name + ": " + r.Messages.Count(x => x.StartsWith("LỖI")) + " lỗi – xem bảng kiểm tra / thông báo.");
     }
 
+    public const string PreviewMember = "Cấu kiện đang chọn";
+
+    /// <summary>Danh sách nguồn xem trước: cấu kiện đang chọn + từng mặt bằng kết cấu (móng, định vị cột, các tầng).</summary>
+    private void FillPreviewSources()
+    {
+        string keep = _pvSource.SelectedItem as string;
+        var names = new List<string> { PreviewMember };
+        try { names.AddRange(PlanFigures().Select(f => f.Name)); } catch { }
+        _loadingPv = true;
+        _pvSource.ItemsSource = names;
+        _pvSource.SelectedItem = keep != null && names.Contains(keep) ? keep : PreviewMember;
+        _loadingPv = false;
+    }
+    private bool _loadingPv;
+
+    private List<Figure> PlanFigures() => StructuralPlanDrawing.Build(_prj, Results());
+
+    /// <summary>Hình đang xem trước: cấu kiện đang chọn hoặc mặt bằng kết cấu đã chọn ở ô nguồn.</summary>
+    private List<Figure> PreviewFigures()
+    {
+        if (_pvSource.SelectedItem is string src && src != PreviewMember)
+        {
+            try { return PlanFigures().Where(f => f.Name == src).ToList(); }
+            catch (Exception ex) { SetStatus("Không vẽ được mặt bằng: " + ex.Message); return new List<Figure>(); }
+        }
+        return CurrentFigures();
+    }
+
+    private void PlanChanged()
+    {
+        _dirty = true; UpdateTitle();
+        RefreshTree(_cur);
+    }
+
     private List<Figure> CurrentFigures()
     {
         if (_cur == null || !_res.TryGetValue(_cur, out var r)) return new List<Figure>();
@@ -663,7 +719,8 @@ public sealed class DetailingWindow : Window
     {
         try
         {
-            var figs = CurrentFigures();
+            if (_loadingPv) return;
+            var figs = PreviewFigures();
             if (figs.Count == 0) { _preview.Drawing = null; _preview.InvalidateVisual(); return; }
             // các hình xếp hàng ngang theo tỷ lệ riêng (mm giấy), xuống dòng khi rộng > 420 mm; căn đỉnh
             var items = new List<(DxfWriter W, double K, double Dx, double Dy)>();
@@ -742,6 +799,7 @@ public sealed class DetailingWindow : Window
         _prj = new DetailingProject();
         _path = null; _dirty = false; _res.Clear();
         RefreshTree();
+        _plan?.Reload();
         UpdateTitle();
         SetStatus("Hồ sơ mới – bấm ＋ Dầm, ＋ Cột, ＋ Móng… để thêm cấu kiện; Tệp → Mở hồ sơ mẫu để xem ví dụ đủ loại cấu kiện.");
     }
@@ -753,6 +811,7 @@ public sealed class DetailingWindow : Window
         _path = null; _dirty = false; _res.Clear();
         RecalcAll();
         RefreshTree(_prj.All.FirstOrDefault());
+        _plan?.Reload();
         UpdateTitle();
     }
 
@@ -771,6 +830,7 @@ public sealed class DetailingWindow : Window
             _path = file; _dirty = false; _res.Clear();
             RecalcAll();
             RefreshTree(_prj.All.FirstOrDefault());
+            _plan?.Reload();
             UpdateTitle();
         }
         catch (Exception ex) { MessageBox.Show(this, "Không mở được hồ sơ:\n" + ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Error); NewProject(true); }
@@ -882,19 +942,27 @@ public sealed class DetailingWindow : Window
         string dir = PickFolder(split ? "Xuất bản vẽ tách từng cấu kiện" : "Xuất bản vẽ gộp 1 file");
         if (dir == null) return;
         var log = new List<string>();
-        var files = DetailingExport.Drawings(_prj, Results(), Path.Combine(dir, split ? "BanVe_TachRoi" : "BanVe"), split, log);
-        Report("Đã xuất " + files.Count + " file DXF", files, log);
+        var files = DetailingExport.Drawings(_prj, Results(), Path.Combine(dir, split ? "BanVe_TachRoi" : "BanVe"), split, log, Fmt);
+        Report("Đã xuất " + files.Count + " file bản vẽ (" + Formats[Math.Max(0, _fmt.SelectedIndex)].Label + ")", files, log);
     }
 
     private void ExportCurrentDxf()
     {
-        var figs = CurrentFigures();
+        var figs = PreviewFigures();
         if (figs.Count == 0) return;
-        var dlg = new SaveFileDialog { Filter = "AutoCAD DXF (*.dxf)|*.dxf", FileName = SafeName(KindTitle(_cur) + "_" + _cur.Name) + ".dxf" };
+        bool plan = _pvSource.SelectedItem is string src && src != PreviewMember;
+        string title = plan ? figs[0].Name : _cur == null ? "BAN VE" : KindTitle(_cur).ToUpperInvariant() + " " + _cur.Name;
+        string ext = FmtExt;
+        var dlg = new SaveFileDialog
+        {
+            Filter = ext == ".dwg" ? "Bản vẽ AutoCAD (*.dwg)|*.dwg" : "AutoCAD DXF (*.dxf)|*.dxf",
+            FileName = SafeName(plan ? title : KindTitle(_cur) + "_" + _cur.Name) + ext
+        };
         if (dlg.ShowDialog(this) != true) return;
         var (sc, paper) = DetailingExport.SheetFor(figs);
-        SheetComposer.Compose(figs, sc, Info(KindTitle(_cur).ToUpperInvariant() + " " + _cur.Name, "KC-01"), paper).Save(dlg.FileName);
-        SetStatus("Đã xuất " + dlg.FileName);
+        var w = SheetComposer.Compose(figs, sc, Info(title, "KC-01"), paper);
+        string real = KetCauVXT.Drawing.CadFileWriters.Write(w, Path.ChangeExtension(dlg.FileName, ".dxf"), Fmt);
+        SetStatus("Đã xuất " + real);
     }
 
     private void ExportExcel()
@@ -927,8 +995,8 @@ public sealed class DetailingWindow : Window
         var log = new List<string>();
         var res = Results();
         var files = new List<string>();
-        try { files.AddRange(DetailingExport.Drawings(_prj, res, Path.Combine(dir, "BanVe"), false, log)); } catch (Exception ex) { log.Add("Bản vẽ gộp: " + ex.Message); }
-        try { files.AddRange(DetailingExport.Drawings(_prj, res, Path.Combine(dir, "BanVe_TachRoi"), true, log)); } catch (Exception ex) { log.Add("Bản vẽ tách: " + ex.Message); }
+        try { files.AddRange(DetailingExport.Drawings(_prj, res, Path.Combine(dir, "BanVe"), false, log, Fmt)); } catch (Exception ex) { log.Add("Bản vẽ gộp: " + ex.Message); }
+        try { files.AddRange(DetailingExport.Drawings(_prj, res, Path.Combine(dir, "BanVe_TachRoi"), true, log, Fmt)); } catch (Exception ex) { log.Add("Bản vẽ tách: " + ex.Message); }
         try { string x = Path.Combine(dir, SafeName(_prj.ProjectName) + "_KhoiLuong.xlsx"); DetailingExport.Excel(_prj, res, x); files.Add(x); } catch (Exception ex) { log.Add("Excel: " + ex.Message); }
         try { string d = Path.Combine(dir, SafeName(_prj.ProjectName) + "_ThuyetMinh.docx"); DetailingExport.Word(_prj, res, d); files.Add(d); } catch (Exception ex) { log.Add("Word: " + ex.Message); }
         return (files, log);
@@ -973,6 +1041,25 @@ public sealed class DetailingWindow : Window
                 log.Add($"triển khai {title} {m.Name}: {(r.Ok ? "đạt" : "không đạt")}, {r.Checks.Count} kiểm tra, {r.Bars.Count} số hiệu thép, {CurrentFigures().Count} hình");
                 i++;
             }
+            _plan.Reload();
+            _tabs.SelectedIndex = 4;
+            await Task.Delay(400);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            _plan.Redraw();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            Shot(Path.Combine(outDir, $"{tag}_TrienKhai_MatBangKetCau.png"));
+            _tabs.SelectedIndex = 2; FillPreviewSources();
+            var planNames = (_pvSource.ItemsSource as List<string> ?? new List<string>()).Skip(1).ToList();
+            if (planNames.Count > 0)
+            {
+                _pvSource.SelectedItem = planNames[^1];
+                RefreshPreview();
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                Shot(Path.Combine(outDir, $"{tag}_TrienKhai_XemTruocMatBang.png"));
+                _pvSource.SelectedItem = PreviewMember;
+            }
+            log.Add("triển khai: mặt bằng kết cấu " + planNames.Count + " bản vẽ (" + string.Join(", ", planNames) + "), " + _prj.Plan.Levels.Sum(l => l.Items.Count) + " vị trí cấu kiện"
+                    + (_prj.Plan.QuantityWarnings(_prj).Count > 0 ? " – cảnh báo SL: " + string.Join("; ", _prj.Plan.QuantityWarnings(_prj)) : ""));
             _tabs.SelectedIndex = 3; RefreshQuantities();
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             Shot(Path.Combine(outDir, $"{tag}_TrienKhai_KhoiLuong.png"));

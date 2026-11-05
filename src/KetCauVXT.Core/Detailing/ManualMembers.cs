@@ -694,8 +694,8 @@ public class ManualSlab : IDetailMember
             sct.Polyline(Lay.Thep, new List<(double, double)> { (lx + bw / 2, -c - (t - 2 * c)), (lx + bw / 2, -c), (lx + bw / 2 - ext, -c), (lx + bw / 2 - ext, -c - 60) }, false);
             sct.LeaderTag(ext * 0.6, -c, ext * 0.6 + 1.6 * sct.Th, 500, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark);
         }
-        sct.Dim(0, -t, lx, -t, -bh - 400);
-        sct.Dim(lx + bw, -t, lx + bw, 0, 500);
+        sct.Dim(0, -t, lx, -t, -bh - 1.5 * sct.Th);
+        sct.Dim(lx + bw, -t, lx + bw, 0, 2.0 * sct.Th);
         sct.Title(lx / 2, -bh - 1000, "1-1", DrawUtil.ScaleText(Ss), true);
         figs.Add(new Figure(sct, "Mặt cắt sàn " + Name));
         return figs;

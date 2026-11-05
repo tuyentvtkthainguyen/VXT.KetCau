@@ -104,6 +104,9 @@ public class DrawingStyle
     public double DimExtOffset { get; set; } = 0.625;
     /// <summary>Đường gióng vượt qua đường kích thước</summary>
     public double DimExtBeyond { get; set; } = 1.25;
+    /// <summary>Đường gióng cố định độ dài (mm giấy, tính từ đường kích thước về phía điểm đo – như DIMFXL của AutoCAD);
+    /// 0 = gióng kéo tới sát điểm đo (cách DimExtOffset). Mặc định 4 mm: chân gióng gọn, không kéo dài về tận điểm bắt.</summary>
+    public double DimFixedExtLength { get; set; } = 4.0;
     /// <summary>Đường kích thước kéo dài qua đường gióng</summary>
     public double DimLineExtend { get; set; } = 1.0;
     /// <summary>Chữ số cách đường kích thước</summary>
@@ -163,7 +166,7 @@ public class DrawingStyle
     /// <summary>Chiều dài cánh sàn thể hiện mỗi bên dầm (mm thật, tính từ mặt bên dầm tới đường cắt)</summary>
     public double SlabFlangeLength { get; set; } = 400;
     /// <summary>Thể hiện thép sàn trong cánh (lớp dưới, thép mũ vắt qua dầm) kèm nhãn "Ø8a200 (sàn)"</summary>
-    public bool ShowSlabRebarInFlange { get; set; } = true;
+    public bool ShowSlabRebarInFlange { get; set; } = false;   // mặt cắt dầm chỉ thể hiện cấu tạo dầm (cánh sàn vẽ nét, không vẽ thép sàn)
     /// <summary>Kiểu đường cắt ở đầu cánh sàn</summary>
     public SlabBreakStyle SlabBreak { get; set; } = SlabBreakStyle.ZigZag;
 
@@ -348,6 +351,7 @@ public class DrawingStyle
             Arrow = x?.Arrow ?? DimArrowType,
             ExtOffset = x?.ExtOffset ?? DimExtOffset,
             ExtBeyond = x?.ExtBeyond ?? DimExtBeyond,
+            FixedExt = DimFixedExtLength,
             LineExtend = x?.LineExtend ?? DimLineExtend,
             TextGap = x?.TextGap ?? DimTextGap,
             BaselineSpacing = x?.BaselineSpacing ?? DimBaselineSpacing,
@@ -387,6 +391,7 @@ public class DrawingStyle
         DimTickSize = Clamp(DimTickSize, 0.2, 20, d.DimTickSize);
         DimExtOffset = double.IsNaN(DimExtOffset) || DimExtOffset < 0 ? d.DimExtOffset : Math.Min(DimExtOffset, 20);
         DimExtBeyond = double.IsNaN(DimExtBeyond) || DimExtBeyond < 0 ? d.DimExtBeyond : Math.Min(DimExtBeyond, 20);
+        DimFixedExtLength = double.IsNaN(DimFixedExtLength) || DimFixedExtLength < 0 ? d.DimFixedExtLength : Math.Min(DimFixedExtLength, 50);
         DimLineExtend = double.IsNaN(DimLineExtend) || DimLineExtend < 0 ? d.DimLineExtend : Math.Min(DimLineExtend, 20);
         DimTextGap = double.IsNaN(DimTextGap) || DimTextGap < 0 ? d.DimTextGap : Math.Min(DimTextGap, 20);
         NoteHeight = Clamp(NoteHeight, 0.5, 20, d.NoteHeight);
@@ -509,6 +514,8 @@ public sealed class DimParams
     /// <summary>Có trong danh sách kiểu (false = tạo tự động cho tỷ lệ tuỳ ý)</summary>
     public bool Defined;
     public double TextHeight = 2.5, TickSize = 2.5, ExtOffset = 0.625, ExtBeyond = 1.25, LineExtend = 1.0, TextGap = 0.75, BaselineSpacing = 7;
+    /// <summary>Đường gióng cố định độ dài (mm giấy, từ đường kích thước về phía điểm đo); 0 = kéo tới điểm đo.</summary>
+    public double FixedExt;
     public DimArrow Arrow = DimArrow.Tick;
     public int Decimals;
     public double LinearFactor = 1;
