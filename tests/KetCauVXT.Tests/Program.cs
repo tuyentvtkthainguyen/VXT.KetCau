@@ -601,6 +601,8 @@ Console.WriteLine("66. Khung tên dàn trang in: tự tạo, tải lên DWG/DXF,
 TitleBlockTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("67. Khổ giấy – tỷ lệ tự động, vẽ lại đúng cỡ chữ, nhãn mặt bằng không đè");
 PaperScaleTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("68. Trích chi tiết, mặt cắt mọi nhịp dầm, shop drawing, điểm cắt thép, ghi chú thép sàn");
+ShopCutTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

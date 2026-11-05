@@ -63,7 +63,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         var r3 = new WrapPanel();
         foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (PlanKinds.Slab, "Sàn"),
                      (PlanKinds.Lintel, "Lanh tô"), (PlanKinds.Canopy, "Ô văng"), (PlanKinds.Stair, "Cầu thang"), (ToolSection, "Mặt cắt"),
-                     (ToolSlabBay, "Sàn trong ô dầm"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), ("Xoa", "Xoá") })
+                     (ToolSlabBay, "Sàn trong ô dầm"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), (ToolCallout, "Trích chi tiết"), ("Xoa", "Xoá") })
         {
             var rb = new RadioButton { Content = label, GroupName = "plantool", Margin = new Thickness(0, 2, 10, 2), IsChecked = key == "Chon", Tag = key };
             rb.Checked += (s, e) => { _tool = (string)rb.Tag; _first = null; _moveItem = null; FillMembers(); UpdateHint(); Redraw(); };
@@ -150,6 +150,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                                           : "Mặt cắt: bấm điểm cuối đường cắt – Esc huỷ. Chuột phải lên đường cắt: đổi tên / xoá.",
             ToolSlabBay => "Sàn trong ô dầm: bấm vào bên trong ô được bao bởi dầm (hoặc trục) – tự lấy kích thước ô.",
             ToolCanopyDoor => "Ô văng trên cửa: bấm vào ô cửa của ánh xạ kiến trúc (cửa ở tường ngoài) – tạo ô văng OV… liền lanh tô, vươn ra phía ngoài.",
+            ToolCallout => CalloutHint(),
             ToolMove => _moveItem == null ? "Di chuyển: bấm chọn cấu kiện cần dời (bắt điểm gốc)." : "Di chuyển: bấm điểm đích – Esc huỷ.",
             _ when PlanKinds.IsPoint(_tool) =>PlanKinds.Title(_tool) + ": bấm vào giao trục (tự bắt điểm) để đặt.",
             _ when PlanKinds.IsSegment(_tool) => PlanKinds.Title(_tool) + (_first == null ? ": bấm điểm đầu (bắt giao trục / đường trục)." : ": bấm điểm cuối – Esc huỷ."),
@@ -236,6 +237,8 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         double tol = 12 / _k;
         if (e.ChangedButton == MouseButton.Right)
         {
+            var coMenu = CalloutMenuAt(lv, w, tol);   // khung chi tiết trích (DetailingPlanCanvas.Callout.cs)
+            if (coMenu != null) { coMenu.IsOpen = true; return; }
             var hitSec = HitSection(lv, w.X, w.Y, tol);
             if (hitSec != null) { SectionMenu(hitSec).IsOpen = true; return; }
             var hit = StructuralPlan.HitTest(lv, w.X, w.Y, tol);
@@ -245,6 +248,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         }
         if (e.ChangedButton != MouseButton.Left) return;
         if (_tool != "Chon") _undo.Push(Plan);
+        if (HandleCalloutTool(lv, w, tol)) return;
         if (HandleExtraTool(lv, w, tol)) return;
         if (_tool == "Chon")
         {
@@ -442,6 +446,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                 }
             }
         }
+        DrawCallouts(lv);   // khung chi tiết trích
         // xem trước khi vẽ
         if (_first != null)
         {

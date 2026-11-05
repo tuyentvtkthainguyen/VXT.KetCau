@@ -350,6 +350,7 @@ public static class DetailingExport
             st.AddRow(g.Key, Math.Round(g.Sum(r => r.TotalLengthM), 2), Math.Round(g.Sum(r => r.WeightKg), 1));
         st.AddBoldRow("Tổng cộng", "", Math.Round(rows.Sum(r => r.WeightKg), 1));
         st.SetColumnWidths(16, 12, 8, 22, 26, 7, 12, 7, 9, 11, 11, 11);
+        ShopDrawing.AddExcelSheet(x, p, results);   // gia công – cắt thép dầm, sàn (Detailing/ShopDrawing.cs)
         x.Save(path);
     }
 

@@ -123,7 +123,6 @@ public static class CalloutDrawing
     {
         int n = 0;
         double th = w.Th;
-        var done = new HashSet<string>();
         foreach (var it in lv.Items.Where(i => i.Kind == PlanKinds.Beam && !string.IsNullOrEmpty(i.Member)))
         {
             if (!map.TryGetValue(it.Member, out var v) || v.R?.Source is not BeamLineDesign d || d.Spans.Count == 0) continue;
@@ -132,11 +131,9 @@ public static class CalloutDrawing
             double ux = (it.X2 - it.X1) * 1000 / len, uy = (it.Y2 - it.Y1) * 1000 / len, nx = -uy, ny = ux;
             double half = (v.M is ManualBeam mb ? mb.B : d.B) * 500;
             double k = len / total;
-            // mỗi số hiệu mặt cắt chỉ ghi một lần trên cùng một vị trí dầm (giảm rối mặt bằng)
+            // mọi mặt cắt của chi tiết dầm (gối – giữa nhịp – gối mỗi nhịp), số hiệu như mặt đứng dầm
             foreach (var (x, num) in BeamDrawing.SectionCuts(d))
             {
-                string key = it.Member + "|" + Math.Round(it.X1, 2) + "|" + Math.Round(it.Y1, 2) + "|" + num;
-                if (!done.Add(key)) continue;
                 double px = it.X1 * 1000 + ux * x * k, py = it.Y1 * 1000 + uy * x * k;
                 foreach (int sgn in new[] { 1, -1 })
                 {

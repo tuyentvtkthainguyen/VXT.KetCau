@@ -31,6 +31,8 @@ public class DetailSettings
     public string LeanConcrete { get; set; } = "B7,5";
     /// <summary>Chiều dài cây thép thương phẩm (m)</summary>
     public double StockLength { get; set; } = 11.7;
+    /// <summary>Xuất shop drawing (gia công, cắt thép từ cây) cho MỌI dầm, sàn (ngoài lựa chọn riêng từng cấu kiện).</summary>
+    public bool ShopDrawingAll { get; set; }
 
     public Material Conc() => Material.Concrete(Concrete);
     public Material Main() => Material.Rebar(RebarMain);

@@ -70,6 +70,7 @@ public class ManualSlabPlan : IDetailMember
     [Field("Ngưỡng bậc sàn (coi là liên tục)", Unit = "mm", Scale = 1000, Group = "Hạ cốt")] public double StepThreshold { get; set; } = 0.030;
     [Field("Thép mũ qua dầm có chênh cốt", Group = "Hạ cốt", Choices = CrankBend + "|" + CrankCut)] public string CrankMode { get; set; } = CrankBend;
     [Field("Ngưỡng nhấn thép (|Δ| tối đa)", Unit = "mm", Scale = 1000, Group = "Hạ cốt")] public double CrankLimit { get; set; } = 0.050;
+    [Field("Xuất shop drawing thép sàn (gia công, cắt thép)", Group = "Shop drawing")] public bool ShopOut { get; set; }
 
     public List<SlabPanelRow> Panels { get; set; } = new();
     public List<SlabOpening> Openings { get; set; } = new();
@@ -174,6 +175,9 @@ public class ManualSlabPlan : IDetailMember
         var r = new DetailResult { Kind = "Mặt bằng sàn", Name = Name, Quantity = Math.Max(1, Quantity) };
         try { Design(s, r); }
         catch (Exception e) { r.Messages.Add("LỖI tính toán mặt bằng sàn: " + e.Message); }
+        var live = PanelList.Where(q => !q.Void).ToList();
+        if (live.Count > 0)   // nguyên tắc bố trí thép theo miền chịu kéo + thứ tự đặt thép (Detailing/SlabNotes.cs)
+            r.Calc.AddRange(RebarNotes.SlabPrinciple(live.Min(q => Math.Min(q.Lx, q.Ly)), T, BeamWidth, (s ?? new DetailSettings()).CoverSlab));
         return r;
     }
 
@@ -575,7 +579,12 @@ public class ManualSlabPlan : IDetailMember
         w.DimChainV(ysMm, 0, -ext + 3 * th);
         w.Title(W / 2, -ext - 2 * r0 - 2 * th, RebarSchedule.MemberLabel("MẶT BẰNG BỐ TRÍ THÉP SÀN " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, "Mặt bằng sàn " + Name, true));
-        figs.Add(Section(r, s));
+        var secFig = Section(r, s);
+        var liveP = PanelList.Where(q => !q.Void).ToList();
+        if (liveP.Count > 0 && secFig?.W != null)   // ghi chú cấu tạo thép sàn dưới mặt cắt
+            RebarNotes.AppendBelow(secFig.W, RebarNotes.SlabPrinciple(liveP.Min(q => Math.Min(q.Lx, q.Ly)), T, BeamWidth, (s ?? new DetailSettings()).CoverSlab).Skip(1));
+        figs.Add(secFig);
+        if (ShopOut || (s?.ShopDrawingAll ?? false)) figs.AddRange(ShopDrawing.SlabFigures(this, r, s));
         return figs;
     }
 

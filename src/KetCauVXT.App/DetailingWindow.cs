@@ -983,7 +983,7 @@ public sealed partial class DetailingWindow : Window
     {
         var s = _prj.Settings;
         var w = new Window { Owner = this };
-        DialogUi.Setup(w, "Vật liệu, lớp bảo vệ – hồ sơ triển khai", 560, 520);
+        DialogUi.Setup(w, "Vật liệu, lớp bảo vệ – hồ sơ triển khai", 560, 560);
         var sp = new StackPanel { Margin = new Thickness(14) };
         ComboBox Combo(string[] items, string val) => new() { ItemsSource = items, SelectedItem = items.Contains(val) ? val : items[0], Width = 160 };
         var cC = Combo(KetCauVXT.Model.Material.ConcreteClasses, s.Concrete);
@@ -1001,6 +1001,8 @@ public sealed partial class DetailingWindow : Window
         sp.Children.Add(DialogUi.Row(DialogUi.Label("Bể nước (mặt tiếp xúc nước / đất):", 230), tT));
         sp.Children.Add(DialogUi.Row(DialogUi.Label("Bê tông lót móng dày (mm):", 230), tL));
         sp.Children.Add(DialogUi.Row(DialogUi.Label("Chiều dài cây thép (m):", 230), tStock));
+        var cShop = new CheckBox { Content = "Xuất shop drawing (gia công, cắt thép) cho mọi dầm, sàn", IsChecked = s.ShopDrawingAll, Margin = new Thickness(0, 6, 0, 0) };
+        sp.Children.Add(cShop);
         var ok = DialogUi.Btn("Đồng ý", (o, e) =>
         {
             s.Concrete = cC.SelectedItem as string ?? s.Concrete; s.RebarMain = cM.SelectedItem as string ?? s.RebarMain; s.RebarSmall = cS.SelectedItem as string ?? s.RebarSmall;
@@ -1008,6 +1010,7 @@ public sealed partial class DetailingWindow : Window
             s.CoverSlab = DialogUi.ParseNum(tS.Text, s.CoverSlab * 1000) / 1000; s.CoverFooting = DialogUi.ParseNum(tF.Text, s.CoverFooting * 1000) / 1000;
             s.CoverTank = DialogUi.ParseNum(tT.Text, s.CoverTank * 1000) / 1000; s.LeanThickness = DialogUi.ParseNum(tL.Text, s.LeanThickness * 1000) / 1000;
             s.StockLength = DialogUi.ParseNum(tStock.Text, s.StockLength);
+            s.ShopDrawingAll = cShop.IsChecked == true;
             w.DialogResult = true;
         }, true);
         sp.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 0), Children = { ok, DialogUi.Btn("Huỷ", (o, e) => w.DialogResult = false) } });

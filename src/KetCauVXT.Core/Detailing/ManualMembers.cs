@@ -141,6 +141,18 @@ public class ManualBeam : IDetailMember
     [Field("Bước đai vùng gối", Unit = "mm", Scale = 1000, Group = "Thép đai", Row = "st2", RowTitle = "Bước đai", Short = "gối")] public double StirSupport { get; set; } = 0.10;
     [Field("Bước đai giữa nhịp", Unit = "mm", Scale = 1000, Group = "Thép đai", Row = "st2", Short = "giữa nhịp")] public double StirMid { get; set; } = 0.20;
 
+    // ---- điểm cắt / nối thép do người dùng điều chỉnh (kiểm tra + cảnh báo vùng nguy hiểm: Detailing/BarCutCheck.cs) ----
+    [Field("Mũ gối – vươn tuỳ chỉnh từ mép gối (theo gối 1; 2; 3…)", Unit = "m", Group = "Điểm cắt / nối thép (tuỳ chỉnh)",
+        Hint = "vd. \"0,9; 1,4; 0,9\" – 0 hoặc để trống = theo lựa chọn; áp cho mọi nhóm mũ gối; yêu cầu ≥ L0/4 gối biên, ≥ L0/3 gối giữa, ≥ lan")] public string SupExtUser { get; set; } = "";
+    [Field("Tăng cường dưới – khoảng cắt từ mép gối (theo nhịp 1; 2…)", Unit = "m", Group = "Điểm cắt / nối thép (tuỳ chỉnh)",
+        Hint = "0 = theo lựa chọn; cắt xa mép gối hơn L0/6 sẽ bị cảnh báo (thiếu thép vùng mô men dương)")] public string AddBotCutUser { get; set; } = "";
+    [Field("Vị trí nối thép dưới chạy suốt (x từ tim gối 1)", Unit = "m", Group = "Điểm cắt / nối thép (tuỳ chỉnh)",
+        Hint = "vd. \"4,5\" – không nối trong 1/3 giữa nhịp; nên nối gần gối")] public string BotSplices { get; set; } = "";
+    [Field("Vị trí nối thép trên chạy suốt (x từ tim gối 1)", Unit = "m", Group = "Điểm cắt / nối thép (tuỳ chỉnh)",
+        Hint = "không nối trong L0/4 từ mép gối và trên gối; nên nối ở 1/3 giữa nhịp")] public string TopSplices { get; set; } = "";
+    [Field("Kháng chấn – vùng tới hạn", Group = "Điểm cắt / nối thép (tuỳ chỉnh)", Choices = BarCutCheck.SeismicNo + "|" + BarCutCheck.SeismicYes)] public string Seismic { get; set; } = BarCutCheck.SeismicNo;
+    [Field("Xuất shop drawing thép dầm (gia công, cắt thép)", Group = "Shop drawing")] public bool ShopOut { get; set; }
+
     /// <summary>Nhóm thép tăng cường (dưới hoặc mũ gối) đã chuẩn hoá.</summary>
     public sealed record AddGroup(int No, int D, int N, int Layer, string Opt, bool Hook);
 
@@ -250,6 +262,8 @@ public class ManualBeam : IDetailMember
             d.Messages.Add("Thép chạy suốt dài " + Dt.F(xe - xs) + " m > " + Dt.F(s.StockLength) + " m – nối chồng thép trên tại giữa nhịp, thép dưới tại gối (ll = "
                            + Dt.Mm(RebarDetailing.LapLength(conc, main, Math.Max(BotD, TopD))) + " mm), so le ≥ 1,3·ll, ≤ 50% số thanh tại một tiết diện");
         // mũ gối: vươn từ mép gối theo lựa chọn; "qua hết nhịp ngắn" → chạy qua nhịp ngắn hơn kề bên tới gối bên kia
+        var supUser = BarCutCheck.ParseKeep(SupExtUser);
+        var botUser = BarCutCheck.ParseKeep(AddBotCutUser);
         foreach (var g in gTop)
         {
             string role = g.No == 2 ? "Mũ gối" : "Mũ gối " + g.No;
@@ -263,6 +277,8 @@ public class ManualBeam : IDetailMember
                 {
                     if (lcl[j - 1] <= lcl[j]) extL = lcl[j - 1] + w / 2 - c; else extR = lcl[j] + w / 2 - c;
                 }
+                double uE = BarCutCheck.At(supUser, j);   // vươn tuỳ chỉnh của người dùng (kiểm tra ở BarCutCheck.Evaluate)
+                if (uE > 0) { if (!end0) extL = uE; if (!endN) extR = uE; }
                 double x0 = end0 ? xs : nodeX[j] - w / 2 - extL, x1 = endN ? xe : nodeX[j] + w / 2 + extR;
                 double lg0 = end0 ? AnchorLeg(g.D, g.Hook) : 0, lg1 = endN ? AnchorLeg(g.D, g.Hook) : 0;
                 d.Bars.Add(Long(role, true, g.D, g.N, x0, x1, lg0, lg1, end0 ? 0 : endN ? ns - 1 : j));
@@ -283,7 +299,12 @@ public class ManualBeam : IDetailMember
                     if (k == 0) lg0 = AnchorLeg(g.D, g.Hook);
                     if (k == ns - 1) lg1 = AnchorLeg(g.D, g.Hook);
                 }
-                else { double cd = CutDistance(g.Opt, l0); x0 = f0 + cd; x1 = f1 - cd; }
+                else
+                {
+                    double cd = CutDistance(g.Opt, l0), uc = BarCutCheck.At(botUser, k);
+                    if (uc > 0) cd = uc;   // khoảng cắt tuỳ chỉnh
+                    x0 = f0 + cd; x1 = f1 - cd;
+                }
                 d.Bars.Add(Long(role, false, g.D, g.N, x0, x1, lg0, lg1, k));
             }
         }
@@ -355,6 +376,8 @@ public class ManualBeam : IDetailMember
             d.Messages.Add("Chưa nhập nội lực – chỉ kiểm tra cấu tạo (hàm lượng, bước đai, khe hở thép); Mu, Qu ghi trong thuyết minh để đối chiếu");
         foreach (var k in d.Checks.Where(x => !x.Ok)) d.Messages.Add("LỖI " + k.Name + ": " + Dt.F(k.Demand, "0.0") + " > " + Dt.F(k.Capacity, "0.0") + " " + k.Unit);
 
+        BarCutCheck.Evaluate(this, s, d.Checks, d.Messages, r.Calc);   // điểm cắt / nối người dùng điều chỉnh
+        r.Calc.AddRange(RebarNotes.BeamOrder());
         RebarNumbering.Renumber(d.Bars);
         double clear = lcl.Sum();
         r.ConcreteVolume = B * H * clear;
@@ -431,8 +454,15 @@ public class ManualBeam : IDetailMember
         };
     }
 
-    public List<Figure> Draw(DetailResult r, DetailSettings s) =>
-        r?.Source is BeamLineDesign d && d.Spans.Count > 0 ? BeamDrawing.Build(DetailShim.Project(s), d) : new List<Figure>();
+    public List<Figure> Draw(DetailResult r, DetailSettings s)
+    {
+        if (r?.Source is not BeamLineDesign d || d.Spans.Count == 0) return new List<Figure>();
+        var figs = BeamDrawing.Build(DetailShim.Project(s), d);
+        // đánh dấu điểm cắt / nối sai vùng trên mặt đứng
+        if (figs.Count > 0) BarCutCheck.DrawMarks(figs[0].W, BarCutCheck.Evaluate(this, s, null, null), H * 1000);
+        if (ShopOut || (s?.ShopDrawingAll ?? false)) figs.AddRange(ShopDrawing.BeamFigures(this, r, s));
+        return figs;
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -685,6 +715,7 @@ public class ManualSlab : IDetailMember
     [Field("Lớp dưới phương dài – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double BotYS { get; set; }
     [Field("Mũ gối – Ø", Unit = "mm", Group = "Thép")] public int TopD { get; set; }
     [Field("Mũ gối – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double TopS { get; set; }
+    [Field("Xuất shop drawing thép sàn (gia công, cắt thép)", Group = "Shop drawing")] public bool ShopOut { get; set; }
 
     public static readonly int[] Dias = { 6, 8, 10, 12 };
 
@@ -792,6 +823,8 @@ public class ManualSlab : IDetailMember
         // thép phân bố đỡ mũ (Ø6a250)
         int nDist = (int)Math.Ceiling(lx / 4 / 0.25) * 2 * (fx + fy);
         if (nDist > 0) r.Bars.Add(Dt.Straight("Thép phân bố mũ", 6, nDist, Dt.R10(Math.Max(lx, ly) / 2), true, 0.25));
+        // thuyết minh nguyên tắc bố trí thép theo miền chịu kéo + thứ tự đặt thép (Detailing/SlabNotes.cs)
+        r.Calc.AddRange(RebarNotes.SlabPrinciple(lx, T, w, c, bx.D, tp.D, RebarDetailing.LapLength(conc, St(bx.D), bx.D)));
         RebarNumbering.Renumber(r.Bars);
         r.ConcreteVolume = lx * ly * T;
         r.FormworkArea = lx * ly;
@@ -871,7 +904,10 @@ public class ManualSlab : IDetailMember
         sct.Dim(0, -t, lx, -t, -bh - 1.5 * sct.Th);
         sct.Dim(lx + bw, -t, lx + bw, 0, 2.0 * sct.Th);
         sct.Title(lx / 2, -bh - 1000, "1-1", DrawUtil.ScaleText(Ss), true);
+        // ghi chú cấu tạo thép sàn (miền chịu kéo, thứ tự đặt thép) đặt dưới mặt cắt, cỡ chữ in đúng theo tỷ lệ mặt cắt
+        RebarNotes.AppendBelow(sct, RebarNotes.SlabPrinciple(Math.Min(Lx, Ly), T, BeamWidth, s?.CoverSlab ?? 0.015).Skip(1));
         figs.Add(new Figure(sct, "Mặt cắt sàn " + Name));
+        if (ShopOut || (s?.ShopDrawingAll ?? false)) figs.AddRange(ShopDrawing.SlabFigures(this, r, s));
         return figs;
     }
 }
