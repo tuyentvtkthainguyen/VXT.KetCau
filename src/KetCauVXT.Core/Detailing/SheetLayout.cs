@@ -33,6 +33,10 @@ public class DetailSheet
     public bool Locked { get; set; }
     /// <summary>Tờ danh mục bản vẽ (nội dung sinh tự động theo danh sách tờ).</summary>
     public bool IsIndex { get; set; }
+    /// <summary>Tên bản vẽ do người dùng sửa: giữ nguyên khi tự dàn trang / đặt tên tự động.</summary>
+    public bool NameLocked { get; set; }
+    /// <summary>Số hiệu do người dùng sửa: giữ nguyên khi đánh số lại.</summary>
+    public bool NumberLocked { get; set; }
     public List<PlacedFigure> Figures { get; set; } = new();
 
     [JsonIgnore] public (double W, double H) Size => SheetGeometry.PaperSize(Paper, Portrait);
@@ -50,6 +54,35 @@ public class DetailSheetSet
     /// <summary>Ngày ghi trong khung tên (người dùng nhập; để trống = không ghi).</summary>
     public string Date { get; set; } = "";
     public List<DetailSheet> Sheets { get; set; } = new();
+
+    /// <summary>Khung tên (mặc định / tự tạo / tải lên DWG-DXF) – Detailing/SheetTitleBlock.cs.</summary>
+    public DetailTitleBlock TitleBlock { get; set; } = new();
+
+    // ---- đánh số bản vẽ ----
+    public const string StyleDash = "KC-01", StyleNoDash = "KC01", StyleGroup = "KC-1.01";
+    public static readonly string[] NumberStyles = { StyleDash, StyleNoDash, StyleGroup };
+    /// <summary>Tiền tố số hiệu (KC, KT, KCM…).</summary>
+    public string NumberPrefix { get; set; } = "KC";
+    /// <summary>Mẫu số hiệu: "KC-01" (liên tục), "KC01" (không gạch), "KC-1.01" (theo nhóm mặt bằng – số thứ tự trong nhóm).</summary>
+    public string NumberStyle { get; set; } = StyleDash;
+    /// <summary>Số bắt đầu (số tờ đầu, hoặc số nhóm đầu với mẫu theo nhóm).</summary>
+    public int StartNo { get; set; } = 1;
+    /// <summary>Số chữ số của số thứ tự (2 → 01, 3 → 001).</summary>
+    public int Digits { get; set; } = 2;
+
+    /// <summary>Số hiệu theo mẫu: n = số thứ tự tờ (từ StartNo), g = số nhóm, i = thứ tự trong nhóm (từ 1).</summary>
+    public string FormatNo(int n, int g, int i)
+    {
+        string pre = (NumberPrefix ?? "").Trim();
+        string fmt = new string('0', Math.Clamp(Digits, 1, 4));
+        string Num(int v) => v.ToString(fmt, System.Globalization.CultureInfo.InvariantCulture);
+        return NumberStyle switch
+        {
+            StyleNoDash => pre + Num(n),
+            StyleGroup => (pre.Length > 0 ? pre + "-" : "") + g.ToString(System.Globalization.CultureInfo.InvariantCulture) + "." + Num(i),
+            _ => (pre.Length > 0 ? pre + "-" : "") + Num(n)
+        };
+    }
 }
 
 /// <summary>Một hình có thể dàn trang (sinh từ hồ sơ).</summary>
@@ -58,6 +91,10 @@ public sealed class SheetFigure
     public string Id = "";
     /// <summary>Thứ tự mục hồ sơ (0 = mặt bằng móng … 9 = bảng thống kê).</summary>
     public int Section;
+    /// <summary>0 = mặt bằng (và mặt cắt của mặt bằng), 1 = chi tiết cấu kiện thuộc mặt bằng, 2 = bảng thống kê.</summary>
+    public int Part;
+    /// <summary>Loại cấu kiện (DetailResult.Kind: "Móng đơn", "Dầm"…); "" với mặt bằng / bảng.</summary>
+    public string Kind = "";
     /// <summary>Tên mục / tên tờ gợi ý (vd. "CHI TIẾT MÓNG").</summary>
     public string SectionTitle = "";
     /// <summary>Tên hiển thị (vd. "Móng đơn M1 – MẶT CẮT 1-1").</summary>
@@ -136,65 +173,140 @@ public static class SheetLayoutEngine
         return 4;
     }
 
-    /// <summary>Danh mục mọi hình của hồ sơ, theo thứ tự mục (ổn định giữa các lần sinh).</summary>
+    /// <summary>Danh mục mọi hình của hồ sơ theo CÂY THƯ MỤC CÔNG TRÌNH (StructuralPlan.GroupForTree – như cây của cửa sổ hồ sơ):
+    /// mỗi mặt bằng (móng, dầm móng, định vị cột, các tầng, lanh tô – ô văng từng tầng) → chi tiết các cấu kiện thuộc mặt bằng đó;
+    /// cấu kiện chưa đặt trên mặt bằng xếp theo loại (móng → cột → dầm → sàn → lanh tô → thang → khác); cuối cùng là bảng thống kê.
+    /// Section = số thứ tự nhóm; Part 0 = mặt bằng (+ mặt cắt), 1 = chi tiết, 2 = bảng. Mã hình ổn định giữa các lần sinh.</summary>
     public static List<SheetFigure> Catalog(DetailingProject p, List<(IDetailMember Member, DetailResult Result)> results, List<string> log = null)
     {
         log ??= new List<string>();
         var list = new List<SheetFigure>();
         var seen = new HashSet<string>();
-        void Add(SheetFigure f)
+        var resOf = new Dictionary<IDetailMember, DetailResult>();
+        foreach (var (m, r) in results) if (m != null) resOf[m] = r;
+        void Add(SheetFigure f, string groupTitle)
         {
             if (f.F?.W == null || f.F.W.EntityCount == 0 || f.F.W.Extents.IsEmpty) return;
             string id = f.Id; int n = 2;
             while (!seen.Add(f.Id)) f.Id = id + "#" + n++;
-            f.SectionTitle = SectionTitles[Math.Clamp(f.Section, 0, SectionTitles.Length - 1)];
+            f.SectionTitle = groupTitle;
             list.Add(f);
         }
-        List<Figure> plans;
-        try { plans = StructuralPlanDrawing.Build(p, results) ?? new List<Figure>(); }
-        catch (Exception e) { log.Add("Không vẽ được mặt bằng kết cấu: " + e.Message); plans = new List<Figure>(); }
-        int lastPlanSection = 4;
-        foreach (var f in plans)
+        var done = new HashSet<IDetailMember>();
+        var drawn = new HashSet<string>();
+        int sec = 0;
+        void Members(IEnumerable<IDetailMember> ms, int s, string title)
         {
-            string nm = f.Name ?? "";
-            // mặt cắt sàn đi theo mặt bằng ngay trước nó
-            int sec = nm.StartsWith("MẶT CẮT ") ? lastPlanSection : PlanSection(nm);
-            if (!nm.StartsWith("MẶT CẮT ")) lastPlanSection = sec;
-            Add(new SheetFigure { Id = "MB:" + nm, Section = sec, Caption = nm, F = f });
+            foreach (var m in ms)
+            {
+                if (m == null || !done.Add(m) || !resOf.TryGetValue(m, out var r)) continue;
+                List<Figure> figs;
+                try { figs = m.Draw(r, p.Settings) ?? new List<Figure>(); }
+                catch (Exception e) { log.Add("Không vẽ được " + m.Name + ": " + e.Message); continue; }
+                for (int i = 0; i < figs.Count; i++)
+                    Add(new SheetFigure
+                    {
+                        Id = m.GetType().Name + ":" + m.Name + ":" + (string.IsNullOrEmpty(figs[i].Name) ? i.ToString() : figs[i].Name),
+                        Section = s, Part = 1, Member = m.Name, Kind = r?.Kind ?? "",
+                        Caption = (r?.Kind ?? "") + " " + m.Name + (string.IsNullOrEmpty(figs[i].Name) ? "" : " – " + figs[i].Name), F = figs[i]
+                    }, title);
+            }
         }
-        // mặt bằng bố trí lanh tô – ô văng các tầng (mục lanh tô cửa các tầng)
-        try
+        List<PlanTreeGroup> groups;
+        try { groups = StructuralPlan.GroupForTree(p); }
+        catch (Exception e) { log.Add("Không lập được cây mặt bằng: " + e.Message); groups = new List<PlanTreeGroup>(); }
+        foreach (var g in groups.Where(x => x.Kind != "ChuaDat"))
         {
-            foreach (var (lv, plan, _) in LintelPlanDrawing.Sheets(p, results))
-                if (plan != null) Add(new SheetFigure { Id = "MBLT:" + (lv?.Name ?? ""), Section = 6, Caption = plan.Name ?? "Mặt bằng lanh tô", F = plan });
+            int s = sec++;
+            string title = (g.Title ?? "").ToUpperInvariant();
+            if (g.Kind == "Tang" && g.Level != null && g.Level.Items.Count == 0 && g.Members.Count == 0) continue;
+            List<Figure> plans;
+            try { plans = StructuralPlanDrawing.ForGroup(p, results, g) ?? new List<Figure>(); }
+            catch (Exception e) { log.Add("Không vẽ được " + g.Title + ": " + e.Message); plans = new List<Figure>(); }
+            foreach (var f in plans)
+            {
+                string nm = f.Name ?? "";
+                if (!drawn.Add(nm)) continue;   // mặt bằng móng dùng chung cho nhóm dầm móng
+                Add(new SheetFigure { Id = (g.Kind == StructuralPlan.LintelGroupKind ? "MBLT:" : "MB:") + nm, Section = s, Part = 0, Caption = nm, F = f }, title);
+            }
+            Members(g.Members, s, title);
         }
-        catch (Exception e) { log.Add("Không lập được mặt bằng lanh tô: " + e.Message); }
-        foreach (var (m, r) in results)
+        // cấu kiện chưa đặt trên mặt bằng: theo loại
+        var un = results.Select(t => t.Member).Where(m => m != null && !done.Contains(m)).ToList();
+        foreach (var grp in un.GroupBy(m => SectionOf(m, resOf.TryGetValue(m, out var rr) ? rr : null)).OrderBy(x => x.Key))
         {
-            List<Figure> figs;
-            try { figs = m.Draw(r, p.Settings) ?? new List<Figure>(); }
-            catch (Exception e) { log.Add("Không vẽ được " + m.Name + ": " + e.Message); continue; }
-            int sec = SectionOf(m, r);
-            for (int i = 0; i < figs.Count; i++)
-                Add(new SheetFigure
-                {
-                    Id = m.GetType().Name + ":" + m.Name + ":" + (string.IsNullOrEmpty(figs[i].Name) ? i.ToString() : figs[i].Name),
-                    Section = sec, Member = m.Name, Caption = (r?.Kind ?? "") + " " + m.Name + (string.IsNullOrEmpty(figs[i].Name) ? "" : " – " + figs[i].Name), F = figs[i]
-                });
+            int s = sec++;
+            Members(grp, s, SectionTitles[Math.Clamp(grp.Key, 0, SectionTitles.Length - 1)]);
         }
+        int sT = sec;
         try
         {
             var sch = RebarSchedule.BuildFigures(DetailingExport.Summary(results), 1, 30);
-            for (int i = 0; i < sch.Count; i++) Add(new SheetFigure { Id = "TKTHEP:" + i, Section = 9, Caption = "Thống kê cốt thép (" + (i + 1) + ")", F = sch[i] });
+            for (int i = 0; i < sch.Count; i++) Add(new SheetFigure { Id = "TKTHEP:" + i, Section = sT, Part = 2, Caption = "Thống kê cốt thép (" + (i + 1) + ")", F = sch[i] }, "THỐNG KÊ CỐT THÉP");
         }
         catch (Exception e) { log.Add("Không lập được thống kê thép: " + e.Message); }
         try
         {
             var mat = MaterialTable.Build(p, results) ?? new List<Figure>();
-            for (int i = 0; i < mat.Count; i++) Add(new SheetFigure { Id = "TKVL:" + i, Section = 9, Caption = "Thống kê vật liệu (" + (i + 1) + ")", F = mat[i] });
+            for (int i = 0; i < mat.Count; i++) Add(new SheetFigure { Id = "TKVL:" + i, Section = sT, Part = 2, Caption = "Thống kê vật liệu (" + (i + 1) + ")", F = mat[i] }, "THỐNG KÊ VẬT LIỆU");
         }
         catch (Exception e) { log.Add("Không lập được thống kê vật liệu: " + e.Message); }
         return list;
+    }
+
+    // ------------------------------------------------------------------
+    // Tên bản vẽ tự động
+    // ------------------------------------------------------------------
+    /// <summary>Gộp tên cấu kiện: D1, D2, D3, D5 → "D1–D3, D5" (≥ 3 số liên tiếp cùng tiền tố gộp bằng gạch nối).</summary>
+    public static string CompressNames(IEnumerable<string> names)
+    {
+        var l = names.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList();
+        var parsed = l.Select(n => { var m = System.Text.RegularExpressions.Regex.Match(n, @"^(.*?)(\d+)$"); return (Name: n, Pre: m.Success ? m.Groups[1].Value : n, Num: m.Success ? int.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture) : -1); }).ToList();
+        var outp = new List<string>();
+        int i = 0;
+        while (i < parsed.Count)
+        {
+            int j = i;
+            if (parsed[i].Num >= 0)
+                while (j + 1 < parsed.Count && parsed[j + 1].Pre == parsed[i].Pre && parsed[j + 1].Num == parsed[j].Num + 1) j++;
+            if (j - i >= 2) outp.Add(parsed[i].Name + "–" + parsed[j].Name);
+            else for (int k = i; k <= j; k++) outp.Add(parsed[k].Name);
+            i = j + 1;
+        }
+        return string.Join(", ", outp);
+    }
+
+    /// <summary>Tên tự động của tờ: tờ mặt bằng → tên mặt bằng; tờ chi tiết → "CHI TIẾT MÓNG ĐƠN M1, M2; DẦM D1–D3"; tờ thống kê → tên bảng.</summary>
+    public static string AutoTitle(DetailSheet sh, IReadOnlyDictionary<string, SheetFigure> map)
+    {
+        if (sh.IsIndex) return IndexTitle;
+        var figs = sh.Figures.Where(pf => map.ContainsKey(pf.Id)).Select(pf => map[pf.Id]).ToList();
+        if (figs.Count == 0) return string.IsNullOrWhiteSpace(sh.Title) ? "BẢN VẼ" : sh.Title;
+        var plan = figs.FirstOrDefault(f => f.Part == 0 && !(f.Caption ?? "").StartsWith("MẶT CẮT "));
+        if (plan != null) return plan.Caption.ToUpperInvariant();
+        if (figs.All(f => f.Part == 2))
+        {
+            bool steel = figs.Any(f => f.Id.StartsWith("TKTHEP:")), mat = figs.Any(f => f.Id.StartsWith("TKVL:"));
+            return steel && mat ? "THỐNG KÊ CỐT THÉP – VẬT LIỆU" : steel ? "THỐNG KÊ CỐT THÉP" : "THỐNG KÊ VẬT LIỆU";
+        }
+        var det = figs.Where(f => f.Part == 1).ToList();
+        if (det.Count == 0) return figs[0].Caption.ToUpperInvariant();
+        var parts = det.GroupBy(f => (f.Kind ?? "").Trim()).Select(g => ((g.Key.Length > 0 ? g.Key : "CẤU KIỆN").ToUpperInvariant() + " " + CompressNames(g.Select(f => f.Member))).Trim()).ToList();
+        string t = "CHI TIẾT " + string.Join("; ", parts);
+        return t.Length > 90 ? t.Substring(0, 88).TrimEnd(',', ' ', ';') + "…" : t;
+    }
+
+    /// <summary>Đặt tên tự động mọi tờ chưa khoá tên (tên trùng thêm "(1/2)…").</summary>
+    public static void ApplyNames(DetailSheetSet set, IList<SheetFigure> catalog)
+    {
+        var map = catalog.GroupBy(f => f.Id).ToDictionary(g => g.Key, g => g.First());
+        var auto = set.Sheets.Where(s => !s.NameLocked).ToList();
+        foreach (var s in auto) s.Title = AutoTitle(s, map);
+        foreach (var g in auto.GroupBy(s => s.Title).Where(g => g.Count() > 1))
+        {
+            int i = 1, n = g.Count();
+            foreach (var s in g) s.Title = s.Title + " (" + i++ + "/" + n + ")";
+        }
     }
 
     // ------------------------------------------------------------------
@@ -202,10 +314,10 @@ public static class SheetLayoutEngine
     // ------------------------------------------------------------------
     /// <summary>Tìm chỗ trống cho hình w × h (mm) trên tờ: ưu tiên cao nhất rồi trái nhất (xếp trái→phải, trên→dưới);
     /// không chồng hình đã đặt (khe ≥ Gap), không đè khung tên. null = không còn chỗ.</summary>
-    public static (double X, double Y)? FindSpot(DetailSheet sh, IList<Rect2> placed, double w, double h)
+    public static (double X, double Y)? FindSpot(DetailSheet sh, IList<Rect2> placed, double w, double h, DetailSheetSet set = null)
     {
         var area = SheetGeometry.Drawable(sh.Paper, sh.Portrait);
-        var tz = SheetGeometry.TitleZone(sh.Paper, sh.Portrait);
+        var tz = TitleZone(set, sh);
         if (w > area.W + 1e-6 || h > area.H + 1e-6) return null;
         var xs = new List<double> { area.X1 };
         var ys = new List<double> { area.Y2 };   // đỉnh hình
@@ -221,6 +333,13 @@ public static class SheetLayoutEngine
                 return (x, top - h);
             }
         return null;
+    }
+
+    /// <summary>Vùng khung tên của tờ theo khung tên đang dùng của bộ tờ (mặc định / tự tạo / tải lên).</summary>
+    public static Rect2 TitleZone(DetailSheetSet set, DetailSheet sh)
+    {
+        var (pw, ph) = sh.Size;
+        return set?.TitleBlock != null ? set.TitleBlock.Zone(pw, ph) : SheetGeometry.TitleZone(sh.Paper, sh.Portrait);
     }
 
     /// <summary>Khung bao các hình đã đặt trên tờ (mm giấy).</summary>
@@ -259,7 +378,8 @@ public static class SheetLayoutEngine
         foreach (var s in locked) s.Figures.RemoveAll(pf => !map.ContainsKey(pf.Id));
         var used = new HashSet<string>(locked.SelectMany(s => s.Figures.Select(pf => pf.Id)));
         var fresh = new List<(int Section, DetailSheet S)>();
-        foreach (var grp in catalog.Where(f => !used.Contains(f.Id)).GroupBy(f => f.Section).OrderBy(g => g.Key))
+        // mỗi nhóm (mặt bằng / chi tiết thuộc mặt bằng / bảng) bắt đầu tờ mới
+        foreach (var grp in catalog.Where(f => !used.Contains(f.Id)).GroupBy(f => f.Section * 10 + f.Part).OrderBy(g => g.Key))
         {
             var items = grp.ToList();
             string paper = set.AutoPaper ? PaperFor(items, set.Paper) : set.Paper;
@@ -281,9 +401,9 @@ public static class SheetLayoutEngine
                         }
                         cur = new DetailSheet { Paper = pp, Title = grp.First().SectionTitle };
                         rects = new List<Rect2>();
-                        fresh.Add((grp.Key, cur)); part++;
+                        fresh.Add((grp.Key / 10, cur)); part++;
                     }
-                    var spot = FindSpot(cur, rects, f.W, f.H);
+                    var spot = FindSpot(cur, rects, f.W, f.H, set);
                     if (spot is { } sp)
                     {
                         cur.Figures.Add(new PlacedFigure { Id = f.Id, X = sp.X, Y = sp.Y });
@@ -304,29 +424,47 @@ public static class SheetLayoutEngine
             }
         }
         // ghép: tờ khoá giữ chỗ theo mục của hình đầu tiên
-        int SecOf(DetailSheet s) => s.Figures.Select(pf => map.TryGetValue(pf.Id, out var f) ? f.Section : 99).DefaultIfEmpty(99).Min();
+        int SecOf(DetailSheet s) => s.Figures.Select(pf => map.TryGetValue(pf.Id, out var f) ? f.Section : 9999).DefaultIfEmpty(9999).Min();
         var all = locked.Select(s => (Section: SecOf(s), S: s, Order: set.Sheets.IndexOf(s))).Concat(fresh.Select((t, i) => (t.Section, t.S, Order: 10000 + i)))
             .OrderBy(t => t.Section).ThenBy(t => t.Order).Select(t => t.S).ToList();
-        // tên tờ nhiều phần trong cùng mục: "(1/2)"
-        foreach (var g in all.Where(s => !s.Locked).GroupBy(s => s.Title).Where(g => g.Count() > 1))
-        {
-            int i = 1, n = g.Count();
-            foreach (var s in g) s.Title = s.Title + " (" + i++ + "/" + n + ")";
-        }
+        var oldIndex = set.Sheets.FirstOrDefault(s => s.IsIndex);
         set.Sheets = all;
         if (set.IndexSheet)
         {
             // khổ tờ danh mục: A3 nếu đủ dòng (7 mm / dòng), không thì khổ lớn hơn
             double need = 12 + 7.0 * (set.Sheets.Count + 2) + SheetGeometry.TitleH;
             string ip = SheetGeometry.Papers.FirstOrDefault(x => SheetGeometry.Drawable(x).H >= need) ?? "A0";
-            set.Sheets.Insert(0, new DetailSheet { IsIndex = true, Title = IndexTitle, Paper = ip });
+            var ix = new DetailSheet { IsIndex = true, Title = IndexTitle, Paper = ip };
+            if (oldIndex != null) { ix.NameLocked = oldIndex.NameLocked; ix.NumberLocked = oldIndex.NumberLocked; if (oldIndex.NameLocked) ix.Title = oldIndex.Title; if (oldIndex.NumberLocked) ix.No = oldIndex.No; }
+            set.Sheets.Insert(0, ix);
         }
-        Renumber(set);
+        ApplyNames(set, catalog);
+        Renumber(set, catalog);
     }
 
-    public static void Renumber(DetailSheetSet set)
+    /// <summary>Đánh số lại các tờ chưa khoá số hiệu theo mẫu của bộ tờ (KC-01 / KC01 / KC-1.01 theo nhóm mặt bằng).
+    /// Nhóm: tờ danh mục là nhóm 0; các tờ khác theo nhóm cây thư mục (mặt bằng + chi tiết của nó) của hình đầu tiên.</summary>
+    public static void Renumber(DetailSheetSet set, IList<SheetFigure> catalog = null)
     {
-        for (int i = 0; i < set.Sheets.Count; i++) set.Sheets[i].No = "KC-" + (i + 1).ToString("00");
+        var map = (catalog ?? new List<SheetFigure>()).GroupBy(f => f.Id).ToDictionary(g => g.Key, g => g.First());
+        int start = set.StartNo;
+        int group = start - 1, inGroup = 0, lastSec = int.MinValue;
+        for (int i = 0; i < set.Sheets.Count; i++)
+        {
+            var sh = set.Sheets[i];
+            int sec = sh.IsIndex ? -1 : sh.Figures.Select(pf => map.TryGetValue(pf.Id, out var f) ? f.Section : int.MaxValue).DefaultIfEmpty(int.MaxValue).Min();
+            if (sec == int.MaxValue) sec = lastSec == int.MinValue ? 0 : lastSec;   // tờ trống: theo nhóm trước
+            int gNo;
+            if (sh.IsIndex) { gNo = 0; inGroup = 0; }
+            else
+            {
+                if (sec != lastSec || lastSec == -1) { group++; inGroup = 0; }
+                gNo = group;
+            }
+            lastSec = sh.IsIndex ? -1 : sec;
+            inGroup++;
+            if (!sh.NumberLocked) sh.No = set.FormatNo(start + i, gNo, inGroup);
+        }
     }
 
     /// <summary>Đặt một hình vào tờ ở chỗ trống đầu tiên (hoặc tại (x, y) nếu cho). Gỡ hình khỏi tờ cũ. false = không còn chỗ.</summary>
@@ -334,7 +472,7 @@ public static class SheetLayoutEngine
     {
         foreach (var s in set.Sheets) s.Figures.RemoveAll(pf => pf.Id == f.Id);
         if (x.HasValue && y.HasValue) { target.Figures.Add(new PlacedFigure { Id = f.Id, X = x.Value, Y = y.Value }); return true; }
-        var spot = FindSpot(target, PlacedRects(target, map), f.W, f.H);
+        var spot = FindSpot(target, PlacedRects(target, map), f.W, f.H, set);
         if (spot == null) return false;
         target.Figures.Add(new PlacedFigure { Id = f.Id, X = spot.Value.X, Y = spot.Value.Y });
         return true;
@@ -378,7 +516,9 @@ public static class SheetLayoutEngine
             Title = sh.Title ?? "", SheetNo = sh.No ?? ""
         };
         var (pw, ph) = sh.Size;
-        SheetComposer.Frame(w, pw, ph, info, ScaleText(sh, map), set?.Date ?? "");
+        var tb = set?.TitleBlock;
+        if (tb?.ActiveDef != null) tb.Draw(w, pw, ph, tb.ValuesFor(p, set, sh, ScaleText(sh, map)));
+        else SheetComposer.Frame(w, pw, ph, info, ScaleText(sh, map), set?.Date ?? "");
         if (sh.IsIndex) w.Append(IndexFigure(set, map, S), 0, 0);
         foreach (var pf in sh.Figures)
         {
