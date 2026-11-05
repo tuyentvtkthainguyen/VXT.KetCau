@@ -640,28 +640,22 @@ public class ManualSlab : IDetailMember
         w.Rect(Lay.BeTong, -bw / 2, -bw / 2, lx + bw / 2, ly + bw / 2, "DASHED");
         BarMark Find(string role) => r.Bars.FirstOrDefault(b => b.Role == role);
         var bX = Find("Lớp dưới phương ngắn"); var bY = Find("Lớp dưới phương dài");
+        double hk = 0.9 * w.Th, e0 = -bw / 2 + 25, e1x = lx + bw / 2 - 25, e1y = ly + bw / 2 - 25;
+        // lớp dưới: thanh đại diện chạy suốt ô, móc 2 đầu, chữ trên thanh, đường phạm vi rải vuông góc
         if (bX != null)
-        {
-            double y = ly * 0.40;
-            w.Polyline(Lay.Thep, new List<(double, double)> { (-bw / 2 + 25, y), (lx + bw / 2 - 25, y) }, false);
-            w.LeaderTag(lx * 0.35, y, lx * 0.35 + 2.4 * w.Th, y + 4.8 * w.Th, Dt.Spaced(bX.Dia, bX.Spacing), bX.Mark);
-        }
+            PlanBarDraw.Bar(w, true, e0, e1x, ly * 0.42, Dt.Spaced(bX.Dia, bX.Spacing), bX.Mark, hk, hk, 1, 0.62, (50, ly - 50), 0.22);
         if (bY != null)
-        {
-            double x = lx * 0.60;
-            w.Line(Lay.Thep, x, -bw / 2 + 25, x, ly + bw / 2 - 25);
-            w.LeaderTag(x, ly * 0.65, x + 3.2 * w.Th, ly * 0.65 + 3.2 * w.Th, Dt.Spaced(bY.Dia, bY.Spacing), bY.Mark);
-        }
+            PlanBarDraw.Bar(w, false, e0, e1y, lx * 0.58, Dt.Spaced(bY.Dia, bY.Spacing), bY.Mark, hk, hk, -1, 0.70, (50, lx - 50), 0.18);
+        // thép mũ: thanh từ mép ngoài dầm vào trong ô, bẻ xuống ở đầu trong; phạm vi rải dọc cạnh
         var tL = Find("Mũ gối cạnh dài"); var tS = Find("Mũ gối cạnh ngắn");
         if (tL != null)
         {
             double ext = (tL.Segments.Count > 0 ? tL.Segments[0] : lx / 4);
             for (int side = 0; side < Math.Clamp(FixedLongEdges, 1, 2); side++)
             {
-                double x0 = side == 0 ? -bw / 2 + 25 : lx + bw / 2 - 25, x1 = side == 0 ? x0 + ext : x0 - ext, y = ly * 0.25;
-                w.Line(Lay.Thep, x0, y, x1, y);
-                w.Line(Lay.Thep, x1, y, x1, y - 60);
-                w.LeaderTag((x0 + x1) / 2, y, (x0 + x1) / 2 + 1.6 * w.Th, y - 4.0 * w.Th, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark);
+                double y = side == 0 ? ly * 0.20 : ly * 0.80;
+                if (side == 0) PlanBarDraw.Bar(w, true, e0, e0 + ext, y, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark, 0, hk, -1, 0.55, (50, ly - 50), 0.30);
+                else PlanBarDraw.Bar(w, true, e1x - ext, e1x, y, Dt.Spaced(tL.Dia, tL.Spacing), tL.Mark, hk, 0, -1, 0.45, (50, ly - 50), 0.70);
             }
         }
         if (tS != null)
@@ -669,16 +663,15 @@ public class ManualSlab : IDetailMember
             double ext = (tS.Segments.Count > 0 ? tS.Segments[0] : lx / 4);
             for (int side = 0; side < Math.Clamp(FixedShortEdges, 1, 2); side++)
             {
-                double y0 = side == 0 ? -bw / 2 + 25 : ly + bw / 2 - 25, y1 = side == 0 ? y0 + ext : y0 - ext, x = lx * 0.25;
-                w.Line(Lay.Thep, x, y0, x, y1);
-                w.Line(Lay.Thep, x, y1, x - 60, y1);
-                w.LeaderTag(x, (y0 + y1) / 2, x - 5.6 * w.Th, (y0 + y1) / 2 + 2.0 * w.Th, Dt.Spaced(tS.Dia, tS.Spacing), tS.Mark, -1);
+                double x = side == 0 ? lx * 0.22 : lx * 0.82;
+                if (side == 0) PlanBarDraw.Bar(w, false, e0, e0 + ext, x, Dt.Spaced(tS.Dia, tS.Spacing), tS.Mark, 0, hk, 1, 0.55, (50, lx - 50), 0.30, -1);
+                else PlanBarDraw.Bar(w, false, e1y - ext, e1y, x, Dt.Spaced(tS.Dia, tS.Spacing), tS.Mark, hk, 0, 1, 0.45, (50, lx - 50), 0.70, -1);
             }
         }
-        w.Dim(0, 0, lx, 0, -900);
-        w.Dim(0, 0, 0, ly, 900);
-        w.Text(Lay.Chu, lx / 2, ly / 2, w.Th, "S = " + Dt.Mm(T) + " mm", 0, 1, 2);
-        w.Title(lx / 2, -1500, RebarSchedule.MemberLabel("MẶT BẰNG THÉP SÀN " + Name, r.Quantity), DrawUtil.ScaleText(S));
+        w.Dim(0, -bw / 2, lx, -bw / 2, -3 * w.Th);
+        w.Dim(-bw / 2, 0, -bw / 2, ly, 3 * w.Th);
+        w.Text(Lay.Chu, lx * 0.30, ly * 0.55, w.Th, "S1 – h = " + Dt.Mm(T), 0, 1, 2);
+        w.Title(lx / 2, -bw / 2 - 7 * w.Th, RebarSchedule.MemberLabel("MẶT BẰNG THÉP SÀN " + Name, r.Quantity), DrawUtil.ScaleText(S));
         figs.Add(new Figure(w, "Sàn " + Name));
 
         // mặt cắt 1-1 theo phương ngắn

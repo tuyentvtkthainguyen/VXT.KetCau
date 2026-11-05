@@ -739,8 +739,9 @@ public class ManualPileCap : IDetailMember
         }
         var bx = r.Bars.FirstOrDefault(b => b.Role == "Lớp dưới phương X"); var by = r.Bars.FirstOrDefault(b => b.Role == "Lớp dưới phương Y");
         double c = Math.Max(s.CoverFooting, 0.05) * 1000;
-        if (bx != null) { w.Line(Lay.Thep, ox - L / 2 + c, oy - B / 4, ox + L / 2 - c, oy - B / 4); w.LeaderTag(ox + L / 6, oy - B / 4, ox + L / 6 + 2.4 * w.Th, oy - B / 2 - 4.0 * w.Th, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark); }
-        if (by != null) { w.Line(Lay.Thep, ox - L / 4, oy - B / 2 + c, ox - L / 4, oy + B / 2 - c); w.LeaderTag(ox - L / 4, oy + B / 6, ox - L / 2 - 2.4 * w.Th, oy + B / 6 + 2.4 * w.Th, Dt.Spaced(by.Dia, by.Spacing), by.Mark, -1); }
+        double hkp = 0.9 * w.Th;
+        if (bx != null) PlanBarDraw.Bar(w, true, ox - L / 2 + c, ox + L / 2 - c, oy - B / 4, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark, hkp, hkp, 1, 0.62, (oy - B / 2 + c, oy + B / 2 - c), 0.12);
+        if (by != null) PlanBarDraw.Bar(w, false, oy - B / 2 + c, oy + B / 2 - c, ox + L / 4, Dt.Spaced(by.Dia, by.Spacing), by.Mark, hkp, hkp, -1, 0.62, (ox - L / 2 + c, ox + L / 2 - c), 0.12);
         var xs = new List<double> { ox - L / 2 }; xs.AddRange(Piles.Select(p => p.X * 1000).Distinct().OrderBy(x => x)); xs.Add(ox + L / 2);
         var ys = new List<double> { oy - B / 2 }; ys.AddRange(Piles.Select(p => p.Y * 1000).Distinct().OrderBy(x => x)); ys.Add(oy + B / 2);
         w.DimChainH(xs, oy - B / 2, oy - B / 2 - 900);

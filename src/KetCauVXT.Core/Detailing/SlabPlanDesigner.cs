@@ -511,14 +511,12 @@ public class ManualSlabPlan : IDetailMember
                 if (p.BarX != null && p.BarX.Count > 0)
                 {
                     double y = p.Y0 * 1000 + 0.35 * (p.Ly * 1000);
-                    w.Line(Lay.Thep, x0 - bw / 2 + 25, y, x1 + bw / 2 - 25, y);
-                    w.LeaderTag(x0 + 0.3 * (x1 - x0), y, x0 + 0.3 * (x1 - x0) + 2 * th, y + 3 * th, Dt.Spaced(p.BarX.Dia, p.BarX.Spacing), p.BarX.Mark);
+                    PlanBarDraw.Bar(w, true, x0 - bw / 2 + 25, x1 + bw / 2 - 25, y, Dt.Spaced(p.BarX.Dia, p.BarX.Spacing), p.BarX.Mark, 0.9 * th, 0.9 * th, 1, 0.40, (y0 + 50, y1 - 50), 0.15);
                 }
                 if (p.BarY != null && p.BarY.Count > 0)
                 {
                     double x = p.X0 * 1000 + 0.65 * (p.Lx * 1000);
-                    w.Line(Lay.Thep, x, y0 - bw / 2 + 25, x, y1 + bw / 2 - 25);
-                    w.LeaderTag(x, y0 + 0.62 * (y1 - y0), x + 2 * th, y0 + 0.62 * (y1 - y0) + 2 * th, Dt.Spaced(p.BarY.Dia, p.BarY.Spacing), p.BarY.Mark);
+                    PlanBarDraw.Bar(w, false, y0 - bw / 2 + 25, y1 + bw / 2 - 25, x, Dt.Spaced(p.BarY.Dia, p.BarY.Spacing), p.BarY.Mark, 0.9 * th, 0.9 * th, -1, 0.62, (x0 + 50, x1 - 50), 0.85);
                 }
             }
         }
@@ -556,23 +554,19 @@ public class ManualSlabPlan : IDetailMember
                 double e1 = tl.A != null ? e : bw / 2 - 25, e2 = tl.B != null ? e : bw / 2 - 25;
                 if (tl.Vertical)
                 {
-                    w.Line(Lay.Thep, p - e1, mid, p + e2, mid);
-                    w.Line(Lay.Thep, p - e1, mid, p - e1, mid - 60); w.Line(Lay.Thep, p + e2, mid, p + e2, mid - 60);
-                    w.LeaderTag(p + e2 * 0.5, mid, p + e2 * 0.5 + th, mid - 3 * th, tag, bm.Mark);
+                    PlanBarDraw.Bar(w, true, p - e1, p + e2, mid, tag, bm.Mark, 0.9 * th, 0.9 * th, -1, 0.5, (tl.From * 1000 + 50, tl.To * 1000 - 50), 0.85);
                 }
                 else
                 {
-                    w.Line(Lay.Thep, mid, p - e1, mid, p + e2);
-                    w.Line(Lay.Thep, mid, p - e1, mid - 60, p - e1); w.Line(Lay.Thep, mid, p + e2, mid - 60, p + e2);
-                    w.LeaderTag(mid, p + e2 * 0.5, mid - 4 * th, p + e2 * 0.5 + th, tag, bm.Mark, -1);
+                    PlanBarDraw.Bar(w, false, p - e1, p + e2, mid, tag, bm.Mark, 0.9 * th, 0.9 * th, 1, 0.5, (tl.From * 1000 + 50, tl.To * 1000 - 50), 0.85, -1);
                 }
             }
         else
             foreach (var (row, b) in _manualMap)
             {
                 double x1 = Math.Min(row.X1, row.X2) * 1000, x2 = Math.Max(row.X1, row.X2) * 1000, y1 = Math.Min(row.Y1, row.Y2) * 1000, y2 = Math.Max(row.Y1, row.Y2) * 1000;
-                if (row.Direction == "Y") { double x = (x1 + x2) / 2; w.Line(Lay.Thep, x, y1, x, y2); w.LeaderTag(x, (y1 + y2) / 2, x + 2 * th, (y1 + y2) / 2 + 2 * th, Dt.Spaced(b.Dia, b.Spacing), b.Mark); }
-                else { double y = (y1 + y2) / 2; w.Line(Lay.Thep, x1, y, x2, y); w.LeaderTag((x1 + x2) / 2, y, (x1 + x2) / 2 + 2 * th, y + 2 * th, Dt.Spaced(b.Dia, b.Spacing), b.Mark); }
+                if (row.Direction == "Y") PlanBarDraw.Bar(w, false, y1, y2, (x1 + x2) / 2, Dt.Spaced(b.Dia, b.Spacing), b.Mark, 0, 0, 1, 0.5, (x1 + 50, x2 - 50), 0.2);
+                else PlanBarDraw.Bar(w, true, x1, x2, (y1 + y2) / 2, Dt.Spaced(b.Dia, b.Spacing), b.Mark, 0, 0, 1, 0.5, (y1 + 50, y2 - 50), 0.2);
             }
         // kích thước
         var xsMm = Xs.Select(x => x * 1000).ToList(); var ysMm = Ys.Select(y => y * 1000).ToList();

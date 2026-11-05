@@ -103,6 +103,7 @@ jobs:
                   ctx = RenderContext(doc)
                   Frontend(ctx, MatplotlibBackend(ax)).draw_layout(doc.modelspace(), finalize=True)
                   out = os.path.join("BanVePng", os.path.splitext(os.path.basename(f))[0] + ".png")
+                  fig.set_size_inches(36, 25.4)
                   fig.savefig(out, dpi=110, facecolor="white")
                   plt.close(fig)
                   print("ve", out)
