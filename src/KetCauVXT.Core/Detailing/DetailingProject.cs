@@ -83,6 +83,7 @@ public class DetailingProject
         p.Plan ??= new StructuralPlan();
         p.Plan.Levels ??= new();
         foreach (var l in p.Plan.Levels) l.Items ??= new();
+        p.Plan.Sections ??= new();
         return p;
     }
     public void Save(string path) => File.WriteAllText(path, ToJson(), new System.Text.UTF8Encoding(false));

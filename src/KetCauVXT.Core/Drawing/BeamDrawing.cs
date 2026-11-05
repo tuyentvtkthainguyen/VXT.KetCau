@@ -255,7 +255,7 @@ public static class BeamDrawing
         for (int i = 0; i < zt.Count; i++)
         {
             double cx = (zt[i].Z.From + zt[i].Z.To) * 500;
-            double tw = DxfWriter.TextWidth(zt[i].Text, tg) * w.WidthFactor + 2.6 * w.MarkR;
+            double tw = DxfWriter.TagTextWidth(zt[i].Text, tg) * w.WidthFactor + DxfWriter.TagGapFactor * tg + 2.2 * w.MarkR;
             double x1 = cx - tw / 2, x2 = cx + tw / 2;
             int r = 0;
             while (r < rowEnds.Count && rowEnds[r] > x1) r++;
@@ -270,12 +270,12 @@ public static class BeamDrawing
             double a = z.From * 1000, e = z.To * 1000;
             w.Dim(a, yChain, e, yChain, 0);
             double cx = (a + e) / 2;
-            double tw = DxfWriter.TextWidth(zt[i].Text, tg) * w.WidthFactor;
-            double tot = tw + 2.6 * w.MarkR;
+            double tw = DxfWriter.TagTextWidth(zt[i].Text, tg) * w.WidthFactor;
+            double tot = tw + DxfWriter.TagGapFactor * tg + 2 * w.MarkR;
             double yt = yChain - (zRows[i] + 1) * 1.8 * th;
             double tx = cx - tot / 2;
             w.Text(Lay.Chu, tx, yt, tg, zt[i].Text, 0, 0, 0);
-            if (z.Mark > 0) w.MarkCircle(tx + tw + 1.3 * w.MarkR, yt + 0.4 * tg, z.Mark);
+            if (z.Mark > 0) w.MarkCircle(tx + tw + DxfWriter.TagGapFactor * tg + w.MarkR, yt + 0.4 * tg, z.Mark);
         }
 
         // ---- kích thước nhịp + tổng ----

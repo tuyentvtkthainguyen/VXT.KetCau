@@ -153,6 +153,12 @@ public sealed class FieldAttribute : Attribute
     public string Hint { get; set; } = "";
     /// <summary>Danh sách lựa chọn cho string (phân cách bởi '|'), vd. "B20|B25|B30"</summary>
     public string Choices { get; set; } = "";
+    /// <summary>Khoá hàng: các ô LIÊN TIẾP cùng Row hiện trên MỘT dòng (vd. "Ø [16] × số thanh/hàng [2] × số hàng [1]").</summary>
+    public string Row { get; set; } = "";
+    /// <summary>Tiêu đề dòng (đặt ở ô đầu tiên của hàng), vd. "Thép dưới chạy suốt".</summary>
+    public string RowTitle { get; set; } = "";
+    /// <summary>Nhãn ngắn của ô trong hàng, vd. "Ø", "số thanh/hàng", "neo".</summary>
+    public string Short { get; set; } = "";
     public FieldAttribute(string label) { Label = label; }
 }
 

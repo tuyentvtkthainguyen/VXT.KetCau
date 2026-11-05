@@ -375,7 +375,7 @@ internal sealed class DrawingStyleWindow : Window
             Size("Vòng tròn số hiệu thép", "mm đường kính", s => s.MarkDiameter, (s, v) => s.MarkDiameter = v, 1, 40);
             Size("Vòng tròn đầu trục", "mm đường kính", s => s.AxisBubbleDiameter, (s, v) => s.AxisBubbleDiameter = v, 2, 40);
             Size("Hệ số rộng chữ", "× (1 = chuẩn)", s => s.WidthFactor, (s, v) => s.WidthFactor = v, 0.3, 2);
-            Size("Chiều dài cánh sàn thể hiện (mỗi bên dầm)", "mm thật", s => s.SlabFlangeLength, (s, v) => s.SlabFlangeLength = v, 100, 3000);
+            Size("Chiều dài cánh sàn thể hiện (mỗi bên dầm, mặc định 50)", "mm thật", s => s.SlabFlangeLength, (s, v) => s.SlabFlangeLength = v, 30, 3000);
             Size("Tô vật liệu: hệ số tỷ lệ mẫu (1 = ANSI31 cách 3,175 mm)", "× (2 = thưa gấp đôi)", s => s.HatchScaleFactor, (s, v) => s.HatchScaleFactor = v, 0.1, 20);
             foreach (var (box, get, _) in _checks) box.IsChecked = get(_st);
             _cmbBreak.SelectedIndex = _st.SlabBreak == SlabBreakStyle.Straight ? 1 : 0;

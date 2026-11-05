@@ -91,19 +91,84 @@ public class ManualBeam : IDetailMember
     [Field("Bên giáp nhà hàng xóm (hết đất)", Group = "Dầm móng: bê tông lót", Choices = "Không giáp nhà bên|Giáp nhà hàng xóm bên trái (hết đất)|Giáp nhà hàng xóm bên phải (hết đất)",
         Hint = "bên giáp nhà hàng xóm: bê tông lót và bê tông dầm không vươn sang đất nhà bên; thành dầm phía đó xây gạch làm khuôn")] public string Boundary { get; set; } = "Không giáp nhà bên";
 
-    [Field("Thép dưới chạy suốt – số thanh", Group = "Thép dọc")] public int BotN { get; set; } = 2;
-    [Field("Thép dưới chạy suốt – Ø", Unit = "mm", Group = "Thép dọc")] public int BotD { get; set; } = 16;
-    [Field("Thép trên chạy suốt – số thanh", Group = "Thép dọc")] public int TopN { get; set; } = 2;
-    [Field("Thép trên chạy suốt – Ø", Unit = "mm", Group = "Thép dọc")] public int TopD { get; set; } = 16;
-    [Field("Tăng cường dưới mỗi nhịp – số thanh", Group = "Thép dọc", Hint = "0 = không có")] public int AddBotN { get; set; } = 1;
-    [Field("Tăng cường dưới – Ø", Unit = "mm", Group = "Thép dọc")] public int AddBotD { get; set; } = 16;
-    [Field("Mũ gối – số thanh", Group = "Thép dọc", Hint = "0 = không có")] public int SupN { get; set; } = 1;
-    [Field("Mũ gối – Ø", Unit = "mm", Group = "Thép dọc")] public int SupD { get; set; } = 16;
+    // ---- thép dọc: mỗi nhóm một dòng "Ø × số thanh / hàng (× hàng) + tuỳ chọn neo / cắt" (DetailingWindow gộp theo Row) ----
+    public const string HookYes = "Bẻ mỏ neo vào gối", HookNo = "Thẳng (neo thẳng)";
+    public const string CutC01 = "Cắt tại 0,1·L0 từ mép gối", CutL7 = "Cắt tại L0/7 từ mép gối", CutL8 = "Cắt tại L0/8 từ mép gối", CutAnchor = "Kéo vào gối (neo)";
+    public const string ExtStd = "L0/3 gối giữa, L0/4 gối biên", ExtL4 = "L0/4", ExtL5 = "L0/5", ExtShort = "Qua hết nhịp ngắn";
+    private const string HookChoices = HookYes + "|" + HookNo, CutChoices = CutC01 + "|" + CutL7 + "|" + CutL8 + "|" + CutAnchor, ExtChoices = ExtStd + "|" + ExtL4 + "|" + ExtL5 + "|" + ExtShort;
 
-    [Field("Đai – Ø", Unit = "mm", Group = "Thép đai")] public int StirD { get; set; } = 6;
-    [Field("Bước đai vùng gối", Unit = "mm", Scale = 1000, Group = "Thép đai")] public double StirSupport { get; set; } = 0.10;
-    [Field("Bước đai giữa nhịp", Unit = "mm", Scale = 1000, Group = "Thép đai")] public double StirMid { get; set; } = 0.20;
-    [Field("Số nhánh đai", Group = "Thép đai")] public int Legs { get; set; } = 2;
+    [Field("Thép dưới chạy suốt – Ø", Unit = "mm", Group = "Thép dọc", Row = "bot", RowTitle = "① Dưới chạy suốt", Short = "Ø")] public int BotD { get; set; } = 16;
+    [Field("Thép dưới chạy suốt – số thanh", Group = "Thép dọc", Row = "bot", Short = "thanh/hàng")] public int BotN { get; set; } = 2;
+    [Field("Thép dưới chạy suốt – neo ở gối biên", Group = "Thép dọc", Row = "bot", Short = "neo", Choices = HookChoices)] public string BotHook { get; set; } = HookYes;
+    [Field("Thép trên chạy suốt – Ø", Unit = "mm", Group = "Thép dọc", Row = "top", RowTitle = "Trên chạy suốt", Short = "Ø")] public int TopD { get; set; } = 16;
+    [Field("Thép trên chạy suốt – số thanh", Group = "Thép dọc", Row = "top", Short = "thanh/hàng")] public int TopN { get; set; } = 2;
+    [Field("Thép trên chạy suốt – neo ở gối biên", Group = "Thép dọc", Row = "top", Short = "neo", Choices = HookChoices)] public string TopHook { get; set; } = HookYes;
+
+    [Field("Tăng cường dưới (2) – Ø", Unit = "mm", Group = "Thép tăng cường dưới nhịp", Row = "ab1", RowTitle = "Tăng cường dưới (2)", Short = "Ø")] public int AddBotD { get; set; } = 16;
+    [Field("Tăng cường dưới (2) – số thanh", Group = "Thép tăng cường dưới nhịp", Row = "ab1", Short = "thanh", Hint = "0 = không có")] public int AddBotN { get; set; } = 1;
+    [Field("Tăng cường dưới (2) – hàng", Group = "Thép tăng cường dưới nhịp", Row = "ab1", Short = "hàng")] public int AddBotRow { get; set; } = 1;
+    [Field("Tăng cường dưới (2) – vị trí cắt", Group = "Thép tăng cường dưới nhịp", Row = "ab1b", RowTitle = "   vị trí cắt / neo", Short = "cắt", Choices = CutChoices)] public string AddBotCut { get; set; } = CutC01;
+    [Field("Tăng cường dưới (2) – bẻ mỏ", Group = "Thép tăng cường dưới nhịp", Row = "ab1b", Short = "mỏ", Choices = HookChoices)] public string AddBotHook { get; set; } = HookNo;
+    [Field("Tăng cường dưới (3) – Ø", Unit = "mm", Group = "Thép tăng cường dưới nhịp", Row = "ab2", RowTitle = "Tăng cường dưới (3)", Short = "Ø")] public int AddBot2D { get; set; } = 16;
+    [Field("Tăng cường dưới (3) – số thanh", Group = "Thép tăng cường dưới nhịp", Row = "ab2", Short = "thanh")] public int AddBot2N { get; set; }
+    [Field("Tăng cường dưới (3) – hàng", Group = "Thép tăng cường dưới nhịp", Row = "ab2", Short = "hàng")] public int AddBot2Row { get; set; } = 2;
+    [Field("Tăng cường dưới (3) – vị trí cắt", Group = "Thép tăng cường dưới nhịp", Row = "ab2b", RowTitle = "   vị trí cắt / neo", Short = "cắt", Choices = CutChoices)] public string AddBot2Cut { get; set; } = CutL7;
+    [Field("Tăng cường dưới (3) – bẻ mỏ", Group = "Thép tăng cường dưới nhịp", Row = "ab2b", Short = "mỏ", Choices = HookChoices)] public string AddBot2Hook { get; set; } = HookNo;
+    [Field("Tăng cường dưới (4) – Ø", Unit = "mm", Group = "Thép tăng cường dưới nhịp", Row = "ab3", RowTitle = "Tăng cường dưới (4)", Short = "Ø")] public int AddBot3D { get; set; } = 16;
+    [Field("Tăng cường dưới (4) – số thanh", Group = "Thép tăng cường dưới nhịp", Row = "ab3", Short = "thanh")] public int AddBot3N { get; set; }
+    [Field("Tăng cường dưới (4) – hàng", Group = "Thép tăng cường dưới nhịp", Row = "ab3", Short = "hàng")] public int AddBot3Row { get; set; } = 2;
+    [Field("Tăng cường dưới (4) – vị trí cắt", Group = "Thép tăng cường dưới nhịp", Row = "ab3b", RowTitle = "   vị trí cắt / neo", Short = "cắt", Choices = CutChoices)] public string AddBot3Cut { get; set; } = CutL8;
+    [Field("Tăng cường dưới (4) – bẻ mỏ", Group = "Thép tăng cường dưới nhịp", Row = "ab3b", Short = "mỏ", Choices = HookChoices)] public string AddBot3Hook { get; set; } = HookNo;
+
+    [Field("Mũ gối (2) – Ø", Unit = "mm", Group = "Thép mũ gối (tăng cường trên)", Row = "s1", RowTitle = "Mũ gối (2)", Short = "Ø")] public int SupD { get; set; } = 16;
+    [Field("Mũ gối (2) – số thanh", Group = "Thép mũ gối (tăng cường trên)", Row = "s1", Short = "thanh", Hint = "0 = không có")] public int SupN { get; set; } = 1;
+    [Field("Mũ gối (2) – hàng", Group = "Thép mũ gối (tăng cường trên)", Row = "s1", Short = "hàng")] public int SupRow { get; set; } = 1;
+    [Field("Mũ gối (2) – chiều dài vươn", Group = "Thép mũ gối (tăng cường trên)", Row = "s1b", RowTitle = "   vươn từ mép gối", Short = "vươn", Choices = ExtChoices)] public string SupExt { get; set; } = ExtStd;
+    [Field("Mũ gối (2) – bẻ mỏ ở gối biên", Group = "Thép mũ gối (tăng cường trên)", Row = "s1b", Short = "mỏ", Choices = HookChoices)] public string SupHook { get; set; } = HookYes;
+    [Field("Mũ gối (3) – Ø", Unit = "mm", Group = "Thép mũ gối (tăng cường trên)", Row = "s2", RowTitle = "Mũ gối (3)", Short = "Ø")] public int Sup2D { get; set; } = 16;
+    [Field("Mũ gối (3) – số thanh", Group = "Thép mũ gối (tăng cường trên)", Row = "s2", Short = "thanh")] public int Sup2N { get; set; }
+    [Field("Mũ gối (3) – hàng", Group = "Thép mũ gối (tăng cường trên)", Row = "s2", Short = "hàng")] public int Sup2Row { get; set; } = 2;
+    [Field("Mũ gối (3) – chiều dài vươn", Group = "Thép mũ gối (tăng cường trên)", Row = "s2b", RowTitle = "   vươn từ mép gối", Short = "vươn", Choices = ExtChoices)] public string Sup2Ext { get; set; } = ExtL4;
+    [Field("Mũ gối (3) – bẻ mỏ ở gối biên", Group = "Thép mũ gối (tăng cường trên)", Row = "s2b", Short = "mỏ", Choices = HookChoices)] public string Sup2Hook { get; set; } = HookYes;
+    [Field("Mũ gối (4) – Ø", Unit = "mm", Group = "Thép mũ gối (tăng cường trên)", Row = "s3", RowTitle = "Mũ gối (4)", Short = "Ø")] public int Sup3D { get; set; } = 16;
+    [Field("Mũ gối (4) – số thanh", Group = "Thép mũ gối (tăng cường trên)", Row = "s3", Short = "thanh")] public int Sup3N { get; set; }
+    [Field("Mũ gối (4) – hàng", Group = "Thép mũ gối (tăng cường trên)", Row = "s3", Short = "hàng")] public int Sup3Row { get; set; } = 2;
+    [Field("Mũ gối (4) – chiều dài vươn", Group = "Thép mũ gối (tăng cường trên)", Row = "s3b", RowTitle = "   vươn từ mép gối", Short = "vươn", Choices = ExtChoices)] public string Sup3Ext { get; set; } = ExtL5;
+    [Field("Mũ gối (4) – bẻ mỏ ở gối biên", Group = "Thép mũ gối (tăng cường trên)", Row = "s3b", Short = "mỏ", Choices = HookChoices)] public string Sup3Hook { get; set; } = HookYes;
+
+    [Field("Đai – Ø", Unit = "mm", Group = "Thép đai", Row = "st", RowTitle = "Đai", Short = "Ø")] public int StirD { get; set; } = 6;
+    [Field("Số nhánh đai", Group = "Thép đai", Row = "st", Short = "nhánh")] public int Legs { get; set; } = 2;
+    [Field("Bước đai vùng gối", Unit = "mm", Scale = 1000, Group = "Thép đai", Row = "st2", RowTitle = "Bước đai", Short = "gối")] public double StirSupport { get; set; } = 0.10;
+    [Field("Bước đai giữa nhịp", Unit = "mm", Scale = 1000, Group = "Thép đai", Row = "st2", Short = "giữa nhịp")] public double StirMid { get; set; } = 0.20;
+
+    /// <summary>Nhóm thép tăng cường (dưới hoặc mũ gối) đã chuẩn hoá.</summary>
+    public sealed record AddGroup(int No, int D, int N, int Layer, string Opt, bool Hook);
+
+    public List<AddGroup> BottomGroups() => new[]
+    {
+        new AddGroup(2, AddBotD, AddBotN, AddBotRow, AddBotCut, AddBotHook == HookYes),
+        new AddGroup(3, AddBot2D, AddBot2N, AddBot2Row, AddBot2Cut, AddBot2Hook == HookYes),
+        new AddGroup(4, AddBot3D, AddBot3N, AddBot3Row, AddBot3Cut, AddBot3Hook == HookYes)
+    }.Where(g => g.N > 0 && g.D > 0).ToList();
+
+    public List<AddGroup> TopGroups() => new[]
+    {
+        new AddGroup(2, SupD, SupN, SupRow, SupExt, SupHook != HookNo),
+        new AddGroup(3, Sup2D, Sup2N, Sup2Row, Sup2Ext, Sup2Hook != HookNo),
+        new AddGroup(4, Sup3D, Sup3N, Sup3Row, Sup3Ext, Sup3Hook != HookNo)
+    }.Where(g => g.N > 0 && g.D > 0).ToList();
+
+    /// <summary>Khoảng cắt thép tăng cường dưới tính từ mép gối (m) theo lựa chọn; kéo vào gối → âm (= đoạn neo vào gối).</summary>
+    public static double CutDistance(string opt, double l0) => opt switch
+    {
+        CutL7 => l0 / 7, CutL8 => l0 / 8, CutAnchor => 0, _ => 0.1 * l0
+    };
+
+    /// <summary>Chiều dài vươn mũ gối từ mép gối vào nhịp (m) theo lựa chọn: tiêu chuẩn L0/3 (gối giữa) – L0/4 (gối biên).</summary>
+    public static double ExtLength(string opt, double l0, bool endSupport) => opt switch
+    {
+        ExtL4 => l0 / 4, ExtL5 => l0 / 5, _ => endSupport ? l0 / 4 : l0 / 3
+    };
 
     [Field("M dương nhịp lớn nhất (0 = không kiểm tra)", Unit = "kN.m", Group = "Nội lực (tuỳ chọn)")] public double MSpan { get; set; }
     [Field("M âm gối lớn nhất (trị tuyệt đối)", Unit = "kN.m", Group = "Nội lực (tuỳ chọn)")] public double MSupport { get; set; }
@@ -139,10 +204,11 @@ public class ManualBeam : IDetailMember
         double xEnd = nodeX[ns];
         var lcl = spans.Select(L => Math.Max(L - w, 0.05)).ToArray();
 
+        var gBot = BottomGroups(); var gTop = TopGroups();
         double asBotC = Math.Max(BotN, 0) * Dt.Area(BotD), asTopC = Math.Max(TopN, 0) * Dt.Area(TopD);
-        double asAdd = Math.Max(AddBotN, 0) * Dt.Area(AddBotD), asSup = Math.Max(SupN, 0) * Dt.Area(SupD);
-        string botText = RcSection.BarText(new[] { (BotD, BotN), (AddBotD, Math.Max(AddBotN, 0)) }.Where(g => g.Item2 > 0));
-        string topText = RcSection.BarText(new[] { (TopD, TopN), (SupD, Math.Max(SupN, 0)) }.Where(g => g.Item2 > 0));
+        double asAdd = gBot.Sum(g => g.N * Dt.Area(g.D)), asSup = gTop.Sum(g => g.N * Dt.Area(g.D));
+        string botText = RcSection.BarText(new[] { (BotD, Math.Max(BotN, 0)) }.Concat(gBot.Select(g => (g.D, g.N))).Where(g => g.Item2 > 0));
+        string topText = RcSection.BarText(new[] { (TopD, Math.Max(TopN, 0)) }.Concat(gTop.Select(g => (g.D, g.N))).Where(g => g.Item2 > 0));
         for (int k = 0; k < ns; k++)
         {
             d.Spans.Add(new BeamSpanResult
@@ -156,17 +222,18 @@ public class ManualBeam : IDetailMember
             });
         }
 
-        // ---- thép dọc (quy tắc như BeamDesigner.Detail) ----
+        // ---- thép dọc (quy tắc như BeamDesigner.Detail; tuỳ chọn neo / cắt theo thực hành TCVN 5574:2018 mục 10.3.5) ----
         double xs = -w / 2 + c, xe = xEnd + w / 2 - c;
         double Lan(int dia) => Math.Max(30 * dia / 1000.0, RebarDetailing.AnchorageLength(conc, St(dia), dia));
-        (double straight, double leg) Anchor(int dia)
+        // neo ở gối biên: đoạn thẳng trong gối (w − c) + đoạn bẻ mỏ để tổng ≥ lan (10d ≤ mỏ ≤ h − 2c); hook = false → thẳng, không mỏ
+        double AnchorLeg(int dia, bool hook)
         {
             double dm = dia / 1000.0;
-            if (w <= 1e-6) return (0, 0);
+            if (w <= 1e-6 || !hook) return 0;
             double straight = Math.Max(w - c, 0);
             double leg = Math.Max(Lan(dia) - straight, 0);
             if (leg > 1e-6) leg = Math.Min(Math.Max(leg, 10 * dm), H - 2 * c);
-            return (straight, Dt.R10(leg));
+            return Dt.R10(leg);
         }
         BarMark Long(string role, bool top, int dia, int n, double x0, double x1, double legL, double legR, int span)
         {
@@ -174,21 +241,52 @@ public class ManualBeam : IDetailMember
             bm.Start = x0; bm.End = x1; bm.Span = span;
             return bm;
         }
-        if (BotN > 0) { var a = Anchor(BotD); d.Bars.Add(Long("Dưới", false, BotD, BotN, xs, xe, a.leg, a.leg, -1)); }
-        if (TopN > 0) { var a = Anchor(TopD); d.Bars.Add(Long("Trên", true, TopD, TopN, xs, xe, a.leg, a.leg, -1)); }
+        bool botHook = BotHook != HookNo, topHook = TopHook != HookNo;
+        if (BotN > 0) d.Bars.Add(Long("Dưới", false, BotD, BotN, xs, xe, AnchorLeg(BotD, botHook), AnchorLeg(BotD, botHook), -1));
+        if (TopN > 0) d.Bars.Add(Long("Trên", true, TopD, TopN, xs, xe, AnchorLeg(TopD, topHook), AnchorLeg(TopD, topHook), -1));
+        if (!botHook && w > 1e-6 && w - c < 10 * BotD / 1000.0 - 1e-9)
+            d.Messages.Add("Thép dưới neo thẳng vào gối biên " + Dt.Mm(w - c) + " mm < 10d = " + Dt.Mm(10 * BotD / 1000.0) + " mm (TCVN 5574:2018 mục 10.3.5.5) – nên bẻ mỏ hoặc tăng bề rộng gối");
         if (xe - xs > s.StockLength)
             d.Messages.Add("Thép chạy suốt dài " + Dt.F(xe - xs) + " m > " + Dt.F(s.StockLength) + " m – nối chồng thép trên tại giữa nhịp, thép dưới tại gối (ll = "
                            + Dt.Mm(RebarDetailing.LapLength(conc, main, Math.Max(BotD, TopD))) + " mm), so le ≥ 1,3·ll, ≤ 50% số thanh tại một tiết diện");
-        if (SupN > 0)
+        // mũ gối: vươn từ mép gối theo lựa chọn; "qua hết nhịp ngắn" → chạy qua nhịp ngắn hơn kề bên tới gối bên kia
+        foreach (var g in gTop)
+        {
+            string role = g.No == 2 ? "Mũ gối" : "Mũ gối " + g.No;
             for (int j = 0; j <= ns; j++)
             {
-                if (j == 0) { var a = Anchor(SupD); d.Bars.Add(Long("Mũ gối", true, SupD, SupN, xs, nodeX[0] + w / 2 + lcl[0] / 4, a.leg, 0, 0)); }
-                else if (j == ns) { var a = Anchor(SupD); d.Bars.Add(Long("Mũ gối", true, SupD, SupN, nodeX[ns] - w / 2 - lcl[ns - 1] / 4, xe, 0, a.leg, ns - 1)); }
-                else d.Bars.Add(Long("Mũ gối", true, SupD, SupN, nodeX[j] - w / 2 - lcl[j - 1] / 3, nodeX[j] + w / 2 + lcl[j] / 3, 0, 0, j));
+                bool end0 = j == 0, endN = j == ns;
+                double extL = end0 ? 0 : ExtLength(g.Opt, lcl[j - 1], false), extR = endN ? 0 : ExtLength(g.Opt, lcl[j], false);
+                if (end0) extR = ExtLength(g.Opt, lcl[0], true);
+                if (endN) extL = ExtLength(g.Opt, lcl[ns - 1], true);
+                if (g.Opt == ExtShort && !end0 && !endN)
+                {
+                    if (lcl[j - 1] <= lcl[j]) extL = lcl[j - 1] + w / 2 - c; else extR = lcl[j] + w / 2 - c;
+                }
+                double x0 = end0 ? xs : nodeX[j] - w / 2 - extL, x1 = endN ? xe : nodeX[j] + w / 2 + extR;
+                double lg0 = end0 ? AnchorLeg(g.D, g.Hook) : 0, lg1 = endN ? AnchorLeg(g.D, g.Hook) : 0;
+                d.Bars.Add(Long(role, true, g.D, g.N, x0, x1, lg0, lg1, end0 ? 0 : endN ? ns - 1 : j));
             }
-        if (AddBotN > 0)
+        }
+        // tăng cường dưới nhịp: cắt cách mép gối 0,1·L0 / L0/7 / L0/8 hoặc kéo vào gối (neo ≥ max(10d; 150) qua mép gối, gối biên bẻ mỏ nếu chọn)
+        foreach (var g in gBot)
+        {
+            string role = g.No == 2 ? "Tăng cường dưới" : "Tăng cường dưới " + g.No;
             for (int k = 0; k < ns; k++)
-                d.Bars.Add(Long("Tăng cường dưới", false, AddBotD, AddBotN, nodeX[k] + w / 2 + 0.1 * lcl[k], nodeX[k + 1] - w / 2 - 0.1 * lcl[k], 0, 0, k));
+            {
+                double f0 = nodeX[k] + w / 2, f1 = nodeX[k + 1] - w / 2, l0 = lcl[k];
+                double x0, x1, lg0 = 0, lg1 = 0;
+                if (g.Opt == CutAnchor)
+                {
+                    double into = Math.Min(Math.Max(10 * g.D / 1000.0, 0.15), w - c);
+                    x0 = k == 0 ? xs : f0 - into; x1 = k == ns - 1 ? xe : f1 + into;
+                    if (k == 0) lg0 = AnchorLeg(g.D, g.Hook);
+                    if (k == ns - 1) lg1 = AnchorLeg(g.D, g.Hook);
+                }
+                else { double cd = CutDistance(g.Opt, l0); x0 = f0 + cd; x1 = f1 - cd; }
+                d.Bars.Add(Long(role, false, g.D, g.N, x0, x1, lg0, lg1, k));
+            }
+        }
         if (H > 0.7)
         {
             int pairs = Math.Max((int)Math.Ceiling((H - 2 * c) / 0.4) - 1, 1);
@@ -220,10 +318,10 @@ public class ManualBeam : IDetailMember
         if (Legs > 2) d.Messages.Add("Đai " + Legs + " nhánh: thêm đai lồng / đai C cho nhánh giữa (thống kê theo đai kín 2 nhánh × " + Dt.F(Legs / 2.0) + ")");
 
         // ---- kiểm tra ----
-        double a1 = c + BotD / 2000.0;
-        bool twoLayers = !Dt.FitsInLayer(B, c, StirD, BotN + Math.Max(AddBotN, 0), Math.Max(BotD, AddBotD), false);
-        if (twoLayers) a1 = c + BotD / 1000.0 + 0.0125 + 0.0125;   // trọng tâm 2 lớp ≈ giữa khe 25 mm
-        double h0b = H - a1, h0t = H - c - TopD / 2000.0;
+        // trọng tâm thép theo hàng: hàng 1 sát lớp bảo vệ, hàng 2 cách hàng 1 khe 25 mm (dưới) / 30 mm (trên); hàng 1 không đủ khe hở → thanh dư sang hàng 2
+        double a1 = LayerCentroid(c, BotD, BotN, gBot, B, StirD, false, out bool twoLayers);
+        double aT = LayerCentroid(c, TopD, TopN, gTop, B, StirD, true, out bool twoTop);
+        double h0b = H - a1, h0t = H - aT;
         double aComp = c + TopD / 2000.0;
         double muSpan = RcSection.MomentCapacity(B, h0b, asBotC + asAdd, asTopC, aComp, conc, main);
         double muSup = RcSection.MomentCapacity(B, h0t, asTopC + asSup, asBotC, a1, conc, main);
@@ -231,6 +329,8 @@ public class ManualBeam : IDetailMember
         r.Calc.Add("Thép dưới giữa nhịp " + botText + ": As = " + Dt.F((asBotC + asAdd) * 1e4, "0.00") + " cm², h0 = " + Dt.Mm(h0b) + " mm"
                    + (twoLayers ? " (2 lớp – không đủ khe hở trên 1 lớp)" : ""));
         r.Calc.Add("Mu nhịp = Rb·b·x·(h0 − x/2) + Rsc·As'·(h0 − a') = " + Dt.F(muSpan, "0.0") + " kN.m (TCVN 5574:2018 mục 8.1.2.2.4)");
+        foreach (var g in gBot) r.Calc.Add("Tăng cường dưới (" + g.No + ") " + g.N + "Ø" + g.D + " hàng " + Math.Clamp(g.Layer, 1, 2) + ": " + (g.Opt == CutAnchor ? "kéo vào gối, neo ≥ max(10d; 150 mm)" + (g.Hook ? ", gối biên bẻ mỏ" : "") : g.Opt.ToLowerInvariant()));
+        foreach (var g in gTop) r.Calc.Add("Mũ gối (" + g.No + ") " + g.N + "Ø" + g.D + " hàng " + Math.Clamp(g.Layer, 1, 2) + ": vươn " + (g.Opt == ExtStd ? "L0/3 ở gối giữa, L0/4 ở gối biên" : g.Opt) + (g.Hook ? ", gối biên bẻ mỏ" : ", gối biên neo thẳng"));
         r.Calc.Add("Thép trên tại gối " + topText + ": As = " + Dt.F((asTopC + asSup) * 1e4, "0.00") + " cm², Mu gối = " + Dt.F(muSup, "0.0") + " kN.m");
         if (MSpan > 0) d.Checks.Add(Dt.Check("Chịu uốn giữa nhịp M ≤ Mu", MSpan, muSpan, "kN.m"));
         if (MSupport > 0) d.Checks.Add(Dt.Check("Chịu uốn tại gối |M| ≤ Mu", MSupport, muSup, "kN.m"));
@@ -247,8 +347,8 @@ public class ManualBeam : IDetailMember
         d.Checks.Add(Dt.Check("Hàm lượng thép trên tại gối μ ≥ 0,1 %", muMin * 100, (asTopC + asSup) / (B * h0t) * 100, "%"));
         d.Checks.Add(Dt.Check("Bước đai vùng gối s ≤ min(h0/2; 300 mm)", ss * 1000, Math.Min(h0b / 2, 0.30) * 1000, "mm", "TCVN 5574:2018 mục 10.3.4"));
         d.Checks.Add(Dt.Check("Bước đai giữa nhịp s ≤ min(0,75·h0; 500 mm)", sm * 1000, Math.Min(0.75 * h0b, 0.50) * 1000, "mm"));
-        if (!Dt.FitsInLayer(B, c, StirD, TopN + Math.Max(SupN, 0), Math.Max(TopD, SupD), true))
-            d.Messages.Add("Thép trên tại gối " + topText + " không đủ khe hở 30 mm trên 1 lớp – đặt 2 lớp hoặc tăng b");
+        if (twoTop)
+            d.Messages.Add("Thép trên tại gối " + topText + " đặt 2 hàng (h0 gối = " + Dt.Mm(h0t) + " mm)");
         if (twoLayers && !Dt.FitsInLayer(B, c, StirD, BotN, BotD, false))
             d.Messages.Add("LỖI thép dưới chạy suốt " + BotN + "Ø" + BotD + " không đủ khe hở trên 1 lớp – giảm số thanh / tăng b");
         if (MSpan <= 0 && MSupport <= 0 && Q <= 0)
@@ -286,6 +386,30 @@ public class ManualBeam : IDetailMember
             d.Messages.Add("Dầm mái: chống thấm mặt trên sàn mái, đổ bê tông liên tục; thép cột tầng mái uốn mỏ neo vào dầm (khoá đầu cột)");
         }
         return r;
+    }
+
+    /// <summary>Khoảng cách trọng tâm thép tới mép chịu kéo (m): thanh chạy suốt + nhóm tăng cường theo hàng khai báo;
+    /// hàng 1 không đủ khe hở (≥ max(d; 25/30 mm)) thì phần dư chuyển sang hàng 2; hàng 2 cách hàng 1 khe 25 mm (dưới) / 30 mm (trên).</summary>
+    public static double LayerCentroid(double c, int dCont, int nCont, IList<AddGroup> groups, double b, int stirD, bool top, out bool twoLayers)
+    {
+        var l1 = new List<(int D, int N)> { (dCont, Math.Max(nCont, 0)) };
+        var l2 = new List<(int D, int N)>();
+        foreach (var g in groups) (g.Layer >= 2 ? l2 : l1).Add((g.D, g.N));
+        // dồn thanh dư hàng 1 sang hàng 2
+        while (!Dt.FitsInLayer(b, c, stirD, l1.Sum(x => x.N), l1.Max(x => x.D), top))
+        {
+            int i = l1.FindLastIndex(x => x.N > 0);
+            if (i < 0 || (i == 0 && l1[0].N <= 2)) break;   // giữ tối thiểu 2 thanh góc đai ở hàng 1
+            var gi = l1[i]; l1[i] = (gi.D, gi.N - 1);
+            l2.Add((gi.D, 1));
+        }
+        twoLayers = l2.Sum(x => x.N) > 0;
+        double d1 = l1.Where(x => x.N > 0).Select(x => x.D).DefaultIfEmpty(dCont).Max() / 1000.0;
+        double y1 = c + d1 / 2;
+        double sum = 0, mom = 0;
+        foreach (var (dd, n) in l1) { double a = n * Dt.Area(dd); sum += a; mom += a * y1; }
+        foreach (var (dd, n) in l2) { double a = n * Dt.Area(dd); sum += a; mom += a * (c + d1 + (top ? 0.030 : 0.025) + dd / 2000.0); }
+        return sum > 1e-12 ? mom / sum : y1;
     }
 
     /// <summary>Bối cảnh sàn nhập tay cho mặt cắt dầm: chữ T / L, hạ cốt từng bên (mm), thép sàn thể hiện.</summary>
@@ -341,6 +465,17 @@ public class ManualColumn : IDetailMember
     [Field("My (uốn quanh trục Y, căng cạnh b)", Unit = "kN.m", Group = "Nội lực tầng dưới (tuỳ chọn)")] public double My { get; set; }
     [Field("Hệ số chiều dài tính toán ψ", Group = "Nội lực tầng dưới (tuỳ chọn)")] public double Psi { get; set; } = 0.7;
 
+    public const string SpliceAuto = "Tự gợi ý (giữa chiều cao thông thuỷ, ngoài vùng nguy hiểm lcr)",
+        SpliceFloor = "Nối trên mặt sàn (chân cột – thường dùng nhà thấp tầng)",
+        SpliceMech = "Nối cơ khí (ống ren)";
+    [Field("Vị trí / cách nối thép dọc", Group = "Nối thép cột", Choices = SpliceAuto + "|" + SpliceFloor + "|" + SpliceMech,
+        Hint = "Tự gợi ý: nối ngoài vùng nguy hiểm lcr = max(hc; Hthông thuỷ/6; 450 mm) ở hai đầu cột")]
+    public string SpliceMode { get; set; } = SpliceAuto;
+    [Field("Nối so le 50 % số thanh (2 nhóm cách nhau ≥ 1,3·ll)", Group = "Nối thép cột")] public bool Stagger { get; set; } = true;
+    [Field("Nhấn cổ chai 1:6 khi nối (thanh dưới nhấn vào trong 1Ø)", Group = "Nối thép cột",
+        Hint = "Đầu thanh tầng dưới uốn xiên 1:6 vào trong một đường kính để thanh tầng trên giữ đúng lớp bảo vệ")]
+    public bool Crank { get; set; }
+
     public const double FootingAnchor = 0.50;
 
     public DetailResult Run(DetailSettings s)
@@ -374,17 +509,41 @@ public class ManualColumn : IDetailMember
         double dm = Dia / 1000.0;
         double lap = Dt.R10(Math.Max(30 * dm, RebarDetailing.LapLength(conc, main, Dia)));
         int ns = d.Stories.Count;
-        // vị trí nối: giữa chiều cao thông thuỷ, ngoài vùng lcr hai đầu; so le 2 nhóm ≥ 1,3·ll nếu đủ chỗ
+        // vị trí nối theo lựa chọn: tự gợi ý (giữa chiều cao thông thuỷ, ngoài vùng lcr hai đầu), trên mặt sàn, hoặc ống nối ren;
+        // so le 2 nhóm ≥ 1,3·ll (ống ren: ≥ max(35d; 500 mm)) nếu chọn và đủ chỗ
         var cA = new double[ns + 1]; var cB = new double[ns + 1];
-        bool stagger = true;
+        bool mech = SpliceMode == SpliceMech, floorSp = SpliceMode == SpliceFloor;
+        bool stagger = Stagger;
+        double lenS = mech ? 0 : lap;
         double zb0 = BaseElevation;
+        r.Calc.Add("Nối thép dọc: " + (mech ? "ống nối ren (cơ khí), không cần chiều dài nối chồng" : floorSp ? "nối chồng ngay trên mặt sàn, ll = " + Dt.Mm(lap) + " mm" : "nối chồng ll = " + Dt.Mm(lap) + " mm tại vùng gợi ý ngoài lcr")
+                   + (Stagger ? ", so le 50 % số thanh" : ", nối 100 % tại một tiết diện") + (Crank && !mech ? ", nhấn cổ chai 1:6 đầu thanh dưới" : ""));
         for (int t = 1; t < ns; t++)
         {
             var su = d.Stories[t];
             double lcr = Math.Max(Math.Max(B, H), Math.Max(su.Length / 6, 0.45));
-            double za = su.ZBottom - zb0 + lcr, zbb = su.ZTop - zb0 - su.JointDepth - lcr;
-            double zm = (su.ZBottom - zb0 + su.ZTop - zb0 - su.JointDepth) / 2, sd = RcSection.CeilTo(1.3 * lap, 0.01);
-            if (zbb - za >= lap + sd) { cA[t] = Math.Clamp(zm - sd / 2, za + lap / 2, zbb - lap / 2 - sd); cB[t] = cA[t] + sd; }
+            double zf = su.ZBottom - zb0;
+            double za = zf + lcr, zbb = su.ZTop - zb0 - su.JointDepth - lcr;
+            double zm = (zf + su.ZTop - zb0 - su.JointDepth) / 2;
+            double sd = mech ? RcSection.CeilTo(Math.Max(35 * dm, 0.50), 0.01) : RcSection.CeilTo(1.3 * lap, 0.01);
+            r.Calc.Add(su.Story + ": vùng nối gợi ý cách mặt sàn " + Dt.Mm(lcr) + " … " + Dt.Mm(Math.Max(zbb - zf, lcr)) + " mm (ngoài vùng nguy hiểm lcr = max(hc; H/6; 450) = "
+                       + Dt.Mm(lcr) + " mm ở chân và đỉnh cột)");
+            if (floorSp)
+            {
+                cA[t] = zf + lenS / 2; cB[t] = stagger ? cA[t] + sd : cA[t];
+                if (t == 1) d.Messages.Add("Nối thép cột trên mặt sàn: mối nối nằm trong vùng nguy hiểm lcr chân cột – chỉ nên dùng cho nhà thấp tầng / không yêu cầu kháng chấn; đai vùng nối bước ≤ min(10d; 100 mm)");
+            }
+            else if (mech)
+            {
+                if (!stagger || zbb - za >= sd) { cA[t] = stagger ? Math.Clamp(zm - sd / 2, za, Math.Max(zbb - sd, za)) : zm; cB[t] = stagger ? cA[t] + sd : cA[t]; }
+                else { stagger = false; cA[t] = cB[t] = zm; d.Messages.Add("Ống nối " + su.Story + ": không đủ chỗ so le ngoài vùng lcr – nối 100 % tại giữa cột (ống ren loại cấp 1 cho phép)"); }
+                if (zbb - za < 0) d.Messages.Add("Ống nối " + su.Story + ": cột thấp, vùng ngoài lcr không còn – đặt ống nối tại giữa chiều cao thông thuỷ");
+            }
+            else if (zbb - za >= lap + (stagger ? sd : 0))
+            {
+                if (stagger) { cA[t] = Math.Clamp(zm - sd / 2, za + lap / 2, zbb - lap / 2 - sd); cB[t] = cA[t] + sd; }
+                else cA[t] = cB[t] = Math.Clamp(zm, za + lap / 2, zbb - lap / 2);
+            }
             else
             {
                 stagger = false; cA[t] = cB[t] = zm;
@@ -392,8 +551,21 @@ public class ManualColumn : IDetailMember
                                + (zbb - za >= lap ? "không đủ so le – nối 100 % tại một tiết diện" : "< ll = " + Dt.F(lap) + " m – dùng ống nối ren hoặc thép liên tục qua tầng"));
             }
             foreach (var (g, cc) in new[] { ("A", cA[t]), ("B", cB[t]) })
-                d.Splices.Add(new SpliceInfo { Dia = Dia, Span = t, Center = cc, Lap = lap, Group = g, Count = g == "A" ? (nTot + 1) / 2 : nTot / 2, ZoneA = za, ZoneB = zbb, Note = "nối chồng ll = " + Dt.Mm(lap) + " mm" });
+                d.Splices.Add(new SpliceInfo { Dia = Dia, Span = t, Center = cc, Lap = lenS, Group = g, Count = g == "A" ? (nTot + 1) / 2 : nTot / 2, ZoneA = za, ZoneB = zbb,
+                    Note = mech ? "ống nối ren" : "nối chồng ll = " + Dt.Mm(lap) + " mm" + (Crank ? ", nhấn cổ chai 1:6" : "") });
         }
+        if (mech && ns > 1) r.Extra.Add(("Ống nối ren thép Ø" + Dia, "cái", nTot * (ns - 1)));
+        // thanh nhấn cổ chai: đoạn thẳng v1 → đoạn xiên 1:6 lệch vào trong 1Ø → đoạn nối chồng ll (đầu trên)
+        BarMark CrankBar(string crRole, int crN, double crVert, double crFoot)
+        {
+            double e = dm, run = 6 * e, incl = Math.Sqrt(run * run + e * e);
+            double v1 = Math.Max(crVert - lap - run, 0.05);
+            var segs = new List<double>();
+            if (crFoot > 1e-6) segs.Add(Math.Round(crFoot * 1000));
+            segs.Add(Math.Round(v1 * 1000)); segs.Add(Math.Round(incl * 1000)); segs.Add(Math.Round(lap * 1000));
+            return new BarMark { Role = crRole, Dia = Dia, Count = crN, Shape = crFoot > 1e-6 ? "Nhấn L" : "Nhấn", Segments = segs, Length = Dt.R10(crFoot + v1 + incl + lap) };
+        }
+        bool crank = Crank && !mech;
         // ---- thép chờ chân cột (cổ cột) và khoá đầu cột tầng mái ----
         bool fromFooting = !(BaseType ?? "").StartsWith("Trên dầm"), roofTop = !(TopType ?? "").StartsWith("Chờ");
         double lan = Math.Max(30 * dm, RebarDetailing.AnchorageLength(conc, main, Dia));
@@ -402,7 +574,8 @@ public class ManualColumn : IDetailMember
         double embed = Math.Max(SupportDepth - embedC, 0.15);
         double footLeg = Dt.R10(Math.Max(Math.Max(0.20, 12 * dm), lan - embed));
         if (footLeg > 0.6) footLeg = 0.6;
-        var sb0 = Dt.Hooked(fromFooting ? "Thép chờ cột (trong móng)" : "Thép chờ cột (trong dầm đỡ)", Dia, nTot, Dt.R10(embed + starter), footLeg, 0);
+        string sRole = fromFooting ? "Thép chờ cột (trong móng)" : "Thép chờ cột (trong dầm đỡ)";
+        var sb0 = crank ? CrankBar(sRole, nTot, Dt.R10(embed + starter), footLeg) : Dt.Hooked(sRole, Dia, nTot, Dt.R10(embed + starter), footLeg, 0);
         sb0.Start = -embed; sb0.End = starter; sb0.Span = 0;
         d.Bars.Add(sb0);
         r.Calc.Add("Thép chờ chân cột: chôn " + Dt.Mm(embed) + " mm vào " + (fromFooting ? "móng" : "dầm đỡ") + ", bẻ chân " + Dt.Mm(footLeg) + " mm tựa lưới thép; nhô khỏi mặt "
@@ -427,10 +600,11 @@ public class ManualColumn : IDetailMember
             foreach (var (grp, cnt) in new[] { ("A", nA), ("B", nTot - nA) })
             {
                 if (cnt <= 0) continue;
-                double start = bottom ? z0 : (grp == "A" ? cA[si] : cB[si]) - lap / 2;
-                double end = top ? (roofTop ? z1 - s.CoverBeam : z1 + lap) : (grp == "A" ? cA[si + 1] : cB[si + 1]) + lap / 2;
+                double start = bottom ? z0 : (grp == "A" ? cA[si] : cB[si]) - lenS / 2;
+                double end = top ? (roofTop ? z1 - s.CoverBeam : z1 + lap) : (grp == "A" ? cA[si + 1] : cB[si + 1]) + lenS / 2;
                 double vert = Dt.R10(end - start);
-                var bm = Dt.Hooked(grp == "A" ? "Thép dọc" : "Thép dọc (so le)", Dia, cnt, vert, 0, top && roofTop ? roofHook : 0);
+                string bRole = grp == "A" ? "Thép dọc" : "Thép dọc (so le)";
+                var bm = crank && !(top && roofTop) ? CrankBar(bRole, cnt, vert, 0) : Dt.Hooked(bRole, Dia, cnt, vert, 0, top && roofTop ? roofHook : 0);
                 bm.Start = start; bm.End = end; bm.Span = si;
                 d.Bars.Add(bm);
             }

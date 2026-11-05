@@ -81,6 +81,34 @@ public class PlanLevel
     public List<PlanItem> Items { get; set; } = new();
 }
 
+/// <summary>Đường cắt mặt cắt thép sàn do người dùng đặt trên một mặt bằng (vd. "1-1" cắt qua ô sàn điển hình).</summary>
+public class SectionMark
+{
+    /// <summary>Tên mặt cắt, vd. "1-1", "2-2".</summary>
+    public string Name { get; set; } = "1-1";
+    /// <summary>Tên mặt bằng (PlanLevel.Name) chứa đường cắt.</summary>
+    public string Level { get; set; } = "";
+    public double X1 { get; set; }
+    public double Y1 { get; set; }
+    public double X2 { get; set; }
+    public double Y2 { get; set; }
+    [JsonIgnore] public double Length => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
+    /// <summary>Ký hiệu đầu mặt cắt: "1-1" → "1".</summary>
+    [JsonIgnore] public string Tag => string.IsNullOrWhiteSpace(Name) ? "?" : Name.Split('-')[0].Trim();
+}
+
+/// <summary>Một nhóm của cây thư mục cấu kiện theo mặt bằng kết cấu.</summary>
+public class PlanTreeGroup
+{
+    /// <summary>Tiêu đề nút, vd. "Mặt bằng móng", "Mặt bằng kết cấu Tầng 2", "Chưa đặt trên mặt bằng".</summary>
+    public string Title { get; set; } = "";
+    /// <summary>"Mong", "DamMong", "Cot", "Tang", "ChuaDat".</summary>
+    public string Kind { get; set; } = "";
+    /// <summary>Mặt bằng tương ứng (null với nhóm cột / chưa đặt).</summary>
+    public PlanLevel Level { get; set; }
+    public List<IDetailMember> Members { get; set; } = new();
+}
+
 public class StructuralPlan
 {
     /// <summary>Bước trục X (trục đứng 1, 2, 3…), m – "3.6 4.2" hoặc "3*3.6".</summary>
@@ -101,6 +129,76 @@ public class StructuralPlan
     [JsonIgnore] public double[] Ys => Coords(SpansY);
     [JsonIgnore] public bool HasGrid => Xs.Length >= 2 && Ys.Length >= 2;
     [JsonIgnore] public bool IsEmpty => Levels.All(l => l.Items.Count == 0);
+    /// <summary>Các đường cắt mặt cắt thép sàn (người dùng chọn vị trí trên mặt bằng).</summary>
+    public List<SectionMark> Sections { get; set; } = new();
+
+    /// <summary>Tên mặt cắt kế tiếp chưa dùng: "1-1", "2-2"…</summary>
+    public string NextSectionName()
+    {
+        for (int i = 1; ; i++)
+        {
+            string n = i.ToString(Inv) + "-" + i.ToString(Inv);
+            if (!(Sections ?? new()).Any(s => s.Name == n)) return n;
+        }
+    }
+
+    /// <summary>Cây thư mục cấu kiện theo mặt bằng kết cấu: Mặt bằng móng (móng đơn / cọc / băng / bè / bể), Mặt bằng dầm móng,
+    /// Mặt bằng định vị cột, Mặt bằng kết cấu từng tầng theo cao độ (dầm, sàn, lanh tô, ô văng, cầu thang), cuối cùng "Chưa đặt trên mặt bằng".
+    /// Một cấu kiện đặt ở nhiều mặt bằng xuất hiện ở mỗi mặt bằng đó. Nhóm rỗng vẫn trả về cho các mặt bằng có trong hồ sơ (trừ dầm móng / cột / chưa đặt).</summary>
+    public static List<PlanTreeGroup> GroupForTree(DetailingProject p)
+    {
+        var groups = new List<PlanTreeGroup>();
+        if (p == null) return groups;
+        var all = p.All.ToList();
+        var plan = p.Plan ?? new StructuralPlan();
+        var levels = plan.Levels ?? new();
+        var placed = new HashSet<IDetailMember>();
+        IEnumerable<IDetailMember> On(PlanLevel lv, Func<PlanItem, IDetailMember, bool> pred)
+        {
+            var names = new HashSet<string>();
+            foreach (var it in lv?.Items ?? new())
+                if (!string.IsNullOrEmpty(it.Member)) names.Add(it.Member);
+            foreach (var m in all)
+                if (m != null && names.Contains(m.Name ?? "") && lv.Items.Any(i => i.Member == m.Name && pred(i, m))) yield return m;
+        }
+        static bool FoundBeam(IDetailMember m) => m is ManualBeam b && (b.Position ?? "").StartsWith("Dầm móng");
+
+        var fnd = levels.FirstOrDefault(l => l.IsFoundation);
+        var gF = new PlanTreeGroup { Title = "Mặt bằng móng", Kind = "Mong", Level = fnd };
+        var gB = new PlanTreeGroup { Title = "Mặt bằng dầm móng", Kind = "DamMong", Level = fnd };
+        var gC = new PlanTreeGroup { Title = "Mặt bằng định vị cột", Kind = "Cot" };
+        if (fnd != null)
+        {
+            gF.Members.AddRange(On(fnd, (i, m) => i.Kind == PlanKinds.Footing || ((i.Kind == PlanKinds.Slab || i.Kind == PlanKinds.Beam) && m is not ManualBeam && m is not ManualSlab && m is not ManualSlabPlan && m is not PrestressInput)));
+            gB.Members.AddRange(On(fnd, (i, m) => i.Kind == PlanKinds.Beam && m is ManualBeam));
+        }
+        var tangs = new List<PlanTreeGroup>();
+        foreach (var lv in levels.Where(l => !l.IsFoundation).OrderBy(l => l.Elevation))
+        {
+            string nm = (lv.Name ?? "").Trim();
+            string title = nm.StartsWith("Mái", StringComparison.OrdinalIgnoreCase) ? "Mặt bằng kết cấu mái" : "Mặt bằng kết cấu " + nm;
+            var g = new PlanTreeGroup { Title = title, Kind = "Tang", Level = lv };
+            foreach (var m in On(lv, (i, mm) => i.Kind != PlanKinds.Column))
+            {
+                if (FoundBeam(m)) { if (!gB.Members.Contains(m)) gB.Members.Add(m); }
+                else g.Members.Add(m);
+            }
+            tangs.Add(g);
+        }
+        foreach (var lv in levels)
+            foreach (var m in On(lv, (i, mm) => i.Kind == PlanKinds.Column))
+                if (!gC.Members.Contains(m)) gC.Members.Add(m);
+
+        if (fnd != null) groups.Add(gF);
+        if (gB.Members.Count > 0) groups.Add(gB);
+        if (gC.Members.Count > 0) groups.Add(gC);
+        groups.AddRange(tangs);
+        foreach (var g in groups) foreach (var m in g.Members) placed.Add(m);
+        var un = new PlanTreeGroup { Title = "Chưa đặt trên mặt bằng", Kind = "ChuaDat" };
+        un.Members.AddRange(all.Where(m => m != null && !placed.Contains(m)));
+        if (un.Members.Count > 0) groups.Add(un);
+        return groups;
+    }
 
     public static double[] Coords(string spans)
     {

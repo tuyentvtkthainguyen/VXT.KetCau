@@ -216,6 +216,10 @@ public class ManualStrip : IDetailMember
     [Field("Chiều dài băng", Unit = "m", Group = "Kích thước")] public double Length { get; set; } = 13.0;
     [Field("Bề rộng bản đáy B (0 = tự chọn)", Unit = "m", Group = "Kích thước")] public double B { get; set; }
     [Field("Chiều dày mép bản", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Hf { get; set; } = 0.25;
+    [Field("Chiều dày bản tại chân sườn – đoạn vát (0 = bản phẳng)", Unit = "mm", Scale = 1000, Group = "Kích thước",
+        Hint = "móng băng có đoạn vát: bản dày dần từ mép (Hf) tới chân sườn (Hv); tiết diện tính uốn bản cánh tại mép sườn dùng Hv")] public double Hv { get; set; }
+    /// <summary>Chiều dày bản tại chân sườn dùng tính toán (≥ Hf).</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public double HRoot => Hv > Hf ? Hv : Hf;
     [Field("Bề rộng sườn (dầm móng)", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Bs { get; set; } = 0.35;
     [Field("Chiều cao sườn tổng (0 = tự chọn)", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Hs { get; set; }
     [Field("Bố trí cánh / bên giáp nhà hàng xóm", Group = "Bê tông lót, giáp nhà hàng xóm", Choices = "Cánh 2 bên|Cánh 1 bên – giáp nhà hàng xóm (hết đất)",
@@ -351,7 +355,9 @@ public class ManualStrip : IDetailMember
         // ---- bản cánh: console từ mép sườn, M = p·l²/2 ----
         bool oneSide = (FlangeSide ?? "").Contains("1 bên");
         double lc = oneSide ? b - Bs : (b - Bs) / 2, pn = sumN / (b * Length) * (pMax - gD) / Math.Max(pTb - gD, 1e-9);
-        double mF = pn * lc * lc / 2, h0f = Hf - c - 0.006;
+        double mF = pn * lc * lc / 2, h0f = HRoot - c - 0.006;   // tiết diện tại mép sườn (đoạn vát: dày Hv)
+        if (Hv > Hf) r.Calc.Add("Bản cánh có đoạn vát: dày " + Dt.Mm(Hf) + " mm ở mép, " + Dt.Mm(HRoot) + " mm ở chân sườn → h0 tại mép sườn = " + Dt.Mm(h0f) + " mm"
+                                + (Math.Atan2(HRoot - Hf, Math.Max(lc, 1e-6)) * 180 / Math.PI > 30 ? " (độ dốc > 30°: cần ván khuôn mặt vát)" : " (độ dốc ≤ 30°: đổ không cần ván khuôn mặt vát)"));
         double asF = RcSection.DesignRect(mF, 1.0, h0f, c, conc, main, 0.10).As;
         var fl = FlangeD > 0 && FlangeS > 0 ? (FlangeD, FlangeS) : Dt.ChooseSpaced(asF, new[] { 10, 12, 14, 16 }, 0.20, 0.10);
         double muF = RcSection.MomentCapacity(1.0, h0f, Dt.AreaPerM(fl.Item1, fl.Item2), 0, c, conc, main);
@@ -385,9 +391,11 @@ public class ManualStrip : IDetailMember
         r.Bars.Add(Dt.Straight("Lớp dưới phương dọc", dist.D, (oneSide ? 1 : 2) * Dt.CountAcross(lc + 0.05, 0.05, dist.S), lenRib, false, dist.S));
         if (lenRib > s.StockLength) r.Messages.Add("Thép dọc dài " + Dt.F(lenRib) + " m > " + Dt.F(s.StockLength) + " m: nối thép dưới tại giữa nhịp, thép trên tại vị trí cột (ngoài vùng mô men lớn), so le 50 %");
         RebarNumbering.Renumber(r.Bars);
-        double area = b * Hf + Bs * (hs - Hf) + (b - Bs) / 2 * 0;   // bỏ qua vát cánh
+        double area = (b - Bs) * (Hf + HRoot) / 2 + Bs * hs;   // bản cánh hình thang (đoạn vát) + sườn
         r.ConcreteVolume = area * Length;
-        r.FormworkArea = (2 * Hf + 2 * (hs - Hf)) * Length + 2 * area;
+        bool steep = Math.Atan2(HRoot - Hf, Math.Max(lc, 1e-6)) * 180 / Math.PI > 30;
+        double slopeLen = Math.Sqrt(lc * lc + (HRoot - Hf) * (HRoot - Hf));
+        r.FormworkArea = ((oneSide ? 1 : 2) * Hf + (oneSide ? 1 : 2) * (hs - HRoot) + (oneSide ? hs : 0) + (steep ? (oneSide ? 1 : 2) * slopeLen : 0)) * Length + 2 * area;
         double ovs = Math.Max(LeanOverhang, 0);
         r.LeanVolume = (b + (oneSide ? 1 : 2) * ovs) * (Length + 2 * ovs) * s.LeanThickness;
         if (oneSide) r.Extra.Add(("Xây gạch / tấm khuôn để lại cho thành móng băng giáp nhà hàng xóm", "m²", hs * Length));
@@ -444,20 +452,20 @@ public class ManualStrip : IDetailMember
         // mặt cắt ngang 1-1 (chữ T ngược)
         double Ss = 25;
         var x2 = new DxfWriter(Ss);
-        double B = BUsed * 1000, bs = Bs * 1000;
+        double B = BUsed * 1000, bs = Bs * 1000, hr = HRoot * 1000;
         bool one = (FlangeSide ?? "").Contains("1 bên");
         double ovl = Math.Max(LeanOverhang, 0) * 1000;
         if (one)
         {
             // sườn sát ranh bên trái: bản đáy chỉ vươn sang phải
-            x2.Polyline(Lay.BeTong, new List<(double, double)> { (-B / 2, 0), (B / 2, 0), (B / 2, hf), (-B / 2 + bs, hf), (-B / 2 + bs, hs), (-B / 2, hs) }, true);
+            x2.Polyline(Lay.BeTong, new List<(double, double)> { (-B / 2, 0), (B / 2, 0), (B / 2, hf), (-B / 2 + bs, hr), (-B / 2 + bs, hs), (-B / 2, hs) }, true);
             x2.Rect(Lay.KyHieu, -B / 2, -s.LeanThickness * 1000, B / 2 + ovl, 0);
             x2.Line(Lay.KyHieu, -B / 2, -s.LeanThickness * 1000 - 300, -B / 2, hs + 300, "CENTER");
             x2.Text(Lay.Chu, -B / 2 - 0.6 * x2.Th, -s.LeanThickness * 1000 - 300, 0.8 * x2.Th, "RANH ĐẤT", 90, 0, 2);
         }
         else
         {
-            x2.Polyline(Lay.BeTong, new List<(double, double)> { (-B / 2, 0), (B / 2, 0), (B / 2, hf), (bs / 2, hf), (bs / 2, hs), (-bs / 2, hs), (-bs / 2, hf), (-B / 2, hf) }, true);
+            x2.Polyline(Lay.BeTong, new List<(double, double)> { (-B / 2, 0), (B / 2, 0), (B / 2, hf), (bs / 2, hr), (bs / 2, hs), (-bs / 2, hs), (-bs / 2, hr), (-B / 2, hf) }, true);
             x2.Rect(Lay.KyHieu, -B / 2 - ovl, -s.LeanThickness * 1000, B / 2 + ovl, 0);
         }
         double rx = one ? -B / 2 + bs / 2 : 0;   // tim sườn
@@ -486,6 +494,7 @@ public class ManualStrip : IDetailMember
         x2.Dim(-B / 2, 0, B / 2, 0, -3.0 * x2.Th);
         x2.Dim(rx - bs / 2, hs, rx + bs / 2, hs, 1.5 * x2.Th);
         x2.Dim(B / 2, 0, B / 2, hf, 1.5 * x2.Th);
+        if (hr > hf + 1) x2.Dim(rx + (one ? bs / 2 : bs / 2), 0, rx + bs / 2, hr, -1.2 * x2.Th);
         x2.Dim(B / 2, 0, B / 2, hs, 2.5 * x2.Th);
         x2.Title(0, -1800, "1-1", DrawUtil.ScaleText(Ss), true);
         figs.Add(new Figure(x2, Name + " mặt cắt"));
@@ -527,6 +536,30 @@ public class ManualPileCap : IDetailMember
     [Field("Thép phương X – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double SX { get; set; }
     [Field("Thép phương Y – Ø", Unit = "mm", Group = "Thép")] public int DiaY { get; set; }
     [Field("Thép phương Y – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double SY { get; set; }
+    [Field("Bố trí thép đài", Group = "Thép", Choices = "Chỉ lớp dưới|Lớp dưới + lớp trên|Lồng thép (lớp dưới + lớp trên + thép đứng chống chọc thủng)",
+        Hint = "Chỉ lớp dưới: đài cao ≥ 800 mm vẫn tự thêm lưới trên cấu tạo")] public string RebarLayout { get; set; } = "Chỉ lớp dưới";
+    [Field("Lớp trên – Ø (0 = tự chọn)", Unit = "mm", Group = "Thép")] public int TopD { get; set; }
+    [Field("Lớp trên – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double TopS { get; set; }
+    [Field("Lồng thép: thép đứng – Ø (0 = Ø10)", Unit = "mm", Group = "Thép")] public int CageD { get; set; }
+    [Field("Lồng thép: bước thép đứng (0 = 200)", Unit = "mm", Scale = 1000, Group = "Thép")] public double CageS { get; set; }
+    [Field("Râu thép đầu cọc – số thanh mỗi cọc", Group = "Đầu cọc", Hint = "thép dọc cọc chừa lại sau khi đập đầu cọc, neo vào đài")] public int PileBarN { get; set; } = 4;
+    [Field("Râu thép đầu cọc – Ø", Unit = "mm", Group = "Đầu cọc")] public int PileBarD { get; set; } = 16;
+    [Field("Râu thép đầu cọc – chiều dài neo vào đài (0 = max(30d; 400))", Unit = "mm", Scale = 1000, Group = "Đầu cọc")] public double AnchorLen { get; set; }
+    /// <summary>Chiều dài neo râu thép đầu cọc dùng tính toán (m).</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public double AnchorUsed => AnchorLen > 0 ? AnchorLen : Math.Max(30 * Math.Max(PileBarD, 10) / 1000.0, 0.40);
+    [System.Text.Json.Serialization.JsonIgnore] public bool HasTop => (RebarLayout ?? "").Contains("lớp trên") || (RebarLayout ?? "").StartsWith("Lồng");
+    [System.Text.Json.Serialization.JsonIgnore] public bool HasCage => (RebarLayout ?? "").StartsWith("Lồng");
+
+    /// <summary>Khả năng chọc thủng có cốt thép ngang (TCVN 5574:2018 mục 8.1.6.3.3): Fsw = 0,8·qsw·u, qsw = Rsw·Asw/sw;
+    /// chỉ kể khi Fsw ≥ 0,25·Fb; Fb + Fsw ≤ 2·Fb. Trả về (Fsw dùng, khả năng tổng).</summary>
+    public static (double Fsw, double Fult) PunchWithLinks(double fb, double rsw, double aswPerRow, int rows, double sw, double u)
+    {
+        if (sw <= 1e-9 || rows <= 0) return (0, fb);
+        double qsw = rsw * aswPerRow * rows / sw;
+        double fsw = 0.8 * qsw * u;
+        if (fsw < 0.25 * fb) return (0, fb);
+        return (Math.Min(fsw, fb), fb + Math.Min(fsw, fb));
+    }
 
     // kết quả để vẽ
     [System.Text.Json.Serialization.JsonIgnore]
@@ -637,7 +670,21 @@ public class ManualPileCap : IDetailMember
         double h0x = hh - c;
         var (fP, fuP) = Punch(h0x);
         r.Calc.Add("Chọc thủng cột – đài: h0 = H − a = " + Dt.Mm(h0x) + " mm; F = N − Σ(cọc trong tháp chọc thủng) = " + Dt.F(fP, "0.0") + " kN ≤ Rbt·u·h0 = " + Dt.F(fuP, "0.0") + " kN");
-        r.Checks.Add(Dt.Check("Chọc thủng cột – đài F ≤ Rbt·u·h0", fP, fuP, "kN", "TCVN 5574:2018 mục 8.1.6"));
+        int cageD = CageD > 0 ? CageD : 10; double cageS = CageS > 0 ? CageS : 0.20;
+        int cageRows = Math.Max(2, (int)Math.Floor(h0x / Math.Max(cageS, 0.05) + 1e-9));
+        double uP = 2 * (ColX + ColY + 2 * h0x);
+        if (HasCage)
+        {
+            var smallSt = DetailShim.TryRebar(s.RebarSmall, r.Messages);
+            var (fsw, fult) = PunchWithLinks(fuP, (cageD <= 10 ? smallSt : main).Rsw, Dt.Area(cageD), cageRows, cageS, uP);
+            r.Calc.Add("Lồng thép chống chọc thủng: thép đứng Ø" + cageD + " bước " + Dt.Mm(cageS) + " mm, " + cageRows + " hàng trong vùng h0 quanh cột; qsw = Rsw·Asw/sw, Fsw = 0,8·qsw·u = "
+                       + Dt.F(fsw, "0.0") + " kN (kể khi ≥ 0,25Fb; Fb + Fsw ≤ 2Fb – TCVN 5574:2018 mục 8.1.6.3.3)");
+            r.Checks.Add(Dt.Check("Chọc thủng cột – đài có lồng thép F ≤ Fb + Fsw", fP, fult, "kN", "TCVN 5574:2018 mục 8.1.6.3.3"));
+        }
+        else r.Checks.Add(Dt.Check("Chọc thủng cột – đài F ≤ Rbt·u·h0", fP, fuP, "kN", "TCVN 5574:2018 mục 8.1.6"));
+        double dAnc = Math.Max(PileBarD, 10) / 1000.0;
+        r.Calc.Add("Đầu cọc ngàm vào đài " + Dt.Mm(Embed) + " mm; đập bỏ bê tông đầu cọc, chừa râu thép " + Math.Max(PileBarN, 0) + "Ø" + PileBarD + " neo vào đài La = " + Dt.Mm(AnchorUsed) + " mm (≥ 30d = " + Dt.Mm(30 * dAnc) + " mm)");
+        if (PileBarN > 0) r.Checks.Add(Dt.Check("Râu thép đầu cọc neo vào đài La ≥ 30d", 30 * dAnc, AnchorUsed, "m"));
         // chọc thủng cọc góc: P ≤ Rbt·h0·(u góc) với u = 2·(D/2 + edge) gần đúng (2 mặt về phía mép đài)
         int iMax = Array.IndexOf(P, P.Max());
         double uCorner = 2 * (edge + PileD / 2 + h0x / 2);
@@ -698,12 +745,38 @@ public class ManualPileCap : IDetailMember
         double legX = Dt.R10(Math.Max(hh - 2 * cb, 0.15) / 2), lenX = Dt.R10(L - 2 * cb), lenY = Dt.R10(B - 2 * cb);
         r.Bars.Add(Dt.Hooked("Lớp dưới phương X", bx.Item1, Dt.CountAcross(B, cb, bx.Item2), lenX, legX, legX, false, bx.Item2));
         r.Bars.Add(Dt.Hooked("Lớp dưới phương Y", by.Item1, Dt.CountAcross(L, cb, by.Item2), lenY, legX, legX, false, by.Item2));
-        if (hh >= 0.8)
+        if (HasTop || hh >= 0.8)
         {
-            var tp = Dt.ChooseSpaced(0, new[] { 12 }, 0.20, 0.20);
+            // lớp trên: Ø12a200 cấu tạo; cọc chịu nhổ → mô men âm tại mép cột do lực nhổ
+            double mTop = 0;
+            for (int i = 0; i < piles.Count; i++)
+            {
+                if (P[i] >= 0) continue;
+                double dxp = Math.Abs(piles[i].X) - ColX / 2, dyp = Math.Abs(piles[i].Y) - ColY / 2;
+                mTop = Math.Max(mTop, -P[i] * Math.Max(Math.Max(dxp, dyp), 0));
+            }
+            (int D, double S) tp;
+            if (TopD > 0 && TopS > 0) tp = (TopD, TopS);
+            else if (mTop > 1e-6) tp = Dt.ChooseSpaced(RcSection.DesignRect(mTop, Math.Min(L, B), hh - cb - 0.01, cb, conc, main, 0.05).As / Math.Min(L, B), new[] { 12, 14, 16 }, 0.20, 0.10);
+            else tp = (12, 0.20);
+            if (mTop > 1e-6) r.Calc.Add("Lớp trên: cọc chịu nhổ gây mô men âm tại mép cột M = " + Dt.F(mTop, "0.0") + " kN.m → " + Dt.Spaced(tp.D, tp.S));
             r.Bars.Add(Dt.Hooked("Lớp trên phương X", tp.D, Dt.CountAcross(B, cb, tp.S), lenX, legX, legX, true, tp.S));
             r.Bars.Add(Dt.Hooked("Lớp trên phương Y", tp.D, Dt.CountAcross(L, cb, tp.S), lenY, legX, legX, true, tp.S));
-            r.Messages.Add("Đài cao ≥ 800 mm: thêm lưới thép trên Ø12a200 và thép cạnh đài chống nứt co ngót");
+            if (!HasTop) r.Messages.Add("Đài cao ≥ 800 mm: thêm lưới thép trên " + Dt.Spaced(tp.D, tp.S) + " và thép cạnh đài chống nứt co ngót");
+        }
+        if (HasCage)
+        {
+            // thép đứng chữ U (chân chim) quanh cột, nhiều hàng trong vùng h0 – móc ôm lưới trên và lưới dưới
+            int perRing = Math.Max(4, (int)Math.Ceiling(uP / cageS - 1e-9));
+            double hkc = Dt.R10(Math.Max(10 * cageD / 1000.0, 0.10));
+            r.Bars.Add(Dt.Hooked("Thép đứng lồng chống chọc thủng", cageD, perRing * cageRows, Dt.R10(hh - 2 * cb), hkc, hkc, false, cageS));
+        }
+        if (PileBarN > 0)
+        {
+            // râu thép đầu cọc: đoạn thẳng trong đài + bẻ ngang phần vượt chiều cao đài
+            double room = Math.Max(hh - Embed - cb - 0.03, 0.15);
+            double upLen = Math.Min(AnchorUsed, room), bendLen = Dt.R10(Math.Max(AnchorUsed - upLen, 0));
+            r.Bars.Add(Dt.Hooked("Râu thép đầu cọc", PileBarD, PileBarN * n, Dt.R10(upLen), 0, bendLen));
         }
         RebarNumbering.Renumber(r.Bars);
         r.ConcreteVolume = L * B * hh;
@@ -742,6 +815,23 @@ public class ManualPileCap : IDetailMember
         double hkp = 0.9 * w.Th;
         if (bx != null) PlanBarDraw.Bar(w, true, ox - L / 2 + c, ox + L / 2 - c, oy - B / 4, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark, hkp, hkp, 1, 0.62, (oy - B / 2 + c, oy + B / 2 - c), 0.12);
         if (by != null) PlanBarDraw.Bar(w, false, oy - B / 2 + c, oy + B / 2 - c, ox + L / 4, Dt.Spaced(by.Dia, by.Spacing), by.Mark, hkp, hkp, -1, 0.62, (ox - L / 2 + c, ox + L / 2 - c), 0.12);
+        // lớp trên (nét đứt quy ước thép lớp trên trên mặt bằng)
+        var tx = r.Bars.FirstOrDefault(b => b.Role == "Lớp trên phương X"); var ty = r.Bars.FirstOrDefault(b => b.Role == "Lớp trên phương Y");
+        if (tx != null) PlanBarDraw.Bar(w, true, ox - L / 2 + c, ox + L / 2 - c, oy + B / 4, Dt.Spaced(tx.Dia, tx.Spacing) + " (trên)", tx.Mark, hkp, hkp, -1, 0.38, (oy - B / 2 + c, oy + B / 2 - c), 0.88);
+        if (ty != null) PlanBarDraw.Bar(w, false, oy - B / 2 + c, oy + B / 2 - c, ox - L / 4, Dt.Spaced(ty.Dia, ty.Spacing) + " (trên)", ty.Mark, hkp, hkp, 1, 0.38, (ox - L / 2 + c, ox + L / 2 - c), 0.88);
+        // lồng thép chống chọc thủng: thép đứng quanh cột (vòng chấm)
+        var cgp = r.Bars.FirstOrDefault(b => b.Role == "Thép đứng lồng chống chọc thủng");
+        if (cgp != null)
+        {
+            double hh0 = Math.Max(CapH * 1000 - c - Embed * 1000, 200), sp = Math.Max(cgp.Spacing * 1000, 100);
+            for (double rr = 0.5 * sp; rr <= hh0 + 1e-6; rr += sp)
+            {
+                double ax = ColX * 500 + rr, ay = ColY * 500 + rr;
+                for (double t = -ax; t <= ax + 1e-6; t += sp) { w.Dot(Lay.Thep, t, -ay, cgp.Dia * 0.6); w.Dot(Lay.Thep, t, ay, cgp.Dia * 0.6); }
+                for (double t = -ay + sp; t <= ay - sp + 1e-6; t += sp) { w.Dot(Lay.Thep, -ax, t, cgp.Dia * 0.6); w.Dot(Lay.Thep, ax, t, cgp.Dia * 0.6); }
+            }
+            w.LeaderTag(ColX * 500 + 0.5 * sp, -ColY * 500 - 0.5 * sp, ColX * 500 + 2.5 * w.Th, -ColY * 500 - 3.5 * w.Th, Dt.Spaced(cgp.Dia, cgp.Spacing) + " thép đứng", cgp.Mark);
+        }
         var xs = new List<double> { ox - L / 2 }; xs.AddRange(Piles.Select(p => p.X * 1000).Distinct().OrderBy(x => x)); xs.Add(ox + L / 2);
         var ys = new List<double> { oy - B / 2 }; ys.AddRange(Piles.Select(p => p.Y * 1000).Distinct().OrderBy(x => x)); ys.Add(oy + B / 2);
         w.DimChainH(xs, oy - B / 2, oy - B / 2 - 2.5 * w.Th);
@@ -769,6 +859,49 @@ public class ManualPileCap : IDetailMember
             double leg = bx.Segments.Count > 2 ? bx.Segments[0] : 0;
             x2.Polyline(Lay.Thep, new List<(double, double)> { (ox - L / 2 + c, em + c + leg), (ox - L / 2 + c, em + c), (ox + L / 2 - c, em + c), (ox + L / 2 - c, em + c + leg) }, false);
             x2.LeaderTag(0, em + c, 400, -700, Dt.Spaced(bx.Dia, bx.Spacing), bx.Mark);
+        }
+        // lớp trên, lồng thép, râu thép đầu cọc
+        var tX = r.Bars.FirstOrDefault(b => b.Role == "Lớp trên phương X");
+        if (tX != null)
+        {
+            double legT = tX.Segments.Count > 2 ? tX.Segments[0] : 0;
+            x2.Polyline(Lay.Thep, new List<(double, double)> { (ox - L / 2 + c, H - c - legT), (ox - L / 2 + c, H - c), (ox + L / 2 - c, H - c), (ox + L / 2 - c, H - c - legT) }, false);
+            x2.LeaderTag(ox + L / 4, H - c, ox + L / 4 + 2.0 * x2.Th, H + 3.0 * x2.Th, Dt.Spaced(tX.Dia, tX.Spacing), tX.Mark);
+        }
+        var cg = r.Bars.FirstOrDefault(b => b.Role == "Thép đứng lồng chống chọc thủng");
+        if (cg != null)
+        {
+            double sp = Math.Max(cg.Spacing * 1000, 100), h0d = H - c - em, yb0 = em + c, yt0 = H - c;
+            double hkd = cg.Segments.Count > 2 ? cg.Segments[0] : 100;
+            for (double rr = 0.5 * sp; rr <= h0d + 1e-6; rr += sp)
+                foreach (double sg in new[] { -1.0, 1.0 })
+                {
+                    double xv = sg * (ColX * 500 + rr);
+                    x2.Polyline(Lay.Dai, new List<(double, double)> { (xv + hkd, yt0), (xv, yt0), (xv, yb0), (xv + hkd, yb0) }, false);
+                }
+            x2.LeaderTag(ColX * 500 + 0.5 * sp, (yb0 + yt0) / 2, ColX * 500 + 0.5 * sp + 3.0 * x2.Th, (yb0 + yt0) / 2 + 1.5 * x2.Th, Dt.Spaced(cg.Dia, cg.Spacing), cg.Mark);
+        }
+        var an = r.Bars.FirstOrDefault(b => b.Role == "Râu thép đầu cọc");
+        if (an != null)
+        {
+            double upL = an.Segments.Count > 0 ? an.Segments[0] : 400, bendL = an.Segments.Count > 1 ? an.Segments[1] : 0;
+            bool firstTag = true;
+            foreach (var px in Piles.Select(p => p.X * 1000).Distinct())
+            {
+                foreach (double sg in new[] { -1.0, 1.0 })
+                {
+                    double xa = px + sg * (d / 2 - 50);
+                    var pts = new List<(double, double)> { (xa, em - 150), (xa, em + upL) };
+                    if (bendL > 1) pts.Add((xa + sg * bendL, em + upL));
+                    x2.Polyline(Lay.Thep, pts, false);
+                }
+                x2.Text(Lay.KyHieu, px, em + 0.3 * x2.Th, 0.6 * x2.Th, "ĐẬP ĐẦU CỌC", 0, 1, 0);
+                if (firstTag)
+                {
+                    x2.LeaderTag(px + d / 2 - 50, em + upL * 0.5, px - L / 2 - 1.0 * x2.Th, em + upL * 0.5 + 1.0 * x2.Th, an.Count / Math.Max(Piles.Count, 1) + "Ø" + an.Dia + " râu cọc", an.Mark, -1);
+                    firstTag = false;
+                }
+            }
         }
         x2.Dim(ox + L / 2, 0, ox + L / 2, H, 2.0 * x2.Th);
         x2.Dim(ox - L / 2, 0, ox + L / 2, 0, -4.0 * x2.Th);

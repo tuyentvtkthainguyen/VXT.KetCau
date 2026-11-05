@@ -115,12 +115,19 @@ public static class ColumnDrawing
             var pts = new List<(double X, double Y)>();
             if (hs > 1) pts.Add((xx + Math.Min(hs, 600), y1));
             pts.Add((xx, y1));
-            pts.Add((xx, y2));
+            // nhấn cổ chai 1:6: đầu trên lệch vào trong (vẽ phóng đại tối thiểu 0,8 mm giấy để nhìn thấy), giữ tỉ lệ xiên 1:6
+            var (cLap, _) = DrawUtil.Crank(longi[i]);
+            double eD = cLap > 1 ? Math.Max(longi[i].Dia, 0.8 * S) : 0;
+            bool crank = cLap > 1 && y2 - y1 > cLap + 6 * eD + 1;
+            if (crank) { pts.Add((xx, y2 - cLap - 6 * eD)); pts.Add((xx + eD, y2 - cLap)); pts.Add((xx + eD, y2)); }
+            else pts.Add((xx, y2));
             if (he > 1) pts.Add((xx + Math.Min(he, wMin - 2 * cover), y2));
             w.Polyline(Lay.Thep, pts, false, 0.3 * S);
             // thanh đối diện (mặt phải) cùng số hiệu
             double xr = wMin - xx;
-            w.Polyline(Lay.Thep, new List<(double X, double Y)> { (xr, y1), (xr, y2) }, false, 0.3 * S);
+            w.Polyline(Lay.Thep, crank
+                ? new List<(double X, double Y)> { (xr, y1), (xr, y2 - cLap - 6 * eD), (xr - eD, y2 - cLap), (xr - eD, y2) }
+                : new List<(double X, double Y)> { (xr, y1), (xr, y2) }, false, 0.3 * S);
         }
 
         // ---- đai ----
@@ -160,12 +167,12 @@ public static class ColumnDrawing
             double a = z.From * 1000, e = z.To * 1000;
             w.Dim(xChain, a, xChain, e, 0);
             string t = DrawUtil.StirrupTag(z.Dia, z.Spacing);
-            double tw = DxfWriter.TextWidth(t, tg) * w.WidthFactor + 2.4 * w.MarkR;
+            double tw = DxfWriter.TagTextWidth(t, tg) * w.WidthFactor + DxfWriter.TagGapFactor * tg + 2 * w.MarkR;
             double cy = (a + e) / 2 - tw / 2;
             if (e - a > tw * 0.6)
             {
                 w.Text(Lay.Chu, xChain + 1.8 * th, cy, tg, t, 90, 0, 0);
-                if (z.Mark > 0) w.MarkCircle(xChain + 1.4 * th, cy + DxfWriter.TextWidth(t, tg) * w.WidthFactor + 1.3 * w.MarkR, z.Mark, 90);
+                if (z.Mark > 0) w.MarkCircle(xChain + 1.4 * th, cy + DxfWriter.TagTextWidth(t, tg) * w.WidthFactor + DxfWriter.TagGapFactor * tg + w.MarkR, z.Mark, 90);
             }
         }
 

@@ -293,6 +293,21 @@ public static class RebarSchedule
         }
         double yb = ym - 0.15 * hh;
         double hk2 = hh * 0.45;
+        if (sh.StartsWith("Nhấn") && seg.Count >= 3)
+        {
+            // nhấn cổ chai: [chân] – đoạn thẳng – đoạn xiên 1:6 – đoạn nối chồng
+            bool foot = sh == "Nhấn L" && seg.Count >= 4;
+            double xa = x1 + (foot ? 0.12 : 0.05) * (x2 - x1), xb = x2 - 0.05 * (x2 - x1);
+            double off = hh * 0.18, xi0 = xa + 0.55 * (xb - xa), xi1 = xi0 + 0.12 * (xb - xa);
+            var pl = new List<(double X, double Y)>();
+            if (foot) pl.Add((xa, yb + hk2));
+            pl.Add((xa, yb)); pl.Add((xi0, yb)); pl.Add((xi1, yb + off)); pl.Add((xb, yb + off));
+            w.Polyline(Lay.Thep, pl, false);
+            w.Text(Lay.Chu, (xa + xi0) / 2, yb + 0.3 * th, th, DxfWriter.N0(seg[seg.Count - 3]), 0, 1, 1);
+            w.Text(Lay.Chu, (xi1 + xb) / 2, yb + off + 0.3 * th, th, DxfWriter.N0(seg[seg.Count - 1]), 0, 1, 1);
+            if (foot) w.Text(Lay.Chu, xa - 0.3 * th, yb + hk2 / 2, th, DxfWriter.N0(seg[0]), 0, 2, 2);
+            return;
+        }
         if (sh.StartsWith("U") && seg.Count >= 3)
         {
             double xa = x1 + 0.12 * (x2 - x1), xb = x2 - 0.12 * (x2 - x1);

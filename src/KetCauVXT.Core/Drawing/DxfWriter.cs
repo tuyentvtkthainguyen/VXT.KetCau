@@ -136,6 +136,25 @@ public sealed partial class DxfWriter
     /// <summary>Ước lượng bề rộng chuỗi (font Arial).</summary>
     public static double TextWidth(string text, double h) => string.IsNullOrEmpty(text) ? 0 : text.Length * 0.62 * h;
 
+    /// <summary>Bề rộng chữ ước lượng THIÊN LỚN cho nhãn thép (Arial / Times): chữ số, chữ thường ≈ 0,56h; chữ hoa ≈ 0,67h;
+    /// Ø, W, M, m, w ≈ 0,80h; dấu cách, dấu chấm ≈ 0,28h; nhân 1,08 dự phòng – để vòng số hiệu luôn cách chữ một khe hở.</summary>
+    public static double TagTextWidth(string text, double h)
+    {
+        if (string.IsNullOrEmpty(text)) return 0;
+        double w = 0;
+        foreach (char ch in text)
+        {
+            if (ch == ' ' || ch == '.' || ch == ',' || ch == ':' || ch == ';' || ch == '\'' || ch == '|' || ch == 'i' || ch == 'l' || ch == 'I') w += 0.30;
+            else if (ch == 'Ø' || ch == 'ø' || ch == 'Φ' || ch == 'φ' || ch == 'W' || ch == 'M' || ch == 'm' || ch == 'w' || ch == '@' || ch == '%') w += 0.80;
+            else if (char.IsUpper(ch)) w += 0.67;
+            else w += 0.56;
+        }
+        return Math.Max(w * h * 1.08, TextWidth(text, h));
+    }
+
+    /// <summary>Khe hở tối thiểu giữa cuối chữ nhãn và mép vòng số hiệu (× chiều cao chữ).</summary>
+    public const double TagGapFactor = 0.6;
+
     public static string N0(double v) => Math.Round(v).ToString("0", Inv);
 
     /// <summary>Cao độ dạng "+4.800", "-1.500", "±0.000" (z tính bằng m).</summary>
@@ -315,12 +334,15 @@ public sealed partial class DxfWriter
         return new Rect2(cx - r, cy - r, cx + r, cy + r);
     }
 
+    /// <summary>Chiều dài vai nhãn: lề đầu 0,3h + chữ (ước lượng thiên lớn) + khe hở ≥ 0,6h trước vòng số hiệu.</summary>
+    public double TagShoulder(string text, double th) => 0.3 * th + TagTextWidth(text, th) * WidthFactor + TagGapFactor * th;
+
     /// <summary>Phạm vi chiếm chỗ của nhãn (vai + chữ + vòng số) với gốc vai tại (kx, ky).
     /// dir = +1: vai kéo sang phải (hoặc lên trên nếu vertical), −1: ngược lại.</summary>
     public Rect2 TagBox(double kx, double ky, string text, int mark, int dir = 1, bool vertical = false)
     {
         double th = TagTh, r = MarkR;
-        double sh = TextWidth(text, th) * WidthFactor + 1.0 * th;
+        double sh = TagShoulder(text, th);
         double total = sh + (mark > 0 ? 2 * r : 0);
         double lo = mark > 0 ? r : 0.2 * th;
         double hi = Math.Max(1.4 * th, mark > 0 ? r : 0);
@@ -334,7 +356,7 @@ public sealed partial class DxfWriter
         bool vertical = false, bool dot = true)
     {
         double th = TagTh, r = MarkR;
-        double sh = TextWidth(text, th) * WidthFactor + 1.0 * th;
+        double sh = TagShoulder(text, th);
         // nhóm "nhãn thép": chọn/dời cả nhãn; chấm giữ tại thanh, đường dẫn chỉ dời điểm cuối (DxfWriter.Keys.cs)
         var g0 = BeginGroup("TAG|" + text + "|" + mark.ToString(Inv) + "|" + KeyNum(px) + "|" + KeyNum(py));
         _role = "anchor";
@@ -646,9 +668,17 @@ internal static class DrawUtil
     {
         var seg = bm.Segments ?? new List<double>();
         string sh = bm.Shape ?? "";
+        if (sh.StartsWith("Nhấn")) return (sh == "Nhấn L" && seg.Count >= 4 ? seg[0] : 0.0, 0.0);   // nhấn cổ chai: chỉ chân bẻ (nếu có) ở đầu dưới
         if (seg.Count >= 3 && sh.StartsWith("U")) return (seg[0], seg[seg.Count - 1]);
         if (seg.Count >= 2 && sh.StartsWith("L")) return seg[0] <= seg[seg.Count - 1] ? (seg[0], 0.0) : (0.0, seg[seg.Count - 1]);
         return (0.0, 0.0);
+    }
+
+    /// <summary>Thanh nhấn cổ chai (Shape "Nhấn" / "Nhấn L"): (đoạn nối chồng đầu trên, mm; đoạn xiên, mm); (0, 0) nếu không phải.</summary>
+    public static (double Lap, double Incline) Crank(BarMark bm)
+    {
+        var seg = bm.Segments ?? new List<double>();
+        return (bm.Shape ?? "").StartsWith("Nhấn") && seg.Count >= 3 ? (seg[^1], seg[^2]) : (0.0, 0.0);
     }
 
     /// <summary>Gán làn (hàng) cho các thanh để đoạn [Start,End] trong cùng làn không chồng nhau.</summary>

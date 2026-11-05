@@ -12,7 +12,7 @@ public static class MaterialTable
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
     /// <summary>Độ rộng cột (mm giấy).</summary>
-    public static readonly double[] ColW = { 10, 34, 10, 18, 20, 20, 18, 18, 18, 20, 18 };
+    public static readonly double[] ColW = { 10, 34, 10, 20, 22, 20, 20, 22, 20, 20, 20 };
     public static readonly string[] Heads =
     {
         "STT", "CẤU KIỆN", "SL", "BÊ TÔNG 1 CK (m³)", "BÊ TÔNG TOÀN BỘ (m³)", "VÁN KHUÔN (m²)",
@@ -179,7 +179,7 @@ public static class MaterialTable
         foreach (var word in words)
         {
             string t = cur.Length == 0 ? word : cur + " " + word;
-            if (DxfWriter.TextWidth(t, h) * w.WidthFactor > width && cur.Length > 0) { lines.Add(cur); cur = word; }
+            if (DxfWriter.TextWidth(t, h) * w.WidthFactor * 1.25 > width && cur.Length > 0) { lines.Add(cur); cur = word; }
             else cur = t;
         }
         if (cur.Length > 0) lines.Add(cur);
