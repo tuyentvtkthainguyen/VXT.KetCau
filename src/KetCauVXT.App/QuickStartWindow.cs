@@ -30,7 +30,7 @@ internal sealed class QuickStartWindow : Window
     {
         _state = () => state();
         _doStep = doStep;
-        DialogUi.Setup(this, "Bắt đầu nhanh – Kết cấu VXT", 760, 640);
+        DialogUi.Setup(this, "Bắt đầu nhanh – Việt Const", 760, 640);
         ShowInTaskbar = true;
         ResizeMode = ResizeMode.CanResizeWithGrip;
         Help.SetId(this, "quy-trinh.bat-dau-nhanh");

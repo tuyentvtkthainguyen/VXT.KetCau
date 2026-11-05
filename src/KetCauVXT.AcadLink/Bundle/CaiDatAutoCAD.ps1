@@ -1,4 +1,4 @@
-﻿# Cài add-in AutoCAD "Kết cấu VXT – liên kết AutoCAD" (AutoCAD 2021–2026, Windows 64-bit).
+﻿# Cài add-in AutoCAD "Việt Const – liên kết AutoCAD" (AutoCAD 2021–2026, Windows 64-bit).
 # Chép thư mục KetCauVXT.bundle (đặt cạnh file này) vào %APPDATA%\Autodesk\ApplicationPlugins.
 # Chạy: bấm đúp CaiDatAutoCAD.cmd, hoặc: powershell -ExecutionPolicy Bypass -File CaiDatAutoCAD.ps1 [-Go]   (-Go = gỡ cài đặt)
 param([switch]$Go)
@@ -21,9 +21,9 @@ try {
     Copy-Item $src $dst -Recurse -Force
     Get-ChildItem $dst -Recurse -File | Unblock-File -ErrorAction SilentlyContinue
     $vers = (Get-ChildItem (Join-Path $dst 'Contents') -Directory | ForEach-Object { $_.Name }) -join ', '
-    Write-Host "Đã cài add-in Kết cấu VXT cho AutoCAD: $vers" -ForegroundColor Green
+    Write-Host "Đã cài add-in Việt Const cho AutoCAD: $vers" -ForegroundColor Green
     Write-Host "Thư mục: $dst"
-    Write-Host 'Mở AutoCAD, gõ lệnh VXT để hiện bảng lệnh (gán tường, cột, dầm, sàn, trục, khai báo tầng, gửi sang Kết cấu VXT).'
+    Write-Host 'Mở AutoCAD, gõ lệnh VXT để hiện bảng lệnh (gán tường, cột, dầm, sàn, trục, khai báo tầng, gửi sang Việt Const).'
     Write-Host 'Nếu AutoCAD hỏi có nạp add-in không: chọn "Always Load / Luôn nạp".'
 } catch {
     Write-Host ('Lỗi cài đặt: ' + $_.Exception.Message) -ForegroundColor Red

@@ -460,7 +460,7 @@ internal static class SheetRender
         Obj(1); W("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
         var kids = string.Join(" ", Enumerable.Range(0, n).Select(i => $"{4 + 3 * i} 0 R"));
         Obj(2); W($"<< /Type /Pages /Kids [{kids}] /Count {n} >>\nendobj\n");
-        Obj(3); W($"<< /Producer (Ket cau VXT) /Title {PdfText(title)} >>\nendobj\n");
+        Obj(3); W($"<< /Producer (Viet Const) /Title {PdfText(title)} >>\nendobj\n");
         for (int i = 0; i < n; i++)
         {
             var (img, wmm, hmm) = pages[i];

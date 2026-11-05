@@ -214,7 +214,7 @@ internal sealed class SectionManagerWindow : Window
 
     private void ImportFrom()
     {
-        var dlg = new OpenFileDialog { Filter = "Dự án Kết cấu VXT (*.kcvxt)|*.kcvxt|Tất cả (*.*)|*.*", Title = "Nhập tiết diện từ dự án khác" };
+        var dlg = new OpenFileDialog { Filter = "Dự án Việt Const (*.kcvxt)|*.kcvxt|Tất cả (*.*)|*.*", Title = "Nhập tiết diện từ dự án khác" };
         if (dlg.ShowDialog(this) != true) return;
         Project src;
         try { src = Project.Load(dlg.FileName); }

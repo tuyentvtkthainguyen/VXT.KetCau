@@ -124,7 +124,7 @@ public static partial class CalculationReport
         var parts = date.Split('/', '-', '.');
         string dateLine = parts.Length == 3 ? $"ngày {parts[0]} tháng {parts[1]} năm {parts[2]}" : "ngày " + date;
         d.Paragraph((place.Length > 0 ? place + ", " : "") + dateLine, false, true, ParaAlign.Center);
-        d.Paragraph("Phần mềm tính toán: Kết cấu VXT", false, true, ParaAlign.Center);
+        d.Paragraph("Phần mềm tính toán: Việt Const", false, true, ParaAlign.Center);
         d.PageBreak();
     }
 
@@ -437,6 +437,6 @@ public static partial class CalculationReport
         notes.Add("Thi công và nghiệm thu theo TCVN 4453:1995 (kết cấu BTCT toàn khối) và TCVN 9361:2012 (công tác nền móng); bảo dưỡng bê tông, tháo ván khuôn đúng thời gian quy định.");
         notes.Add("Khi thay đổi công năng, tải trọng hoặc kiến trúc so với hồ sơ, phải tính toán kiểm tra lại kết cấu.");
         foreach (var t in notes) d.Bullet(t);
-        d.Paragraph("Thuyết minh được lập tự động bằng chương trình Kết cấu VXT.", false, true);
+        d.Paragraph("Thuyết minh được lập tự động bằng chương trình Việt Const.", false, true);
     }
 }

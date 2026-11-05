@@ -7,7 +7,7 @@ namespace KetCauVXT.Verification;
 
 // =====================================================================
 // KIỂM CHỨNG ĐỘ TIN CẬY PHẦN MỀM (Software Verification)
-// Mỗi bài toán chuẩn (benchmark) so sánh một đại lượng do Kết cấu VXT tính với giá trị tham chiếu:
+// Mỗi bài toán chuẩn (benchmark) so sánh một đại lượng do Việt Const tính với giá trị tham chiếu:
 //   – lời giải giải tích / dạng kín (sức bền vật liệu, cơ học kết cấu, lý thuyết dầm trên nền đàn hồi);
 //   – hoặc phép tính tay ĐỘC LẬP viết lại trực tiếp từ công thức của tiêu chuẩn (không gọi mã thiết kế của chương trình);
 //   – cột "Giá trị theo tài liệu" để người dùng nhập giá trị của sách/ví dụ mẫu (chưa có sẵn – chờ người dùng nhập).
@@ -31,7 +31,7 @@ public sealed class BenchmarkCase
     public string Unit { get; set; } = "";
     /// <summary>Giá trị tham chiếu (giải tích / tính tay độc lập).</summary>
     public double Reference { get; set; }
-    /// <summary>Giá trị Kết cấu VXT tính được.</summary>
+    /// <summary>Giá trị Việt Const tính được.</summary>
     public double Computed { get; set; } = double.NaN;
     /// <summary>Ngưỡng sai số cho phép (%).</summary>
     public double Tolerance { get; set; } = 1.0;
@@ -60,7 +60,7 @@ public sealed class BenchmarkCase
     [JsonIgnore]
     public bool? BookPass => BookErrorPercent is double e ? e <= BookTolerance + 1e-12 : null;
 
-    /// <summary>Sai số tương đối (%) của Kết cấu VXT so với tham chiếu: |VXT − TC| / max(|TC|, Scale)·100; NaN nếu lỗi.</summary>
+    /// <summary>Sai số tương đối (%) của Việt Const so với tham chiếu: |VXT − TC| / max(|TC|, Scale)·100; NaN nếu lỗi.</summary>
     [JsonIgnore]
     public double ErrorPercent
     {
@@ -77,7 +77,7 @@ public sealed class BenchmarkCase
     [JsonIgnore]
     public bool Pass => double.IsFinite(ErrorPercent) && ErrorPercent <= Tolerance + 1e-12;
 
-    /// <summary>Sai số (%) của Kết cấu VXT so với giá trị theo tài liệu; null khi chưa nhập.</summary>
+    /// <summary>Sai số (%) của Việt Const so với giá trị theo tài liệu; null khi chưa nhập.</summary>
     [JsonIgnore]
     public double? BookErrorPercent
     {
@@ -118,7 +118,7 @@ public sealed class VerificationResult
     public List<BenchmarkCase> Cases { get; } = new();
     public DateTime Started { get; set; } = DateTime.Now;
     public TimeSpan Elapsed { get; set; }
-    /// <summary>Phiên bản Kết cấu VXT (assembly KetCauVXT.Core).</summary>
+    /// <summary>Phiên bản Việt Const (assembly KetCauVXT.Core).</summary>
     public string Version { get; set; } = "";
     /// <summary>Môi trường chạy (.NET, hệ điều hành).</summary>
     public string RuntimeInfo { get; set; } = "";

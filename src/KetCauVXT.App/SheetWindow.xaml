@@ -1,7 +1,7 @@
 <Window x:Class="KetCauVXT.App.SheetWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Dàn trang &amp; in bản vẽ – Kết cấu VXT" Width="1440" Height="880" MinWidth="1000" MinHeight="600"
+        Title="Dàn trang &amp; in bản vẽ – Việt Const" Width="1440" Height="880" MinWidth="1000" MinHeight="600"
         WindowStartupLocation="CenterOwner" Background="#F2F3F5" PreviewKeyDown="Window_PreviewKeyDown">
     <Window.Resources>
         <Style TargetType="TextBlock" x:Key="Lbl">

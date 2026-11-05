@@ -13,7 +13,7 @@ public static class VerificationReport
     private static string Pct(double v) => double.IsFinite(v) ? v.ToString(v < 0.001 ? "0.0000" : v < 0.1 ? "0.000" : "0.00", Inv) : "-";
 
     public static readonly string[] TableHeaders =
-        { "STT", "Bài toán", "Nguồn lời giải tham chiếu", "Đại lượng", "Giá trị tham chiếu", "Kết cấu VXT", "Sai số %", "Ngưỡng", "Kết luận" };
+        { "STT", "Bài toán", "Nguồn lời giải tham chiếu", "Đại lượng", "Giá trị tham chiếu", "Việt Const", "Sai số %", "Ngưỡng", "Kết luận" };
 
     /// <summary>Giới hạn đã biết của chương trình (ghi trung thực trong báo cáo).</summary>
     public static List<string> KnownLimitations() => new()
@@ -41,11 +41,11 @@ public static class VerificationReport
     // ==================================================================
     public static void SaveDocx(VerificationResult r, string path)
     {
-        var d = new DocxWriter { UpdateFieldsOnOpen = true, FooterText = "Báo cáo kiểm chứng phần mềm Kết cấu VXT", FooterSkipFirstPage = true };
+        var d = new DocxWriter { UpdateFieldsOnOpen = true, FooterText = "Báo cáo kiểm chứng phần mềm Việt Const", FooterSkipFirstPage = true };
         // ---- bìa ----
         d.EmptyLine().EmptyLine().EmptyLine();
         d.Title("BÁO CÁO KIỂM CHỨNG PHẦN MỀM", 22);
-        d.Title("KẾT CẤU VXT", 18);
+        d.Title("VIỆT CONST", 18);
         d.Paragraph("Kiểm chứng độ tin cậy của lõi tính toán: phân tích kết cấu so với lời giải giải tích; thiết kế BTCT, nền móng, tải trọng so với tính tay độc lập theo TCVN",
             false, true, ParaAlign.Center);
         d.EmptyLine();
@@ -55,7 +55,7 @@ public static class VerificationReport
         d.Paragraph($"Kết quả: {r.ProblemCount} bài toán, {r.Count} đại lượng so sánh – {r.Passed} đạt, {r.Failed} không đạt.", true, false, ParaAlign.Center);
         d.Paragraph(r.AllPass ? "Mọi đại lượng nằm trong ngưỡng sai số cho phép." : "CÓ ĐẠI LƯỢNG VƯỢT NGƯỠNG – xem mục Kết luận.", true, false, ParaAlign.Center);
         d.EmptyLine();
-        d.Paragraph("BÁO CÁO TỰ KIỂM CHỨNG CỦA NHÀ PHÁT TRIỂN (Kết cấu VXT – Vũ Xuân Tuyến). Chưa được bên thứ ba độc lập xác nhận; "
+        d.Paragraph("BÁO CÁO TỰ KIỂM CHỨNG CỦA NHÀ PHÁT TRIỂN (Việt Const – Vũ Xuân Tuyến). Chưa được bên thứ ba độc lập xác nhận; "
                     + "đáp số tham chiếu là lời giải giải tích hoặc tính lại độc lập theo công thức tiêu chuẩn. Kết quả kiểm chứng độc lập (nếu có) ghi tại mục 5.",
             true, false, ParaAlign.Center);
         d.EmptyLine();
@@ -67,7 +67,7 @@ public static class VerificationReport
 
         // ---- 1. mục đích, phương pháp ----
         d.Heading("1. Mục đích và phương pháp kiểm chứng", 1);
-        d.Paragraph("Mục đích: chứng minh lõi tính của Kết cấu VXT cho kết quả đúng trên một tập bài toán chuẩn có lời giải đã biết, theo cách các hãng phần mềm kết cấu công bố tài liệu "
+        d.Paragraph("Mục đích: chứng minh lõi tính của Việt Const cho kết quả đúng trên một tập bài toán chuẩn có lời giải đã biết, theo cách các hãng phần mềm kết cấu công bố tài liệu "
                     + "\"Software Verification\": mỗi bài toán được mô tả đầy đủ số liệu, giá trị tham chiếu kèm nguồn, giá trị chương trình, sai số và ngưỡng chấp nhận.");
         d.Paragraph("Phương pháp:");
         d.Bullet("Nhóm A – phân tích kết cấu: các mô hình nhỏ (dầm, khung, cột, thanh xoắn, dầm cong, dầm trên nền đàn hồi, thanh vát, khung nhiều tầng) được dựng bằng mã, "
@@ -138,7 +138,7 @@ public static class VerificationReport
             d.Paragraph("Chưa có giá trị kiểm chứng độc lập. Cách bổ sung: xem mục 5.2.", false, true);
         else
         {
-            d.Table(new[] { "Mã", "Đại lượng", "Nguồn tài liệu", "Loại nguồn", "Theo tài liệu", "Kết cấu VXT", "Sai số %", "Kết luận", "Người/đơn vị xác nhận, ngày" },
+            d.Table(new[] { "Mã", "Đại lượng", "Nguồn tài liệu", "Loại nguồn", "Theo tài liệu", "Việt Const", "Sai số %", "Kết luận", "Người/đơn vị xác nhận, ngày" },
                 book.Select(c => new[]
                 {
                     c.Id, c.Quantity + (string.IsNullOrEmpty(c.Unit) ? "" : " (" + c.Unit + ")"), c.UserBookSource ?? "", c.UserKind ?? "",
@@ -230,7 +230,7 @@ public static class VerificationReport
         var sum = x.AddSheet("Tổng hợp");
         sum.FirstRowIsHeader = false; sum.FreezeRows = 0;
         sum.SetColumnWidths(48, 18, 14, 10, 18);
-        sum.AddRow(new XlCell("BÁO CÁO KIỂM CHỨNG PHẦN MỀM KẾT CẤU VXT", XlStyle.Title));
+        sum.AddRow(new XlCell("BÁO CÁO KIỂM CHỨNG PHẦN MỀM VIỆT CONST", XlStyle.Title));
         sum.AddRow(r.Version);
         sum.AddRow("Ngày chạy: " + r.Started.ToString("dd/MM/yyyy HH:mm", Inv));
         sum.AddRow("Môi trường: " + r.RuntimeInfo);
@@ -246,7 +246,7 @@ public static class VerificationReport
 
         var sh = x.AddSheet("Kết quả");
         sh.SetColumnWidths(5, 8, 30, 36, 48, 30, 9, 14, 14, 10, 9, 12, 16, 30, 22, 24, 12, 12, 50, 60);
-        sh.AddRow("STT", "Mã", "Nhóm", "Bài toán", "Nguồn lời giải tham chiếu", "Đại lượng", "Đơn vị", "Giá trị tham chiếu", "Kết cấu VXT",
+        sh.AddRow("STT", "Mã", "Nhóm", "Bài toán", "Nguồn lời giải tham chiếu", "Đại lượng", "Đơn vị", "Giá trị tham chiếu", "Việt Const",
             "Sai số %", "Ngưỡng %", "Kết luận", "Giá trị theo tài liệu (sách/ví dụ/bên thứ ba)", "Nguồn tài liệu", "Loại nguồn", "Người/đơn vị xác nhận", "Ngày xác nhận",
             "Sai số so với tài liệu %", "Mô tả bài toán", "Ghi chú");
         int stt = 1;

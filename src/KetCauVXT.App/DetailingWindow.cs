@@ -47,7 +47,7 @@ public sealed class DetailingWindow : Window
 
     public DetailingWindow(string file = null)
     {
-        Title = "Kết cấu VXT – Triển khai hồ sơ";
+        Title = "Việt Const – Triển khai hồ sơ";
         Width = 1440; Height = 880; MinWidth = 980; MinHeight = 600;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         try { Icon = BitmapFrame.Create(new Uri("pack://application:,,,/KetCauVXT.ico")); } catch { }
@@ -319,8 +319,8 @@ public sealed class DetailingWindow : Window
         try { d = AcadPick.Latest(); } catch (Exception ex) { SetStatus("Không đọc được dữ liệu AutoCAD: " + ex.Message); }
         if (d == null)
         {
-            MessageBox.Show(this, "Chưa có dữ liệu từ AutoCAD.\n\nTrong AutoCAD (đã nạp add-in Kết cấu VXT) gõ lệnh VXT_KT → chọn loại (Dầm / Cột / Sàn / Móng / Móng băng) → chọn đối tượng.\n"
-                            + "Kết cấu VXT nhận kích thước tự động trong vài giây, hoặc bấm lại nút này.\n\nThư mục trao đổi: " + AcadPick.Folder, Title, MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Chưa có dữ liệu từ AutoCAD.\n\nTrong AutoCAD (đã nạp add-in Việt Const) gõ lệnh VXT_KT → chọn loại (Dầm / Cột / Sàn / Móng / Móng băng) → chọn đối tượng.\n"
+                            + "Việt Const nhận kích thước tự động trong vài giây, hoặc bấm lại nút này.\n\nThư mục trao đổi: " + AcadPick.Folder, Title, MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         _lastPick = d.Time;
@@ -725,7 +725,7 @@ public sealed class DetailingWindow : Window
     // ==================================================================
     // Tệp
     // ==================================================================
-    private void UpdateTitle() => Title = "Kết cấu VXT – Triển khai hồ sơ – " + (_path != null ? Path.GetFileName(_path) : _prj.ProjectName) + (_dirty ? " *" : "");
+    private void UpdateTitle() => Title = "Việt Const – Triển khai hồ sơ – " + (_path != null ? Path.GetFileName(_path) : _prj.ProjectName) + (_dirty ? " *" : "");
 
     private bool ConfirmDiscard()
     {

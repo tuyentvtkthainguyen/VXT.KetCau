@@ -6,14 +6,14 @@
 -->
 <RevitAddIns>
   <AddIn Type="Command">
-    <Name>Xuất sang Kết cấu VXT</Name>
-    <Text>Xuất sang Kết cấu VXT</Text>
-    <Description>Xuất trục, tầng, cột, dầm, sàn kết cấu sang file JSON cho chương trình Kết cấu VXT</Description>
+    <Name>Xuất sang Việt Const</Name>
+    <Text>Xuất sang Việt Const</Text>
+    <Description>Xuất trục, tầng, cột, dầm, sàn kết cấu sang file JSON cho chương trình Việt Const</Description>
     <Assembly>KetCauVXT.RevitExport.dll</Assembly>
     <FullClassName>KetCauVXT.RevitExport.ExportCommand</FullClassName>
     <ClientId>6b1d6f2e-5c0a-4a37-9e1b-2f7c4f0d8a11</ClientId>
     <VendorId>VXT</VendorId>
-    <VendorDescription>Vũ Xuân Tuyến – Kết cấu VXT</VendorDescription>
+    <VendorDescription>Vũ Xuân Tuyến – Việt Const</VendorDescription>
     <VisibilityMode>NotVisibleInFamily</VisibilityMode>
   </AddIn>
 </RevitAddIns>

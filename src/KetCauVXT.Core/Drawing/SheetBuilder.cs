@@ -512,7 +512,7 @@ public static partial class SheetBuilder
         FitText(w, cR + pad, Row(2), rw, 2.2, "NGÀY: " + (s.Date ?? ""));
         FitText(w, cR + pad, y1 + 1.65 * rh, rw, 1.8, "SỐ HIỆU BẢN VẼ");
         FitText(w, (cR + tx2) / 2, y1 + 0.75 * rh, rw, 4.5, s.Number ?? "", 1, 2);
-        w.Text(L, inner.X2, inner.Y1 - 1.2, 1.8, "Lập bằng Kết cấu VXT", 0, 2, 3);
+        w.Text(L, inner.X2, inner.Y1 - 1.2, 1.8, "Lập bằng Việt Const", 0, 2, 3);
         return w;
     }
 

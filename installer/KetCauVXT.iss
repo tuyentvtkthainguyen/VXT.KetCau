@@ -1,9 +1,9 @@
 ﻿; ==========================================================================
-;  Bộ cài đặt chuẩn Kết cấu VXT (Inno Setup 6)
+;  Bộ cài đặt chuẩn Việt Const (Inno Setup 6)
 ;  - Cài cho tài khoản hiện tại (không cần quyền quản trị) hoặc cho mọi người dùng (chọn khi cài)
 ;  - Biểu tượng Start Menu / Desktop, liên kết file .kcvxt, gỡ cài đặt trong Settings → Apps
 ;  - Add-in AutoCAD 2021–2026 (tuỳ chọn), dự án mẫu
-;  - Bộ cài chia nhiều phần (KetCauVXT-Setup.exe + KetCauVXT-Setup-*.bin) – để cùng một thư mục rồi chạy file .exe
+;  - Bộ cài chia nhiều phần (VietConst-Setup.exe + VietConst-Setup-*.bin) – để cùng một thư mục rồi chạy file .exe
 ;  - Không đóng cưỡng bức chương trình đang mở (AppMutex) để tránh mất dữ liệu chưa lưu
 ; ==========================================================================
 #ifndef AppVer
@@ -21,17 +21,17 @@
 
 [Setup]
 AppId={{6F1E2B7C-5A3D-4C8E-9B21-4B43565854A1}
-AppName=Kết cấu VXT
+AppName=Việt Const
 AppVersion={#AppVer}
-AppVerName=Kết cấu VXT {#AppVer}
+AppVerName=Việt Const {#AppVer}
 AppPublisher=Vũ Xuân Tuyến
 AppPublisherURL=https://github.com/tuyentvtkthainguyen/VXT.KetCau
 AppSupportURL=https://github.com/tuyentvtkthainguyen/VXT.KetCau
 VersionInfoVersion={#AppVer}
-VersionInfoProductName=Kết cấu VXT
-VersionInfoDescription=Bộ cài đặt Kết cấu VXT
+VersionInfoProductName=Việt Const
+VersionInfoDescription=Bộ cài đặt Việt Const
 DefaultDirName={autopf}\KetCauVXT
-DefaultGroupName=Kết cấu VXT
+DefaultGroupName=Việt Const
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
@@ -39,10 +39,10 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 OutputDir={#OutDir}
-OutputBaseFilename=KetCauVXT-Setup
+OutputBaseFilename=VietConst-Setup
 SetupIconFile=..\src\KetCauVXT.App\KetCauVXT.ico
 UninstallDisplayIcon={app}\KetCauVXT.exe
-UninstallDisplayName=Kết cấu VXT
+UninstallDisplayName=Việt Const
 Compression=lzma2/max
 SolidCompression=yes
 DiskSpanning=yes
@@ -66,22 +66,22 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 [CustomMessages]
 vi.TaskDesktop=Tạo biểu tượng trên Desktop
 en.TaskDesktop=Create a desktop shortcut
-vi.TaskAssoc=Mở file dự án .kcvxt bằng Kết cấu VXT
-en.TaskAssoc=Open .kcvxt project files with Kết cấu VXT
+vi.TaskAssoc=Mở file dự án .kcvxt bằng Việt Const
+en.TaskAssoc=Open .kcvxt project files with Việt Const
 vi.TaskAcad=Cài add-in AutoCAD 2021–2026 (lệnh VXT, VXT_TUONG, VXT_COT, VXT_GUI…)
 en.TaskAcad=Install the AutoCAD 2021–2026 add-in
 vi.GroupExtra=Tuỳ chọn thêm:
 en.GroupExtra=Additional options:
-vi.RunApp=Mở Kết cấu VXT
-en.RunApp=Launch Kết cấu VXT
+vi.RunApp=Mở Việt Const
+en.RunApp=Launch Việt Const
 vi.Samples=Dự án mẫu
 en.Samples=Sample projects
 vi.Guide=Hướng dẫn sử dụng
 en.Guide=User guide
 vi.GuideWord=Hướng dẫn sử dụng (Word)
 en.GuideWord=User guide (Word)
-vi.Uninst=Gỡ cài đặt Kết cấu VXT
-en.Uninst=Uninstall Kết cấu VXT
+vi.Uninst=Gỡ cài đặt Việt Const
+en.Uninst=Uninstall Việt Const
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:TaskDesktop}"; GroupDescription: "{cm:GroupExtra}"
@@ -91,6 +91,8 @@ Name: "acad"; Description: "{cm:TaskAcad}"; GroupDescription: "{cm:GroupExtra}";
 [InstallDelete]
 ; dọn bản cài thủ công cũ (CaiDat.ps1): lối tắt và script gỡ cũ
 Type: files; Name: "{userprograms}\Kết cấu VXT.lnk"
+Type: files; Name: "{autodesktop}\Kết cấu VXT.lnk"
+Type: filesandordirs; Name: "{autoprograms}\Kết cấu VXT"
 Type: files; Name: "{app}\GoCaiDat.ps1"
 
 [Files]
@@ -105,23 +107,23 @@ Source: "{#SampleDir}\TuBanVeKienTruc\*_DauVao.dxf"; DestDir: "{app}\DuAnMau"; F
 Source: "{#SampleDir}\HuongDan\HuongDanSuDung.docx"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
-Name: "{group}\Kết cấu VXT"; Filename: "{app}\KetCauVXT.exe"; WorkingDir: "{app}"
+Name: "{group}\Việt Const"; Filename: "{app}\KetCauVXT.exe"; WorkingDir: "{app}"
 Name: "{group}\{cm:Samples}"; Filename: "{app}\DuAnMau"
 Name: "{group}\{cm:Guide}"; Filename: "{app}\HuongDan.md"
 Name: "{group}\{cm:GuideWord}"; Filename: "{app}\HuongDanSuDung.docx"; Check: GuideDocxExists
 Name: "{group}\{cm:Uninst}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Kết cấu VXT"; Filename: "{app}\KetCauVXT.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autodesktop}\Việt Const"; Filename: "{app}\KetCauVXT.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\.kcvxt"; ValueType: string; ValueName: ""; ValueData: "KetCauVXT.DuAn"; Flags: uninsdeletevalue; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\.kcvxt\OpenWithProgids"; ValueType: string; ValueName: "KetCauVXT.DuAn"; ValueData: ""; Flags: uninsdeletevalue; Tasks: assoc
-Root: HKA; Subkey: "Software\Classes\KetCauVXT.DuAn"; ValueType: string; ValueName: ""; ValueData: "Dự án Kết cấu VXT"; Flags: uninsdeletekey; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\KetCauVXT.DuAn"; ValueType: string; ValueName: ""; ValueData: "Dự án Việt Const"; Flags: uninsdeletekey; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\KetCauVXT.DuAn\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\KetCauVXT.exe,0"; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\KetCauVXT.DuAn\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\KetCauVXT.exe"" ""%1"""; Tasks: assoc
 ; hồ sơ chế độ Triển khai hồ sơ (*.kcvxth)
 Root: HKA; Subkey: "Software\Classes\.kcvxth"; ValueType: string; ValueName: ""; ValueData: "KetCauVXT.HoSo"; Flags: uninsdeletevalue; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\.kcvxth\OpenWithProgids"; ValueType: string; ValueName: "KetCauVXT.HoSo"; ValueData: ""; Flags: uninsdeletevalue; Tasks: assoc
-Root: HKA; Subkey: "Software\Classes\KetCauVXT.HoSo"; ValueType: string; ValueName: ""; ValueData: "Hồ sơ triển khai Kết cấu VXT"; Flags: uninsdeletekey; Tasks: assoc
+Root: HKA; Subkey: "Software\Classes\KetCauVXT.HoSo"; ValueType: string; ValueName: ""; ValueData: "Hồ sơ triển khai Việt Const"; Flags: uninsdeletekey; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\KetCauVXT.HoSo\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\KetCauVXT.exe,0"; Tasks: assoc
 Root: HKA; Subkey: "Software\Classes\KetCauVXT.HoSo\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\KetCauVXT.exe"" ""%1"""; Tasks: assoc
 ; gỡ mục "Programs and Features" của bản cài thủ công cũ (CaiDat.ps1)

@@ -10,8 +10,8 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>KetCauVXT.App</RootNamespace>
     <AssemblyName>KetCauVXT</AssemblyName>
-    <Product>Kết cấu VXT</Product>
-    <AssemblyTitle>Kết cấu VXT – thiết kế kết cấu nhà dân dụng và khung thép tiền chế</AssemblyTitle>
+    <Product>Việt Const</Product>
+    <AssemblyTitle>Việt Const – thiết kế kết cấu nhà dân dụng và khung thép tiền chế</AssemblyTitle>
     <Authors>Vũ Xuân Tuyến</Authors>
     <Version>1.0.0</Version>
     <ApplicationIcon>KetCauVXT.ico</ApplicationIcon>

@@ -5,7 +5,7 @@ using KetCauVXT.Model;
 
 namespace KetCauVXT.Tests;
 
-/// <summary>Liên kết AutoCAD → Kết cấu VXT: file trao đổi acad_*.json (add-in KetCauVXT.AcadLink, lệnh VXT_GUI)
+/// <summary>Liên kết AutoCAD → Việt Const: file trao đổi acad_*.json (add-in KetCauVXT.AcadLink, lệnh VXT_GUI)
 /// → AcadLinkReader → ArchDrawing → ArchToStructure (đề xuất + ghi mô hình).</summary>
 public static class AcadLinkTests
 {

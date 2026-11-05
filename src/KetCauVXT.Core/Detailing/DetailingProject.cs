@@ -11,7 +11,7 @@ namespace KetCauVXT.Detailing;
 public class DetailingProject
 {
     public const string Extension = ".kcvxth";
-    public const string FileFilter = "Hồ sơ triển khai Kết cấu VXT (*.kcvxth)|*.kcvxth";
+    public const string FileFilter = "Hồ sơ triển khai Việt Const (*.kcvxth)|*.kcvxth";
 
     public int Version { get; set; } = 1;
     public string ProjectName { get; set; } = "Công trình mới";

@@ -377,7 +377,7 @@ public static class TemplateTests
         check("Xuất DXF tờ: người thiết kế thay ATTRIB", B(texts.Contains("Vũ Xuân Tuyến")), 1, 0);
         check("Xuất DXF tờ: chữ cố định giữ nguyên", B(texts.Contains("Thiết kế:")), 1, 0);
         check("Xuất DXF tờ: không còn chỗ trống {…} và chữ thẻ gốc", B(!all.Contains("{") && !all.Contains("TÊN BẢN VẼ") && !all.Contains("NGƯỜI TK")), 1, 0);
-        check("Xuất DXF tờ: không vẽ khung tên mặc định", B(!texts.Contains("ĐƠN VỊ THIẾT KẾ") && !texts.Contains("Lập bằng Kết cấu VXT")), 1, 0);
+        check("Xuất DXF tờ: không vẽ khung tên mặc định", B(!texts.Contains("ĐƠN VỊ THIẾT KẾ") && !texts.Contains("Lập bằng Việt Const")), 1, 0);
         var tbw = SheetBuilder.TitleBlock(p, s, "1/100");
         check("Khung tên người dùng: hình có thực thể", B(tbw.EntityCount >= 10), 1, 0);
 
@@ -417,7 +417,7 @@ public static class TemplateTests
         var tf = TextsOf(outF);
         check("Khung bao toàn tờ: DXF có chủ đầu tư + 'Tờ 2/2'", B(tf.Contains("Bà Nguyễn Thị C") && tf.Contains("Tờ 2/2")), 1, 0);
         var prims = SheetBuilder.TitleBlock(pf, a1).GetPrimitives();
-        check("Khung bao toàn tờ: không vẽ khung viền trong mặc định", B(!SheetBuilder.TitleBlock(pf, a1).GetPrimitives().Any(x => x.Text == "Lập bằng Kết cấu VXT")), 1, 0);
+        check("Khung bao toàn tờ: không vẽ khung viền trong mặc định", B(!SheetBuilder.TitleBlock(pf, a1).GetPrimitives().Any(x => x.Text == "Lập bằng Việt Const")), 1, 0);
         check("Khung bao toàn tờ: có hình", B(prims.Count > 0), 1, 0);
 
         // lưu trong gói mẫu: chữ gán trường giữ lại

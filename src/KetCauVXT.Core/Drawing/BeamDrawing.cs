@@ -108,6 +108,18 @@ public static class BeamDrawing
             w.Line(Lay.BeTong, a, 0, e, 0);
             w.Line(Lay.BeTong, a, -h, e, -h);
         }
+        // [Dầm móng] bê tông lót dưới đáy dầm (nhập tay – Detailing/ManualMembers.cs)
+        if (d.ManualSlab != null && d.ManualSlab.LeanT > 0 && ns >= 2)
+        {
+            double lt = d.ManualSlab.LeanT;
+            double a0 = xs[0] - sw[0] / 2 - (d.ManualSlab.LeanOver), e0 = xs[^1] + sw[^1] / 2 + (d.ManualSlab.LeanOver);
+            if (w.HatchOn) w.HatchMatRect(HatchMaterial.LeanConcrete, a0, -h - lt, e0, -h);
+            w.Line(Lay.BeTong, a0, -h - lt, e0, -h - lt);
+            w.Line(Lay.BeTong, a0, -h - lt, a0, -h);
+            w.Line(Lay.BeTong, e0, -h - lt, e0, -h);
+            if (!string.IsNullOrEmpty(d.ManualSlab.LeanText))
+                w.Text(Lay.Chu, (xs[0] + xs[Math.Min(1, ns - 1)]) / 2, -h - lt - 0.4 * w.Th, 0.85 * w.Th, d.ManualSlab.LeanText, 0, 1, 3);
+        }
         // dải sàn liền khối: mép dưới sàn (và mặt sàn hạ cốt) nhìn thấy sau mặt cắt dọc dầm, giữa hai mặt cột
         var slabNotes = new List<string>();
         if (slabAt != null && spans.Count > 0)
@@ -602,6 +614,22 @@ public static class BeamDrawing
         bool flanged = fL != null || fR != null;
         if (!flanged) { w.HatchMatRect(HatchMaterial.Concrete, 0, 0, B, H); w.Rect(Lay.BeTong, 0, 0, B, H); }   // tô bê tông (DxfWriter.Hatch.cs)
         else FlangedOutline(w, B, H, k, fL, fR, style.SlabBreak);
+        // [Dầm móng] bê tông lót dưới tiết diện; phía giáp nhà hàng xóm (hết đất) lót không vươn ra, vẽ ranh đất
+        Rect2? leanBox = null;
+        if (c.Slab != null && c.Slab.LeanT > 0)
+        {
+            double lt = c.Slab.LeanT * k, ov = c.Slab.LeanOver * k;
+            double x0 = c.Slab.LeanBoundaryL ? 0 : -ov, x1 = c.Slab.LeanBoundaryR ? B : B + ov;
+            if (w.HatchOn) w.HatchMatRect(HatchMaterial.LeanConcrete, x0, -lt, x1, 0);
+            w.Rect(Lay.BeTong, x0, -lt, x1, 0);
+            leanBox = new Rect2(x0, -lt, x1, 0);
+            foreach (var (on, xb, sg) in new[] { (c.Slab.LeanBoundaryL, 0.0, -1), (c.Slab.LeanBoundaryR, B, 1) })
+            {
+                if (!on) continue;
+                w.Line(Lay.KyHieu, xb, -lt - 1.5 * th, xb, H + 1.0 * th, "CENTER");
+                w.Text(Lay.Chu, xb + sg * 0.5 * th, -lt - 1.5 * th, 0.75 * th, "RANH ĐẤT", 90, 0, sg < 0 ? 0 : 2);
+            }
+        }
         // đai
         int ds = c.Zone?.Dia ?? 6;
         double cs = Math.Max(0.5 * cover, cover - ds / 2.0) * k;
@@ -614,6 +642,7 @@ public static class BeamDrawing
 
         var layout = new TagLayout(0.2 * th);
         layout.Reserve(new Rect2(0, 0, B, H));
+        if (leanBox.HasValue) layout.Reserve(leanBox.Value);
         if (fL != null) layout.Reserve(new Rect2(-fL.Len * k, H + (fL.Dz - fL.Hs) * k, 0, H + fL.Dz * k));
         if (fR != null) layout.Reserve(new Rect2(B, H + (fR.Dz - fR.Hs) * k, B + fR.Len * k, H + fR.Dz * k));
         if (flanged && style.ShowSlabRebarInFlange) SlabBars(w, layout, B, H, k, cover, fL, fR, p, th);

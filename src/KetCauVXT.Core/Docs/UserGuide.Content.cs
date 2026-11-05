@@ -23,7 +23,7 @@ public static partial class UserGuide
     private static GuideSection ChIntro()
     {
         var c = Ch("gioi-thieu", "Giới thiệu");
-        c.P("**Kết cấu VXT** là phần mềm phân tích – thiết kế kết cấu cho **nhà dân dụng dưới 7 tầng** (khung bê tông cốt thép) và **nhà thép tiền chế** (khung zamil). "
+        c.P("**Việt Const** là phần mềm phân tích – thiết kế kết cấu cho **nhà dân dụng dưới 7 tầng** (khung bê tông cốt thép) và **nhà thép tiền chế** (khung zamil). "
             + "Chương trình lập mô hình khung không gian, tính nội lực bằng phần tử hữu hạn, thiết kế cốt thép dầm, cột, sàn, móng, cầu thang theo tiêu chuẩn Việt Nam, "
             + "rồi triển khai hồ sơ: bản vẽ DXF, dàn trang in, bảng gia công thép, bảng khối lượng, thuyết minh Word, bảng tính Excel và mô hình ETABS/SAP2000 để kiểm tra chéo.",
             "Hướng dẫn này đi từ cài đặt, khởi tạo dự án đến khi sử dụng kết quả, dành cho cả kỹ sư đang hành nghề và người mới bắt đầu. "
@@ -61,7 +61,7 @@ public static partial class UserGuide
                 new[] { "KetCauVXT.Core (thư viện lõi)", "Mô hình, phân tích phần tử hữu hạn (khung Timoshenko 12 bậc tự do, sàn cứng, giải phóng liên kết, thanh vát), tải trọng, thiết kế BTCT / thép / móng, bản vẽ DXF, Word, Excel, ETABS/SAP, kiểm chứng. Không dùng thư viện ngoài." },
                 new[] { "KetCauVXT.Dwg", "Đọc trực tiếp bản vẽ DWG (AutoCAD R14 … 2018+) bằng thư viện ACadSharp (MIT); nếu đọc lỗi thì thử ODA File Converter." },
                 new[] { "Add-in AutoCAD 2021–2026 (tuỳ chọn)", "Lệnh VXT, VXT_TUONG, VXT_COT, VXT_GUI… tích chọn đối tượng kiến trúc rồi gửi sang chương trình." },
-                new[] { "Add-in Revit 2023–2026 (tuỳ chọn)", "Lệnh \"Xuất sang Kết cấu VXT\": xuất lưới, tầng, cột, dầm, sàn ra file JSON." })
+                new[] { "Add-in Revit 2023–2026 (tuỳ chọn)", "Lệnh \"Xuất sang Việt Const\": xuất lưới, tầng, cột, dầm, sàn ra file JSON." })
             .P("Đơn vị nội bộ là **kN, m**. Kích thước tiết diện nhập bằng **mm**; bản vẽ, thuyết minh hiển thị mm, MPa, kN.m. Số thập phân trong các ô nhập dùng dấu chấm (vd. 3.6).");
 
         c.Sec("gioi-thieu.gioi-han", "Giới hạn đã biết của phiên bản hiện tại")
@@ -99,22 +99,22 @@ public static partial class UserGuide
                 "Màn hình từ 1366×768 (khuyến nghị 1920×1080) – cửa sổ chính mặc định 1440×860.",
                 "Tuỳ chọn: AutoCAD 2021–2026 (add-in liên kết), Revit 2023–2026 (add-in xuất mô hình), Microsoft Word/Excel hoặc LibreOffice để mở thuyết minh và bảng tính, ETABS/SAP2000 để kiểm tra chéo.");
 
-        c.Sec("cai-dat.bo-cai", "Cài bằng bộ cài KetCauVXT-Setup.exe")
-            .P("Bộ cài được chia nhiều phần: **KetCauVXT-Setup.exe** và các file **KetCauVXT-Setup-*.bin**. Tải **tất cả** về **cùng một thư mục** rồi chạy file .exe (thiếu file .bin bộ cài sẽ báo hỏi đĩa tiếp theo).")
+        c.Sec("cai-dat.bo-cai", "Cài bằng bộ cài VietConst-Setup.exe")
+            .P("Bộ cài được chia nhiều phần: **VietConst-Setup.exe** và các file **VietConst-Setup-*.bin**. Tải **tất cả** về **cùng một thư mục** rồi chạy file .exe (thiếu file .bin bộ cài sẽ báo hỏi đĩa tiếp theo).")
             .Steps(
-                "Lưu và đóng Kết cấu VXT nếu đang mở – bộ cài không tự đóng chương trình để tránh mất dữ liệu chưa lưu.",
-                "Chạy **KetCauVXT-Setup.exe**. Chọn kiểu cài: **chỉ cho tôi** (không cần quyền quản trị, cài vào %LocalAppData%\\Programs\\KetCauVXT) hoặc **cho mọi người dùng** (cần quyền quản trị, cài vào Program Files).",
+                "Lưu và đóng Việt Const nếu đang mở – bộ cài không tự đóng chương trình để tránh mất dữ liệu chưa lưu.",
+                "Chạy **VietConst-Setup.exe**. Chọn kiểu cài: **chỉ cho tôi** (không cần quyền quản trị, cài vào %LocalAppData%\\Programs\\KetCauVXT) hoặc **cho mọi người dùng** (cần quyền quản trị, cài vào Program Files).",
                 "Đọc trang giới thiệu, chọn thư mục cài (mặc định ...\\KetCauVXT).",
-                "Trang **Tuỳ chọn thêm**: Tạo biểu tượng trên Desktop; Mở file dự án .kcvxt bằng Kết cấu VXT (liên kết file); **Cài add-in AutoCAD 2021–2026** (mặc định không chọn – chọn nếu dùng liên kết AutoCAD).",
-                "Bấm Cài đặt, xong chọn **Mở Kết cấu VXT**.")
-            .P("Sau khi cài, menu Start có nhóm **Kết cấu VXT** gồm: chương trình, **Dự án mẫu** (thư mục DuAnMau: NhaPho.kcvxt, TuBanVeKienTruc.kcvxt và bản vẽ kiến trúc mẫu *_DauVao.dxf), **Hướng dẫn sử dụng**, **Hướng dẫn sử dụng (Word)** và **Gỡ cài đặt**.");
+                "Trang **Tuỳ chọn thêm**: Tạo biểu tượng trên Desktop; Mở file dự án .kcvxt bằng Việt Const (liên kết file); **Cài add-in AutoCAD 2021–2026** (mặc định không chọn – chọn nếu dùng liên kết AutoCAD).",
+                "Bấm Cài đặt, xong chọn **Mở Việt Const**.")
+            .P("Sau khi cài, menu Start có nhóm **Việt Const** gồm: chương trình, **Dự án mẫu** (thư mục DuAnMau: NhaPho.kcvxt, TuBanVeKienTruc.kcvxt và bản vẽ kiến trúc mẫu *_DauVao.dxf), **Hướng dẫn sử dụng**, **Hướng dẫn sử dụng (Word)** và **Gỡ cài đặt**.");
 
         c.Sec("cai-dat.smartscreen", "Cảnh báo Windows SmartScreen")
             .P("Bộ cài và chương trình chưa có chữ ký số thương mại nên lần đầu chạy Windows có thể hiện \"Windows đã bảo vệ máy tính của bạn\". "
                + "Bấm **Thông tin thêm** (More info) → **Vẫn chạy** (Run anyway). Chỉ làm như vậy với file tải từ trang phát hành chính thức của dự án (GitHub Releases của tác giả).")
             .Tip("Nếu trình duyệt chặn tải file .bin, chọn \"Giữ lại\" (Keep). Có thể bấm chuột phải file → Properties → tích Unblock trước khi chạy.");
 
-        c.Sec("cai-dat.autocad", "Add-in AutoCAD (liên kết AutoCAD → Kết cấu VXT)")
+        c.Sec("cai-dat.autocad", "Add-in AutoCAD (liên kết AutoCAD → Việt Const)")
             .Steps(
                 "Cách 1: khi cài chọn **Cài add-in AutoCAD 2021–2026** – gói KetCauVXT.bundle được chép vào thư mục tự nạp ApplicationPlugins (cho mọi người dùng: ProgramData; cho một người: AppData).",
                 "Cách 2 (bản zip): đóng AutoCAD, bấm đúp **AutoCAD\\CaiDatAutoCAD.cmd**; gỡ bằng **CaiDatAutoCAD.cmd -Go**. Có thể nạp thủ công bằng lệnh NETLOAD (chọn DLL đúng năm AutoCAD).",
@@ -124,7 +124,7 @@ public static partial class UserGuide
 
         c.Sec("cai-dat.revit", "Add-in Revit")
             .P("Add-in **KetCauVXT.RevitExport** được build riêng cho Revit 2023–2026. Chép KetCauVXT.RevitExport.dll và KetCauVXT.RevitExport.addin vào %AppData%\\Autodesk\\Revit\\Addins\\<năm>\\, "
-               + "mở Revit → tab Add-Ins → External Tools → **Xuất sang Kết cấu VXT**. Xem {s:khoi-tao.revit}.");
+               + "mở Revit → tab Add-Ins → External Tools → **Xuất sang Việt Const**. Xem {s:khoi-tao.revit}.");
 
         c.Sec("cai-dat.zip", "Bản chạy ngay không cần cài")
             .P("Giải nén **KetCauVXT-win-x64.zip** vào một thư mục bất kỳ (không cần quyền quản trị) và chạy **KetCauVXT.exe**. Bản zip có kèm thư mục AutoCAD (add-in + CaiDatAutoCAD.cmd) và HuongDan.md. Bản này không tạo liên kết file .kcvxt và không có mục gỡ cài đặt – xoá thư mục là gỡ.");
@@ -135,7 +135,7 @@ public static partial class UserGuide
                 "Sau khi cập nhật nên mở {m:regs} để xem danh mục văn bản mới và bấm **Kiểm tra dự án** với các dự án cũ.");
 
         c.Sec("cai-dat.go", "Gỡ cài đặt")
-            .P("Settings → Apps → **Kết cấu VXT** → Uninstall, hoặc menu Start → Kết cấu VXT → **Gỡ cài đặt Kết cấu VXT**. Gỡ cài đặt xoá cả add-in AutoCAD trong ApplicationPlugins (nếu đã cài), giữ nguyên dự án và %AppData%\\KetCauVXT.");
+            .P("Settings → Apps → **Việt Const** → Uninstall, hoặc menu Start → Việt Const → **Gỡ cài đặt Việt Const**. Gỡ cài đặt xoá cả add-in AutoCAD trong ApplicationPlugins (nếu đã cài), giữ nguyên dự án và %AppData%\\KetCauVXT.");
 
         c.Sec("cai-dat.du-lieu", "Dữ liệu người dùng (%AppData%\\KetCauVXT)")
             .Table(new[] { "File / thư mục", "Nội dung" },
@@ -334,10 +334,10 @@ public static partial class UserGuide
                 "**Lỗ khoét sàn**: toạ độ góc dưới trái, kích thước; chương trình cắt thép qua lỗ, đặt **thép gia cường mép lỗ**, cảnh báo lỗ lớn cần dầm bo.");
 
         c.Sec("che-do-ho-so.autocad", "Lấy kích thước từ AutoCAD (lệnh VXT_KT)")
-            .Steps("Trong AutoCAD đã nạp add-in Kết cấu VXT: gõ **VXT_KT** (hoặc nút **Lấy kích thước → Triển khai hồ sơ** trên bảng VXT).",
+            .Steps("Trong AutoCAD đã nạp add-in Việt Const: gõ **VXT_KT** (hoặc nút **Lấy kích thước → Triển khai hồ sơ** trên bảng VXT).",
                 "Chọn loại: **Dam** (chọn trục dầm, các hình chữ nhật cột → nhịp; 2 cạnh dầm → b; nhập h), **Cot** (các hình chữ nhật → b × h, tên lấy theo chữ bên trong), **San** (các đường trục → nhịp X, Y; đa tuyến kín bên trong → lỗ khoét), "
                 + "**Mong** (hình chữ nhật móng + cột bên trong), **MongBang** (trục băng + cột).",
-                "Kết cấu VXT (cửa sổ Triển khai hồ sơ) tự nhận trong vài giây và hỏi: **Có** – áp vào cấu kiện đang chọn (giữ thép, nội lực), **Không** – tạo cấu kiện mới; hoặc bấm **⇩ Từ AutoCAD** (Ctrl+K).")
+                "Việt Const (cửa sổ Triển khai hồ sơ) tự nhận trong vài giây và hỏi: **Có** – áp vào cấu kiện đang chọn (giữ thép, nội lực), **Không** – tạo cấu kiện mới; hoặc bấm **⇩ Từ AutoCAD** (Ctrl+K).")
             .Bullets("Đơn vị bản vẽ lấy theo INSUNITS (mm / m); dữ liệu trao đổi qua thư mục %AppData%\\KetCauVXT\\AcadPick.");
 
         c.Sec("che-do-ho-so.mong", "Móng đơn, móng băng, móng cọc")
@@ -537,8 +537,8 @@ public static partial class UserGuide
                 "Add-in AutoCAD gửi dữ liệu có đường dẫn DWG → chương trình đề nghị tạo / làm mới liên kết cho bản vẽ đó.");
 
         c.Sec("khoi-tao.revit", "Từ Revit (JSON)")
-            .Steps("Trong Revit: Add-Ins → External Tools → **Xuất sang Kết cấu VXT**, chọn nơi lưu file *.vxtrevit.json. Dữ liệu xuất: Levels, Grids (đường thẳng), Structural Columns, Structural Framing, Floors.",
-                "Trong Kết cấu VXT: {m:importRevit} (nút **Nhập Revit**), chọn file JSON.",
+            .Steps("Trong Revit: Add-Ins → External Tools → **Xuất sang Việt Const**, chọn nơi lưu file *.vxtrevit.json. Dữ liệu xuất: Levels, Grids (đường thẳng), Structural Columns, Structural Framing, Floors.",
+                "Trong Việt Const: {m:importRevit} (nút **Nhập Revit**), chọn file JSON.",
                 "Xác nhận thay thế mô hình hiện tại (giữ lại vật liệu, tiết diện, trường hợp tải, thông số gió/động đất). Gốc toạ độ tự dời về giao trục đầu tiên.");
 
         c.Sec("khoi-tao.etabs", "Từ ETABS / SAP2000 (.e2k / .s2k)")
@@ -548,7 +548,7 @@ public static partial class UserGuide
             .Bullets("{m:open} (Ctrl+O), {m:save} (Ctrl+S), {m:saveAs}. File dự án **.kcvxt** là JSON (UTF-8) – có thể sinh bằng công cụ khác (Python, Dynamo, Grasshopper) rồi mở bằng chương trình.",
                 "Khi đã liên kết file, bấm đúp file .kcvxt trong Explorer để mở; dòng lệnh: KetCauVXT.exe \"đường dẫn\\file.kcvxt\".",
                 "Mở dự án trích dẫn văn bản đã hết hiệu lực: thanh trạng thái cảnh báo (không chặn) – xem {s:phap-ly.cap-nhat}.",
-                "Dự án mẫu: menu Start → Kết cấu VXT → Dự án mẫu (NhaPho.kcvxt, TuBanVeKienTruc.kcvxt).");
+                "Dự án mẫu: menu Start → Việt Const → Dự án mẫu (NhaPho.kcvxt, TuBanVeKienTruc.kcvxt).");
         return c;
     }
 
@@ -1060,7 +1060,7 @@ public static partial class UserGuide
         var c = Ch("kiem-chung", "Kiểm chứng và kiểm tra chéo");
         c.Sec("kiem-chung.bao-cao", "Báo cáo kiểm chứng phần mềm")
             .Steps("{m:verify}: bấm **Chạy kiểm chứng** – chương trình chạy bộ bài toán chuẩn (phân tích, thiết kế, móng) và so với lời giải tham chiếu.",
-                "Bảng: mã, bài toán, đại lượng, tham chiếu, Kết cấu VXT, sai số %, ngưỡng %, kết luận. Dòng tóm tắt: số bài toán, số đạt / không đạt, sai số lớn nhất.",
+                "Bảng: mã, bài toán, đại lượng, tham chiếu, Việt Const, sai số %, ngưỡng %, kết luận. Dòng tóm tắt: số bài toán, số đạt / không đạt, sai số lớn nhất.",
                 "**Xuất báo cáo Word + Excel…**: báo cáo gồm 1. Mục đích và phương pháp, 2. Phạm vi, 3. Môi trường và phiên bản, **4. Kết quả kiểm chứng** (tự kiểm chứng), **5. Kiểm chứng độc lập**, 6. Kết luận, 7. Giới hạn đã biết, Phụ lục A lời giải tham chiếu tự lập.");
 
         c.Sec("kiem-chung.doc-lap", "Kiểm chứng độc lập (mục 5 của báo cáo)")
@@ -1109,7 +1109,7 @@ public static partial class UserGuide
                 "Không nhận được tường/trục: kiểm tra tên layer và quy tắc ở {m:cadStd}; dùng tab **Layer trong file** để gán tay.");
 
         c.Sec("hoi-dap.smartscreen", "Windows chặn bộ cài / chương trình")
-            .P("Xem {s:cai-dat.smartscreen}. Bộ cài báo thiếu đĩa: tải đủ mọi file KetCauVXT-Setup-*.bin vào cùng thư mục với KetCauVXT-Setup.exe.");
+            .P("Xem {s:cai-dat.smartscreen}. Bộ cài báo thiếu đĩa: tải đủ mọi file VietConst-Setup-*.bin vào cùng thư mục với VietConst-Setup.exe.");
 
         c.Sec("hoi-dap.lech-etabs", "Kết quả lệch so với ETABS – nguyên nhân")
             .Bullets("ETABS mặc định có **vùng cứng đầu thanh** (End length offsets) và có thể đã gán **hệ số giảm độ cứng** (Property modifiers): tắt hoặc khai báo giống nhau ở hai bên.",

@@ -50,7 +50,7 @@ internal sealed class VerificationWindow : Window
 
     public VerificationWindow()
     {
-        Title = "Kiểm chứng phần mềm – Kết cấu VXT";
+        Title = "Kiểm chứng phần mềm – Việt Const";
         Help.Attach(this, "kiem-chung.bao-cao");   // nút "?" + F1 – Help.cs
         Width = 1400; Height = 820; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var root = new DockPanel { Margin = new Thickness(8) };
@@ -93,7 +93,7 @@ internal sealed class VerificationWindow : Window
             _grid.Columns.Add(new DataGridTextColumn { Header = h, Binding = new Binding(path) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.LostFocus }, Width = w, CellStyle = st });
         }
         Ro("Mã", nameof(Row.Id), 60); Ro("Bài toán", nameof(Row.Title), 220); Ro("Đại lượng", nameof(Row.Quantity), 170);
-        Ro("Tham chiếu", nameof(Row.Reference), 90); Ro("Kết cấu VXT", nameof(Row.Computed), 90); Ro("Sai số %", nameof(Row.Error), 65);
+        Ro("Tham chiếu", nameof(Row.Reference), 90); Ro("Việt Const", nameof(Row.Computed), 90); Ro("Sai số %", nameof(Row.Error), 65);
         Ro("Ngưỡng %", nameof(Row.Tol), 60); Ro("Kết luận", nameof(Row.Verdict), 75);
         Ed("Giá trị theo tài liệu / bên thứ ba", nameof(Row.BookValue), 110); Ed("Nguồn tài liệu (tên, trang/ví dụ)", nameof(Row.BookSource), 200);
         var kindCol = new DataGridComboBoxColumn { Header = "Loại nguồn", ItemsSource = VerificationUserData.Kinds, SelectedItemBinding = new Binding(nameof(Row.Kind)) { Mode = BindingMode.TwoWay }, Width = 170 };

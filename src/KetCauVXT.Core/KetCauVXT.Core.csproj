@@ -9,7 +9,7 @@
     <AssemblyName>KetCauVXT.Core</AssemblyName>
     <Version>1.0.0</Version>
     <Authors>Vũ Xuân Tuyến</Authors>
-    <Product>Kết cấu VXT</Product>
+    <Product>Việt Const</Product>
     <NoWarn>CS1591;CS8632</NoWarn>
   </PropertyGroup>
 

@@ -26,8 +26,8 @@ namespace KetCauVXT.App;
 
 public partial class MainWindow : Window
 {
-    private const string AppTitle = "Kết cấu VXT";
-    private const string ProjectFilter = "Dự án Kết cấu VXT (*.kcvxt)|*.kcvxt|Tất cả (*.*)|*.*";
+    private const string AppTitle = "Việt Const";
+    private const string ProjectFilter = "Dự án Việt Const (*.kcvxt)|*.kcvxt|Tất cả (*.*)|*.*";
 
     private Project _p;
     private AnalysisResults _res;
@@ -175,7 +175,7 @@ public partial class MainWindow : Window
     private void MnuOpen_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || !ConfirmDiscard()) return;
-        var dlg = new OpenFileDialog { Filter = ProjectFilter, Title = "Mở dự án Kết cấu VXT" };
+        var dlg = new OpenFileDialog { Filter = ProjectFilter, Title = "Mở dự án Việt Const" };
         if (dlg.ShowDialog(this) != true) return;
         try
         {
@@ -190,7 +190,7 @@ public partial class MainWindow : Window
     private void MnuExit_Click(object sender, RoutedEventArgs e) => Close();
 
     private void MnuAbout_Click(object sender, RoutedEventArgs e) =>
-        MessageBox.Show("Kết cấu VXT\nPhân tích, thiết kế kết cấu nhà dân dụng BTCT (≤ 7 tầng) và khung thép tiền chế.\n" +
+        MessageBox.Show("Việt Const\nPhân tích, thiết kế kết cấu nhà dân dụng BTCT (≤ 7 tầng) và khung thép tiền chế.\n" +
                         $"Tiêu chuẩn: {Std.Loads}, {Std.Concrete}, {Std.Steel}, {Std.Seismic}, {Std.Soil}, {Std.Piles}.\n" +
                         $"Căn cứ pháp lý: {Std.Law}, {Std.Decree}, {Std.Grade} (xem Trợ giúp → Văn bản pháp lý & tiêu chuẩn áp dụng).\n\n" +
                         "Đơn vị: kN, m. Kích thước tiết diện nhập bằng mm.\n\nTác giả: Vũ Xuân Tuyến",

@@ -39,7 +39,7 @@ internal sealed class AppendixWindow : Window
     {
         _p = p;
         _sections = Appendix.Sections(p);
-        DialogUi.Setup(this, "Phụ lục tính toán & hướng dẫn – Kết cấu VXT", 1180, 760);
+        DialogUi.Setup(this, "Phụ lục tính toán & hướng dẫn – Việt Const", 1180, 760);
         ShowInTaskbar = true;
         ResizeMode = ResizeMode.CanResizeWithGrip;
 
@@ -284,7 +284,7 @@ internal sealed class AppendixWindow : Window
             doc.PageWidth = pd.PrintableAreaWidth; doc.PageHeight = pd.PrintableAreaHeight;
             doc.ColumnWidth = pd.PrintableAreaWidth;
             doc.PagePadding = new Thickness(56, 48, 40, 48);
-            pd.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, "Phụ lục tính toán – Kết cấu VXT");
+            pd.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, "Phụ lục tính toán – Việt Const");
         }
         catch (Exception ex)
         {

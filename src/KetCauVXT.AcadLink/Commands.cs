@@ -25,7 +25,7 @@ namespace KetCauVXT.AcadLink
             try
             {
                 var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
-                ed?.WriteMessage("\nKết cấu VXT: đã nạp liên kết AutoCAD – gõ VXT để mở bảng lệnh (VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI; VXT_KT = lấy kích thước cho chế độ Triển khai hồ sơ).\n");
+                ed?.WriteMessage("\nViệt Const: đã nạp liên kết AutoCAD – gõ VXT để mở bảng lệnh (VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI; VXT_KT = lấy kích thước cho chế độ Triển khai hồ sơ).\n");
             }
             catch (Exception) { }
         }
@@ -33,8 +33,8 @@ namespace KetCauVXT.AcadLink
         public void Terminate() { }
     }
 
-    /// <summary>Lệnh AutoCAD của Kết cấu VXT: tích chọn đối tượng → gán nhóm (tường, cột, dầm, sàn, trục, cửa, thang, tên phòng),
-    /// khai báo tầng, xem/xoá gán nhóm, tạo chuẩn layer kết cấu, gửi dữ liệu sang chương trình Kết cấu VXT.</summary>
+    /// <summary>Lệnh AutoCAD của Việt Const: tích chọn đối tượng → gán nhóm (tường, cột, dầm, sàn, trục, cửa, thang, tên phòng),
+    /// khai báo tầng, xem/xoá gán nhóm, tạo chuẩn layer kết cấu, gửi dữ liệu sang chương trình Việt Const.</summary>
     public class Commands
     {
         private static Document Doc => AcApp.DocumentManager.MdiActiveDocument;
@@ -484,7 +484,7 @@ namespace KetCauVXT.AcadLink
         }
 
         // ==================================================================
-        // GỬI SANG KẾT CẤU VXT
+        // GỬI SANG VIỆT CONST
         // ==================================================================
         internal static string SourceName()
         {
@@ -523,7 +523,7 @@ namespace KetCauVXT.AcadLink
                     wholeDrawing = true;
                 }
                 string defRules = tagged == 0 ? "Co" : "Khong";
-                string useRules = AskKeyword(ed, $"\nĐối tượng chưa gán nhóm: nhận theo tên layer (chuẩn layer Kết cấu VXT)? [Co/Khong] <{defRules}>: ", "Co Khong", defRules);
+                string useRules = AskKeyword(ed, $"\nĐối tượng chưa gán nhóm: nhận theo tên layer (chuẩn layer Việt Const)? [Co/Khong] <{defRules}>: ", "Co Khong", defRules);
                 if (useRules == null) return;
                 var msgs = new List<string>();
                 var std = useRules == "Co" ? LayerStd.Load(msgs) : null;
@@ -718,7 +718,7 @@ namespace KetCauVXT.AcadLink
                 var msgs = new List<string>();
                 var std = LayerStd.Load(msgs);
                 foreach (var m in msgs) ed.WriteMessage("\n" + m);
-                if (std.SourceFile.Length == 0) ed.WriteMessage($"\nKhông có {LayerStd.FilePath} – dùng chuẩn layer mặc định của add-in (lưu chuẩn layer trong chương trình Kết cấu VXT để dùng chung).");
+                if (std.SourceFile.Length == 0) ed.WriteMessage($"\nKhông có {LayerStd.FilePath} – dùng chuẩn layer mặc định của add-in (lưu chuẩn layer trong chương trình Việt Const để dùng chung).");
 
                 var catLayers = Cat.All.Where(c => c != Cat.BoQua).Select(c => new { c, o = std.ForCategory(c) }).Where(q => q.o != null).ToList();
                 var ids = new Dictionary<string, ObjectId>(StringComparer.OrdinalIgnoreCase);

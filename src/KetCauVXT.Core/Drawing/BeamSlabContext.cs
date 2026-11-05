@@ -51,6 +51,10 @@ public sealed class BeamSlabSection
     public double HsR => Right?.Hs ?? 0;
     public double DzL => Left?.Dz ?? 0;
     public double DzR => Right?.Dz ?? 0;
+    /// <summary>[Dầm móng] bê tông lót dưới dầm: chiều dày (mm, 0 = không vẽ), vươn mỗi bên (mm), bên giáp nhà hàng xóm (lót không vươn, vẽ ranh đất), nhãn ghi chú.</summary>
+    public double LeanT, LeanOver;
+    public bool LeanBoundaryL, LeanBoundaryR;
+    public string LeanText = "";
     /// <summary>"T" (sàn hai bên), "L" (một bên – dầm biên), "R" (không có sàn: dầm mái, dầm thang, dầm đỡ tường…).</summary>
     public string Shape => Left != null && Right != null ? "T" : Left != null || Right != null ? "L" : "R";
     /// <summary>Khoá so sánh để đánh số mặt cắt (hai mặt cắt khác bối cảnh sàn là hai mặt cắt khác nhau).</summary>

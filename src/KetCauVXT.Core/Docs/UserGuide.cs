@@ -6,7 +6,7 @@ using KetCauVXT.Report;
 namespace KetCauVXT.Docs;
 
 // =====================================================================
-// HƯỚNG DẪN SỬ DỤNG KẾT CẤU VXT – nội dung dạng dữ liệu có cấu trúc (chương / mục / đoạn / gạch đầu dòng / bước / bảng / ghi chú)
+// HƯỚNG DẪN SỬ DỤNG VIỆT CONST – nội dung dạng dữ liệu có cấu trúc (chương / mục / đoạn / gạch đầu dòng / bước / bảng / ghi chú)
 //   • UserGuide.cs          : mô hình dữ liệu, bảng đường dẫn menu (DUY NHẤT một chỗ – sửa ở đây khi menu thay đổi), xuất Word / Markdown, tìm kiếm
 //   • UserGuide.Content.cs  : nội dung các chương
 //   • UserGuide.Help.cs     : trợ giúp theo ngữ cảnh (F1 → HelpId) và "Bắt đầu nhanh"
@@ -89,7 +89,7 @@ public sealed class GuideMenu
 
 public static partial class UserGuide
 {
-    public const string DocTitle = "HƯỚNG DẪN SỬ DỤNG PHẦN MỀM KẾT CẤU VXT";
+    public const string DocTitle = "HƯỚNG DẪN SỬ DỤNG PHẦN MỀM VIỆT CONST";
     public const string FileBaseName = "HuongDanSuDung";
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
@@ -350,11 +350,11 @@ public static partial class UserGuide
     /// <summary>Ghi hướng dẫn ra file Word: trang bìa, mục lục (trường TOC), số trang ở chân trang.</summary>
     public static void SaveDocx(string path)
     {
-        var d = new DocxWriter { UpdateFieldsOnOpen = true, FooterText = "Hướng dẫn sử dụng Kết cấu VXT", FooterSkipFirstPage = true };
+        var d = new DocxWriter { UpdateFieldsOnOpen = true, FooterText = "Hướng dẫn sử dụng Việt Const", FooterSkipFirstPage = true };
         // ---- trang bìa ----
         for (int i = 0; i < 5; i++) d.EmptyLine();
         d.Title("HƯỚNG DẪN SỬ DỤNG", 24);
-        d.Title("PHẦN MỀM KẾT CẤU VXT", 20);
+        d.Title("PHẦN MỀM VIỆT CONST", 20);
         d.Paragraph("Phân tích – thiết kế kết cấu nhà dân dụng dưới 7 tầng (khung BTCT) và khung thép tiền chế", false, true, ParaAlign.Center);
         d.EmptyLine();
         d.Paragraph("Từ cài đặt, khởi tạo dự án, lập mô hình, tải trọng, phân tích, thiết kế đến triển khai hồ sơ và kiểm chứng kết quả", false, false, ParaAlign.Center);
@@ -419,7 +419,7 @@ public static partial class UserGuide
     public static string ToMarkdown()
     {
         var sb = new StringBuilder();
-        sb.AppendLine("# Hướng dẫn sử dụng phần mềm Kết cấu VXT").AppendLine();
+        sb.AppendLine("# Hướng dẫn sử dụng phần mềm Việt Const").AppendLine();
         sb.AppendLine("*Phân tích – thiết kế kết cấu nhà dân dụng dưới 7 tầng (khung BTCT) và khung thép tiền chế. Tác giả: Vũ Xuân Tuyến.*").AppendLine();
         sb.AppendLine("Trong chương trình: **" + MenuPath("guide") + "** (hoặc phím **F1** – mở đúng mục đang làm).").AppendLine();
         sb.AppendLine("## Mục lục").AppendLine();

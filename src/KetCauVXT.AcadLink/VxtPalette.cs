@@ -7,7 +7,7 @@ using Drawing = System.Drawing;
 
 namespace KetCauVXT.AcadLink
 {
-    /// <summary>Bảng lệnh Kết cấu VXT (PaletteSet, lệnh VXT): nút gán nhóm, khai báo tầng, xem, xoá, chuẩn layer, gửi dữ liệu + số đối tượng đã gán.</summary>
+    /// <summary>Bảng lệnh Việt Const (PaletteSet, lệnh VXT): nút gán nhóm, khai báo tầng, xem, xoá, chuẩn layer, gửi dữ liệu + số đối tượng đã gán.</summary>
     internal static class VxtPalette
     {
         private static Autodesk.AutoCAD.Windows.PaletteSet _ps;
@@ -19,7 +19,7 @@ namespace KetCauVXT.AcadLink
             {
                 if (_ps == null)
                 {
-                    _ps = new Autodesk.AutoCAD.Windows.PaletteSet("Kết cấu VXT", new Guid("3f6a2c1e-8d4b-4f7a-9c2e-5b1d7e0a9f31"));
+                    _ps = new Autodesk.AutoCAD.Windows.PaletteSet("Việt Const", new Guid("3f6a2c1e-8d4b-4f7a-9c2e-5b1d7e0a9f31"));
                     _ctl = new VxtPaletteControl();
                     _ps.Add("Liên kết", _ctl);
                     _ps.MinimumSize = new Drawing.Size(260, 520);
@@ -63,7 +63,7 @@ namespace KetCauVXT.AcadLink
             flow.Controls.Add(Btn("Xem theo nhóm (tô sáng)", "VXT_XEM", false));
             flow.Controls.Add(Btn("Xoá gán nhóm", "VXT_XOA", false));
             flow.Controls.Add(Btn("Tạo / chuyển đổi layer kết cấu", "VXT_LAYER", false));
-            flow.Controls.Add(Btn("GỬI SANG KẾT CẤU VXT", "VXT_GUI", true));
+            flow.Controls.Add(Btn("GỬI SANG VIỆT CONST", "VXT_GUI", true));
             flow.Controls.Add(Btn("Lấy kích thước → Triển khai hồ sơ", "VXT_KT", false));
             var refresh = new Button { Text = "Làm mới số liệu", Width = 230, Height = 26, Margin = new Padding(3, 10, 3, 3) };
             refresh.Click += (s, e) => RefreshCounts();

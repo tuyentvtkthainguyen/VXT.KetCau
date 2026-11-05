@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace KetCauVXT.Import.Acad;
 
 // =====================================================================
-// FILE TRAO ĐỔI AutoCAD → Kết cấu VXT (acad_*.json), do add-in KetCauVXT.AcadLink ghi (lệnh VXT_GUI).
+// FILE TRAO ĐỔI AutoCAD → Việt Const (acad_*.json), do add-in KetCauVXT.AcadLink ghi (lệnh VXT_GUI).
 // Mô tả đầy đủ: docs/acad-link.md
 //   { "Version":1, "Source":"AutoCAD 2025", "Dwg":"D:\\...\\NhaPho.dwg", "Units":"m",
 //     "Storeys":[ { "Name":"Tầng 1", "Elevation":0, "Height":3.6, "BaseX":..., "BaseY":...,

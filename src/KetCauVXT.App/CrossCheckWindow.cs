@@ -173,7 +173,7 @@ internal sealed class CrossCheckWindow : Window
             Binding = new Binding(nameof(PairRow.Enabled)) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged }
         });
         _gPairs.Columns.Add(DialogUi.Text("Trường hợp / tổ hợp trong file ngoài", nameof(PairRow.External), true, 260));
-        _gPairs.Columns.Add(DialogUi.Combo("Trường hợp / tổ hợp của Kết cấu VXT", nameof(PairRow.Ours), OurChoices(), 260));
+        _gPairs.Columns.Add(DialogUi.Combo("Trường hợp / tổ hợp của Việt Const", nameof(PairRow.Ours), OurChoices(), 260));
         _gPairs.Columns.Add(DialogUi.Text("Cách ghép", nameof(PairRow.Method), true, 300));
         var pairPanel = new DockPanel();
         var pairHint = DialogUi.Hint("Tự ghép theo tên (trùng tên → không phân biệt hoa thường/dấu). \"Tên (Max)\"/\"Tên (Min)\" của tổ hợp bao ETABS so với Max/Min của tổ hợp bao cùng tên. "
@@ -525,7 +525,7 @@ internal sealed class CrossCheckWindow : Window
     {
         var r = _rep;
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"So sánh Kết cấu VXT ↔ {r.Software} – đánh giá chung: {CrossCheckReport.LevelText(r.Overall).ToUpperInvariant()}");
+        sb.AppendLine($"So sánh Việt Const ↔ {r.Software} – đánh giá chung: {CrossCheckReport.LevelText(r.Overall).ToUpperInvariant()}");
         sb.AppendLine($"Ngưỡng: ≤ {r.Options.WarnPercent:0.#} % phù hợp; {r.Options.WarnPercent:0.#}–{r.Options.FailPercent:0.#} % cảnh báo; > {r.Options.FailPercent:0.#} % sai lệch lớn.");
         sb.AppendLine();
         foreach (var s in r.Stats.Where(s => s.Count > 0))
@@ -589,7 +589,7 @@ internal sealed class CrossCheckWindow : Window
         }
         Mark(o, Brushes.RoyalBlue, false);
         Mark(e, Brushes.Firebrick, true);
-        var leg = new TextBlock { Text = "━ Kết cấu VXT    ┅ " + _rep.Software, FontSize = 12, Foreground = Brushes.DimGray };
+        var leg = new TextBlock { Text = "━ Việt Const    ┅ " + _rep.Software, FontSize = 12, Foreground = Brushes.DimGray };
         Canvas.SetLeft(leg, 8); Canvas.SetTop(leg, 4);
         _canvas.Children.Add(leg);
         string comp = new[] { "P", "V2", "V3", "T", "M2", "M3" }[k];

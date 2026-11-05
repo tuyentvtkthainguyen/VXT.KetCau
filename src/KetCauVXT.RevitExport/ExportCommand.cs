@@ -1,5 +1,5 @@
 // =====================================================================
-// KẾT CẤU VXT – ADD-IN XUẤT MÔ HÌNH TỪ REVIT
+// VIỆT CONST – ADD-IN XUẤT MÔ HÌNH TỪ REVIT
 // ---------------------------------------------------------------------
 // HƯỚNG DẪN (README):
 //  1. Mở KetCauVXT.RevitExport.csproj bằng Visual Studio 2022 trên máy có cài Revit 2024.
@@ -7,13 +7,13 @@
 //  2. Build Release → được KetCauVXT.RevitExport.dll.
 //  3. Chép KetCauVXT.RevitExport.dll + KetCauVXT.RevitExport.addin vào
 //     %AppData%\Autodesk\Revit\Addins\2024\
-//  4. Mở Revit → tab Add-Ins → External Tools → "Xuất sang Kết cấu VXT".
-//  5. Chọn nơi lưu file *.vxtrevit.json → trong Kết cấu VXT chọn Tệp → Nhập từ Revit (JSON).
+//  4. Mở Revit → tab Add-Ins → External Tools → "Xuất sang Việt Const".
+//  5. Chọn nơi lưu file *.vxtrevit.json → trong Việt Const chọn Tệp → Nhập từ Revit (JSON).
 //
 // Dữ liệu xuất (đơn vị m, độ): Levels, Grids (đường thẳng), Structural Columns (b, h lấy từ tham số
 // "b"/"h" của họ cột, nếu không có thì lấy theo hộp bao), Structural Framing (đường định vị, b/h),
 // Floors (chiều dày theo loại sàn, đường bao lấy từ mặt trên).
-// Toạ độ là toạ độ nội bộ (internal origin) của Revit; Kết cấu VXT tự dời gốc về giao trục đầu tiên.
+// Toạ độ là toạ độ nội bộ (internal origin) của Revit; Việt Const tự dời gốc về giao trục đầu tiên.
 // =====================================================================
 using System;
 using System.Collections.Generic;
@@ -44,8 +44,8 @@ namespace KetCauVXT.RevitExport
             string path;
             using (var dlg = new System.Windows.Forms.SaveFileDialog())
             {
-                dlg.Title = "Xuất mô hình sang Kết cấu VXT";
-                dlg.Filter = "File trao đổi Kết cấu VXT (*.vxtrevit.json)|*.vxtrevit.json|JSON (*.json)|*.json";
+                dlg.Title = "Xuất mô hình sang Việt Const";
+                dlg.Filter = "File trao đổi Việt Const (*.vxtrevit.json)|*.vxtrevit.json|JSON (*.json)|*.json";
                 dlg.FileName = SafeFileName(doc.Title) + ".vxtrevit.json";
                 if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return Result.Cancelled;
                 path = dlg.FileName;
@@ -75,13 +75,13 @@ namespace KetCauVXT.RevitExport
                     foreach (var s in _warnings.Take(25)) sb.AppendLine("- " + s);
                     if (_warnings.Count > 25) sb.AppendLine($"... và {_warnings.Count - 25} cảnh báo khác");
                 }
-                TaskDialog.Show("Kết cấu VXT", sb.ToString());
+                TaskDialog.Show("Việt Const", sb.ToString());
                 return Result.Succeeded;
             }
             catch (Exception ex)
             {
                 message = "Lỗi xuất dữ liệu: " + ex.Message;
-                TaskDialog.Show("Kết cấu VXT", message + "\n\n" + ex.StackTrace);
+                TaskDialog.Show("Việt Const", message + "\n\n" + ex.StackTrace);
                 return Result.Failed;
             }
         }

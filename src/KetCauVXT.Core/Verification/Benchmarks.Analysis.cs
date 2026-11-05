@@ -6,7 +6,7 @@ namespace KetCauVXT.Verification;
 
 /// <summary>Bộ bài toán chuẩn kiểm chứng. Mỗi bài toán là một "suite" (một mô hình) cho một hoặc nhiều đại lượng.
 /// Phần A (tệp này): phân tích kết cấu – so với lời giải giải tích dạng kín. Giá trị tham chiếu tính bằng công thức viết tay
-/// trong tệp này (không đọc lại kết quả của chương trình); kết quả Kết cấu VXT lấy từ <see cref="FrameAnalysis"/>.
+/// trong tệp này (không đọc lại kết quả của chương trình); kết quả Việt Const lấy từ <see cref="FrameAnalysis"/>.
 /// Chương trình dùng phần tử thanh Timoshenko (kể biến dạng trượt, diện tích chịu cắt 5/6·b·h với tiết diện chữ nhật) nên lời giải
 /// tham chiếu dùng lý thuyết dầm Timoshenko (số hạng uốn Euler–Bernoulli + số hạng trượt) – ghi rõ trong cột nguồn.</summary>
 public static partial class Benchmarks

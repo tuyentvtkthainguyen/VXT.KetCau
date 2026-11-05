@@ -148,7 +148,7 @@ public partial class MainWindow
             sb.Items.Insert(Math.Min(2, sb.Items.Count), new StatusBarItem { Content = _txtResSource });
         }
         if (_res == null) { _txtResSource.Text = "Nội lực: chưa có"; _txtResSource.Foreground = Brushes.Gray; _txtResSource.ToolTip = null; return; }
-        if (_res.External == null) { _txtResSource.Text = "Nội lực: Kết cấu VXT"; _txtResSource.Foreground = Brushes.DimGray; _txtResSource.ToolTip = null; return; }
+        if (_res.External == null) { _txtResSource.Text = "Nội lực: Việt Const"; _txtResSource.Foreground = Brushes.DimGray; _txtResSource.ToolTip = null; return; }
         var x = _res.External;
         _txtResSource.Text = $"Nội lực: nhập từ {x.Software} ({x.FileList})";
         _txtResSource.Foreground = Brushes.DarkOrange;

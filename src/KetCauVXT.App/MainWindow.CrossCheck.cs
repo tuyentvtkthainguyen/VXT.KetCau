@@ -19,7 +19,7 @@ public partial class MainWindow
         if (_res == null || _res.External != null)
         {
             string why = _res == null ? "Chưa có kết quả phân tích của chương trình." : $"Kết quả hiện hành được nhập từ {_res.External.Software}.";
-            var r = MessageBox.Show(this, why + "\nChạy phân tích của Kết cấu VXT (F5) trước khi so sánh?", AppTitle, MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            var r = MessageBox.Show(this, why + "\nChạy phân tích của Việt Const (F5) trước khi so sánh?", AppTitle, MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (r != MessageBoxResult.OK) return;
             bool ok;
             _suppressImportedConfirm = true;   // đã hỏi ở trên

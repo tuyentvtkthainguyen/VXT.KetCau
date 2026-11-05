@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Đọc / ghi bản vẽ DWG cho Kết cấu VXT bằng thư viện ACadSharp (mã nguồn mở, giấy phép MIT – github.com/DomCR/ACadSharp).
+    Đọc / ghi bản vẽ DWG cho Việt Const bằng thư viện ACadSharp (mã nguồn mở, giấy phép MIT – github.com/DomCR/ACadSharp).
     Tách riêng khỏi KetCauVXT.Core để lõi tính toán không dùng gói NuGet nào; App và bộ kiểm thử đăng ký
     bộ đọc vào lõi qua KetCauVXT.Import.CadFileReaders.Dwg.
     ACadSharp (net8.0) không phụ thuộc gói nào khác (CSMath, CSUtilities được biên dịch sẵn bên trong).
@@ -15,7 +15,7 @@
     <AssemblyName>KetCauVXT.Dwg</AssemblyName>
     <Version>1.0.0</Version>
     <Authors>Vũ Xuân Tuyến</Authors>
-    <Product>Kết cấu VXT</Product>
+    <Product>Việt Const</Product>
     <NoWarn>CS1591;CS8632</NoWarn>
   </PropertyGroup>
 

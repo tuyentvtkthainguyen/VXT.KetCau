@@ -52,7 +52,7 @@ public static class E2kExporter
             return levels.First(l => Math.Abs(l.Elevation - z) < 1e-3).Name;
         }
 
-        L("$ File " + Path.GetFileName(path) + " – xuất từ Kết cấu VXT " + DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+        L("$ File " + Path.GetFileName(path) + " – xuất từ Việt Const " + DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
         L("");
         L("$ PROGRAM INFORMATION");
         L("  PROGRAM  \"ETABS\"  VERSION \"20.0.0\"");

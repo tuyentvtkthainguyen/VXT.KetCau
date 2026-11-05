@@ -220,7 +220,7 @@ namespace KetCauVXT.AcadLink
         }
     }
 
-    /// <summary>Ghi file trao đổi acad_*.json và giao cho chương trình Kết cấu VXT.</summary>
+    /// <summary>Ghi file trao đổi acad_*.json và giao cho chương trình Việt Const.</summary>
     internal static class Exchange
     {
         public static string LinkDir => Path.Combine(LayerStd.AppDataDir, "Link");
@@ -301,7 +301,7 @@ namespace KetCauVXT.AcadLink
             try
             {
                 if (Process.GetProcessesByName("KetCauVXT").Length > 0)
-                    return "Kết cấu VXT đang mở – chương trình sẽ hỏi nhập dữ liệu mới.";
+                    return "Việt Const đang mở – chương trình sẽ hỏi nhập dữ liệu mới.";
             }
             catch (System.Exception) { }
             string exe = "";
@@ -312,11 +312,11 @@ namespace KetCauVXT.AcadLink
             }
             catch (System.Exception) { }
             if (exe.Length == 0 || !File.Exists(exe))
-                return "Chưa tìm thấy chương trình Kết cấu VXT (hãy mở KetCauVXT.exe một lần để đăng ký).\nTrong chương trình: Tệp → Nhận dữ liệu từ AutoCAD… và chọn file:\n" + jsonPath;
+                return "Chưa tìm thấy chương trình Việt Const (hãy mở KetCauVXT.exe một lần để đăng ký).\nTrong chương trình: Tệp → Nhận dữ liệu từ AutoCAD… và chọn file:\n" + jsonPath;
             try
             {
                 Process.Start(new ProcessStartInfo(exe) { Arguments = "--acad \"" + jsonPath + "\"", UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(exe) });
-                return "Đã mở Kết cấu VXT: " + exe;
+                return "Đã mở Việt Const: " + exe;
             }
             catch (System.Exception ex)
             {

@@ -5,7 +5,7 @@ using KetCauVXT.Model;
 namespace KetCauVXT.Import;
 
 // =====================================================================
-// LƯỢC ĐỒ FILE TRAO ĐỔI REVIT → KẾT CẤU VXT (*.vxtrevit.json)
+// LƯỢC ĐỒ FILE TRAO ĐỔI REVIT → VIỆT CONST (*.vxtrevit.json)
 // Do add-in KetCauVXT.RevitExport ghi ra. Mọi kích thước, toạ độ: m. Góc: độ.
 // =====================================================================
 public class RevitExchange

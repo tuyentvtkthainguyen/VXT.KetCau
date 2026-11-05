@@ -176,6 +176,6 @@ public static class SheetComposer
         w.Text(L, c2 + 20 * S, r3 + rowH * 0.30, 1.4 * th, no ?? "", 0, 1, 2);
         Cell(tx1, y1, "THIẾT KẾ", "");
         w.Text(L, c1 + pad, y1 + rowH / 2, th, "Thiết kế: " + (info.Designer ?? ""), 0, 0, 2);
-        w.Text(L, c2 + pad, y1 + rowH / 2, 0.8 * th, "Kết cấu VXT", 0, 0, 2);
+        w.Text(L, c2 + pad, y1 + rowH / 2, 0.8 * th, "Việt Const", 0, 0, 2);
     }
 }

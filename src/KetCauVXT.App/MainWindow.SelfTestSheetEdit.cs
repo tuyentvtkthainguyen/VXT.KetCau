@@ -51,7 +51,7 @@ public partial class MainWindow
             string logo = MakeSelfTestLogo();
             sw.SetTitleBlock(new TitleBlockInfo
             {
-                Company = "Công ty TNHH Kết cấu VXT", Designer = _p.Designer ?? "", Checker = "Kiểm tra tự động",
+                Company = "Công ty TNHH Việt Const", Designer = _p.Designer ?? "", Checker = "Kiểm tra tự động",
                 Approver = "Vũ Xuân Tuyến", LogoData = logo, NumberPrefix = "KC-"
             });
 

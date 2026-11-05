@@ -39,7 +39,7 @@ public sealed class LauncherWindow : Window
 
     public LauncherWindow()
     {
-        Title = "Kết cấu VXT – chọn chế độ làm việc";
+        Title = "Việt Const – chọn chế độ làm việc";
         Width = 940; Height = 600; MinWidth = 720; MinHeight = 520;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = new SolidColorBrush(Color.FromRgb(0xF4, 0xF6, 0xF8));
@@ -47,7 +47,7 @@ public sealed class LauncherWindow : Window
 
         var root = new DockPanel { Margin = new Thickness(28, 22, 28, 18) };
         var head = new StackPanel();
-        head.Children.Add(new TextBlock { Text = "KẾT CẤU VXT", FontSize = 26, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x3A, 0x5F)) });
+        head.Children.Add(new TextBlock { Text = "VIỆT CONST", FontSize = 26, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x3A, 0x5F)) });
         head.Children.Add(new TextBlock { Text = "Phần mềm thiết kế kết cấu nhà dưới 7 tầng và nhà thép tiền chế – chọn cách làm việc:", FontSize = 14, Margin = new Thickness(0, 4, 0, 16), Foreground = Brushes.DimGray });
         DockPanel.SetDock(head, Dock.Top);
         root.Children.Add(head);

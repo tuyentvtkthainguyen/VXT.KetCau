@@ -242,11 +242,11 @@ public static class CadStandardTests
         }
         string plain = Fig().ToDxfString();
         var wv = Fig(); wv.Standard = CadStandard.Default();
-        check("Chuẩn \"Kết cấu VXT\": DXF giống hệt khi không có chuẩn (trừ layer tự đặt được khai báo)", B(wv.ToDxfString().Replace("  0\r\nLAYER\r\n  2\r\nKC-MOI\r\n 70\r\n0\r\n 62\r\n7\r\n  6\r\nCONTINUOUS\r\n", "")
+        check("Chuẩn \"Việt Const\": DXF giống hệt khi không có chuẩn (trừ layer tự đặt được khai báo)", B(wv.ToDxfString().Replace("  0\r\nLAYER\r\n  2\r\nKC-MOI\r\n 70\r\n0\r\n 62\r\n7\r\n  6\r\nCONTINUOUS\r\n", "")
             .Replace(" 70\r\n10\r\n  0\r\nLAYER", " 70\r\n9\r\n  0\r\nLAYER") == plain), 1, 0);
         var w9 = new DxfWriter(50); w9.Line(Lay.Thep, 0, 0, 1, 1); w9.Text(Lay.Chu, 0, 0, 1, "Thép");
         string a = w9.ToDxfString(); w9.Standard = CadStandard.Default();
-        check("Chuẩn \"Kết cấu VXT\": byte giống hệt với layer chuẩn", B(a == w9.ToDxfString()), 1, 0);
+        check("Chuẩn \"Việt Const\": byte giống hệt với layer chuẩn", B(a == w9.ToDxfString()), 1, 0);
 
         var std = CadStandard.Default();
         std.OutputLayers = CadStandard.PresetTcvn(); std.OutputPreset = CadStandard.PresetTcvnName;

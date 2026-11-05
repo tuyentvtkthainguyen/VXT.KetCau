@@ -65,7 +65,7 @@ public partial class App : Application
             return;
         }
         MessageBox.Show("Lỗi không mong muốn:\n" + e.Exception.Message + "\n\n" + e.Exception.GetType().Name,
-            "Kết cấu VXT", MessageBoxButton.OK, MessageBoxImage.Error);
+            "Việt Const", MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }
 }

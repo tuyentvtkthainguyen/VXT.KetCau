@@ -32,7 +32,7 @@ internal sealed class UserGuideWindow : Window
     public UserGuideWindow()
     {
         _chapters = UserGuide.Chapters();
-        DialogUi.Setup(this, "Hướng dẫn sử dụng – Kết cấu VXT", 1200, 780);
+        DialogUi.Setup(this, "Hướng dẫn sử dụng – Việt Const", 1200, 780);
         ShowInTaskbar = true;
         ResizeMode = ResizeMode.CanResizeWithGrip;
         Help.SetId(this, "giao-dien.tro-giup");

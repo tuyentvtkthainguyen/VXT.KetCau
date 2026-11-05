@@ -87,9 +87,9 @@ public class ManualBeam : IDetailMember
     [Field("Thép sàn lớp dưới (thể hiện)", Group = "Sàn hai bên dầm", Hint = "vd. Ø8a200")] public string SlabBot { get; set; } = "Ø8a200";
     [Field("Thép mũ sàn qua dầm (thể hiện)", Group = "Sàn hai bên dầm")] public string SlabTop { get; set; } = "Ø8a200";
 
-    [Field("Bê tông lót dầm móng – vươn mỗi bên", Unit = "mm", Scale = 1000, Group = "Dầm móng: bê tông lót, sát ranh")] public double LeanOverhang { get; set; } = 0.10;
-    [Field("Dầm móng sát ranh đất", Group = "Dầm móng: bê tông lót, sát ranh", Choices = "Không sát ranh|Sát ranh bên trái|Sát ranh bên phải",
-        Hint = "sát ranh: bê tông lót và bê tông dầm không vươn sang đất nhà bên; thành sát ranh xây gạch làm khuôn")] public string Boundary { get; set; } = "Không sát ranh";
+    [Field("Bê tông lót dầm móng – vươn mỗi bên", Unit = "mm", Scale = 1000, Group = "Dầm móng: bê tông lót")] public double LeanOverhang { get; set; } = 0.10;
+    [Field("Bên giáp nhà hàng xóm (hết đất)", Group = "Dầm móng: bê tông lót", Choices = "Không giáp nhà bên|Giáp nhà hàng xóm bên trái (hết đất)|Giáp nhà hàng xóm bên phải (hết đất)",
+        Hint = "bên giáp nhà hàng xóm: bê tông lót và bê tông dầm không vươn sang đất nhà bên; thành dầm phía đó xây gạch làm khuôn")] public string Boundary { get; set; } = "Không giáp nhà bên";
 
     [Field("Thép dưới chạy suốt – số thanh", Group = "Thép dọc")] public int BotN { get; set; } = 2;
     [Field("Thép dưới chạy suốt – Ø", Unit = "mm", Group = "Thép dọc")] public int BotD { get; set; } = 16;
@@ -266,14 +266,17 @@ public class ManualBeam : IDetailMember
             r.Kind = "Dầm móng";
             double over = Math.Max(LeanOverhang, 0);
             double lw = B + (leftB ? 0 : over) + (rightB ? 0 : over);
+            d.ManualSlab.LeanT = s.LeanThickness * 1000; d.ManualSlab.LeanOver = over * 1000;
+            d.ManualSlab.LeanBoundaryL = leftB; d.ManualSlab.LeanBoundaryR = rightB;
+            d.ManualSlab.LeanText = "BÊ TÔNG LÓT " + s.LeanConcrete + " DÀY " + Dt.Mm(s.LeanThickness) + (leftB || rightB ? " (GIÁP NHÀ BÊN: KHÔNG VƯƠN SANG)" : "");
             r.LeanVolume = lw * s.LeanThickness * (clear + 0.0);
             r.FormworkArea = (leftB || rightB ? 1 : 2) * H * clear;   // đáy đổ trên lót, không ván khuôn đáy
             r.Calc.Add("Dầm móng: lớp bảo vệ ≥ 35 mm (tiếp xúc đất, có bê tông lót); bê tông lót " + s.LeanConcrete + " dày " + Dt.Mm(s.LeanThickness) + " mm rộng "
-                       + Dt.Mm(lw) + " mm" + (leftB || rightB ? " – sát ranh " + (leftB ? "bên trái" : "bên phải") + ": lót và dầm không vươn sang đất bên cạnh" : " (vươn " + Dt.Mm(over) + " mm mỗi bên)"));
+                       + Dt.Mm(lw) + " mm" + (leftB || rightB ? " – giáp nhà hàng xóm " + (leftB ? "bên trái" : "bên phải") + " (hết đất): lót và dầm không vươn sang đất nhà bên" : " (vươn " + Dt.Mm(over) + " mm mỗi bên)"));
             if (leftB || rightB)
             {
-                r.Extra.Add(("Xây gạch làm khuôn thành dầm móng sát ranh (không tháo)", "m²", H * clear));
-                d.Messages.Add("Dầm móng sát ranh: thành phía ranh dùng gạch xây / tấm khuôn để lại, không vươn bê tông lót sang đất nhà bên");
+                r.Extra.Add(("Xây gạch làm khuôn thành dầm móng giáp nhà hàng xóm (không tháo)", "m²", H * clear));
+                d.Messages.Add("Dầm móng giáp nhà hàng xóm (hết đất): thành phía đó dùng gạch xây / tấm khuôn để lại, không vươn bê tông lót sang đất nhà bên");
             }
             if ((Flange ?? "").StartsWith("Chữ T") || (Flange ?? "").StartsWith("Chữ L")) d.Messages.Add("Dầm móng có sàn nền (cánh) – kiểm tra lại lựa chọn \"Cánh sàn\" nếu nền không đổ liền khối");
         }

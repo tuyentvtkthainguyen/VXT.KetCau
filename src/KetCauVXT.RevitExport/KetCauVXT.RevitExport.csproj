@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Add-in Revit xuất mô hình kết cấu sang Kết cấu VXT (file *.vxtrevit.json).
+    Add-in Revit xuất mô hình kết cấu sang Việt Const (file *.vxtrevit.json).
 
     Chọn phiên bản: dotnet build -p:RevitVersion=2025 (mặc định 2024).
     Revit ≤ 2024 → .NET Framework 4.8; Revit 2025, 2026 → .NET 8 (tự chọn).
@@ -21,7 +21,7 @@
     <AssemblyName>KetCauVXT.RevitExport</AssemblyName>
     <Version>1.0.0</Version>
     <Authors>Vũ Xuân Tuyến</Authors>
-    <Product>Kết cấu VXT – xuất từ Revit</Product>
+    <Product>Việt Const – xuất từ Revit</Product>
     <RevitDir>C:\Program Files\Autodesk\Revit $(RevitVersion)\</RevitDir>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>

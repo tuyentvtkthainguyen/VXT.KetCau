@@ -24,7 +24,7 @@ public static class AppendixReport
         if (d == null) return;
         if (pageBreak) d.PageBreak();
         d.Heading(ChapterTitle, 1);
-        d.Paragraph("Phụ lục tổng hợp các công thức, chỉ số, hệ số, hệ số an toàn và phương pháp mà chương trình Kết cấu VXT áp dụng, kèm giải thích để người mới "
+        d.Paragraph("Phụ lục tổng hợp các công thức, chỉ số, hệ số, hệ số an toàn và phương pháp mà chương trình Việt Const áp dụng, kèm giải thích để người mới "
                     + "có thể tìm hiểu và tự kiểm tra kết quả. Các bảng tra được tính lại bằng chính các hàm của chương trình. "
                     + "Những chỗ ghi \"đơn giản hoá\" / \"gần đúng\" cần được kỹ sư đối chiếu với tiêu chuẩn hiện hành trước khi dùng cho hồ sơ chính thức.");
         d.Paragraph("Quy ước số: dấu phẩy là dấu thập phân (0,95 = 0.95). Đơn vị tính toán kN – m.", false, true);
@@ -53,7 +53,7 @@ public static class AppendixReport
     {
         var d = new DocxWriter();
         d.Title(ChapterTitle, 18);
-        d.Paragraph("Công thức – chỉ số – hệ số – hệ số an toàn – phương pháp áp dụng trong Kết cấu VXT", false, true, ParaAlign.Center);
+        d.Paragraph("Công thức – chỉ số – hệ số – hệ số an toàn – phương pháp áp dụng trong Việt Const", false, true, ParaAlign.Center);
         if (project != null && !string.IsNullOrWhiteSpace(project.Name))
             d.Paragraph("Công trình: " + project.Name + (string.IsNullOrWhiteSpace(project.Location) ? "" : " – " + project.Location), false, false, ParaAlign.Center);
         d.Paragraph("Ngày lập: " + DateTime.Now.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture), false, true, ParaAlign.Center);
@@ -70,7 +70,7 @@ public static class AppendixReport
         if (sh == null) return;
         sh.FirstRowIsHeader = false; sh.FreezeRows = 0;
         sh.AddRow(new XlCell(ChapterTitle, XlStyle.Title));
-        sh.AddRow("Công thức, chỉ số, hệ số, hệ số an toàn và phương pháp áp dụng trong Kết cấu VXT (dấu phẩy là dấu thập phân).");
+        sh.AddRow("Công thức, chỉ số, hệ số, hệ số an toàn và phương pháp áp dụng trong Việt Const (dấu phẩy là dấu thập phân).");
         sh.AddRow("Văn bản, tiêu chuẩn áp dụng: " + string.Join("; ", RegulationService.Applied(p).Select(x => x.Citation)) + ".");
         foreach (var s in Appendix.Sections(p))
         {

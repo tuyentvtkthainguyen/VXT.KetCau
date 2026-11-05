@@ -36,7 +36,7 @@ namespace KetCauVXT.AcadLink
         public bool Enabled = true;
     }
 
-    /// <summary>Chuẩn layer CAD: đọc %AppData%\KetCauVXT\CadStandard.json (do chương trình Kết cấu VXT ghi) nếu có,
+    /// <summary>Chuẩn layer CAD: đọc %AppData%\KetCauVXT\CadStandard.json (do chương trình Việt Const ghi) nếu có,
     /// không có thì dùng mặc định trong add-in. Chấp nhận cả hai cách đặt tên trường:
     /// InputRules/LayerRules (Pattern, Match|Mode, Category, Priority, Enabled), InputLayerMap (danh sách {Layer, Category}) / LayerMap (từ điển),
     /// OutputLayers ({Key, Name, Color, Linetype, Lineweight, Plot, Description}), FontName.</summary>

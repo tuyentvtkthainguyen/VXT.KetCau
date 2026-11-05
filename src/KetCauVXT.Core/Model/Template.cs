@@ -120,7 +120,7 @@ public sealed class TemplateLibraryEntry
 public static class TemplateService
 {
     public const string Extension = ".kcvxt-mau";
-    public const string FileFilter = "Mẫu định dạng Kết cấu VXT (*.kcvxt-mau)|*.kcvxt-mau|JSON (*.json)|*.json|Tất cả (*.*)|*.*";
+    public const string FileFilter = "Mẫu định dạng Việt Const (*.kcvxt-mau)|*.kcvxt-mau|JSON (*.json)|*.json|Tất cả (*.*)|*.*";
     /// <summary>Tên gói thư viện chứa các tờ mẫu lưu từ cửa sổ dàn trang.</summary>
     public const string SheetLibraryName = "Tờ mẫu";
     /// <summary>Chỗ thay tham số khung nhìn trong tên khung nhìn của tờ mẫu.</summary>
@@ -342,7 +342,7 @@ public static class TemplateService
     {
         var t = JsonSerializer.Deserialize<TemplatePackage>(json ?? "", JsonOptions) ?? throw new InvalidDataException("File mẫu định dạng rỗng hoặc lỗi");
         if (!string.IsNullOrEmpty(t.Format) && t.Format != TemplatePackage.FormatId)
-            throw new InvalidDataException($"Không phải file mẫu định dạng Kết cấu VXT (Format = '{t.Format}')");
+            throw new InvalidDataException($"Không phải file mẫu định dạng Việt Const (Format = '{t.Format}')");
         if (t.CadStandard != null) t.CadStandard = t.CadStandard.Clone();   // chuẩn hoá (Normalize)
         t.TitleBlockDef?.UpdateExtents();
         return t;

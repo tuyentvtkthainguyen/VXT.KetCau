@@ -241,7 +241,7 @@ public class CrossCheckReport
     /// <summary>Hướng dẫn chung về các nguyên nhân sai lệch thường gặp (ghi vào báo cáo).</summary>
     public static readonly string[] Guidance =
     {
-        "Sàn cứng tuyệt đối (rigid diaphragm): Kết cấu VXT gán sàn cứng bằng ràng buộc nút chủ – nút phụ khi bật tuỳ chọn; ETABS gán diaphragm cho sàn/điểm. Khác nhau về diaphragm (có/không, cứng/bán cứng) làm lực dọc dầm và phân phối lực ngang giữa các khung khác nhau.",
+        "Sàn cứng tuyệt đối (rigid diaphragm): Việt Const gán sàn cứng bằng ràng buộc nút chủ – nút phụ khi bật tuỳ chọn; ETABS gán diaphragm cho sàn/điểm. Khác nhau về diaphragm (có/không, cứng/bán cứng) làm lực dọc dầm và phân phối lực ngang giữa các khung khác nhau.",
         "Đoạn cứng đầu thanh (end offsets / rigid zone factor): ETABS mặc định tự tính chiều dài đoạn cứng tại nút giao và có thể dùng hệ số vùng cứng; chương trình tính theo trục thanh. Mô men tại mép gối dầm và mô men đầu cột sẽ khác.",
         "Mô hình sàn: chương trình dồn tải sàn về dầm theo đường phân giác 45° (hình thang/tam giác); ETABS chia lưới phần tử vỏ (shell/membrane) – sàn shell tham gia chịu uốn cùng dầm, giảm mô men dầm và thay đổi phân phối tải giữa dầm biên/dầm giữa.",
         "Hệ số giảm độ cứng tiết diện (property modifiers): ETABS thường gán 0,35·I cho dầm, 0,7·I cho cột, 0,25 cho sàn… Chuyển vị và nội lực do tải ngang thay đổi rõ, nội lực do tải đứng thay đổi ít hơn.",
@@ -253,7 +253,7 @@ public class CrossCheckReport
     };
 }
 
-/// <summary>So sánh kết quả phân tích của Kết cấu VXT với bảng kết quả xuất từ ETABS / SAP2000 / SAFE (mô hình xuất bằng .e2k/.s2k của chương trình).
+/// <summary>So sánh kết quả phân tích của Việt Const với bảng kết quả xuất từ ETABS / SAP2000 / SAFE (mô hình xuất bằng .e2k/.s2k của chương trình).
 /// Đọc và khớp bảng bằng <see cref="ResultImportSession"/> (nhận diện bảng, đơn vị, quy ước dấu, khớp thanh theo tên/toạ độ) –
 /// không thay kết quả hiện hành mà đối chiếu với <see cref="AnalysisResults"/> của chương trình: nội lực thanh tại các trạm chung,
 /// phản lực gối, tổng phản lực, chuyển vị và chuyển vị lệch tầng, chu kỳ dao động (nếu có).</summary>

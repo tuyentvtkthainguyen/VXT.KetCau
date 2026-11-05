@@ -28,7 +28,7 @@ public static class Help
     public static void Show(string helpId)
     {
         try { Opener?.Invoke(helpId); }
-        catch (Exception ex) { MessageBox.Show("Không mở được hướng dẫn sử dụng:\n" + ex.Message, "Kết cấu VXT", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception ex) { MessageBox.Show("Không mở được hướng dẫn sử dụng:\n" + ex.Message, "Việt Const", MessageBoxButton.OK, MessageBoxImage.Warning); }
     }
 
     /// <summary>Đặt Help.Id cho cửa sổ và chèn dải "? Hướng dẫn (F1)" ở trên cùng nội dung (khi cửa sổ nạp xong).</summary>

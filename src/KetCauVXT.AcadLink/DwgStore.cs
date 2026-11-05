@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 
 namespace KetCauVXT.AcadLink
 {
-    /// <summary>Nhóm cấu kiện – chuỗi CỐ ĐỊNH, dùng chung với chương trình Kết cấu VXT (CadCategory / AcadCategory).</summary>
+    /// <summary>Nhóm cấu kiện – chuỗi CỐ ĐỊNH, dùng chung với chương trình Việt Const (CadCategory / AcadCategory).</summary>
     internal static class Cat
     {
         public const string Tuong = "Tuong", Cot = "Cot", Dam = "Dam", San = "San", Truc = "Truc", Cua = "Cua", Thang = "Thang", TenPhong = "TenPhong", BoQua = "BoQua";

@@ -41,7 +41,7 @@ public static class VerificationRunner
         string v = !string.IsNullOrWhiteSpace(info) ? info : asm.GetName().Version?.ToString() ?? "?";
         int plus = v.IndexOf('+');
         if (plus > 0 && v.Length - plus > 9) v = v.Substring(0, plus + 9);   // rút gọn mã commit
-        return "Kết cấu VXT " + v;
+        return "Việt Const " + v;
     }
 
     /// <summary>Mô tả môi trường chạy: .NET, hệ điều hành, kiến trúc, số nhân, máy tính.</summary>

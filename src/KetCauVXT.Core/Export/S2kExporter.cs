@@ -33,7 +33,7 @@ public static class S2kExporter
         void L(string s) => sb.Append(s).Append("\r\n");
         void T(string name) { L(""); L($"TABLE:  \"{name}\""); }
 
-        L($"File {Path.GetFileName(path)} – xuất từ Kết cấu VXT ngày {DateTime.Now:dd/MM/yyyy HH:mm}");
+        L($"File {Path.GetFileName(path)} – xuất từ Việt Const ngày {DateTime.Now:dd/MM/yyyy HH:mm}");
         T("PROGRAM CONTROL");
         L("   ProgramName=SAP2000   Version=22.0.0   CurrUnits=\"KN, m, C\"   SteelCode=AISC360-16   ConcCode=\"ACI 318-14\"   RegenHinge=Yes");
 

@@ -11,7 +11,7 @@ public static partial class CalculationReport
     {
         var x = r.External;
         d.Heading($"{n}. SỐ LIỆU NỘI LỰC NHẬP TỪ {x.Software.ToUpperInvariant()}", 1);
-        d.Paragraph($"Nội lực dùng để thiết kế cấu kiện trong thuyết minh này được phân tích bằng phần mềm {x.Software} và nhập vào chương trình Kết cấu VXT "
+        d.Paragraph($"Nội lực dùng để thiết kế cấu kiện trong thuyết minh này được phân tích bằng phần mềm {x.Software} và nhập vào chương trình Việt Const "
                     + $"ngày {x.ImportedAt:dd/MM/yyyy HH:mm}. Chương trình không phân tích lại kết cấu; các bước thiết kế, bố trí thép, bản vẽ dùng đúng bộ nội lực nhập về.");
         d.Paragraph("Sơ đồ tính, tải trọng, tổ hợp tải trọng và các giả thiết của mô hình phân tích trong " + x.Software
                     + " thuộc trách nhiệm của người lập mô hình. Người thiết kế cần kiểm tra sự phù hợp giữa mô hình phân tích và hồ sơ thiết kế (kích thước, vật liệu, tải trọng).", false, true);

@@ -62,7 +62,7 @@ public class AppendixSection
     public override string ToString() => FullTitle;
 }
 
-/// <summary>Phụ lục tính toán: công thức, chỉ số, hệ số, hệ số an toàn, giải thích và phương pháp mà Kết cấu VXT áp dụng.
+/// <summary>Phụ lục tính toán: công thức, chỉ số, hệ số, hệ số an toàn, giải thích và phương pháp mà Việt Const áp dụng.
 /// Nội dung lấy trực tiếp từ mã nguồn: các bảng số (cường độ vật liệu, k(z), phổ động đất, hệ số A/B/D, φ thép, tải tường,
 /// cấu tạo sàn…) được tính lại bằng chính các hàm của chương trình nên luôn khớp với phiên bản đang chạy.</summary>
 public static class Appendix

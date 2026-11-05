@@ -60,7 +60,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         if (!string.IsNullOrWhiteSpace(p.Owner)) d.Paragraph("Chủ đầu tư: " + p.Owner, false, false, ParaAlign.Center);
         d.EmptyLine().EmptyLine();
         if (!string.IsNullOrWhiteSpace(p.Designer)) d.Paragraph("Người thiết kế: " + p.Designer, false, false, ParaAlign.Center);
-        d.Paragraph("Phần mềm tính toán: Kết cấu VXT", false, true, ParaAlign.Center);
+        d.Paragraph("Phần mềm tính toán: Việt Const", false, true, ParaAlign.Center);
         d.Paragraph("Ngày lập: " + DateTime.Now.ToString("dd/MM/yyyy", Inv), false, true, ParaAlign.Center);
         d.PageBreak();
     }
@@ -183,7 +183,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
     {
         if (r?.External != null) { ExternalResultsSection(p, r, d, n); return; }   // nội lực nhập từ ETABS/SAP/SAFE – CalculationReport.External.cs
         d.Heading($"{n}. SƠ ĐỒ TÍNH VÀ PHẦN MỀM", 1);
-        d.Paragraph("Kết cấu được tính toán bằng chương trình Kết cấu VXT theo phương pháp phần tử hữu hạn (phương pháp độ cứng trực tiếp) với mô hình khung không gian:");
+        d.Paragraph("Kết cấu được tính toán bằng chương trình Việt Const theo phương pháp phần tử hữu hạn (phương pháp độ cứng trực tiếp) với mô hình khung không gian:");
         d.Bullet("Cột, dầm, kèo được mô hình bằng phần tử thanh Timoshenko 12 bậc tự do (kể biến dạng cắt); giải phóng liên kết đầu thanh bằng khử tĩnh.");
         d.Bullet("Thanh tiết diện thay đổi (cột, kèo khung tiền chế) được chia thành nhiều đoạn lăng trụ.");
         d.Bullet(p.UseRigidDiaphragm
@@ -800,7 +800,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
                 d.Bullet($"{m.Name}{(string.IsNullOrEmpty(m.Story) ? "" : " – " + m.Story)}: {bad}{(err.Count > 0 ? " " + string.Join(" ", err) : "")}");
             }
         }
-        d.Paragraph("Thuyết minh được lập tự động bằng chương trình Kết cấu VXT. Người thiết kế có trách nhiệm kiểm tra lại số liệu đầu vào, sơ đồ tính và kết quả trước khi sử dụng.", false, true);
+        d.Paragraph("Thuyết minh được lập tự động bằng chương trình Việt Const. Người thiết kế có trách nhiệm kiểm tra lại số liệu đầu vào, sơ đồ tính và kết quả trước khi sử dụng.", false, true);
     }
 
     private static string[] Row<T>(string name, List<T> list) where T : MemberDesignBase

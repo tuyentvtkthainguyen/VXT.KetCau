@@ -177,7 +177,7 @@ public class OutputLayer
 public class CadStandard
 {
     public const int CurrentSchema = 1;
-    public const string PresetVxtName = "Kết cấu VXT (mặc định)";
+    public const string PresetVxtName = "Việt Const (mặc định)";
     public const string PresetTcvnName = "TCVN/Văn phòng";
     public const string PresetUserName = "Tự định nghĩa";
     public const string FontArial = "Arial";
@@ -227,7 +227,7 @@ public class CadStandard
     public static readonly string[] Linetypes = { "CONTINUOUS", "DASHED", "CENTER", "HIDDEN", "DASHDOT" };
     public static readonly string[] Fonts = { FontArial, FontTimes };
 
-    /// <summary>Mẫu "Kết cấu VXT": giữ nguyên tên/màu/kiểu nét hiện tại (DXF xuất ra giống hệt trước đây).</summary>
+    /// <summary>Mẫu "Việt Const": giữ nguyên tên/màu/kiểu nét hiện tại (DXF xuất ra giống hệt trước đây).</summary>
     public static List<OutputLayer> PresetVxt() => new()
     {
         new("0", "0", 7, "CONTINUOUS", 0.18, "Lớp 0"),
@@ -386,7 +386,7 @@ public class CadStandard
     public static string NormalizeFont(string f) =>
         NormName(f ?? "").StartsWith("TIMES", StringComparison.Ordinal) ? FontTimes : FontArial;
 
-    /// <summary>Chuẩn giữ nguyên tên/màu/kiểu nét của chương trình (mẫu Kết cấu VXT) – DXF ghi giống hệt khi không có chuẩn.</summary>
+    /// <summary>Chuẩn giữ nguyên tên/màu/kiểu nét của chương trình (mẫu Việt Const) – DXF ghi giống hệt khi không có chuẩn.</summary>
     [JsonIgnore]
     public bool IsBuiltInOutput
     {

@@ -15,7 +15,7 @@ using Exception = System.Exception;
 
 namespace KetCauVXT.AcadLink
 {
-    /// <summary>Lệnh VXT_KT – lấy kích thước đối tượng AutoCAD cho chế độ "Triển khai hồ sơ" của Kết cấu VXT:
+    /// <summary>Lệnh VXT_KT – lấy kích thước đối tượng AutoCAD cho chế độ "Triển khai hồ sơ" của Việt Const:
     /// dầm (trục + cột → nhịp, 2 cạnh → b, nhập h), cột (hình chữ nhật → b × h), sàn (lưới trục → nhịp X / Y, đa tuyến kín bên trong → lỗ thủng),
     /// móng đơn (hình chữ nhật móng + cột bên trong), móng băng (trục + cột → chiều dài, vị trí cột).
     /// Ghi %AppData%\KetCauVXT\AcadPick\pick_*.json (đơn vị m) – chương trình tự nhận khi cửa sổ Triển khai hồ sơ đang mở
@@ -75,7 +75,7 @@ namespace KetCauVXT.AcadLink
                 string file = Path.Combine(PickDir, "pick_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture) + ".json");
                 File.WriteAllText(file, w.ToString(), new System.Text.UTF8Encoding(false));
                 ed.WriteMessage("\nĐã lấy " + n + " đối tượng (" + kind + ", đơn vị bản vẽ: " + unitName + ") → " + file
-                                + "\nTrong Kết cấu VXT (chế độ Triển khai hồ sơ): chương trình tự nhận khi cửa sổ đang mở, hoặc bấm \"Lấy kích thước từ AutoCAD\".");
+                                + "\nTrong Việt Const (chế độ Triển khai hồ sơ): chương trình tự nhận khi cửa sổ đang mở, hoặc bấm \"Lấy kích thước từ AutoCAD\".");
             }
             catch (Exception ex) { ed.WriteMessage("\nLỗi VXT_KT: " + ex.Message); }
         }

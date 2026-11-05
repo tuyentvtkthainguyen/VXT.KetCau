@@ -34,12 +34,12 @@ public class ManualFooting : IDetailMember
     [Field("Thép phương B – Ø", Unit = "mm", Group = "Thép")] public int DiaB { get; set; }
     [Field("Thép phương B – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double SB { get; set; }
 
-    [Field("Sát ranh theo phương L", Group = "Sát ranh đất (móng lệch tâm)", Choices = "Không|Ranh bên trái|Ranh bên phải",
-        Hint = "móng và bê tông lót không vươn sang đất nhà bên – cột lệch về mép móng")] public string BoundaryL { get; set; } = "Không";
-    [Field("Sát ranh theo phương B", Group = "Sát ranh đất (móng lệch tâm)", Choices = "Không|Ranh phía dưới|Ranh phía trên")] public string BoundaryB { get; set; } = "Không";
-    [Field("Mép ngoài cột cách ranh", Unit = "mm", Scale = 1000, Group = "Sát ranh đất (móng lệch tâm)")] public double Setback { get; set; }
-    [Field("Có dầm móng cân bằng mô men lệch tâm N·e", Group = "Sát ranh đất (móng lệch tâm)", Hint = "bỏ chọn: áp lực đáy móng kể thêm mô men N·e")] public bool BalanceBeam { get; set; } = true;
-    [Field("Bê tông lót vươn ra (phía không sát ranh)", Unit = "mm", Scale = 1000, Group = "Sát ranh đất (móng lệch tâm)")] public double LeanOverhang { get; set; } = 0.10;
+    [Field("Phương L – bên giáp nhà hàng xóm (hết đất)", Group = "Bê tông lót, giáp nhà hàng xóm (móng lệch tâm)", Choices = "Không|Giáp nhà hàng xóm bên trái (hết đất)|Giáp nhà hàng xóm bên phải (hết đất)",
+        Hint = "phía giáp nhà hàng xóm: bê tông móng và bê tông lót không vươn sang đất nhà bên – cột lệch về mép móng")] public string BoundaryL { get; set; } = "Không";
+    [Field("Phương B – bên giáp nhà hàng xóm (hết đất)", Group = "Bê tông lót, giáp nhà hàng xóm (móng lệch tâm)", Choices = "Không|Giáp nhà hàng xóm phía dưới (hết đất)|Giáp nhà hàng xóm phía trên (hết đất)")] public string BoundaryB { get; set; } = "Không";
+    [Field("Mép ngoài cột cách ranh đất", Unit = "mm", Scale = 1000, Group = "Bê tông lót, giáp nhà hàng xóm (móng lệch tâm)")] public double Setback { get; set; }
+    [Field("Có dầm móng cân bằng mô men lệch tâm N·e", Group = "Bê tông lót, giáp nhà hàng xóm (móng lệch tâm)", Hint = "bỏ chọn: áp lực đáy móng kể thêm mô men N·e")] public bool BalanceBeam { get; set; } = true;
+    [Field("Bê tông lót vươn ra (phía không giáp nhà bên)", Unit = "mm", Scale = 1000, Group = "Bê tông lót, giáp nhà hàng xóm (móng lệch tâm)")] public double LeanOverhang { get; set; } = 0.10;
 
     public static readonly int[] Dias = { 10, 12, 14, 16, 18, 20 };
 
@@ -67,7 +67,7 @@ public class ManualFooting : IDetailMember
         double ntc = Ntc > 0 ? Ntc : N / 1.15, kTc = ntc / N;
         double mLt = ML * kTc, mBt = MB * kTc;
         // ---- sát ranh: cột lệch về mép móng; e = L/2 − (bc/2 + khoảng lùi) ----
-        bool bL = (BoundaryL ?? "").StartsWith("Ranh"), bB = (BoundaryB ?? "").StartsWith("Ranh");
+        bool bL = Dt.IsNeighbour(BoundaryL), bB = Dt.IsNeighbour(BoundaryB);
         double EL(double ll) => bL ? Math.Max(ll / 2 - ColL / 2 - Math.Max(Setback, 0), 0) : 0;
         double EB(double bb) => bB ? Math.Max(bb / 2 - ColB / 2 - Math.Max(Setback, 0), 0) : 0;
         double AddL(double ll) => BalanceBeam ? 0 : ntc * EL(ll);
@@ -103,7 +103,7 @@ public class ManualFooting : IDetailMember
                 OffsetY = bB ? ((BoundaryB ?? "").Contains("dưới") ? 1 : -1) * EB(b) : 0
             };
             double me = N * Math.Sqrt(EL(l) * EL(l) + EB(b) * EB(b));
-            r.Calc.Add("Móng sát ranh (" + f.Eccentric.Sides + "): móng và bê tông lót không vươn sang đất bên cạnh; tim cột lệch tâm móng eL = " + Dt.Mm(EL(l)) + " mm, eB = "
+            r.Calc.Add("Móng giáp nhà hàng xóm – hết đất (" + f.Eccentric.Sides + "): bê tông móng và bê tông lót không vươn sang đất nhà bên; tim cột lệch tâm móng eL = " + Dt.Mm(EL(l)) + " mm, eB = "
                        + Dt.Mm(EB(b)) + " mm → mô men lệch tâm M = N·e = " + Dt.F(me, "0.0") + " kN.m"
                        + (BalanceBeam ? " do dầm móng cân bằng chịu (tính dầm móng với mô men này ở đầu dầm)" : " – kể vào áp lực đáy móng"));
             if (BalanceBeam) r.Messages.Add("Dầm móng cân bằng nối móng " + Name + " với móng bên trong phải chịu M = N·e = " + Dt.F(me, "0.0") + " kN.m (nhập vào dầm móng: Vị trí = Dầm móng)");
@@ -178,7 +178,7 @@ public class ManualFooting : IDetailMember
         r.FormworkArea = 2 * (l + b) * f.Hb;
         double ov = Math.Max(LeanOverhang, 0);
         r.LeanVolume = (l + (bL ? 1 : 2) * ov) * (b + (bB ? 1 : 2) * ov) * s.LeanThickness;
-        if (bL || bB) r.Extra.Add(("Xây gạch / tấm khuôn để lại cho thành móng sát ranh", "m²", ((bL ? b : 0) + (bB ? l : 0)) * f.Hb));
+        if (bL || bB) r.Extra.Add(("Xây gạch / tấm khuôn để lại cho thành móng giáp nhà hàng xóm", "m²", ((bL ? b : 0) + (bB ? l : 0)) * f.Hb));
         r.Extra.Add(("Đào đất hố móng (mở taluy 1:0,5 mỗi bên 0,3 m)", "m³", (l + 0.6 + 0.5 * Df) * (b + 0.6 + 0.5 * Df) * Df));
         return r;
     }
@@ -218,9 +218,9 @@ public class ManualStrip : IDetailMember
     [Field("Chiều dày mép bản", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Hf { get; set; } = 0.25;
     [Field("Bề rộng sườn (dầm móng)", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Bs { get; set; } = 0.35;
     [Field("Chiều cao sườn tổng (0 = tự chọn)", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double Hs { get; set; }
-    [Field("Bố trí cánh", Group = "Kích thước", Choices = "Cánh 2 bên|Cánh 1 bên – sát ranh đất",
-        Hint = "sát ranh: bản đáy và bê tông lót không vươn sang đất nhà bên, sườn đặt sát ranh")] public string FlangeSide { get; set; } = "Cánh 2 bên";
-    [Field("Bê tông lót vươn ra (phía không sát ranh)", Unit = "mm", Scale = 1000, Group = "Kích thước")] public double LeanOverhang { get; set; } = 0.10;
+    [Field("Bố trí cánh / bên giáp nhà hàng xóm", Group = "Bê tông lót, giáp nhà hàng xóm", Choices = "Cánh 2 bên|Cánh 1 bên – giáp nhà hàng xóm (hết đất)",
+        Hint = "giáp nhà hàng xóm: bản đáy và bê tông lót không vươn sang đất nhà bên, sườn đặt sát ranh đất")] public string FlangeSide { get; set; } = "Cánh 2 bên";
+    [Field("Bê tông lót vươn ra (phía không giáp nhà bên)", Unit = "mm", Scale = 1000, Group = "Bê tông lót, giáp nhà hàng xóm")] public double LeanOverhang { get; set; } = 0.10;
     [Field("Sức chịu tải nền R", Unit = "kN/m²", Group = "Nền")] public double R { get; set; } = 150;
     [Field("Hệ số nền k (0 = 120·R theo Bowles)", Unit = "kN/m³", Group = "Nền")] public double K { get; set; }
     [Field("Độ sâu chôn móng Df", Unit = "m", Group = "Nền")] public double Df { get; set; } = 1.5;
@@ -358,8 +358,8 @@ public class ManualStrip : IDetailMember
         if (oneSide)
         {
             double et = (b - Bs) / 2;
-            r.Calc.Add("Móng băng sát ranh (cánh 1 bên): tải cột lệch so với tâm bản đáy e = (B − bs)/2 = " + Dt.Mm(et) + " mm → mô men xoắn phân bố mt = q·e; cần dầm móng ngang (giằng) kéo về móng trong để cân bằng, hoặc tăng độ cứng sườn");
-            r.Messages.Add("Móng băng sát ranh: bố trí giằng móng ngang nối sang móng bên trong (cân bằng mô men lệch tâm ΣN·e = " + Dt.F(sumN * et / Math.Max(cols.Count, 1), "0.0") + " kN.m/cột)");
+            r.Calc.Add("Móng băng giáp nhà hàng xóm – hết đất (cánh 1 bên): tải cột lệch so với tâm bản đáy e = (B − bs)/2 = " + Dt.Mm(et) + " mm → mô men xoắn phân bố mt = q·e; cần dầm móng ngang (giằng) kéo về móng trong để cân bằng, hoặc tăng độ cứng sườn");
+            r.Messages.Add("Móng băng giáp nhà hàng xóm: bố trí giằng móng ngang nối sang móng bên trong (cân bằng mô men lệch tâm ΣN·e = " + Dt.F(sumN * et / Math.Max(cols.Count, 1), "0.0") + " kN.m/cột)");
         }
         r.Calc.Add("Bản cánh console l = " + (oneSide ? "B − bs" : "(B − bs)/2") + " = " + Dt.F(lc) + " m, p = " + Dt.F(pn, "0.0") + " kN/m² → M = p·l²/2 = " + Dt.F(mF, "0.00") + " kN.m/m → " + Dt.Spaced(fl.Item1, fl.Item2));
         r.Checks.Add(Dt.Check("Bản cánh chịu uốn (thép ngang " + Dt.Spaced(fl.Item1, fl.Item2) + ")", mF, muF, "kN.m/m"));
@@ -390,7 +390,7 @@ public class ManualStrip : IDetailMember
         r.FormworkArea = (2 * Hf + 2 * (hs - Hf)) * Length + 2 * area;
         double ovs = Math.Max(LeanOverhang, 0);
         r.LeanVolume = (b + (oneSide ? 1 : 2) * ovs) * (Length + 2 * ovs) * s.LeanThickness;
-        if (oneSide) r.Extra.Add(("Xây gạch / tấm khuôn để lại cho thành móng băng sát ranh", "m²", hs * Length));
+        if (oneSide) r.Extra.Add(("Xây gạch / tấm khuôn để lại cho thành móng băng giáp nhà hàng xóm", "m²", hs * Length));
         r.Extra.Add(("Đào đất hố móng", "m³", (b + 0.6 + 0.5 * Df) * (Length + 0.6) * Df));
         return r;
     }
@@ -516,13 +516,13 @@ public class ManualPileCap : IDetailMember
     [Field("Chiều cao đài H (0 = tự chọn)", Unit = "mm", Scale = 1000, Group = "Đài")] public double H { get; set; }
     [Field("Độ sâu đáy đài Df", Unit = "m", Group = "Đài")] public double Df { get; set; } = 1.5;
     [Field("γtb đất + đài", Unit = "kN/m³", Group = "Đài")] public double GammaTb { get; set; } = 20;
-    [Field("Sát ranh theo phương X", Group = "Sát ranh đất", Choices = "Không|Ranh bên trái|Ranh bên phải",
-        Hint = "đài và bê tông lót không vươn sang đất bên; tim cọc cách ranh ≥ khoảng lùi ép cọc")] public string BoundaryX { get; set; } = "Không";
-    [Field("Sát ranh theo phương Y", Group = "Sát ranh đất", Choices = "Không|Ranh phía dưới|Ranh phía trên")] public string BoundaryY { get; set; } = "Không";
-    [Field("Tim cọc cách ranh tối thiểu (máy ép)", Unit = "mm", Scale = 1000, Group = "Sát ranh đất")] public double PileSetback { get; set; } = 0.50;
-    [Field("Mép ngoài cột cách ranh", Unit = "mm", Scale = 1000, Group = "Sát ranh đất")] public double ColSetback { get; set; }
-    [Field("Có dầm móng cân bằng mô men lệch tâm N·e", Group = "Sát ranh đất")] public bool BalanceBeam { get; set; } = true;
-    [Field("Bê tông lót vươn ra (phía không sát ranh)", Unit = "mm", Scale = 1000, Group = "Sát ranh đất")] public double LeanOverhang { get; set; } = 0.10;
+    [Field("Phương X – bên giáp nhà hàng xóm (hết đất)", Group = "Bê tông lót, giáp nhà hàng xóm", Choices = "Không|Giáp nhà hàng xóm bên trái (hết đất)|Giáp nhà hàng xóm bên phải (hết đất)",
+        Hint = "đài và bê tông lót không vươn sang đất nhà bên; tim cọc cách ranh ≥ khoảng lùi ép cọc")] public string BoundaryX { get; set; } = "Không";
+    [Field("Phương Y – bên giáp nhà hàng xóm (hết đất)", Group = "Bê tông lót, giáp nhà hàng xóm", Choices = "Không|Giáp nhà hàng xóm phía dưới (hết đất)|Giáp nhà hàng xóm phía trên (hết đất)")] public string BoundaryY { get; set; } = "Không";
+    [Field("Tim cọc cách ranh đất tối thiểu (máy ép)", Unit = "mm", Scale = 1000, Group = "Bê tông lót, giáp nhà hàng xóm")] public double PileSetback { get; set; } = 0.50;
+    [Field("Mép ngoài cột cách ranh đất", Unit = "mm", Scale = 1000, Group = "Bê tông lót, giáp nhà hàng xóm")] public double ColSetback { get; set; }
+    [Field("Có dầm móng cân bằng mô men lệch tâm N·e", Group = "Bê tông lót, giáp nhà hàng xóm")] public bool BalanceBeam { get; set; } = true;
+    [Field("Bê tông lót vươn ra (phía không giáp nhà bên)", Unit = "mm", Scale = 1000, Group = "Bê tông lót, giáp nhà hàng xóm")] public double LeanOverhang { get; set; } = 0.10;
     [Field("Thép phương X – Ø (0 = tự chọn)", Unit = "mm", Group = "Thép")] public int DiaX { get; set; }
     [Field("Thép phương X – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double SX { get; set; }
     [Field("Thép phương Y – Ø", Unit = "mm", Group = "Thép")] public int DiaY { get; set; }
@@ -597,11 +597,11 @@ public class ManualPileCap : IDetailMember
             if (NumPiles > 0 || (P.Max() <= Pa && P.Min() >= -Pt) || n >= 25) break;
             n++;
         }
-        bool bX = (BoundaryX ?? "").StartsWith("Ranh"), bY = (BoundaryY ?? "").StartsWith("Ranh");
+        bool bX = Dt.IsNeighbour(BoundaryX), bY = Dt.IsNeighbour(BoundaryY);
         if (bX || bY)
         {
             double me = N * Math.Sqrt(xc * xc + yc * yc);
-            r.Calc.Add("Đài sát ranh: đài và bê tông lót không vươn sang đất bên; tim cọc cách ranh ≥ " + Dt.Mm(PileSetback) + " mm (vị trí máy ép); tim cột lệch trọng tâm nhóm cọc ex = "
+            r.Calc.Add("Đài giáp nhà hàng xóm (hết đất): đài và bê tông lót không vươn sang đất nhà bên; tim cọc cách ranh ≥ " + Dt.Mm(PileSetback) + " mm (vị trí máy ép); tim cột lệch trọng tâm nhóm cọc ex = "
                        + Dt.Mm(Math.Abs(xc)) + ", ey = " + Dt.Mm(Math.Abs(yc)) + " mm → M = N·e = " + Dt.F(me, "0.0") + " kN.m" + (BalanceBeam ? " do dầm móng cân bằng chịu" : " – kể vào lực cọc"));
             if (BalanceBeam && me > 1e-6) r.Messages.Add("Dầm móng cân bằng nối đài " + Name + " với đài bên trong phải chịu M = N·e = " + Dt.F(me, "0.0") + " kN.m");
         }
@@ -725,8 +725,8 @@ public class ManualPileCap : IDetailMember
         double ox = CapCx * 1000, oy = CapCy * 1000;
         w.Rect(Lay.BeTong, ox - L / 2, oy - B / 2, ox + L / 2, oy + B / 2);
         w.Rect(Lay.BeTong, -ColX * 500, -ColY * 500, ColX * 500, ColY * 500);
-        if ((BoundaryX ?? "").StartsWith("Ranh")) { double bx0 = (BoundaryX.Contains("trái") ? ox - L / 2 : ox + L / 2); w.Line(Lay.KyHieu, bx0, oy - B / 2 - 600, bx0, oy + B / 2 + 600, "CENTER"); w.Text(Lay.Chu, bx0 - 0.6 * w.Th, oy, 0.8 * w.Th, "RANH ĐẤT", 90, 1, 2); }
-        if ((BoundaryY ?? "").StartsWith("Ranh")) { double by0 = (BoundaryY.Contains("dưới") ? oy - B / 2 : oy + B / 2); w.Line(Lay.KyHieu, ox - L / 2 - 600, by0, ox + L / 2 + 600, by0, "CENTER"); w.Text(Lay.Chu, ox, by0 - 0.6 * w.Th, 0.8 * w.Th, "RANH ĐẤT", 0, 1, 3); }
+        if (Dt.IsNeighbour(BoundaryX)) { double bx0 = (BoundaryX.Contains("trái") ? ox - L / 2 : ox + L / 2); w.Line(Lay.KyHieu, bx0, oy - B / 2 - 600, bx0, oy + B / 2 + 600, "CENTER"); w.Text(Lay.Chu, bx0 - 0.6 * w.Th, oy, 0.8 * w.Th, "RANH ĐẤT", 90, 1, 2); }
+        if (Dt.IsNeighbour(BoundaryY)) { double by0 = (BoundaryY.Contains("dưới") ? oy - B / 2 : oy + B / 2); w.Line(Lay.KyHieu, ox - L / 2 - 600, by0, ox + L / 2 + 600, by0, "CENTER"); w.Text(Lay.Chu, ox, by0 - 0.6 * w.Th, 0.8 * w.Th, "RANH ĐẤT", 0, 1, 3); }
         w.Line(Lay.Truc, 0, -B / 2 - 800, 0, B / 2 + 800, "CENTER");
         w.Line(Lay.Truc, -L / 2 - 800, 0, L / 2 + 800, 0, "CENTER");
         for (int i = 0; i < Piles.Count; i++)

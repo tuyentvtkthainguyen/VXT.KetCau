@@ -46,7 +46,7 @@ public static class CrossCheckWriter
         var sh = x.AddSheet("Tổng hợp");
         sh.FirstRowIsHeader = false; sh.FreezeRows = 0;
         sh.SetColumnWidths(30, 12, 12, 12, 12, 12, 12, 14, 50);
-        sh.AddRow(new XlCell("SO SÁNH KẾT QUẢ PHÂN TÍCH KẾT CẤU VXT – " + r.Software, XlStyle.Title));
+        sh.AddRow(new XlCell("SO SÁNH KẾT QUẢ PHÂN TÍCH VIỆT CONST – " + r.Software, XlStyle.Title));
         sh.AddRow("Công trình", r.ProjectName);
         sh.AddRow("Phần mềm đối chiếu", r.Software);
         sh.AddRow("File kết quả", string.Join("; ", r.Files.Select(Path.GetFileName)));
@@ -66,7 +66,7 @@ public static class CrossCheckWriter
             sh.AddRow($"{m.Label} ({m.ExternalName})", m.FrameId, m.Story, m.Kind, Pct(m.WorstPercent, o), m.WorstComponent, m.OurM3, m.ExtM3, m.WorstCase);
         sh.AddEmptyRow();
         sh.AddRow(new XlCell("GHÉP TRƯỜNG HỢP / TỔ HỢP", XlStyle.Bold));
-        sh.AddHeaderRow("Trường hợp ngoài", "So sánh", "Kết cấu VXT", "Cách ghép");
+        sh.AddHeaderRow("Trường hợp ngoài", "So sánh", "Việt Const", "Cách ghép");
         foreach (var p in r.Pairs) sh.AddRow(p.External, p.Active ? "Có" : "Không", p.Ours, p.Method);
 
         // ---- Thanh ----
@@ -145,7 +145,7 @@ public static class CrossCheckWriter
         sn.AddRow(new XlCell("GỢI Ý NGUYÊN NHÂN (theo kết quả so sánh)", XlStyle.Bold));
         foreach (var h in r.Hints) sn.AddRow("• " + h);
         sn.AddEmptyRow();
-        sn.AddRow(new XlCell("NGUYÊN NHÂN SAI LỆCH THƯỜNG GẶP GIỮA KẾT CẤU VXT VÀ ETABS/SAP2000", XlStyle.Bold));
+        sn.AddRow(new XlCell("NGUYÊN NHÂN SAI LỆCH THƯỜNG GẶP GIỮA VIỆT CONST VÀ ETABS/SAP2000", XlStyle.Bold));
         foreach (var g in CrossCheckReport.Guidance) sn.AddRow("• " + g);
         sn.AddEmptyRow();
         sn.AddRow(new XlCell($"THANH TRONG FILE NGOÀI KHÔNG KHỚP ({r.UnmatchedExternal.Count})", XlStyle.Bold));
@@ -167,7 +167,7 @@ public static class CrossCheckWriter
         var o = r.Options;
         var d = new DocxWriter();
         d.Title("BÁO CÁO SO SÁNH KẾT QUẢ PHÂN TÍCH", 16);
-        d.Paragraph("Kết cấu VXT ↔ " + r.Software, true, false, ParaAlign.Center);
+        d.Paragraph("Việt Const ↔ " + r.Software, true, false, ParaAlign.Center);
         d.Paragraph("Công trình: " + r.ProjectName, false, false, ParaAlign.Center);
         d.EmptyLine();
 

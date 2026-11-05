@@ -78,6 +78,8 @@ public static class Dt
     /// <summary>Diện tích thép rải Ø d a s trên 1 m (m²/m).</summary>
     public static double AreaPerM(int d, double s) => s > 1e-9 ? Area(d) / s : 0;
     public static string Spaced(int d, double s) => $"Ø{d}a{Mm(s)}";
+    /// <summary>Lựa chọn "giáp nhà hàng xóm (hết đất)" / "sát ranh": khác rỗng và không bắt đầu bằng "Không".</summary>
+    public static bool IsNeighbour(string choice) => !string.IsNullOrWhiteSpace(choice) && !choice.TrimStart().StartsWith("Không", StringComparison.OrdinalIgnoreCase);
     public static string Bars(int n, int d) => $"{n}Ø{d}";
 
     public static CheckItem Check(string name, double demand, double capacity, string unit, string note = "") =>

@@ -102,8 +102,8 @@ public partial class AnalysisResults   // dao động riêng: Analysis/ModalResu
     // ---- [kết quả nhập từ phần mềm khác – Analysis/ExternalResults.cs, Import/External/ResultImporter.cs] ----
     /// <summary>Thông tin nguồn khi nội lực được NHẬP từ ETABS/SAP2000/SAFE/phần mềm khác; null = kết quả của chương trình.</summary>
     public ExternalResultInfo External { get; set; }
-    /// <summary>Tên nguồn kết quả để hiển thị ("Kết cấu VXT", "ETABS", "SAP2000"…).</summary>
-    public string Source => External == null ? "Kết cấu VXT" : External.Software;
+    /// <summary>Tên nguồn kết quả để hiển thị ("Việt Const", "ETABS", "SAP2000"…).</summary>
+    public string Source => External == null ? "Việt Const" : External.Software;
     /// <summary>Tổ hợp "ngoài" sinh khi nhập kết quả (tổ hợp bao Max/Min của ETABS, bao các tổ hợp TTGH I nhập về).
     /// Ưu tiên hơn Project.Combinations cùng tên; không lưu vào dự án.</summary>
     public List<LoadCombination> ExternalCombos { get; } = new();

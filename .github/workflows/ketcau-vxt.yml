@@ -1,4 +1,4 @@
-name: Ket cau VXT - build & test
+name: Viet Const - build & test
 
 permissions:
   contents: write
@@ -229,7 +229,7 @@ jobs:
           }
           Get-ChildItem dist\setup | Format-Table Name, Length
           # thử cài im lặng + gỡ để chắc bộ cài chạy được
-          $p = Start-Process dist\setup\KetCauVXT-Setup.exe -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/CURRENTUSER","/LOG=setup_test.log" -PassThru -Wait
+          $p = Start-Process dist\setup\VietConst-Setup.exe -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/CURRENTUSER","/LOG=setup_test.log" -PassThru -Wait
           if ($p.ExitCode -ne 0) { Get-Content setup_test.log -Tail 40; throw "Cai thu loi ($($p.ExitCode))" }
           $exe = Join-Path $env:LOCALAPPDATA "Programs\KetCauVXT\KetCauVXT.exe"
           if (-not (Test-Path $exe)) { Get-Content setup_test.log -Tail 40; throw "Khong thay $exe sau khi cai" }
@@ -251,7 +251,7 @@ jobs:
           $tag = "ketcau-vxt-latest"
           gh release delete $tag -y --cleanup-tag 2>$null
           $assets = @("dist\KetCauVXT-win-x64.zip") + (Get-ChildItem dist\setup -File | ForEach-Object { $_.FullName })
-          gh release create $tag @assets --target $env:GITHUB_SHA --title "Kết cấu VXT – bản Windows mới nhất" --notes "Bộ cài chuẩn: tải KetCauVXT-Setup.exe và tất cả file KetCauVXT-Setup-*.bin về cùng một thư mục, chạy KetCauVXT-Setup.exe. Bản không cần cài: giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Add-in AutoCAD 2021–2026 (tích chọn tường, cột, dầm, sàn, trục gửi sang chương trình): chạy AutoCAD\CaiDatAutoCAD.cmd. Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
+          gh release create $tag @assets --target $env:GITHUB_SHA --title "Việt Const – bản Windows mới nhất" --notes "Bộ cài chuẩn: tải VietConst-Setup.exe và tất cả file VietConst-Setup-*.bin về cùng một thư mục, chạy VietConst-Setup.exe. Bản không cần cài: giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Add-in AutoCAD 2021–2026 (tích chọn tường, cột, dầm, sàn, trục gửi sang chương trình): chạy AutoCAD\CaiDatAutoCAD.cmd. Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
           # nhánh chỉ chứa file phát hành (để tải bằng git)
           git config user.name "github-actions"; git config user.email "actions@github.com"
           git checkout --orphan ketcau-vxt-dist
