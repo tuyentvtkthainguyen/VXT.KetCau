@@ -273,7 +273,7 @@ public partial class MainWindow
     }
 
     /// <summary>Mở khung nhìn mặt cắt (cửa sổ): hình DXF, chọn mặt cắt khác, xuất DXF.</summary>
-    private Window OpenSectionView(SectionLine first = null)
+    private Window OpenSectionView(SectionLine first = null, bool? foundation = null)
     {
         if (_p == null) return null;
         var all = SectionView.All(_p);
@@ -285,7 +285,11 @@ public partial class MainWindow
         var bDxf = new Button { Content = "Xuất DXF…", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(8, 0, 0, 0) };
         var bNew = new Button { Content = "Vẽ mặt cắt mới…", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(8, 0, 0, 0) };
         var info = new TextBlock { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.DimGray };
-        bar.Children.Add(cb); bar.Children.Add(bDxf); bar.Children.Add(bNew); bar.Children.Add(info);
+        // kiến trúc: không thể hiện móng (cắt tại cốt sân); kết cấu: vẽ móng, cổ cột, bê tông lót theo kết quả thiết kế móng
+        var chkFound = new CheckBox { Content = "Thể hiện móng", Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+            IsChecked = foundation ?? first?.ShowFoundation ?? false, ToolTip = "Bỏ chọn: mặt cắt kiến trúc cắt tại cốt sân, không vẽ móng" };
+        var chkMat = new CheckBox { Content = "Tô vật liệu", Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, IsChecked = true };
+        bar.Children.Add(cb); bar.Children.Add(bDxf); bar.Children.Add(bNew); bar.Children.Add(chkFound); bar.Children.Add(chkMat); bar.Children.Add(info);
         DockPanel.SetDock(bar, Dock.Top);
         var img = new Image { Stretch = Stretch.Uniform, Margin = new Thickness(10) };
         var host = new Border { Background = Brushes.White, Child = img };
@@ -295,15 +299,19 @@ public partial class MainWindow
         void Show()
         {
             int i = Math.Max(0, cb.SelectedIndex);
-            cur = SectionView.Draw(_p, all[i], 100);
+            bool fnd = chkFound.IsChecked == true;
+            if (!all[i].Auto) all[i].ShowFoundation = fnd;   // mặt cắt người dùng vẽ: lưu lựa chọn trong hồ sơ
+            cur = SectionView.Draw(_p, all[i], 100, null, new SectionOptions { ShowFoundation = fnd, Materials = chkMat.IsChecked == true, Footings = _design?.Footings });
             var fw = cur.Figure.W; var e = fw.Extents;
             if (e.IsEmpty) { img.Source = null; info.Text = "Không có cấu kiện bị cắt."; return; }
             double k = 1.0 / Math.Max(fw.Scale, 1e-9);
             var d = SheetRender.Render(new[] { (fw, k, -e.X1 * k, -e.Y1 * k) }, 0, e.H * k, 0.1, x => x.GetPrimitives());
             img.Source = new DrawingImage(d);
-            info.Text = $"{cur.Items.Count} cấu kiện bị cắt · {cur.Levels.Count} cao độ · {cur.Axes.Count} trục";
+            info.Text = $"{cur.Items.Count} cấu kiện bị cắt · {cur.Levels.Count} cao độ · {cur.Axes.Count} trục" + (cur.Foundations.Count > 0 ? $" · {cur.Foundations.Count} khối móng" : "");
         }
         cb.SelectionChanged += (s, e) => Show();
+        chkFound.Click += (s, e) => Show();
+        chkMat.Click += (s, e) => Show();
         cb.SelectedIndex = first == null ? 0 : Math.Max(0, all.FindIndex(s => s.Name == first.Name));
         bDxf.Click += (s, e) =>
         {
@@ -379,9 +387,18 @@ public partial class MainWindow
             pm.Begin(so);
             AddPrism(pm.Mesh, so);
         }
+        // rãnh điện nước chôn tường (khối mảnh màu cam) – chỉ hiển thị, không chọn
+        var chase = new PickMesh();
+        try
+        {
+            if (DisciplineView.Visible(_p, Discipline.DienNuoc))
+                foreach (var so in KetCauVXT.Mep.WallChases.Solids(_p)) { chase.Begin(so); AddPrism(chase.Mesh, so); }
+        }
+        catch (Exception) { /* mô hình điện nước chưa đủ dữ liệu */ }
         byte a = (byte)(dim ? 50 : 255);
         AddPickModel(group, pick, furn, Diffuse(Color.FromArgb(a, 205, 170, 120)), dim);
         AddPickModel(group, pick, mep, Diffuse(Color.FromArgb(a, 40, 140, 220)), dim);
+        AddModel(group, chase.Mesh, Color.FromArgb(a, 240, 140, 40), true);
         AddPickModel(group, pick, sel, SelectedMaterial3D(), true);
     }
 

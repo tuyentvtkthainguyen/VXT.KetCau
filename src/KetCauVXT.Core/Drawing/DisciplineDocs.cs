@@ -38,7 +38,7 @@ public static class DisciplineDocs
             List<DrawingItem> part = d switch
             {
                 Discipline.KienTruc => Architectural(p, o),
-                Discipline.KetCau => DrawingSet.BuildDrawings(p, s).Where(i => i.W != null).ToList(),
+                Discipline.KetCau => DrawingSet.BuildDrawings(p, s).Where(i => i.W != null).Concat(StructuralSections(p, s)).ToList(),
                 _ => MepSheets != null ? (MepSheets(p, o) ?? new List<DrawingItem>()) : MepPlaceholder(p, o)
             };
             int k = 1;
@@ -136,6 +136,13 @@ public static class DisciplineDocs
     }
 
     /// <summary>Hồ sơ kiến trúc: mặt bằng các tầng (tường, cửa, phòng, đồ đạc), thống kê cửa, thống kê phòng.</summary>
+    /// <summary>Mặt cắt kết cấu (có thể hiện móng theo kết quả thiết kế móng) – Key "KC:MC:1-1".</summary>
+    public static List<DrawingItem> StructuralSections(Project p, DesignSummary s)
+    {
+        try { return SectionView.Sheets(p, 100, true, s?.Footings, "KC"); }
+        catch (Exception) { return new List<DrawingItem>(); }
+    }
+
     public static List<DrawingItem> Architectural(Project p, DisciplineDocOptions o)
     {
         var items = new List<DrawingItem>();
@@ -166,6 +173,7 @@ public static class DisciplineDocs
                 Furniture(w, p, story, Discipline.DienNuoc, RefLayer, false);
             }
             foreach (var key in storyKeys) WallPlanDrawing.Draw(w, p, key);
+            if (o.ShowOthers) foreach (var key in storyKeys) KetCauVXT.Mep.WallChases.DrawPlan(w, p, key);   // rãnh điện nước chôn tường (nét đứt)
             foreach (var r in (p.Arch?.Rooms ?? new List<Room>()).Where(r => storyKeys.Contains(r.Story)))
             {
                 var c = r.Center;

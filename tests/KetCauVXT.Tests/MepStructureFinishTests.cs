@@ -101,7 +101,9 @@ public static class MepStructureFinishTests
         check("Cắt tại lỗ: h0n = h0 − Ø (0,45 − 0,025 − 0,01 − 0,08)", sh80.H0n, 0.45 - p.Concrete.CoverBeam - 0.01 - 0.08, 1e-9);
         var sh180 = PenetrationRegister.ShearAtHole(0.22, 0.45, p.Concrete.CoverBeam, 180, conc, stl, 8, 0.2);
         check("Cắt tại lỗ: lỗ lớn → khả năng chịu cắt nhỏ hơn", B(sh180.Capacity < sh80.Capacity && sh180.Capacity > 0), 1, 0);
-        check("Thiết kế: dòng kiểm tra cắt dùng Q nhịp = 80 kN", shear[0].Demand, 80, 1e-9);
+        // (đổi từ fork X: Q tại lỗ nội suy theo vị trí lỗ thay vì Qmax của nhịp) – lỗ x = 2,9 m trong nhịp L = 6 m: V = 80·|1 − 2·2,9/6|
+        check("Thiết kế: dòng kiểm tra cắt dùng Q tại vị trí lỗ (nội suy, ≤ Qmax 80)", B(shear.All(c => c.Demand <= 80 + 1e-9)
+            && shear.Any(c => Math.Abs(c.Demand - PenetrationRegister.ShearAt(80, 6, 2.9)) < 1e-6)), 1, 0);
         check("Thống kê: 2 cấu kiện phụ gia cường (dầm D1, sàn S1)", s.Others.Count(o => o.Member is PenetrationMember), 2, 0);
         var rows = RebarSchedule.BuildRows(s);
         var pr = rows.Where(r => r.Member.EndsWith(PenetrationRegister.MemberSuffix)).ToList();

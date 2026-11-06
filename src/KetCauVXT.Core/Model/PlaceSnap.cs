@@ -361,5 +361,7 @@ public sealed class SectionLine
     public double X2 { get; set; }
     public double Y2 { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public bool Auto { get; set; }
+    /// <summary>Thể hiện móng trên mặt cắt: null = theo bộ môn (kiến trúc: không; kết cấu: có), true / false = người dùng chọn.</summary>
+    public bool? ShowFoundation { get; set; }
     [System.Text.Json.Serialization.JsonIgnore] public double Length => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
 }

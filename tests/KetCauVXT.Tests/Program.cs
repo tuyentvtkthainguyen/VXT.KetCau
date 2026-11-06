@@ -635,6 +635,8 @@ Console.WriteLine("83. Thoát nước đi dưới sàn có độ dốc, cảnh b
 DrainSlopeImpactTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("84. Lỗ xuyên điện nước → hồ sơ kết cấu (KC-10, mặt đứng dầm, thống kê, kiểm tra cắt), tường trừ rãnh điện nước, mặt cắt nhìn thấy, kích thước tạm tường / cột");
 MepStructureFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("85. Mặt cắt: kiến trúc không móng / kết cấu có móng, vật liệu đúng loại + chú thích, rãnh điện nước mặt bằng / 3D, lỗ sàn × cột, cắt tại lỗ nội suy");
+SectionMaterialTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

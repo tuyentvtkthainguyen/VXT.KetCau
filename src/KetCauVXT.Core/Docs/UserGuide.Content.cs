@@ -949,11 +949,12 @@ public static partial class UserGuide
                 "Tờ **KC-10 \"CHI TIẾT GIA CƯỜNG LỖ XUYÊN KẾT CẤU\"**: mỗi ký hiệu một hình (tỷ lệ 1/20) kèm số lượng và tầng.",
                 "**Mặt bằng kết cấu**: vòng tròn tại vị trí lỗ + ký hiệu LX / LS.",
                 "**Mặt đứng dầm**: vẽ lỗ + ống lồng, đai gia cường mỗi bên lỗ, thép bổ sung trên / dưới lỗ và ghi chú \"xem chi tiết LX1\".",
-                "**Kiểm tra chịu cắt tại lỗ xuyên** (bảng kiểm tra dầm): tiết diện thực h0n = h0 − Ø lỗ, đai quanh lỗ bước 50 mm, Qu = Qb + 0,75·qsw·2h0n ≤ 0,3·Rb·b·h0n so với Q lớn nhất của nhịp.",
+                "**Kiểm tra chịu cắt tại lỗ xuyên** (bảng kiểm tra dầm): tiết diện thực h0n = h0 − Ø lỗ, đai quanh lỗ bước 50 mm, Qu = Qb + 0,75·qsw·2h0n ≤ 0,3·Rb·b·h0n so với **Q tại vị trí lỗ** – nội suy bao lực cắt của nhịp (Qmax ở gối, giảm tuyến tính về 0 giữa nhịp).",
                 "**Bảng thống kê cốt thép**: thêm cấu kiện \"D1 – gia cường lỗ xuyên\" / \"S1 – gia cường lỗ xuyên\" chứa thép gia cường (số lượng, Ø, chiều dài, trọng lượng).")
             .Bullets("**Triển khai hồ sơ**:",
                 "Dầm: bảng **LỖ XUYÊN DẦM – ỐNG LỒNG** (vị trí từ tim gối đầu, cách đáy, Ø); sàn: bảng **LỖ XUYÊN SÀN** (tâm lỗ từ góc ô, cạnh lỗ) – thép gia cường vào thép cấu kiện, lỗ vẽ trên mặt đứng / mặt bằng, cảnh báo lỗ sai vùng.",
-                "Mặt bằng kết cấu → nút **Lỗ xuyên từ điện nước**: chép lỗ từ mô hình (chế độ Thiết kế) vào dầm / sàn hồ sơ **cùng tên** (không nhân đôi khi chạy lại).")
+                "Mặt bằng kết cấu → nút **Lỗ xuyên từ điện nước**: chép lỗ từ mô hình (chế độ Thiết kế) vào dầm / sàn hồ sơ **cùng tên** (không nhân đôi khi chạy lại).",
+                "Lỗ sàn của ô sàn **đã đặt trên mặt bằng kết cấu** được đo khoảng cách tới **mép cột gần nhất** trên cùng mặt bằng: < 2,5·hs → *NGUY HIỂM* (vùng chọc thủng, có dòng kiểm tra không đạt), < 6·hs → *CẢNH BÁO* (giảm chu vi chọc thủng).")
             .Bullets("**Tường trừ phần điện nước chiếm chỗ** (bảng khối lượng):",
                 "Ống / ống gen chôn tường: rãnh rộng Ø + 20 mm, sâu Ø + 10 mm (≤ lõi tường) × chiều dài trong tường; hộp âm tường (ổ cắm, công tắc, hộp chia, aptomat, tủ điện): W × H × sâu.",
                 "Khối xây (gạch, vữa xây) trừ thể tích này; thêm công tác **Đục rãnh tường (m)**, **Trát vá rãnh (m²)**, **Đục lỗ hộp âm tường (cái)**. Ống thoát nước đi dưới sàn không đục tường. Tải tường giữ nguyên (phần trừ nhỏ, thiên về an toàn).")

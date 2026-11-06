@@ -99,6 +99,78 @@ public static class WallChases
         }
     }
 
+    /// <summary>Các đoạn rãnh chôn tường (toạ độ 3D đầu – cuối, Ø mm, tường chủ) – dùng vẽ mặt bằng / 3D.</summary>
+    public static List<(MepRun Run, MepPt A, MepPt B, double Dia, int WallId)> ChaseSegments(Project p)
+    {
+        var res = new List<(MepRun, MepPt, MepPt, double, int)>();
+        var m = p?.Mep;
+        if (m == null || m.IsEmpty) return res;
+        foreach (var r in m.Runs)
+        {
+            var path = r.Path;
+            if (path == null || path.Count < 2) continue;
+            if (MepSystems.IsDrain(r.System) && !r.DrainInWall) continue;
+            double dia = StructuralImpact.RunDia(r);
+            if (dia <= 0) continue;
+            for (int i = 1; i < path.Count; i++)
+            {
+                var a = path[i - 1]; var c = path[i];
+                if (c.WallId <= 0 || p.Walls.All(x => x.Id != c.WallId)) continue;
+                res.Add((r, a, c, dia, c.WallId));
+            }
+        }
+        return res;
+    }
+
+    /// <summary>Hạng mục khối 3D rãnh tường (cùng tên với SectionView.ChaseCategory).</summary>
+    public const string SolidCategory = "Rãnh tường";
+
+    /// <summary>Khối 3D mảnh thể hiện rãnh đục tường (bề rộng rãnh) – Id "RANH-{tuyến}-{i}", HostId = tường chủ.
+    /// Không đăng ký vào ModelSolids.Providers (không xuất IFC / không kiểm tra va chạm) – 3D của chương trình gọi trực tiếp.</summary>
+    public static List<Solid> Solids(Project p)
+    {
+        var res = new List<Solid>();
+        int k = 0;
+        foreach (var (r, a, c, dia, wid) in ChaseSegments(p))
+        {
+            k++;
+            double wd = ChaseWidth(dia);
+            double dx = c.X - a.X, dy = c.Y - a.Y, dz = c.Z - a.Z, lh = Math.Sqrt(dx * dx + dy * dy);
+            if (lh < 1e-6 && Math.Abs(dz) < 1e-6) continue;
+            Solid so;
+            if (lh >= 1e-6)
+            {
+                var x = new Vec3(dx / lh, dy / lh, 0);
+                so = new Solid { Origin = new Vec3(a.X, a.Y, Math.Min(a.Z, c.Z) - wd / 2), XDir = x, ZDir = Vec3.UnitZ,
+                    Profile = Solid.Rect(0, -wd / 2, lh, wd / 2), Depth = wd + Math.Abs(dz) };
+            }
+            else
+            {
+                so = new Solid { Origin = new Vec3(a.X, a.Y, Math.Min(a.Z, c.Z)), XDir = Vec3.UnitX, ZDir = Vec3.UnitZ,
+                    Profile = Solid.Rect(-wd / 2, -wd / 2, wd / 2, wd / 2), Depth = Math.Abs(dz) };
+            }
+            so.Id = $"RANH-{r.Id}-{k}"; so.Name = $"Rãnh Ø{dia:0} (tuyến {r.Id})"; so.Category = SolidCategory; so.Discipline = Discipline.DienNuoc;
+            so.HostId = $"TUONG-{wid}"; so.Story = r.Story; so.IfcType = "IfcBuildingElementProxy"; so.Color = new[] { 0.95, 0.55, 0.15 };
+            res.Add(so);
+        }
+        return res;
+    }
+
+    /// <summary>Vẽ rãnh điện nước chôn tường trên mặt bằng (nét đứt mảnh, mm) cho tầng; trả về số đoạn đã vẽ.</summary>
+    public static int DrawPlan(KetCauVXT.Drawing.DxfWriter w, Project p, string story)
+    {
+        int n = 0;
+        foreach (var (r, a, c, dia, _) in ChaseSegments(p))
+        {
+            if (story != null && r.Story != story) continue;
+            double lh = Math.Sqrt((c.X - a.X) * (c.X - a.X) + (c.Y - a.Y) * (c.Y - a.Y));
+            if (lh < 1e-6) { w.Circle(KetCauVXT.Drawing.Lay.KyHieu, c.X * 1000, c.Y * 1000, Math.Max(dia / 2, 15)); n++; continue; }   // đoạn đứng
+            w.Line(KetCauVXT.Drawing.Lay.KyHieu, a.X * 1000, a.Y * 1000, c.X * 1000, c.Y * 1000, "DASHED");
+            n++;
+        }
+        return n;
+    }
+
     private static double CoreOf(Project p, WallLine w)
     {
         try { return MepRouting.WallInfo(p, w).Core; } catch { return 0; }

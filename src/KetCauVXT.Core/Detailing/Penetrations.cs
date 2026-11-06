@@ -221,3 +221,75 @@ public static class ModelPenetrations
         return log;
     }
 }
+
+/// <summary>Lỗ xuyên sàn của hồ sơ triển khai × cột trên MẶT BẰNG KẾT CẤU: khoảng cách mép lỗ → mép cột gần nhất (theo vị trí ô sàn
+/// và cột đặt trên cùng mặt bằng), đánh giá chọc thủng như StructuralImpact (&lt; 2,5·hs nguy hiểm, &lt; 6·hs cảnh báo).</summary>
+public static class SlabPunching
+{
+    /// <summary>Khoảng hở giữa 2 hình chữ nhật trục song song (m) – 0 nếu chạm / chồng.</summary>
+    public static double Gap(double ax, double ay, double aw, double ah, double bx, double by, double bw, double bh)
+    {
+        double gx = Math.Max(0, Math.Abs(ax - bx) - aw / 2 - bw / 2), gy = Math.Max(0, Math.Abs(ay - by) - ah / 2 - bh / 2);
+        return Math.Sqrt(gx * gx + gy * gy);
+    }
+
+    /// <summary>Mỗi lỗ của ô sàn đặt trên mặt bằng: (ký hiệu, khoảng cách tới mép cột gần nhất – m, cột, mức đánh giá).
+    /// Ô sàn không đặt trên mặt bằng / mặt bằng không có cột → rỗng.</summary>
+    public static List<(string Tag, double Dist, string Column, KetCauVXT.Mep.ImpactSeverity Severity, string Level)> Evaluate(DetailingProject dp, ManualSlab ms)
+    {
+        var res = new List<(string, double, string, KetCauVXT.Mep.ImpactSeverity, string)>();
+        if (dp?.Plan?.Levels == null || ms?.Penetrations == null || ms.Penetrations.Count == 0) return res;
+        var cols = dp.All.OfType<ManualColumn>().ToDictionary(c => c.Name, c => c, StringComparer.OrdinalIgnoreCase);
+        foreach (var lv in dp.Plan.Levels)
+        {
+            var colItems = lv.Items.Where(i => i.Kind == PlanKinds.Column).ToList();
+            if (colItems.Count == 0) continue;
+            foreach (var it in lv.Items.Where(i => i.Kind == PlanKinds.Slab && string.Equals(i.Member, ms.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                double x0 = Math.Min(it.X1, it.X2), y0 = Math.Min(it.Y1, it.Y2);
+                int k = 0;
+                foreach (var pe in ms.Penetrations)
+                {
+                    k++;
+                    if (pe.W <= 0 || pe.L <= 0) continue;
+                    string tag = string.IsNullOrWhiteSpace(pe.Tag) ? "LS" + k : pe.Tag.Trim();
+                    double hx = x0 + pe.X, hy = y0 + pe.Y, best = double.MaxValue; string bestName = "";
+                    foreach (var c in colItems)
+                    {
+                        cols.TryGetValue(c.Member ?? "", out var mc);
+                        double cb = mc?.B ?? 0.22, ch = mc?.H ?? 0.22;
+                        if (Math.Abs(Math.Abs(c.Rotation % 180) - 90) < 1) (cb, ch) = (ch, cb);
+                        double g = Gap(hx, hy, pe.W, pe.L, c.X1, c.Y1, cb, ch);
+                        if (g < best) { best = g; bestName = c.Member; }
+                    }
+                    if (best == double.MaxValue) continue;
+                    var sev = best < 2.5 * ms.T - 1e-9 ? KetCauVXT.Mep.ImpactSeverity.NguyHiem
+                        : best < 6 * ms.T - 1e-9 ? KetCauVXT.Mep.ImpactSeverity.CanhBao : KetCauVXT.Mep.ImpactSeverity.ChoPhep;
+                    res.Add((tag, best, bestName, sev, lv.Name));
+                }
+            }
+        }
+        return res;
+    }
+
+    /// <summary>Ghi kết quả vào DetailResult của ô sàn: CẢNH BÁO / kiểm tra khoảng cách (Demand = 2,5·hs, Capacity = khoảng cách thực).</summary>
+    public static int Apply(DetailingProject dp, ManualSlab ms, DetailResult r)
+    {
+        if (r == null) return 0;
+        int n = 0;
+        foreach (var (tag, dist, col, sev, lvName) in Evaluate(dp, ms))
+        {
+            n++;
+            r.Calc.Add($"Lỗ sàn {tag} ({lvName}): cách mép cột {col} {Dt.Mm(dist)} mm; 2,5·hs = {Dt.Mm(2.5 * ms.T)} mm; 6·hs = {Dt.Mm(6 * ms.T)} mm");
+            if (sev >= KetCauVXT.Mep.ImpactSeverity.CanhBao)
+            {
+                r.Messages.Add($"CẢNH BÁO lỗ sàn {tag}: cách mép cột {col} {Dt.Mm(dist)} mm " +
+                    (sev == KetCauVXT.Mep.ImpactSeverity.NguyHiem ? $"< 2,5·hs – NGUY HIỂM (vùng chọc thủng): dời lỗ ≥ {Dt.Mm(6 * ms.T)} mm khỏi mép cột hoặc thêm mũ cột / tăng chiều dày"
+                                                               : $"< 6·hs – giảm chu vi chọc thủng, kiểm tra lại chọc thủng"));
+                r.Checks.Add(Dt.Check($"Khoảng cách lỗ {tag} tới mép cột {col} (≥ 2,5·hs)", 2.5 * ms.T, Math.Max(dist, 1e-6), "m",
+                    sev == KetCauVXT.Mep.ImpactSeverity.NguyHiem ? "vùng chọc thủng" : "đạt 2,5·hs, chưa đạt 6·hs"));
+            }
+        }
+        return n;
+    }
+}

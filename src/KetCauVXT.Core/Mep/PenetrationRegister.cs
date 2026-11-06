@@ -165,6 +165,27 @@ public static class PenetrationRegister
     // Gắn vào kết quả thiết kế (chế độ Thiết kế)
     // ------------------------------------------------------------------
     /// <summary>Vị trí (m) trên mặt đứng dầm liên tục d tính từ tim gối đầu, của điểm (x, y) thuộc phần tử frameId; NaN nếu không thuộc.</summary>
+    /// <summary>Lực cắt tại vị trí x trong nhịp L (m) từ bao lực cắt dạng tải phân bố đều: V(x) = Qmax·|1 − 2x/L| (Qmax ở gối, 0 giữa nhịp);
+    /// x ngoài [0; L] kẹp về gối.</summary>
+    public static double ShearAt(double qmax, double L, double x)
+    {
+        if (L <= 1e-9) return Math.Abs(qmax);
+        double t = Math.Clamp(x, 0, L) / L;
+        return Math.Abs(qmax) * Math.Abs(1 - 2 * t);
+    }
+
+    /// <summary>Toạ độ đầu nhịp (m, dọc dải dầm) của nhịp chứa thanh frameId = tổng chiều dài các nhịp trước; NaN nếu không có.</summary>
+    public static double SpanStart(BeamLineDesign d, int frameId)
+    {
+        double cum = 0;
+        foreach (var sp in d?.Spans ?? new List<BeamSpanResult>())
+        {
+            if (sp.Frame == frameId) return cum;
+            cum += sp.L;
+        }
+        return double.NaN;
+    }
+
     public static double LineX(Project p, BeamLineDesign d, int frameId, double x, double y)
     {
         var spans = d?.Spans ?? new List<BeamSpanResult>();
@@ -228,15 +249,19 @@ public static class PenetrationRegister
                 StirrupsPerSide = stBar != null ? Math.Max(1, stBar.Count / 2) : 2, StirrupDia = stBar?.Dia ?? 8,
                 BarDia = lb?.Dia ?? 12, BarLen = (lb?.Length ?? 1.0) * 1000
             });
-            // kiểm tra cắt tại lỗ: Q lớn nhất của nhịp chứa lỗ
+            // kiểm tra cắt tại lỗ: Q tại VỊ TRÍ LỖ – nội suy bao lực cắt của nhịp (tải phân bố: Q tuyến tính từ Qmax ở gối về 0 giữa nhịp)
             var sp = d.Spans.FirstOrDefault(q => q.Frame == m.FrameId);
             if (conc != null && st != null && sp != null && sp.QMax > 0)
             {
                 double b = d.B > 0 ? d.B : m.S.B, h = d.H > 0 ? d.H : m.S.H;
+                double xs = SpanStart(d, m.FrameId);
+                double xl = double.IsNaN(xs) ? sp.L / 2 : xm - xs;
+                double vAt = ShearAt(Math.Abs(sp.QMax), sp.L, xl);
                 var sh = ShearAtHole(b, h, p.Concrete.CoverBeam, m.S.HoleDia, conc, st, stBar?.Dia ?? Math.Max(6, sp.StirrupDia), sp.StirrupMid);
                 d.Checks.Add(new CheckItem
                 {
-                    Name = $"Chịu cắt tại lỗ xuyên {m.Tag} (Ø{m.S.HoleDia:0})", Demand = Math.Abs(sp.QMax), Capacity = sh.Capacity, Unit = "kN", Note = sh.Note
+                    Name = $"Chịu cắt tại lỗ xuyên {m.Tag} (Ø{m.S.HoleDia:0})", Demand = vAt, Capacity = sh.Capacity, Unit = "kN",
+                    Note = sh.Note + $"; Q tại lỗ (x = {xl:0.##} m / L = {sp.L:0.##} m) = {vAt:0.#} kN nội suy từ Qmax = {Math.Abs(sp.QMax):0.#} kN"
                 });
             }
             n++;

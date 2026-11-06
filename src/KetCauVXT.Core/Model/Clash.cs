@@ -85,6 +85,7 @@ public static class ClashDetector
     private static bool Skip(Solid a, Solid b, ClashOptions o)
     {
         if (a.IsVoid || b.IsVoid) return true;
+        if (a.Category == "Rãnh tường" || b.Category == "Rãnh tường") return true;   // rãnh đục tường: không phải phần tử va chạm
         if (a.Id == b.Id) return true;
         if (a.HostId == b.Id || b.HostId == a.Id) return true;   // cửa ↔ tường chủ
         if (a.Discipline == Discipline.KetCau && b.Discipline == Discipline.KetCau) return true;   // nút khung

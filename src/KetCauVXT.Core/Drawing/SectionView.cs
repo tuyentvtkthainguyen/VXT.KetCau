@@ -1,4 +1,5 @@
 using System.Globalization;
+using KetCauVXT.Design;
 using KetCauVXT.Model;
 
 namespace KetCauVXT.Drawing;
@@ -25,6 +26,13 @@ public sealed class SectionDrawing
     public List<(double U, string Name)> Axes { get; init; } = new();
     public Figure Figure { get; init; }
     public string Title => "MẶT CẮT " + Line?.Name;
+    /// <summary>Hình móng đã vẽ (rỗng khi không thể hiện móng)</summary>
+    public List<FoundationShape> Foundations { get; init; } = new();
+    /// <summary>Vật liệu đã tô (chú thích vật liệu)</summary>
+    public List<SectionMaterial> Materials { get; init; } = new();
+    public bool ShowFoundation { get; init; }
+    /// <summary>Cốt sân (m)</summary>
+    public double SiteLevel { get; init; }
 }
 
 public static class SectionView
@@ -239,36 +247,138 @@ public static class SectionView
         return (z > 0 ? "+" : "-") + Math.Abs(z).ToString("0.000", CultureInfo.InvariantCulture);
     }
 
-    /// <summary>Dựng hình mặt cắt (DXF, mm) với cao độ, chuỗi kích thước tầng, tổng chiều cao, trục và kích thước trục.</summary>
-    public static SectionDrawing Draw(Project p, SectionLine s, double scale = 100, IEnumerable<Discipline> disciplines = null)
+    /// <summary>Dựng hình mặt cắt (DXF, mm) với cao độ, chuỗi kích thước tầng, tổng chiều cao, trục và kích thước trục.
+    /// opt: thể hiện móng (mặc định theo SectionLine.ShowFoundation, null → có), tô vật liệu, chú thích vật liệu.</summary>
+    public static SectionDrawing Draw(Project p, SectionLine s, double scale = 100, IEnumerable<Discipline> disciplines = null, SectionOptions opt = null)
     {
-        var items = Cut(p, s, disciplines);
+        opt ??= new SectionOptions();
+        bool showFound = opt.ShowFoundation ?? s.ShowFoundation ?? true;
+        var items = Cut(p, s, disciplines).Where(i => i.Category != ChaseCategory).ToList();
         var w = new DxfWriter(scale);
         double L = s.Length;
-        // cao độ: nền ±0, các sàn, mái (bỏ đáy / mặt móng khỏi chuỗi chiều cao tầng, chỉ ghi ký hiệu)
         var lv = KetCauVXT.Model.Levels.All(p);
+        double zNen = lv.FirstOrDefault(l => l.Kind == LevelKind.Nen)?.Elevation ?? p.GroundElevation;
+        double zSite = zNen - Math.Max(0, opt.SiteOffset);
+        if (!showFound)
+        {
+            // MẶT CẮT KIẾN TRÚC: bỏ phần dưới cốt sân (móng, cổ cột, dầm móng) – cắt tại cốt sân
+            items = items.Where(i => i.Z1 > zSite + 1e-6).Select(i => i.Z0 < zSite ? i with { Z0 = zSite } : i).ToList();
+            lv = lv.Where(l => l.Kind is not (LevelKind.DayMong or LevelKind.MatMong)).ToList();
+        }
         var floorLv = lv.Where(l => l.Kind is LevelKind.Nen or LevelKind.San or LevelKind.Mai or LevelKind.Tum).Select(l => l.Elevation).Distinct().OrderBy(z => z).ToList();
         double uMin = items.Count > 0 ? items.Min(i => i.U0) : 0, uMax = items.Count > 0 ? items.Max(i => i.U1) : L;
-        double zMin = Math.Min(items.Count > 0 ? items.Min(i => i.Z0) : 0, lv.Min(l => l.Elevation));
-        double zMax = Math.Max(items.Count > 0 ? items.Max(i => i.Z1) : 0, floorLv.Count > 0 ? floorLv.Max() : 0);
+        var used = new HashSet<SectionMaterial>();
+        void Hat(SectionMaterial m, double a, double c, double b, double d)
+        {
+            if (!opt.Materials) return;
+            if (SectionMaterials.HatchRect(w, m, a, c, b, d) > 0) used.Add(m);
+        }
+        void Box(string layer, double a, double c, double b, double d, string lt = null) =>
+            w.Polyline(layer, new List<(double X, double Y)> { (a, c), (b, c), (b, d), (a, d) }, true, 0, lt);
+
+        // móng (chỉ khi thể hiện móng)
+        var found = showFound ? FoundationShapes(p, s, opt.Footings) : new List<FoundationShape>();
+        foreach (var f in found)
+        {
+            var pts = f.Points.Select(q => (q.U * 1000, q.Z * 1000)).ToList();
+            w.Polyline(Lay.BeTong, pts, true);
+            if (opt.Materials && SectionMaterials.Hatch(w, f.Material, pts) > 0) used.Add(f.Material);
+            if (!opt.Materials && f.Material == SectionMaterial.BTCT) w.Hatch(new List<IList<(double X, double Y)>> { pts }, HatchPatterns.Solid, 1, 0, Lay.BeTong);
+            if (f.BreakAtBottom)
+            {
+                // nét cắt ngắt cọc (zíc zắc)
+                double y = f.Points.Min(q => q.Z) * 1000, x0 = f.Points.Min(q => q.U) * 1000, x1 = f.Points.Max(q => q.U) * 1000, dx = (x1 - x0) / 4;
+                w.Polyline(Lay.KyHieu, new List<(double X, double Y)> { (x0 - dx, y), (x0 + dx, y + dx), (x0 + 2 * dx, y - dx), (x0 + 3 * dx, y + dx), (x1 + dx, y) }, false);
+            }
+            if (!string.IsNullOrEmpty(f.Label))
+            {
+                double cx = f.Points.Average(q => q.U) * 1000, ty = f.Points.Min(q => q.Z) * 1000 - 1.8 * w.Th;
+                w.Text(Lay.Chu, cx, ty, w.Th * 0.9, f.Label, 0, 1, 0);
+            }
+        }
+
         // phần tử cắt
+        double zTop = floorLv.Count > 0 ? floorLv.Max() : 0;
         foreach (var it in items.OrderBy(i => i.Category == "Tường" ? 0 : 1))
         {
             double a = it.U0 * 1000, b = it.U1 * 1000, c = it.Z0 * 1000, d = it.Z1 * 1000;
-            var pts = new List<(double X, double Y)> { (a, c), (b, c), (b, d), (a, d) };
-            bool conc = it.Category is "Cột" or "Dầm" or "Sàn" or "Sàn nền";
-            bool door = it.Category is "Cửa đi" or "Cửa sổ";
-            w.Polyline(door ? Lay.KyHieu : Lay.BeTong, pts, true);
-            if (conc) w.FilledRect(Lay.BeTong, a, c, b, d);
+            switch (it.Category)
+            {
+                case "Cột": case "Dầm": case "Sàn":
+                    Box(Lay.BeTong, a, c, b, d);
+                    if (opt.Materials) Hat(SectionMaterial.BTCT, a, c, b, d); else w.FilledRect(Lay.BeTong, a, c, b, d);
+                    if (it.Category == "Sàn" && opt.Materials) SlabFinish(p, it, zTop, w, Box, Hat);
+                    break;
+                case "Sàn nền":
+                    Box(Lay.BeTong, a, c, b, d);
+                    if (opt.Materials)
+                    {
+                        Hat(SectionMaterial.BTCT, a, c, b, d);
+                        // lớp dưới sàn nền: bê tông lót 100, cát đệm 100 (trên nền đất đầm chặt)
+                        Box(Lay.BeTong, a, c - 100, b, c); Hat(SectionMaterial.BeTongLot, a, c - 100, b, c);
+                        Box(Lay.KyHieu, a, c - 200, b, c - 100); Hat(SectionMaterial.Cat, a, c - 200, b, c - 100);
+                        Hat(SectionMaterial.DatDap, a, Math.Min(c - 200, zSite * 1000) - 0, b, c - 200);
+                    }
+                    else w.FilledRect(Lay.BeTong, a, c, b, d);
+                    break;
+                case "Tường":
+                    WallLayers(p, s, it, w, Box, Hat, opt.Materials);
+                    break;
+                case "Cửa đi": case "Cửa sổ":
+                {
+                    bool win = it.Category == "Cửa sổ";
+                    Box(Lay.KyHieu, a, c, b, d);
+                    double fr = 40;   // khuôn cửa 40 mm
+                    if (b - a > 2 * fr && d - c > 2 * fr) Box(Lay.KyHieu, a + fr, c + (win ? fr : 0), b - fr, d - fr);
+                    double um = (a + b) / 2;
+                    if (win) { w.Line(Lay.KyHieu, um - 6, c + fr, um - 6, d - fr); w.Line(Lay.KyHieu, um + 6, c + fr, um + 6, d - fr); }   // kính 2 nét
+                    else w.Line(Lay.KyHieu, um, c, um, d - fr);   // cánh cửa
+                    if (opt.Materials) { if (win) used.Add(SectionMaterial.Kinh); else used.Add(SectionMaterial.Go); }
+                    break;
+                }
+                case "Trần":
+                {
+                    Box(Lay.KyHieu, a, c, b, d);
+                    Hat(SectionMaterial.ThachCao, a, c, b, d);
+                    // ty treo trần lên kết cấu phía trên (bước 1,2 m)
+                    var above = items.Where(q => q.Category is "Sàn" or "Dầm" && q.Z0 > it.Z1 - 1e-6 && q.U1 > it.U0 && q.U0 < it.U1).OrderBy(q => q.Z0).FirstOrDefault();
+                    if (above.Id != null)
+                        for (double u = it.U0 + 0.3; u < it.U1 - 0.2; u += 1.2)
+                            w.Line(Lay.KyHieu, u * 1000, d, u * 1000, above.Z0 * 1000);
+                    break;
+                }
+                case "Mái":
+                    Box(Lay.BeTong, a, c, b, d);
+                    Hat(it.Discipline == Discipline.KetCau ? SectionMaterial.BTCT : SectionMaterial.ThepHinh, a, c, b, d);
+                    break;
+                default:
+                    Box(it.Discipline == Discipline.KetCau ? Lay.BeTong : Lay.KyHieu, a, c, b, d);
+                    break;
+            }
         }
         // phần tử NHÌN THẤY phía sau mặt phẳng cắt (trong chiều sâu nhìn): nét mảnh, không tô
-        var beyond = Beyond(p, s, items, disciplines);
+        var beyond = Beyond(p, s, items, disciplines).Where(i => i.Category != ChaseCategory).ToList();
+        if (!showFound)
+            beyond = beyond.Where(i => i.Z1 > zSite + 1e-6).Select(i => i.Z0 < zSite ? i with { Z0 = zSite } : i).ToList();
         foreach (var it in beyond)
-            w.Polyline(Lay.KyHieu, new List<(double X, double Y)> { (it.U0 * 1000, it.Z0 * 1000), (it.U1 * 1000, it.Z0 * 1000), (it.U1 * 1000, it.Z1 * 1000), (it.U0 * 1000, it.Z1 * 1000) }, true);
+            Box(Lay.KyHieu, it.U0 * 1000, it.Z0 * 1000, it.U1 * 1000, it.Z1 * 1000);
         // mức sàn không có sàn bị cắt (ô cầu thang / lỗ thông tầng trên đường cắt): ghi chú
         foreach (double zl in floorLv.Where(z => z > 1e-6))
             if (!items.Any(i => i.Category is "Sàn" or "Sàn nền" && Math.Abs(i.Z1 - zl) < 0.15))
                 w.Text(Lay.Chu, (uMin + uMax) / 2 * 1000, zl * 1000 + 150, w.Th * 0.8, "(đường cắt qua ô cầu thang / lỗ sàn – không có sàn)", 0, 1, 0);
+
+        // cốt sân + đất (cả hai chế độ): đường mặt đất và dải đất 300 mm bên dưới, chừa chỗ phần móng
+        double gl = zSite * 1000, gx0 = uMin * 1000 - 1200, gx1 = uMax * 1000 + 1200;
+        w.Line(Lay.BeTong, gx0, gl, gx1, gl);
+        var gaps = found.Where(f => f.Points.Max(q => q.Z) > zSite - 0.3).Select(f => (f.Points.Min(q => q.U) * 1000, f.Points.Max(q => q.U) * 1000)).OrderBy(g => g.Item1).ToList();
+        double gx = gx0;
+        foreach (var (g0, g1) in gaps.Append((gx1, gx1)))
+        {
+            if (g0 > gx + 1) Hat(SectionMaterial.DatTuNhien, gx, gl - 300, Math.Min(g0, gx1), gl);
+            gx = Math.Max(gx, g1);
+        }
+        if (!showFound) w.Text(Lay.Chu, gx0, gl + 0.4 * w.Th, w.Th * 0.8, "CỐT SÂN " + ElevText(zSite), 0, 0, 0);
+
         // đường cao độ + ký hiệu
         double xl = uMin * 1000 - 1500, xr = uMax * 1000 + 1500;
         foreach (var l in lv)
@@ -294,6 +404,9 @@ public static class SectionView
         foreach (var g in p.GridsY)
             if (Math.Abs(ty) > 1e-6) { double u = (g.Coord - s.Y1) / ty; if (u >= -1e-6 && u <= L + 1e-6) axes.Add((u, g.Name)); }
         axes = axes.OrderBy(a => a.U).ToList();
+        double zMin = Math.Min(Math.Min(items.Count > 0 ? items.Min(i => i.Z0) : 0, lv.Count > 0 ? lv.Min(l => l.Elevation) : 0), zSite - 0.3);
+        if (found.Count > 0) zMin = Math.Min(zMin, found.Min(f => f.Points.Min(q => q.Z)));
+        double zMax = Math.Max(items.Count > 0 ? items.Max(i => i.Z1) : 0, zTop);
         double yb = zMin * 1000;
         double yChain = yb - 1200, yTot = yb - 2000, yBub = yb - 2800 - w.BubbleR;
         foreach (var (u, name) in axes)
@@ -308,21 +421,224 @@ public static class SectionView
             if (axes.Count > 2) w.DimChainH(new List<double> { xs[0], xs[^1] }, yTot, yTot);
         }
         w.Title((uMin + uMax) / 2 * 1000, yBub - w.BubbleR - 600, "MẶT CẮT " + s.Name, $"tl: 1/{scale:0}", true);
-        return new SectionDrawing { Line = s, Items = items, Beyond = beyond, Levels = floorLv, Axes = axes, Figure = new Figure(w, "MẶT CẮT " + s.Name) };
+        // chú thích vật liệu
+        if (opt.Materials && opt.Legend && used.Count > 0)
+            SectionMaterials.Legend(w, xr + 5500, zMax * 1000 + 600, used);
+        return new SectionDrawing
+        {
+            Line = s, Items = items, Beyond = beyond, Levels = floorLv, Axes = axes, Figure = new Figure(w, "MẶT CẮT " + s.Name),
+            Foundations = found, Materials = used.ToList(), ShowFoundation = showFound, SiteLevel = zSite
+        };
     }
 
-    /// <summary>Tờ hồ sơ kiến trúc cho mọi mặt cắt (Key "KT:MC:1-1").</summary>
-    public static List<DrawingItem> Sheets(Project p, double scale = 100)
+    /// <summary>Hạng mục khối rãnh tường điện nước (không thể hiện trên mặt cắt kiến trúc).</summary>
+    public const string ChaseCategory = "Rãnh tường";
+
+    /// <summary>Lớp hoàn thiện trên sàn: sàn tầng có phòng → vữa lót 20 + gạch lát 10 (WC thêm chống thấm 5);
+    /// sàn mái (mức cao nhất) → chống thấm 5 + vữa tạo dốc 40.</summary>
+    private static void SlabFinish(Project p, SectionCutItem it, double zTop, DxfWriter w,
+        Action<string, double, double, double, double, string> box, Action<SectionMaterial, double, double, double, double> hat)
+    {
+        double a = it.U0 * 1000, b = it.U1 * 1000, d = it.Z1 * 1000;
+        bool roof = Math.Abs(it.Z1 - zTop) < 0.05;
+        var story = p.Stories.FirstOrDefault(st => Math.Abs(st.Elevation - it.Z1) < 0.05);
+        var rooms = story == null ? new List<Room>() : (p.Arch?.Rooms ?? new List<Room>()).Where(r => r.Story == story.Name).ToList();
+        if (roof)
+        {
+            box(Lay.KyHieu, a, d, b, d + 5, null); hat(SectionMaterial.ChongTham, a, d, b, d + 5);
+            box(Lay.KyHieu, a, d + 5, b, d + 45, null); hat(SectionMaterial.VuaTrat, a, d + 5, b, d + 45);
+            return;
+        }
+        if (rooms.Count == 0) return;
+        bool wet = rooms.Any(r => { string n = (r.Name ?? "").ToLowerInvariant(); return n.Contains("wc") || n.Contains("vệ sinh") || n.Contains("tắm"); });
+        double y = d;
+        if (wet) { box(Lay.KyHieu, a, y, b, y + 5, null); hat(SectionMaterial.ChongTham, a, y, b, y + 5); y += 5; }
+        box(Lay.KyHieu, a, y, b, y + 20, null); hat(SectionMaterial.VuaTrat, a, y, b, y + 20); y += 20;
+        box(Lay.KyHieu, a, y, b, y + 10, null); hat(SectionMaterial.GachMen, a, y, b, y + 10);
+    }
+
+    /// <summary>Tường trên mặt cắt: các lớp của kiểu tường (lõi, vữa trát, ốp…) theo bề dày, mỗi lớp tô đúng vật liệu.
+    /// Tường cắt gần vuông góc → chia dải theo phương u; tường song song mặt cắt → tô vật liệu lõi.</summary>
+    private static void WallLayers(Project p, SectionLine s, SectionCutItem it, DxfWriter w,
+        Action<string, double, double, double, double, string> box, Action<SectionMaterial, double, double, double, double> hat, bool materials)
+    {
+        double a = it.U0 * 1000, b = it.U1 * 1000, c = it.Z0 * 1000, d = it.Z1 * 1000;
+        box(Lay.BeTong, a, c, b, d, null);
+        if (!materials) return;
+        var layers = WallLayersOf(p, it.Id);
+        double L = Math.Max(s.Length, 1e-9), tx = (s.X2 - s.X1) / L, ty = (s.Y2 - s.Y1) / L;
+        var wl = int.TryParse(it.Id.Replace("TUONG-", ""), out int wid) ? p.Walls.FirstOrDefault(x => x.Id == wid) : null;
+        double cos = 1;
+        double sign = 1;
+        if (wl != null && wl.Chord > 1e-9)
+        {
+            double wx = (wl.X2 - wl.X1) / wl.Chord, wy = (wl.Y2 - wl.Y1) / wl.Chord;
+            cos = Math.Abs(wx * tx + wy * ty);
+            double yx = -wy, yy = wx;   // pháp tuyến trái của tường (hướng lớp tăng)
+            sign = yx * tx + yy * ty >= 0 ? 1 : -1;
+        }
+        if (layers.Count == 0 || cos > 0.7)
+        {
+            var core = layers.FirstOrDefault(l => l.IsCore);
+            hat(SectionMaterials.FromName(core?.Material ?? WallMaterials.SolidBrick), a, c, b, d);
+            return;
+        }
+        double tot = layers.Sum(l => Math.Max(0, l.Thickness));
+        if (tot < 1e-9) return;
+        double span = b - a;
+        var seq = sign > 0 ? layers : Enumerable.Reverse(layers).ToList();
+        double x = a;
+        foreach (var l in seq)
+        {
+            double wd = span * Math.Max(0, l.Thickness) / tot;
+            if (wd < 1e-6) continue;
+            box(Lay.KyHieu, x, c, x + wd, d, null);
+            hat(SectionMaterials.FromName(l.Function == WallLayerFn.Plaster ? WallMaterials.Mortar : l.Material), x, c, x + wd, d);
+            x += wd;
+        }
+    }
+
+    /// <summary>Các lớp tường (từ mặt y âm → y dương của hệ toạ độ tường): kiểu tường nhiều lớp, hoặc lõi + vữa trát quy đổi.</summary>
+    public static List<WallLayer> WallLayersOf(Project p, string solidId)
+    {
+        if (!int.TryParse((solidId ?? "").Replace("TUONG-", ""), out int wid)) return new List<WallLayer>();
+        var wl = p.Walls.FirstOrDefault(x => x.Id == wid);
+        var t = wl == null ? null : p.WallTypes.FirstOrDefault(x => x.Name == wl.Type);
+        if (t == null) return new List<WallLayer>();
+        if (t.IsLayered) return t.Layers.ToList();
+        var res = new List<WallLayer>();
+        for (int i = 0; i < Math.Min(1, t.PlasterSides); i++) res.Add(new WallLayer { Function = WallLayerFn.Plaster, Material = WallMaterials.Mortar, Thickness = t.PlasterThickness });
+        res.Add(new WallLayer { Function = WallLayerFn.Core, Material = WallMaterials.SolidBrick, Thickness = t.Thickness });
+        if (t.PlasterSides >= 2) res.Add(new WallLayer { Function = WallLayerFn.Plaster, Material = WallMaterials.Mortar, Thickness = t.PlasterThickness });
+        return res;
+    }
+
+    /// <summary>Hình móng bị mặt phẳng cắt đi qua (toạ độ u, z – m): móng đơn (bậc / vát + cổ cột), đài cọc + cọc (cắt ngắn),
+    /// móng băng (chữ T ngược), bê tông lót. Kích thước: kết quả thiết kế móng (FootingDesign) → móng khai báo (Project.Footings) →
+    /// sơ bộ theo cột (ghi chú "sơ bộ").</summary>
+    public static List<FoundationShape> FoundationShapes(Project p, SectionLine s, IEnumerable<FootingDesign> designs = null)
+    {
+        var res = new List<FoundationShape>();
+        double L = s.Length;
+        if (L < 1e-9) return res;
+        double tx = (s.X2 - s.X1) / L, ty = (s.Y2 - s.Y1) / L, nx = -ty, ny = tx;
+        var lv = KetCauVXT.Model.Levels.All(p);
+        double zBot = lv.FirstOrDefault(l => l.Kind == LevelKind.DayMong)?.Elevation ?? (p.GroundElevation - 1.5);
+        var dl = designs?.ToList() ?? new List<FootingDesign>();
+        var ft = p.Foundation ?? new FoundationSettings();
+        // chân cột: nút thấp nhất của mỗi cột đứng tại cao độ thấp nhất của mô hình
+        var cols = p.Frames.Where(f => f.Kind == FrameKind.Column).ToList();
+        if (cols.Count == 0) return res;
+        var baseNodes = new Dictionary<int, (Node N, FrameElement F)>();
+        foreach (var f in cols)
+        {
+            Node a, b;
+            try { a = p.Node(f.NodeI); b = p.Node(f.NodeJ); } catch { continue; }
+            var lo = a.Z <= b.Z ? a : b;
+            if (!baseNodes.ContainsKey(lo.Id) || baseNodes[lo.Id].N.Z > lo.Z) baseNodes[lo.Id] = (lo, f);
+        }
+        double zMinNode = baseNodes.Values.Min(v => v.N.Z);
+        foreach (var (n, f) in baseNodes.Values.Where(v => v.N.Z < zMinNode + 0.05))
+        {
+            var fs = p.FrameSections.FirstOrDefault(x => x.Name == f.Section);
+            double cb = fs?.B > 0 ? fs.B : 0.22, ch = fs?.H > 0 ? fs.H : 0.22;
+            var fd = dl.FirstOrDefault(d => d.NodeId == n.Id);
+            var pf = p.Footings.FirstOrDefault(x => x.NodeId == n.Id);
+            var type = pf?.Type ?? ft.Type;
+            double Lf, Bf, H, Hb;
+            string label;
+            bool prelim = false;
+            if (fd != null && fd.L > 0) { Lf = fd.L; Bf = fd.B; H = fd.H; Hb = fd.Hb > 0 ? fd.Hb : fd.H; label = string.IsNullOrEmpty(fd.Name) ? "M" : fd.Name; }
+            else if (pf != null && pf.L > 0) { Lf = pf.L; Bf = pf.B; H = pf.Height > 0 ? pf.Height : 0.45; Hb = Math.Min(H, 0.25); label = pf.Label; }
+            else { Lf = Bf = Math.Max(1.2, 4 * Math.Max(cb, ch)); H = 0.45; Hb = 0.25; label = "Móng (sơ bộ)"; prelim = true; }
+            if (type == FoundationType.Pile)
+            {
+                double ps = Math.Max(0.15, ft.PileSize), sp = Math.Max(2.5, ft.PileSpacingFactor) * ps;
+                Lf = Bf = Math.Max(Lf, sp + ps + 2 * Math.Max(0.1, ft.CapEdge));
+                H = Hb = Math.Max(H, ft.CapMinHeight);
+            }
+            double sd = (n.X - s.X1) * nx + (n.Y - s.Y1) * ny;
+            double halfN = Lf / 2 * Math.Abs(nx) + Bf / 2 * Math.Abs(ny), halfU = Lf / 2 * Math.Abs(tx) + Bf / 2 * Math.Abs(ty);
+            if (Math.Abs(sd) > halfN + 1e-6) continue;
+            double uc = (n.X - s.X1) * tx + (n.Y - s.Y1) * ty;
+            if (uc + halfU < 0 || uc - halfU > L) continue;
+            double cu = (cb * Math.Abs(tx) + ch * Math.Abs(ty)) / 2;   // nửa cạnh cột theo u
+            double top = zBot + H;
+            var body = new FoundationShape { Kind = type == FoundationType.Pile ? "Đài cọc" : type == FoundationType.Strip ? "Móng băng" : "Móng đơn", Material = SectionMaterial.BTCT,
+                Label = label + (prelim ? "" : $" {Dt0(Lf)}×{Dt0(Bf)}×{Dt0(H)}"), NodeId = n.Id };
+            if (type == FoundationType.Strip)
+            {
+                // chữ T ngược: bản cánh Hb, sườn (dầm móng) bề rộng cột + 0,1 tới đỉnh móng
+                double rb = cu + 0.05;
+                body.Points = new() { (uc - halfU, zBot), (uc + halfU, zBot), (uc + halfU, zBot + Hb), (uc + rb, zBot + Hb), (uc + rb, top), (uc - rb, top), (uc - rb, zBot + Hb), (uc - halfU, zBot + Hb) };
+            }
+            else if (Hb < H - 1e-6)
+            {
+                double cw = cu + 0.05;   // vát tới mép cổ cột + 50
+                body.Points = new() { (uc - halfU, zBot), (uc + halfU, zBot), (uc + halfU, zBot + Hb), (uc + cw, top), (uc - cw, top), (uc - halfU, zBot + Hb) };
+            }
+            else body.Points = new() { (uc - halfU, zBot), (uc + halfU, zBot), (uc + halfU, top), (uc - halfU, top) };
+            res.Add(body);
+            // bê tông lót 100, rộng hơn móng 100 mỗi bên
+            double lt = 0.10, lo2 = 0.10;
+            res.Add(new FoundationShape { Kind = "Bê tông lót", Material = SectionMaterial.BeTongLot, NodeId = n.Id,
+                Points = new() { (uc - halfU - lo2, zBot - lt), (uc + halfU + lo2, zBot - lt), (uc + halfU + lo2, zBot), (uc - halfU - lo2, zBot) } });
+            // cổ cột: từ đỉnh móng tới chân cột
+            if (n.Z > top + 1e-6)
+                res.Add(new FoundationShape { Kind = "Cổ cột", Material = SectionMaterial.BTCT, NodeId = n.Id,
+                    Points = new() { (uc - cu, top), (uc + cu, top), (uc + cu, n.Z), (uc - cu, n.Z) } });
+            if (type == FoundationType.Pile)
+            {
+                double ps = Math.Max(0.15, ft.PileSize), sp = Math.Max(2.5, ft.PileSpacingFactor) * ps, emb = Math.Max(0, ft.PileEmbed);
+                foreach (double off in new[] { -sp / 2, sp / 2 })
+                    res.Add(new FoundationShape { Kind = "Cọc", Material = SectionMaterial.BTCT, NodeId = n.Id, BreakAtBottom = true,
+                        Points = new() { (uc + off - ps / 2, zBot - 1.5), (uc + off + ps / 2, zBot - 1.5), (uc + off + ps / 2, zBot + emb), (uc + off - ps / 2, zBot + emb) } });
+            }
+        }
+        return res;
+    }
+
+    private static string Dt0(double m) => Math.Round(m * 1000).ToString("0", CultureInfo.InvariantCulture);
+
+    /// <summary>Tờ hồ sơ cho mọi mặt cắt. Kiến trúc (prefix "KT"): mặc định KHÔNG thể hiện móng (trừ khi người dùng bật cho mặt cắt đó);
+    /// kết cấu (prefix "KC", foundation = true): thể hiện móng theo kết quả thiết kế móng.</summary>
+    public static List<DrawingItem> Sheets(Project p, double scale = 100, bool foundation = false, IEnumerable<FootingDesign> footings = null, string prefix = "KT")
     {
         var res = new List<DrawingItem>();
         if (p.Stories.Count == 0) return res;
         foreach (var s in All(p))
         {
-            var d = Draw(p, s, scale);
+            var d = Draw(p, s, scale, null, new SectionOptions { ShowFoundation = foundation ? true : s.ShowFoundation ?? false, Footings = footings });
             if (d.Items.Count == 0) continue;
             string slug = "MatCat_" + s.Name.Replace("-", "_");
-            res.Add(new DrawingItem { Key = "KT:MC:" + s.Name, FileName = $"KT_{slug}.dxf", Title = d.Title, Scale = scale, W = d.Figure.W });
+            res.Add(new DrawingItem { Key = prefix + ":MC:" + s.Name, FileName = $"{prefix}_{slug}.dxf", Title = d.Title, Scale = scale, W = d.Figure.W });
         }
         return res;
     }
+}
+
+/// <summary>Tuỳ chọn dựng mặt cắt.</summary>
+public sealed class SectionOptions
+{
+    /// <summary>null = theo SectionLine.ShowFoundation (null → có móng)</summary>
+    public bool? ShowFoundation { get; set; }
+    /// <summary>Tô vật liệu theo quy ước (BTCT, gạch, vữa, đất…); false = tô đặc bê tông như cũ</summary>
+    public bool Materials { get; set; } = true;
+    /// <summary>Bảng chú thích vật liệu bên phải mặt cắt</summary>
+    public bool Legend { get; set; } = true;
+    /// <summary>Cốt sân thấp hơn nền tầng 1 (m)</summary>
+    public double SiteOffset { get; set; } = 0.45;
+    /// <summary>Kết quả thiết kế móng (kích thước móng thật); null → móng khai báo / sơ bộ</summary>
+    public IEnumerable<FootingDesign> Footings { get; set; }
+}
+
+/// <summary>Một hình móng trên mặt cắt (đa giác u, z – m).</summary>
+public sealed class FoundationShape
+{
+    public string Kind { get; set; } = "";
+    public SectionMaterial Material { get; set; } = SectionMaterial.BTCT;
+    public List<(double U, double Z)> Points { get; set; } = new();
+    public string Label { get; set; } = "";
+    public int NodeId { get; set; }
+    public bool BreakAtBottom { get; set; }
 }

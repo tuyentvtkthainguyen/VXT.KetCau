@@ -72,6 +72,14 @@ public partial class MainWindow
                 ShotWindow(secWin, $"{tag}_46h_MatCat_1_1");
                 secWin.Close();
             }
+            // mặt cắt kết cấu có thể hiện móng (cổ cột, móng, bê tông lót)
+            var secWin2 = OpenSectionView(KetCauVXT.Drawing.SectionView.Defaults(_p).FirstOrDefault(), true);
+            if (secWin2 != null)
+            {
+                await Pause(1200);
+                ShotWindow(secWin2, $"{tag}_46i_MatCat_1_1_CoMong");
+                secWin2.Close();
+            }
             StLog($"khung nhìn mặt cắt ngang tầng: {LevelViews.Build(_p).Count}; mặt cắt đứng: {KetCauVXT.Drawing.SectionView.All(_p).Count}");
             _v3SelId = null;
             tabView.SelectedItem = ViewTab("Mặt bằng");

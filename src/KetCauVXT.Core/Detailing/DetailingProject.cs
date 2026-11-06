@@ -103,7 +103,13 @@ public class DetailingProject
     public List<(IDetailMember Member, DetailResult Result)> RunAll()
     {
         var res = new List<(IDetailMember, DetailResult)>();
-        foreach (var m in All) res.Add((m, RunSafe(m, Settings)));
+        foreach (var m in All)
+        {
+            var r = RunSafe(m, Settings);
+            // lỗ xuyên sàn × cột trên mặt bằng kết cấu: khoảng cách chọc thủng (Detailing/Penetrations.cs)
+            if (m is ManualSlab ms && ms.Penetrations.Count > 0) { try { SlabPunching.Apply(this, ms, r); } catch (Exception) { } }
+            res.Add((m, r));
+        }
         return res;
     }
 
