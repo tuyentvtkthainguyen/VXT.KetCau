@@ -847,6 +847,10 @@ public static partial class UserGuide
         c.Sec("mo-hinh.revit-hoan-thien", "Kiểu Revit – tay nắm, Tab, làm lại, lệnh sửa bằng chuột, 3D có ô cửa")
             .Steps("**Tay nắm (grip)**: chọn một tường hoặc dầm → hai đầu hiện ô vuông xanh, giữa hiện ô thoi trắng. **Kéo ô đầu** để kéo dài / rút ngắn (bắt điểm trục, nút, nét CAD; F8 trực giao), "
                 + "**kéo ô giữa** để dời cả đối tượng. Cửa trên tường giữ nguyên vị trí và tự nằm gọn trong tường; rút tường ngắn hơn cửa thì báo lỗi, tường giữ nguyên. Mỗi lần kéo là một bước hoàn tác.",
+                "**Vừa màn hình**: mặt bằng tự vừa đúng cỡ vùng vẽ khi mở, đổi tầng, thu / mở khung bên hoặc đổi cỡ cửa sổ (chừa lề cho bong bóng trục và kích thước). "
+                + "Đã lăn chuột phóng / kéo mặt bằng thì giữ nguyên khung nhìn của bạn; bấm **Vừa màn hình** (hoặc gõ Z, ZE) để vừa lại.",
+                "**Nhãn mặt bằng**: chữ giữ cỡ ≈ 11 px trên màn hình, có nền trắng mờ cho dễ đọc; nhãn được đặt theo thứ tự ưu tiên trục → cột → dầm → sàn → chữ khác, "
+                + "tự dời sang chỗ trống; nhãn dầm theo phương dọc viết xoay dọc theo dầm. Nhãn không còn chỗ bị ẩn – rê chuột vào vị trí đó để xem chú giải.",
                 "**Tab**: đưa chuột vào chỗ nhiều đối tượng chồng nhau (cột – dầm – tường – ô sàn) rồi nhấn **Tab** để chọn lần lượt từng đối tượng (thanh trạng thái ghi đối tượng đang chọn, ví dụ 2/4).",
                 "**Hoàn tác / Làm lại**: **Ctrl+Z** hoàn tác, **Ctrl+Y** (menu Sửa → Làm lại, hoặc gõ lệnh REDO) làm lại; sửa mô hình mới thì danh sách làm lại được xoá (tối đa 30 bước).",
                 "**Lệnh sửa bằng chuột** (gõ ở dòng lệnh dưới mặt bằng, áp cho dầm đang chọn và tường đang chọn): "

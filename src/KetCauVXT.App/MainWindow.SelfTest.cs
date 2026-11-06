@@ -79,7 +79,15 @@ public partial class MainWindow
             cbStory.SelectedItem = story.Name;
             await Pause();
 
-            tabView.SelectedItem = ViewTab("Mặt bằng"); await Pause(); Shot($"{tag}_1_MatBang");
+            tabView.SelectedItem = ViewTab("Mặt bằng"); await Pause(); FitPlan(); await Pause(); Shot($"{tag}_1_MatBang");
+            {
+                // [Vừa màn hình] ghi tỷ lệ và độ phủ vùng vẽ sau khi vừa màn hình (trước đây ≈ 11 px/m – mặt bằng rất nhỏ)
+                double pw = planHost.ActualWidth, ph = planHost.ActualHeight;
+                double spanX = _p.Nodes.Count > 0 ? _p.Nodes.Max(n => n.X) - _p.Nodes.Min(n => n.X) : 0, spanY = _p.Nodes.Count > 0 ? _p.Nodes.Max(n => n.Y) - _p.Nodes.Min(n => n.Y) : 0;
+                double cover = Math.Max(pw > 0 ? spanX * _scale / pw : 0, ph > 0 ? spanY * _scale / ph : 0);
+                StLog($"vừa màn hình: {_scale:0.#} px/m, vùng vẽ {pw:0}×{ph:0} px, công trình phủ {cover:P0} chiều hạn chế, nhãn ẩn vì hết chỗ: {_lblDropped}"
+                      + (cover < 0.45 ? "  – CẢNH BÁO: mặt bằng còn nhỏ" : ""));
+            }
             var beam = _p.Frames.FirstOrDefault(f => !f.IsVerticalKind && f.Story == story.Name);
             Select(frame: beam); await Pause(); Shot($"{tag}_2_MatBang_ChonDam");
             var slab = _p.Slabs.FirstOrDefault(s => s.Story == story.Name);

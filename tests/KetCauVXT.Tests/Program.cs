@@ -619,6 +619,8 @@ Console.WriteLine("75. Hoàn thiện kiểu Revit: 3D tường có ô cửa, tay
 RevitFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("76. Hoàn thiện bản vẽ / xuất: cửa trên mặt bằng, thống kê cửa, lanh tô từ mô hình, cột lệch tâm (E2K/S2K), tham chiếu tờ, danh mục mặt cắt");
 DrawExportFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("77. Vừa màn hình mặt bằng theo vùng vẽ thật, đặt nhãn theo ưu tiên không chồng");
+PlanFitLabelTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

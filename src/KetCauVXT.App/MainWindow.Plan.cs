@@ -21,6 +21,9 @@ public partial class MainWindow
     private Point _panStart;
     private double _panOx, _panOy;
     private bool _fitPending = true;
+    /// <summary>[Vừa màn hình] người dùng đã phóng / kéo tay (không tự vừa lại khi vùng vẽ đổi cỡ); cỡ vùng vẽ lúc vừa màn hình gần nhất.</summary>
+    private bool _planUserZoom;
+    private Size _fitSize;
 
     private static readonly Brush GridBrush = new SolidColorBrush(Color.FromRgb(200, 60, 60));
     private static readonly Brush ColumnFill = new SolidColorBrush(Color.FromRgb(90, 90, 100));
@@ -121,12 +124,13 @@ public partial class MainWindow
         if (xs.Count == 0 && ys.Count == 0) CadLinkExtent(xs, ys);   // [CadLink] mô hình trống: vừa theo bản vẽ liên kết – MainWindow.CadLink.cs
         if (xs.Count == 0) xs.AddRange(new[] { 0.0, 10.0 });
         if (ys.Count == 0) ys.AddRange(new[] { 0.0, 10.0 });
-        double x0 = xs.Min(), x1 = xs.Max(), y0 = ys.Min(), y1 = ys.Max();
-        double dx = Math.Max(x1 - x0, 1), dy = Math.Max(y1 - y0, 1);
-        const double margin = 70;
-        _scale = Math.Max(1, Math.Min((w - 2 * margin) / dx, (h - 2 * margin) / dy));
-        _ox = (w - dx * _scale) / 2 - x0 * _scale;
-        _oy = h - (h - dy * _scale) / 2 + y0 * _scale;
+        // [Vừa màn hình] phạm vi = nút + trục (bong bóng trục vươn 1,2 m ngoài lưới) → vừa đúng cỡ vùng vẽ THẬT (Ui/PlanFit.cs)
+        double gExt = _p.Grids.Count > 0 ? 1.2 : 0;
+        double x0 = xs.Min() - gExt, x1 = xs.Max() + gExt, y0 = ys.Min() - gExt, y1 = ys.Max() + gExt;
+        var fit = KetCauVXT.Ui.PlanFit.Fit(x0, x1, y0, y1, w, h);
+        _scale = fit.Scale; _ox = fit.Ox; _oy = fit.Oy;
+        _planUserZoom = false;
+        _fitSize = new Size(w, h);
         _fitPending = false;
         RedrawPlan();
     }
@@ -213,7 +217,7 @@ public partial class MainWindow
             {
                 var m = new Point((a.X + b.X) / 2, (a.Y + b.Y) / 2);
                 bool vertical = Math.Abs(b.X - a.X) < Math.Abs(b.Y - a.Y);
-                AddText(VgBeamSection ? $"{f.Label} {f.Section}" : f.Label, vertical ? new Point(m.X + 6, m.Y) : new Point(m.X, m.Y - 12), LabelBrush, 9, !vertical);
+                AddText(VgBeamSection ? $"{f.Label} {f.Section}" : f.Label, vertical ? new Point(m.X + 4, m.Y) : new Point(m.X, m.Y - 12), LabelBrush, 9, !vertical, false, null, vertical);
             }
         }
 
@@ -235,6 +239,7 @@ public partial class MainWindow
             };
             Canvas.SetLeft(r, c.X - rw / 2); Canvas.SetTop(r, c.Y - rh / 2);
             planCanvas.Children.Add(r);
+            _lblPlacer?.Obstacle(new KetCauVXT.Ui.PlanLabelPlacer.Box(c.X - rw / 2, c.Y - rh / 2, rw, rh));   // [Nhãn] nhãn không đè thân cột
             if (labels && VgColumnTags) AddText($"{f.Label}", new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 1), Brushes.Black, 9, false);
         }
 
@@ -468,23 +473,29 @@ public partial class MainWindow
         var e = new Shapes.Ellipse { Width = 2 * r, Height = 2 * r, Stroke = GridBrush, StrokeThickness = 1, Fill = Brushes.White };
         Canvas.SetLeft(e, c.X - r); Canvas.SetTop(e, c.Y - r);
         planCanvas.Children.Add(e);
+        _lblPlacer?.Obstacle(new KetCauVXT.Ui.PlanLabelPlacer.Box(c.X - r, c.Y - r, 2 * r, 2 * r));
         AddText(name, c, GridBrush, 11, true, true);
     }
 
-    private void AddText(string s, Point p, Brush br, double size, bool center, bool vcenter = false, Canvas target = null)
+    private void AddText(string s, Point p, Brush br, double size, bool center, bool vcenter = false, Canvas target = null, bool rotate = false)
     {
         // [Hoàn thiện] chữ giữ cỡ trên màn hình; nhãn cấu kiện (≤ 10 pt, không phải trục) ẩn khi thu nhỏ quá mức
         if ((target == null || target == planCanvas) && size <= 10 && !ReferenceEquals(br, GridBrush) && !PlanLabelRules.Visible(_scale, true, _vg.MinLabelScale)) return;
-        var t = new TextBlock { Text = s, Foreground = br, FontSize = PlanLabelRules.ScreenFont(size, _scale), IsHitTestVisible = false };
+        bool axis = ReferenceEquals(br, GridBrush);
+        bool member = size <= 10 && !axis;
+        // [Nhãn] cỡ chữ cố định trên màn hình, nhãn cấu kiện tối thiểu 11 px cho dễ đọc
+        var t = new TextBlock { Text = s, Foreground = br, FontSize = member ? Math.Max(11, PlanLabelRules.ScreenFont(size, _scale)) : PlanLabelRules.ScreenFont(size, _scale), IsHitTestVisible = false };
+        if (rotate) t.LayoutTransform = new RotateTransform(-90);
         t.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double x = center ? p.X - t.DesiredSize.Width / 2 : p.X;
-        double y = vcenter || center ? p.Y - t.DesiredSize.Height / 2 : p.Y;
-        if (_lblBoxes != null && (target == null || target == planCanvas))
+        double y = vcenter || center || rotate ? p.Y - t.DesiredSize.Height / 2 : p.Y;
+        if (_lblPlacer != null && (target == null || target == planCanvas))
         {
-            // [Kiểu Revit] tránh chồng nhãn: nhãn cấu kiện (≤ 10 pt, không phải trục) dời / ẩn khi đụng nhãn đã đặt
-            var at = PlaceLabel(x, y, t.DesiredSize.Width, t.DesiredSize.Height, size <= 10 && !ReferenceEquals(br, GridBrush));
-            if (at == null) return;
-            x = at.Value.X; y = at.Value.Y;
+            // [Nhãn] đặt sau cùng theo ưu tiên (trục > cột > dầm > sàn > khác) – EndLabelLayout (MainWindow.RevitDraw.cs)
+            if (member) t.Background = LabelHalo;
+            _lblPlacer.Add(new KetCauVXT.Ui.PlanLabelPlacer.Box(x, y, t.DesiredSize.Width, t.DesiredSize.Height),
+                KetCauVXT.Ui.PlanLabelPlacer.GuessPriority(s, axis || !member), member, t);
+            return;
         }
         Canvas.SetLeft(t, x); Canvas.SetTop(t, y);
         (target ?? planCanvas).Children.Add(t);
@@ -499,6 +510,7 @@ public partial class MainWindow
         var (wx, wy) = S2W(m);
         double k = e.Delta > 0 ? 1.2 : 1 / 1.2;
         _scale = Math.Clamp(_scale * k, 0.5, 5000);
+        _planUserZoom = true;   // [Vừa màn hình] người dùng phóng tay → không tự vừa lại khi đổi cỡ vùng vẽ
         _ox = m.X - wx * _scale;
         _oy = m.Y + wy * _scale;
         RedrawPlan();
@@ -534,6 +546,7 @@ public partial class MainWindow
         _dragged = true;
         if (_winDrag) { _winEnd = p; DrawHover(); return; }   // [BeamTools] kéo khung chọn thay vì di chuyển
         _ox = _panOx + dx; _oy = _panOy + dy;
+        _planUserZoom = true;
         RedrawPlan();
     }
 
@@ -569,9 +582,10 @@ public partial class MainWindow
     private void PlanHost_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         // vùng vẽ đổi cỡ nhiều (mở/đóng thanh công cụ, đổi cỡ cửa sổ) khi người dùng chưa phóng to tay → vừa màn hình lại
-        bool big = e.PreviousSize.Width > 0 && (Math.Abs(e.NewSize.Height - e.PreviousSize.Height) > 0.25 * Math.Max(e.PreviousSize.Height, 1)
-                                                 || Math.Abs(e.NewSize.Width - e.PreviousSize.Width) > 0.25 * Math.Max(e.PreviousSize.Width, 1));
-        if (_fitPending || (big && _scale <= 1.01)) FitPlan(); else RedrawPlan();
+        // [Vừa màn hình] trước đây điều kiện "_scale <= 1.01" (px/m) gần như không bao giờ đúng → vừa màn hình chỉ chạy một lần lúc vùng vẽ
+        // còn nhỏ (đang dựng giao diện) và giữ tỷ lệ bé đó mãi. Nay: chưa phóng / kéo tay → luôn vừa lại theo cỡ mới.
+        if (_fitPending || KetCauVXT.Ui.PlanFit.RefitOnResize(_planUserZoom, _fitSize.Width, _fitSize.Height, e.NewSize.Width, e.NewSize.Height)) FitPlan();
+        else RedrawPlan();
     }
 
     private void BtnFit_Click(object sender, RoutedEventArgs e) => FitPlan();

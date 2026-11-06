@@ -242,7 +242,7 @@ public partial class MainWindow
                 if (BeamTools.TryLength(arg, CoordUnit.M, out double k) && k > 0.05 && k < 50)
                 {
                     double cx = planHost.ActualWidth / 2, cy = planHost.ActualHeight / 2;
-                    _ox = cx - (cx - _ox) * k; _oy = cy - (cy - _oy) * k; _scale *= k;
+                    _ox = cx - (cx - _ox) * k; _oy = cy - (cy - _oy) * k; _scale *= k; _planUserZoom = true;
                     RedrawPlan();
                 }
                 else FitPlan();

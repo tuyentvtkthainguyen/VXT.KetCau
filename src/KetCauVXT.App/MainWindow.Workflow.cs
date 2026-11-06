@@ -468,6 +468,7 @@ public partial class MainWindow
         if (w < 50 || h < 50) return;
         _scale = Math.Max(_scale, Math.Min(w, h) / Math.Max(span, 0.5));
         _scale = Math.Min(_scale, 400);
+        _planUserZoom = true;
         _ox = w / 2 - x * _scale;
         _oy = h / 2 + y * _scale;
         RedrawPlan();

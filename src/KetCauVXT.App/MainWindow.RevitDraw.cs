@@ -48,10 +48,40 @@ public partial class MainWindow
     /// <summary>Gọi đầu RedrawPlan: bật / tắt tránh chồng nhãn.</summary>
     private void BeginLabelLayout()
     {
-        _lblBoxes = _vg.AvoidOverlap ? new List<Rect>() : null;   // [Hoàn thiện] tránh chồng nhãn mọi loại – cả giao diện cổ điển
+        _lblBoxes = null;
+        _lblPlacer = _vg.AvoidOverlap ? new KetCauVXT.Ui.PlanLabelPlacer() : null;   // [Nhãn] đặt nhãn theo ưu tiên, tránh chồng mọi loại – cả giao diện cổ điển
         _rvDimLayer?.Children.Clear();
     }
-    private void EndLabelLayout() => _lblBoxes = null;
+
+    /// <summary>[Nhãn] đặt toàn bộ nhãn đã gom (Ui/PlanFit.cs – PlanLabelPlacer): trục giữ chỗ trước, rồi cột → dầm → sàn → khác;
+    /// nhãn không còn chỗ bị ẩn, rê chuột vào vị trí của nó hiện chú giải.</summary>
+    private void EndLabelLayout()
+    {
+        var lp = _lblPlacer;
+        _lblPlacer = null;
+        if (lp == null) return;
+        lp.Solve();
+        foreach (var it in lp.Items)
+        {
+            if (it.Tag is not TextBlock t) continue;
+            if (it.Placed is { } b)
+            {
+                Canvas.SetLeft(t, b.X); Canvas.SetTop(t, b.Y);
+                planCanvas.Children.Add(t);
+            }
+            else
+            {
+                var tip = new Shapes.Rectangle { Width = Math.Max(it.Want.W, 6), Height = Math.Max(it.Want.H, 6), Fill = Brushes.Transparent, ToolTip = t.Text };
+                Canvas.SetLeft(tip, it.Want.X); Canvas.SetTop(tip, it.Want.Y);
+                planCanvas.Children.Add(tip);
+            }
+        }
+        _lblDropped = lp.Dropped.Count();
+    }
+    private KetCauVXT.Ui.PlanLabelPlacer _lblPlacer;
+    /// <summary>Số nhãn bị ẩn vì hết chỗ ở lần vẽ gần nhất (tự kiểm ghi nhật ký).</summary>
+    private int _lblDropped;
+    private static readonly Brush LabelHalo = Frozen(Color.FromArgb(185, 255, 255, 255));
 
     /// <summary>Tránh chồng nhãn (AddText): trả về vị trí trái-trên mới hoặc null = bỏ nhãn (không còn chỗ). Nhãn trục / tiêu đề chỉ ghi chỗ, không dời.</summary>
     private Point? PlaceLabel(double x, double y, double w, double h, bool movable)
