@@ -292,8 +292,8 @@ public static class SectionView
             }
             if (!string.IsNullOrEmpty(f.Label))
             {
-                double cx = f.Points.Average(q => q.U) * 1000, ty = f.Points.Min(q => q.Z) * 1000 - 1.8 * w.Th;
-                w.Text(Lay.Chu, cx, ty, w.Th * 0.9, f.Label, 0, 1, 0);
+                double cx = f.Points.Average(q => q.U) * 1000, tyLbl = f.Points.Min(q => q.Z) * 1000 - 1.8 * w.Th;
+                w.Text(Lay.Chu, cx, tyLbl, w.Th * 0.9, f.Label, 0, 1, 0);
             }
         }
 
