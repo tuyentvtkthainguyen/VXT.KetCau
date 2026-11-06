@@ -432,14 +432,16 @@ public static class GeotechCalc
         try { st = Material.Rebar(string.IsNullOrWhiteSpace(rebar) ? "CB400-V" : rebar); } catch (Exception) { st = Material.Rebar("CB400-V"); }
         r.As = rebarArea > 0 ? rebarArea : DefaultRebarArea(d);
         r.Rb = conc.Rb; r.Rsc = st.Rsc;
-        r.Pvl = 1.0 * (conc.Rb * r.Ab + st.Rsc * r.As);
+        // cọc khoan nhồi: bê tông đổ trong dung dịch / dưới nước – γcb·γ'cb = 0,85·0,7 (TCVN 10304:2014 mục 7.1.9)
+        double kb = bored ? KetCauVXT.Design.Foundation.BoredPile.GammaCb * KetCauVXT.Design.Foundation.BoredPile.GammaCbWet : 1.0;
+        r.Pvl = 1.0 * (kb * conc.Rb * r.Ab + st.Rsc * r.As);
 
         string shape = round ? "cọc tròn D" + F(d * 1000, "0") : "cọc vuông " + F(d * 1000, "0") + "×" + F(d * 1000, "0");
         r.Notes.Add($"{(bored ? "Cọc khoan nhồi" : "Cọc đóng / ép")} {shape} mm, đầu cọc {F(cutoffDepth)} m, mũi {F(tipDepth)} m (L = {F(r.Length)} m), hố khoan {r.Borehole}");
         r.Notes.Add($"Ab = {F(r.Ab, "0.####")} m², u = {F(r.U, "0.###")} m");
         r.Notes.Add($"Ma sát thân u·Σf·l = {F(r.ShaftResistance, "0.0")} kN; mũi: Np = {F(r.Np, "0.#")}, qb = {(r.TipCohesive ? "9·6,25·Np" : (bored ? "150·Np" : "300·Np"))} = {F(r.Qb, "0")} kPa → qb·Ab = {F(r.TipResistance, "0.0")} kN");
         r.Notes.Add($"Rc,u = {F(r.Rcu, "0.0")} kN; [P]đn = Rc,u/FS = {F(r.Rcu, "0.0")}/{F(r.SafetyFactor)} = {F(r.Pdn, "0.0")} kN");
-        r.Notes.Add($"Pvl = φ·(Rb·Ab + Rsc·As) = 1·({F(conc.Rb / 1000, "0.##")}·10³·{F(r.Ab, "0.####")} + {F(st.Rsc / 1000, "0")}·10³·{F(r.As * 1e4, "0.##")}·10⁻⁴) = {F(r.Pvl, "0.0")} kN");
+        r.Notes.Add($"Pvl = φ·({(bored ? "γcb·γ'cb·" : "")}Rb·Ab + Rsc·As) = 1·({(bored ? "0,85·0,7·" : "")}{F(conc.Rb / 1000, "0.##")}·10³·{F(r.Ab, "0.####")} + {F(st.Rsc / 1000, "0")}·10³·{F(r.As * 1e4, "0.##")}·10⁻⁴) = {F(r.Pvl, "0.0")} kN");
         r.Notes.Add($"[P] = min([P]đn; Pvl) = {F(r.Allowable, "0.0")} kN");
         if (tipDepth > (bh?.Depth ?? 0) + 1e-6) r.Notes.Add("CẢNH BÁO: mũi cọc sâu hơn đáy hố khoan – lớp cuối được ngoại suy");
         return r;

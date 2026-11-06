@@ -325,6 +325,10 @@ public class FootingDesign : MemberDesignBase
     public double B { get; set; }        // cạnh theo Y (m)
     public double H { get; set; }        // chiều cao móng (m)
     public double Hb { get; set; }       // chiều cao mép móng (m) – móng vát
+    /// <summary>Móng bậc: cạnh bậc trên theo phương L (m), 0 = móng vát / phẳng.</summary>
+    public double StepL { get; set; }
+    /// <summary>Móng bậc: cạnh bậc trên theo phương B (m).</summary>
+    public double StepB { get; set; }
     public double Depth { get; set; }    // độ sâu chôn móng (m)
     public double R { get; set; }        // sức chịu tải tiêu chuẩn nền (kN/m²)
     public double Pmax { get; set; }

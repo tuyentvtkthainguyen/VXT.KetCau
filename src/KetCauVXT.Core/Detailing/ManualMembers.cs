@@ -196,6 +196,8 @@ public class ManualBeam : IDetailMember
     [Field("Lực tập trung tại các gối (Winkler)", Unit = "kN", Group = "Dầm móng: tải trọng & phản lực", Hint = "vd. 300; 450; 300 – lực cột truyền xuống dầm móng đặt trên nền")] public string SupportLoads { get; set; } = "";
     [Field("Hệ số nền k (0 = 120·R)", Unit = "kN/m³", Group = "Dầm móng: tải trọng & phản lực")] public double SoilK { get; set; }
     [Field("Sức chịu tải nền R dưới dầm móng", Unit = "kN/m²", Group = "Dầm móng: tải trọng & phản lực")] public double SoilR { get; set; } = 150;
+    [Field("Móng tại các gối (tên, theo thứ tự trái → phải)", Group = "Dầm móng: tải trọng & phản lực",
+        Hint = "vd. M1; M2; Đ1 – phản lực giằng tự cộng vào N của móng / đài cùng tên (để trống gối không tựa lên móng: M1; ; M3)")] public string SupportFootings { get; set; } = "";
     /// <summary>Kết quả tính dầm móng gần nhất (phản lực gối) – dùng chuyển sang móng.</summary>
     [System.Text.Json.Serialization.JsonIgnore] public KetCauVXT.Design.Foundation.GroundBeamResult GroundResult { get; private set; }
 

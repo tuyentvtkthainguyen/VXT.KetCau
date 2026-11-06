@@ -224,15 +224,22 @@ public static class FootingDrawing
         double neck = Math.Max(300, (f.Depth > 0 ? f.Depth - f.H : 0.5) * 1000) * k;
         double exS = (f.Eccentric?.OffsetX ?? 0) * 1000 * k;   // [MóngLệchTâm] tim cột tại L/2 − ex
         double xc1 = L / 2 - exS - cb / 2, xc2 = L / 2 - exS + cb / 2, ped = Math.Abs(exS) > 1e-6 ? 0 : 50 * k;
+        // móng bậc: bậc trên StepL (thay mặt vát bằng bậc thẳng đứng)
+        bool stepped = f.StepL > 1e-6 && Hb < H - 1e-6;
+        double xs1 = Math.Max(L / 2 - exS - f.StepL * 1000 * k / 2, 0), xs2 = Math.Min(L / 2 - exS + f.StepL * 1000 * k / 2, L);
+        List<(double X, double Y)> RightPts() => stepped
+            ? new List<(double X, double Y)> { (0, 0), (L, 0), (L, Hb), (xs2, Hb), (xs2, H), (xc2, H), (xc2, H + neck) }
+            : new List<(double X, double Y)> { (0, 0), (L, 0), (L, Hb), (xc2 + ped, H), (xc2, H), (xc2, H + neck) };
+        List<(double X, double Y)> LeftPts() => stepped
+            ? new List<(double X, double Y)> { (xc1, H + neck), (xc1, H), (xs1, H), (xs1, Hb), (0, Hb), (0, 0) }
+            : new List<(double X, double Y)> { (xc1, H + neck), (xc1, H), (xc1 - ped, H), (0, Hb), (0, 0) };
         // tô vật liệu (nếu thiết lập bật – DxfWriter.Hatch.cs): đất dưới lót, bê tông lót, bê tông móng
         if (w.HatchOn)
         {
             w.HatchMatRect(HatchMaterial.Earth, -lotL - (rL ? 0 : 2 * th), -lot - 1.2 * th, L + lotR + (rR ? 0 : 2 * th), -lot);
             w.HatchMatRect(HatchMaterial.LeanConcrete, -lotL, -lot, L + lotR, 0);
-            w.HatchMat(HatchMaterial.Concrete, new List<(double X, double Y)>
-            {
-                (0, 0), (L, 0), (L, Hb), (xc2 + ped, H), (xc2, H), (xc2, H + neck), (xc1, H + neck), (xc1, H), (xc1 - ped, H), (0, Hb)
-            });
+            var hp = RightPts(); hp.AddRange(LeftPts().Take(LeftPts().Count - 1));
+            w.HatchMat(HatchMaterial.Concrete, hp);
         }
         // lót
         w.Rect(Lay.BeTong, -lotL, -lot, L + lotR, 0);
@@ -243,14 +250,8 @@ public static class FootingDrawing
             w.Text(Lay.Chu, x + (x > 0 ? 0.6 * th : -0.6 * th), -lot - 1.5 * th, 0.8 * th, "RANH ĐẤT", 90, 0, x > 0 ? 0 : 2);
         }
         // đế
-        w.Polyline(Lay.BeTong, new List<(double X, double Y)>
-        {
-            (0, 0), (L, 0), (L, Hb), (xc2 + ped, H), (xc2, H), (xc2, H + neck),
-        }, false);
-        w.Polyline(Lay.BeTong, new List<(double X, double Y)>
-        {
-            (xc1, H + neck), (xc1, H), (xc1 - ped, H), (0, Hb), (0, 0)
-        }, false);
+        w.Polyline(Lay.BeTong, RightPts(), false);
+        w.Polyline(Lay.BeTong, LeftPts(), false);
         w.BreakH(Lay.BeTong, xc1, xc2, H + neck);
         w.Line(Lay.Truc, (xc1 + xc2) / 2, -lot - 2 * th, (xc1 + xc2) / 2, H + neck + 2 * th, "CENTER");
         if (Math.Abs(exS) > 1e-6)   // [MóngLệchTâm] kích thước tim cột – mép móng, đầu dầm cân bằng

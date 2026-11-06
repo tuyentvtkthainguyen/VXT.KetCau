@@ -984,7 +984,30 @@ public static partial class UserGuide
                 "**Giằng tựa lên móng**: dầm liên tục gối tại tim móng, q = bản thân + tường xây (1,1·18·t·h) + tải khác; phương trình ba mô men → M, Q dùng kiểm tra dầm khi ô nội lực nhập tay = 0, và **phản lực từng gối** ghi trong thông báo.",
                 "**Dầm móng trên nền đàn hồi (Winkler)**: k = 120·R nếu không nhập; lực cột tại gối nhập ở *Lực tập trung tại các gối*; kiểm tra áp lực nền pmax ≤ 1,2R; tổng phản lực nền bằng tổng tải.",
                 "Móng đơn / đài cọc có ô **Phản lực dầm móng / giằng cộng thêm vào N**: nhập ΣR các giằng tựa lên móng đó.",
-                "Chế độ Thiết kế: dầm móng có trong mô hình phân tích thì phản lực chân cột (tải móng) đã gồm tải dầm móng.");
+                "Chế độ Thiết kế: dầm móng có trong mô hình phân tích thì phản lực chân cột (tải móng) đã gồm tải dầm móng.",
+                "**Tự chuyển phản lực giằng**: ghi tên móng ở ô *Móng tại các gối* (vd. M1; M2; Đ1, gối không có móng để trống) → khi tính toàn bộ hồ sơ, phản lực từng gối tự cộng vào N của móng đơn / đài cọc cùng tên (thuyết minh ghi rõ dầm, gối); ô nhập tay khi đó không cộng thêm (tránh cộng hai lần).")
+            .Bullets("**Các trường hợp bổ sung**:",
+                "**Móng bậc** (Hình dạng đế móng = Bậc): Hb là chiều cao bậc dưới, bậc trên StepL × StepB (0 = tự chọn) → kiểm tra thêm **chọc thủng tại bậc**: F = N − pnet·(Lb + 2h0b)(Bb + 2h0b) ≤ Rbt·u·h0b, u = 2(Lb + Bb + 2h0b); mặt cắt móng vẽ bậc thẳng đứng, khối lượng bê tông / ván khuôn theo bậc.",
+                "**Cột chọc thủng móng băng**: mỗi cột (thêm ô *Cạnh cột ngang băng*) kiểm tra chọc thủng có kể mô men với h0 của sườn; đường bao bị cắt bởi mép bản đáy và đầu băng (cột ở đầu băng → 3 cạnh).",
+                "**Nhổ khối nhóm cọc** (≥ 2 cọc, có Σfi·li): [Pk,khối] = 0,9·(W khối đất bao nhóm cọc + Gđài) + 0,8·u_khối·Σfi·li/γk ≥ ΣNt các cọc chịu nhổ.");
+
+        c.Sec("mo-hinh.coc-khoan-nhoi-mini", "Cọc khoan nhồi mini (D300–600) và cọc khoan nhồi")
+            .P("Đài cọc (Triển khai hồ sơ) → **Loại cọc** = *Cọc khoan nhồi mini (D300–600)* hoặc *Cọc khoan nhồi*: cọc tròn, thép dọc = ô *Râu thép đầu cọc* (số thanh, Ø), bê tông cọc chọn riêng. Tính theo **TCVN 10304:2014**.")
+            .Bullets("**Sức chịu tải theo đất nền** (bật *Tính [P] cọc theo địa chất*, nhập bảng lớp đất từ mặt đất: bề dày, loại đất, IL, SPT N, cu, γ, E, qb nhập tay):",
+                "Rc,u = γc·(γcq·qb·Ab + u·Σγcf·fi·li), γc = γcq = 1; thân cọc chia đoạn ≤ 2 m.",
+                "*Chỉ tiêu cơ lý*: fi theo **Bảng 3** (độ sâu trung bình z, IL; cát thô/vừa, mịn, bụi), qb mũi trong đất dính theo **Bảng 7** (cọc khoan nhồi, z và IL ≤ 0,6); mũi trong cát dùng qb = 150·N hoặc qb nhập tay.",
+                "*SPT (Phụ lục G.3.2)*: cát fs = 10·N/3, sét fc = αp·cu (αp theo cu/σ'v); mũi cát qb = 150·N, sét qb = 9·cu (cu = 6,25·N nếu không nhập).",
+                "γcf theo công nghệ khoan: dung dịch bentonite 0,6; ống vách / khoan khô 0,7 (sửa được). [P]đ = γ0·Rc,u/(γn·γk) với γ0 = 1,15, γn = 1,15, γk = 1,4 (1,75 khi ít hố khoan).",
+                "Sức chịu tải vật liệu Pvl = φ·(γcb·γ'cb·Rb·Ab + Rsc·As), γcb = 0,85, γ'cb = 0,7 (đổ trong dung dịch / dưới nước), φ = 1 (cọc ngàm hoàn toàn trong đất) → [P] = min([P]đ; Pvl). Chế độ Thiết kế (cọc khoan nhồi theo hố khoan SPT) cũng dùng γcb·γ'cb khi tính Pvl.")
+            .Bullets("**Kiểm tra bổ sung**:",
+                "Hàm lượng thép dọc μ ≥ 0,4 %, khuyến nghị ≥ 6 thanh.",
+                "**Tải ngang** (ô *Tải ngang tại chân cột H*, K của nền): αbd = (K·bp/(γc·Eb·I))^(1/5), bp = 1,5d + 0,5, γc = 3; đầu cọc ngàm vào đài: M = H·B0/(αbd·C0), y0 = H·(A0 − B0²/C0)/(αbd³·Eb·I) (A0 = 2,441; B0 = 1,621; C0 = 1,751) – kiểm tra M ≤ Mu ≈ Rs·As·2rs/π, y0 ≤ 10 mm.",
+                "**Lún khối móng quy ước**: Bm = Bg + 2L·tan(φtb/4); cộng lún các lớp dưới mũi s = Σ0,8·σz·h/E tới khi σz ≤ 0,2σbt; S ≤ 80 mm.",
+                "**Lồng thép**: dài ≥ max(L/3; 6 m; 4/αbd + 1 m), toàn chiều dài khi cọc chịu nhổ; đai xoắn Ø6 (D ≤ 400) / Ø8 bước 100 vùng đầu cọc (≥ 2 m), 200 thân cọc; đai gia cường Ø16 và con kê 4 cái mỗi 2 m.")
+            .Bullets("**Bản vẽ & khối lượng**:",
+                "Chi tiết cọc (mặt đứng có lồng thép, hai vùng bước đai, chân lồng thép, cao độ đầu / mũi), mặt cắt cọc, trụ địa chất với chiều dài cọc và [P].",
+                "Thống kê thép cọc (thép dọc, đai xoắn, đai gia cường); bê tông cọc kể hao hụt mở rộng thành lỗ (×1,15), khoan tạo lỗ (m, từ mặt đất), dung dịch bentonite / ống vách.",
+                "Ghi chú thi công và **thử tải**: tremie, bentonite, vét lắng; thử tĩnh ≥ max(1 %; 1 cọc) (TCVN 9393:2012), PIT / siêu âm (TCVN 9396:2012).");
 
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")

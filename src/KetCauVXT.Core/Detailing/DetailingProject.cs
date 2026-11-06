@@ -103,6 +103,8 @@ public class DetailingProject
     public List<(IDetailMember Member, DetailResult Result)> RunAll()
     {
         var res = new List<(IDetailMember, DetailResult)>();
+        // phản lực giằng / dầm móng → móng đơn, đài cọc cùng tên ghi ở gối (tính dầm móng trước)
+        try { TieReaction.Transfer(this); } catch (Exception) { }
         foreach (var m in All)
         {
             var r = RunSafe(m, Settings);

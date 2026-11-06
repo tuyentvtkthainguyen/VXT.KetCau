@@ -135,4 +135,31 @@ public static class Punching
         }
         return (worst, wq, wqb, wc);
     }
+    /// <summary>Chọc thủng tại chỗ đổi bậc móng (móng bậc): tháp chọc thủng xuất phát từ mép bậc trên (stepL × stepB) xuống đáy móng
+    /// với h0 của bậc dưới. F = N − pnet·(stepL + 2h0b)(stepB + 2h0b) (phần đáy tháp nằm trong móng), u = 2(stepL + stepB + 2h0b).
+    /// footL, footB: kích thước đáy móng (giới hạn đáy tháp). Trả về (F, Fb,u = Rbt·u·h0b, u).</summary>
+    public static (double F, double Fu, double U) StepPunching(double n, double pnet, double stepL, double stepB, double h0b, double footL, double footB, double rbt)
+    {
+        if (h0b <= 0 || stepL <= 0 || stepB <= 0) return (0, 0, 0);
+        double ax = Math.Min(stepL + 2 * h0b, footL), ay = Math.Min(stepB + 2 * h0b, footB);
+        double u = 2 * (stepL + stepB + 2 * h0b);
+        return (Math.Max(n - pnet * ax * ay, 0), rbt * u * h0b, u);
+    }
+
+    /// <summary>Cột chọc thủng qua móng băng (sườn + bản): đường bao cách mép cột h0/2, bị cắt bởi mép bản đáy theo phương ngang băng
+    /// (bề rộng b) và đầu băng (cột gần đầu băng). bcAlong: cạnh cột dọc băng, bcTrans: cạnh cột ngang băng, xFromStart / xToEnd: khoảng cách
+    /// từ tim cột tới đầu / cuối băng (m), pnet: phản lực ròng (kPa) dưới đáy tháp. Trả về kết quả chọc thủng có kể mô men m (quanh trục ngang băng).</summary>
+    public static PunchingResult StripColumn(double n, double m, double bcAlong, double bcTrans, double h0, double stripB, double xFromStart, double xToEnd, double pnet, double rbt)
+    {
+        double ax = (bcAlong + h0) / 2, ay = (bcTrans + h0) / 2;
+        bool cutYN = ay >= stripB / 2 - 1e-9, cutYP = cutYN;
+        bool cutXN = xFromStart < ax - 1e-9, cutXP = xToEnd < ax - 1e-9;
+        var c = PunchingContour.Rect(bcAlong, bcTrans, h0, cutXN, cutXP, cutYN, cutYP,
+            Math.Max(xFromStart, bcAlong / 2), Math.Max(xToEnd, bcAlong / 2), stripB / 2, stripB / 2);
+        // đáy tháp 45° (cách mép cột h0) giới hạn trong bản đáy
+        double baseX = Math.Min(bcAlong / 2 + h0, xFromStart) + Math.Min(bcAlong / 2 + h0, xToEnd);
+        double baseY = Math.Min(bcTrans + 2 * h0, stripB);
+        double f = Math.Max(n - pnet * baseX * baseY, 0);
+        return Check(c, f, m, 0, h0, rbt, 0.5);
+    }
 }
