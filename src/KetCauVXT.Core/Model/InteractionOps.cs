@@ -167,8 +167,8 @@ public static class LevelDragMath
         double v = GridDragMath.Snap(z, step);
         var (lo, hi) = LevelOps.Limits(p, story);
         if (double.IsNaN(lo)) return v;
-        if (v < lo) v = GridDragMath.Snap(Math.Ceiling(lo / Math.Max(step, 1e-9)) * step, step);
-        if (v > hi) v = GridDragMath.Snap(Math.Floor(hi / Math.Max(step, 1e-9)) * step, step);
+        if (v < lo) v = GridDragMath.Snap(Math.Ceiling(lo / Math.Max(step, 1e-9) - 1e-6) * step, step);
+        if (v > hi) v = GridDragMath.Snap(Math.Floor(hi / Math.Max(step, 1e-9) + 1e-6) * step, step);
         return v;
     }
 
