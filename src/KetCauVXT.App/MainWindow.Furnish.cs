@@ -563,10 +563,10 @@ public partial class MainWindow
             if (_rvTabs != null)
                 RvTab("Đặt & xem",
                     RvGroup("Đặt",
-                        RvBtn("Đặt đồ đạc…", "", "Chọn đồ đạc / thiết bị trong thư viện 3D rồi rê chuột: tự bắt mặt tường, góc phòng, giao trục (không nhập toạ độ)", PickFurnitureToPlace)),
+                        RvBtn("Đặt đồ đạc…", KetCauVXT.Ui.UiGlyphs.For("Đặt đồ đạc"), "Chọn đồ đạc / thiết bị trong thư viện 3D rồi rê chuột: tự bắt mặt tường, góc phòng, giao trục (không nhập toạ độ)", PickFurnitureToPlace)),
                     RvGroup("Khung nhìn",
-                        RvBtn("Mặt cắt", "", "Vẽ mặt cắt đứng bằng 2 điểm – tự ghi cao độ, kích thước tầng, trục", StartSectionTool),
-                        RvBtn("Xem mặt cắt", "", "Mặt cắt 1-1, 2-2 tự sinh + mặt cắt đã vẽ", () => OpenSectionView())));
+                        RvBtn("Mặt cắt", KetCauVXT.Ui.UiGlyphs.For("Mặt cắt"), "Vẽ mặt cắt đứng bằng 2 điểm – tự ghi cao độ, kích thước tầng, trục", StartSectionTool),
+                        RvBtn("Xem mặt cắt", KetCauVXT.Ui.UiGlyphs.For("Xem mặt cắt"), "Mặt cắt 1-1, 2-2 tự sinh + mặt cắt đã vẽ", () => OpenSectionView())));
             if (mainMenu != null)
             {
                 var m = new MenuItem { Header = "Đặt & _xem" };

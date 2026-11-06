@@ -98,6 +98,7 @@ public static class UiGlyphs
         ("tu dan trang", "\uE8CB"), ("khoa", "\uE72E"), ("dan trang", "\uE749"), ("in", "\uE749"), ("xuat", "\uEDE1"), ("dinh dang", "\uE8D2"), ("chuyen", "\uE8AB"),
         ("nhan ban", "\uE8C8"), ("xoa", "\uE74D"), ("them", "\uE710"), ("vua", "\uE9A6"), ("phong to", "\uE8A3"), ("thu nho", "\uE71F"),
         ("tim", "\uE721"), ("mo rong", "\uE740"), ("khoi phuc", "\uE73F"), ("tro giup", "\uE897"), ("huong dan", "\uE897"), ("tuy chon", "\uE713"),
+        ("dat do dac", "\uE80F"), ("do dac", "\uE80F"), ("xem mat cat", "\uE7B3"), ("mat cat", "\uE8A1"),
     };
 
     public const string Hamburger = "\uE700", Search = "\uE721", FullScreen = "\uE740", Restore = "\uE73F", More = "\uE712", Add = "\uE710",

@@ -943,6 +943,24 @@ public static partial class UserGuide
                 "**Va chạm giữa bộ môn**: ống xuyên dầm ở vị trí không cho phép được tính là **va chạm cứng** thay vì *ống lồng*.",
                 "Hồ sơ điện nước (DN-) kèm **CHI TIẾT GIA CƯỜNG LỖ XUYÊN DẦM** và **CHI TIẾT GIA CƯỜNG MÉP LỖ SÀN** (tỷ lệ 1/20); mặt bằng thoát nước ghi mũi tên dốc, **i=2%**, cao độ đáy ống.");
 
+        c.Sec("mo-hinh.lo-xuyen-ket-cau", "Lỗ xuyên điện nước trong hồ sơ kết cấu; tường trừ rãnh điện nước; kích thước tạm tường / cột")
+            .P("Mọi lỗ xuyên dầm (trừ mức **Cấm**) và lỗ sàn lớn có thép gia cường từ bộ môn điện nước được **đánh ký hiệu** **LX1, LX2…** (lỗ xuyên dầm) và **LS1, LS2…** (lỗ sàn); lỗ giống nhau (cùng cấu kiện, cùng Ø / kích thước) dùng chung ký hiệu.")
+            .Bullets("Trong **hồ sơ kết cấu (KC)**:",
+                "Tờ **KC-10 \"CHI TIẾT GIA CƯỜNG LỖ XUYÊN KẾT CẤU\"**: mỗi ký hiệu một hình (tỷ lệ 1/20) kèm số lượng và tầng.",
+                "**Mặt bằng kết cấu**: vòng tròn tại vị trí lỗ + ký hiệu LX / LS.",
+                "**Mặt đứng dầm**: vẽ lỗ + ống lồng, đai gia cường mỗi bên lỗ, thép bổ sung trên / dưới lỗ và ghi chú \"xem chi tiết LX1\".",
+                "**Kiểm tra chịu cắt tại lỗ xuyên** (bảng kiểm tra dầm): tiết diện thực h0n = h0 − Ø lỗ, đai quanh lỗ bước 50 mm, Qu = Qb + 0,75·qsw·2h0n ≤ 0,3·Rb·b·h0n so với Q lớn nhất của nhịp.",
+                "**Bảng thống kê cốt thép**: thêm cấu kiện \"D1 – gia cường lỗ xuyên\" / \"S1 – gia cường lỗ xuyên\" chứa thép gia cường (số lượng, Ø, chiều dài, trọng lượng).")
+            .Bullets("**Triển khai hồ sơ**:",
+                "Dầm: bảng **LỖ XUYÊN DẦM – ỐNG LỒNG** (vị trí từ tim gối đầu, cách đáy, Ø); sàn: bảng **LỖ XUYÊN SÀN** (tâm lỗ từ góc ô, cạnh lỗ) – thép gia cường vào thép cấu kiện, lỗ vẽ trên mặt đứng / mặt bằng, cảnh báo lỗ sai vùng.",
+                "Mặt bằng kết cấu → nút **Lỗ xuyên từ điện nước**: chép lỗ từ mô hình (chế độ Thiết kế) vào dầm / sàn hồ sơ **cùng tên** (không nhân đôi khi chạy lại).")
+            .Bullets("**Tường trừ phần điện nước chiếm chỗ** (bảng khối lượng):",
+                "Ống / ống gen chôn tường: rãnh rộng Ø + 20 mm, sâu Ø + 10 mm (≤ lõi tường) × chiều dài trong tường; hộp âm tường (ổ cắm, công tắc, hộp chia, aptomat, tủ điện): W × H × sâu.",
+                "Khối xây (gạch, vữa xây) trừ thể tích này; thêm công tác **Đục rãnh tường (m)**, **Trát vá rãnh (m²)**, **Đục lỗ hộp âm tường (cái)**. Ống thoát nước đi dưới sàn không đục tường. Tải tường giữ nguyên (phần trừ nhỏ, thiên về an toàn).")
+            .Bullets("**Mặt cắt** và **kích thước tạm**:",
+                "Mặt cắt 1-1 / 2-2 tự chọn nhịp **cắt được nhiều sàn nhất** (tránh ô cầu thang); mức sàn không có sàn trên đường cắt ghi chú \"ô cầu thang / lỗ sàn\"; phần tử **nhìn thấy phía sau** mặt cắt (tới trục kế tiếp, ≤ 6 m) vẽ nét mảnh.",
+                "Giao diện kiểu Revit: chọn **tường** → kích thước tạm tới tường / trục song song hai bên (bấm số → dời tường song song); chọn **cột** → khoảng cách tâm cột tới trục gần nhất (bấm số → đổi lệch tâm cột).");
+
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")
             .Steps("Thanh sửa mặt bằng: nhập độ hạ ở ô **Hạ cốt (mm)** (vd. −50; gõ 50 cũng hiểu là hạ 50 mm).",

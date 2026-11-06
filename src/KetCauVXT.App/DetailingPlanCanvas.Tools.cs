@@ -38,6 +38,7 @@ public sealed partial class DetailingPlanCanvas
         r.Children.Add(Btn("Ẩn / hiện xref", ToggleUnderlay, "Ẩn / hiện nền mặt bằng kiến trúc của tầng"));
         r.Children.Add(Btn("Dời xref…", ShiftUnderlay, "Dời nền kiến trúc (m) để trục kiến trúc trùng trục kết cấu"));
         r.Children.Add(Btn("Lanh tô từ cửa mô hình", LintelsFromModel, "Đặt lanh tô cho mọi cửa gắn tường của mô hình (chế độ Thiết kế, giao diện kiểu Revit) lên mặt bằng lanh tô các tầng – gộp cửa giống nhau thành LT1, LT2…"));
+        r.Children.Add(Btn("Lỗ xuyên từ điện nước", PenetrationsFromModel, "Chuyển lỗ xuyên dầm / sàn có cảnh báo của bộ môn điện nước (mô hình ở chế độ Thiết kế) vào dầm / sàn hồ sơ cùng tên: lỗ trên mặt đứng, thép gia cường LX / LS, kiểm tra cắt tại lỗ"));
         r.Children.Add(Btn("Lanh tô theo cửa KT", LintelsFromDoors, "Đề xuất lanh tô cho mọi ô cửa của ánh xạ kiến trúc tầng này (gộp các cửa giống nhau thành LT1, LT2…)"));
         r.Children.Add(Btn("Nhập MB kết cấu từ CAD…", ImportCadPlan, "Nhập mặt bằng kết cấu vẽ trong AutoCAD (DXF/DWG): dầm (layer DAM/BEAM), cột (COT/COLUMN), chữ tên D1 220x400, C1, S1…"));
         return r;

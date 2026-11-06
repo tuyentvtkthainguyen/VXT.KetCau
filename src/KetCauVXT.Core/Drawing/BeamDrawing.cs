@@ -59,7 +59,7 @@ public static partial class BeamDrawing
         foreach (var sp in spans) xs.Add(xs[^1] + sp.L * 1000);
         if (spans.Count == 0)
         {
-            double tl = d.Bars.Count > 0 ? d.Bars.Max(x => Math.Max(x.Start, x.End)) * 1000 : 3000;
+            double tl = BeamHoleDraw.MainBars(d).Any() ? BeamHoleDraw.MainBars(d).Max(x => Math.Max(x.Start, x.End)) * 1000 : 3000;
             xs.Add(Math.Max(1000, tl));
         }
         int ns = xs.Count;
@@ -187,7 +187,7 @@ public static partial class BeamDrawing
         }
 
         // ---- thép dọc ----
-        var longi = d.Bars.Where(x => !DrawUtil.IsStirrup(x)).ToList();
+        var longi = BeamHoleDraw.MainBars(d).Where(x => !DrawUtil.IsStirrup(x)).ToList();
         var gia = longi.Where(x => (x.Role ?? "").Contains("Giá")).ToList();
         var tops = longi.Where(x => x.IsTop && !gia.Contains(x)).ToList();
         var bots = longi.Where(x => !x.IsTop && !gia.Contains(x)).ToList();
@@ -236,6 +236,9 @@ public static partial class BeamDrawing
             for (double x = a + s / 2; x < e - 1e-6; x += s)
                 w.Line(Lay.Dai, x, -0.6 * cover, x, -h + 0.6 * cover);
         }
+
+        // ---- lỗ xuyên dầm + gia cường (cảnh báo điện nước / nhập tay) – Drawing/BeamHoles.cs ----
+        if (d.Holes != null && d.Holes.Count > 0) BeamHoleDraw.Draw(w, d.Holes, h, layout);
 
         // ---- nhãn thép dọc ----
         var usedTop = new List<double>();
@@ -436,7 +439,7 @@ public static partial class BeamDrawing
             };
             foreach (var bm in d.Bars)
             {
-                if (DrawUtil.IsStirrup(bm)) { sub.Bars.Add(bm); continue; }   // đai: theo vùng đai của đoạn
+                if (DrawUtil.IsStirrup(bm) || BeamHoleDraw.IsHoleBar(bm)) { sub.Bars.Add(bm); continue; }   // đai: theo vùng đai của đoạn
                 double a = Math.Min(bm.Start, bm.End) * 1000, e = Math.Max(bm.Start, bm.End) * 1000;
                 if (e < lo + 1 || a > hi - 1) continue;
                 double ca = Math.Max(a, lo), ce = Math.Min(e, hi);
@@ -459,6 +462,9 @@ public static partial class BeamDrawing
                 }
             foreach (var (cx, num) in allCuts)
                 if (cx >= xs[i0] - 1 && cx <= xs[i1] + 1) ctx.Cuts.Add((cx - x0, num));
+            foreach (var ho in d.Holes ?? new List<BeamHole>())
+                if (ho.X >= xs[i0] - 1 && ho.X <= xs[i1] + 1)
+                    sub.Holes.Add(new BeamHole { X = ho.X - x0, Zb = ho.Zb, Dia = ho.Dia, Tag = ho.Tag, StirrupsPerSide = ho.StirrupsPerSide, StirrupDia = ho.StirrupDia, BarDia = ho.BarDia, BarLen = ho.BarLen, Severity = ho.Severity });
             var prev = _seg;
             _seg = ctx;
             try { res.AddRange(Build(p, sub, ds)); }
@@ -512,7 +518,7 @@ public static partial class BeamDrawing
     {
         if (d.StirrupZones != null && d.StirrupZones.Count > 0) return d.StirrupZones.OrderBy(z => z.From).ToList();
         var res = new List<StirrupZone>();
-        var st = d.Bars.FirstOrDefault(DrawUtil.IsStirrup);
+        var st = BeamHoleDraw.MainBars(d).FirstOrDefault(DrawUtil.IsStirrup);
         double x0 = 0;
         for (int i = 0; i < d.Spans.Count; i++)
         {
@@ -549,7 +555,7 @@ public static partial class BeamDrawing
         {
             double xm = x / 1000;
             var c = new Cut { X = x };
-            foreach (var bm in d.Bars.Where(bb => !DrawUtil.IsStirrup(bb)))
+            foreach (var bm in BeamHoleDraw.MainBars(d).Where(bb => !DrawUtil.IsStirrup(bb)))
             {
                 double a = Math.Min(bm.Start, bm.End), e = Math.Max(bm.Start, bm.End);
                 if (xm < a - 1e-4 || xm > e + 1e-4) continue;

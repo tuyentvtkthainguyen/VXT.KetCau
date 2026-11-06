@@ -163,6 +163,8 @@ public class BeamLineDesign : MemberDesignBase
     [System.Text.Json.Serialization.JsonIgnore]
     public KetCauVXT.Drawing.BeamSlabSection ManualSlab { get; set; }
     public List<int> Frames { get; set; } = new();
+    /// <summary>Lỗ xuyên dầm (ống lồng) + gia cường – từ cảnh báo điện nước hoặc nhập tay (Drawing/BeamHoles.cs)</summary>
+    public List<KetCauVXT.Drawing.BeamHole> Holes { get; set; } = new();
     public double B { get; set; }
     public double H { get; set; }
     public string Section { get; set; } = "";

@@ -46,6 +46,8 @@ public static class FramingPlan
             w.Text(Lay.Chu, (n.X + f.ColOffsetX) * 1000 + half + 0.4 * th, (n.Y + f.ColOffsetY) * 1000 + half + 0.4 * th, th, nm, 0, 0, 0);   // [Trục qua mép cột]
         }
         EccentricDims(w, p, st);   // [Trục qua mép cột] kích thước trục → mép cột lệch tâm (vd. 0 | 220)
+        try { KetCauVXT.Mep.PenetrationRegister.DrawPlanMarks(w, p, st.Elevation); }   // [Điện nước → kết cấu] dấu lỗ xuyên LX / LS
+        catch (Exception) { }
 
         // nhãn dầm: mỗi dầm liên tục ghi 1 lần ở phần tử giữa
         var labeled = new HashSet<int>();

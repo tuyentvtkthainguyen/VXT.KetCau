@@ -555,6 +555,8 @@ public sealed partial class DetailingWindow : Window
         "SlabPanelRow" => "Ô SÀN KHÁC MẶC ĐỊNH (hạ cốt, chiều dày, công năng, lỗ thông tầng)",
         "SlabOpening" => "LỖ KHOÉT SÀN (toạ độ góc dưới trái từ giao trục đầu tiên)",
         "SlabBarRow" => "THÉP SÀN VẼ THỦ CÔNG (chỉ dùng khi Cách bố trí = Thủ công)",
+        "BeamPenetration" => "LỖ XUYÊN DẦM – ỐNG LỒNG (vị trí từ tim gối đầu dầm; gia cường theo chi tiết LX)",
+        "SlabPenetration" => "LỖ XUYÊN SÀN CÓ THÉP GIA CƯỜNG MÉP LỖ (toạ độ từ giao trục đầu tiên; chi tiết LS)",
         _ => "DANH SÁCH"
     };
 

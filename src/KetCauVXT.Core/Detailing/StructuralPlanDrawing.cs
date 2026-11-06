@@ -180,6 +180,7 @@ public static class StructuralPlanDrawing
             foreach (var sm in (plan.Sections ?? new()).Where(q => q.Level == lv.Name && q.Length > 1e-6))
                 DrawSectionMark(w, sm);
         if (!columnsOnly) CalloutDrawing.DrawOnPlan(w, plan, lv, map);   // chi tiết trích + vạch cắt dầm (Detailing/DetailCallout.cs)
+        if (!columnsOnly) PenetrationPlan.Draw(w, lv, map);   // lỗ xuyên dầm / sàn LX, LS (Detailing/Penetrations.cs)
 
         // kích thước: dưới + trái (nhịp, tổng); trên + phải (nhịp)
         if (xs.Count >= 2)

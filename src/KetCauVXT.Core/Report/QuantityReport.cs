@@ -164,6 +164,7 @@ public static class QuantityReport
             wd.AddTotal("TỔNG", null, null, null, null, null, null, R(q.Masonry.Sum(m => m.GrossArea), 2), R(q.Masonry.Sum(m => m.OpeningArea), 2), R(q.Masonry.Sum(m => m.LintelArea), 2), R(q.Masonry.Sum(m => m.NetArea), 2), R(q.MasonryTotal), null, R(q.PlasterTotal, 2), (long)Math.Round(q.Masonry.Sum(m => m.Bricks)), R(q.Masonry.Sum(m => m.Mortar)), R(q.Masonry.Sum(m => m.PlasterMortar)));
         sheets[4].Tables.Add(wd);
         if (q.StairWorks.Count > 0) sheets[4].Tables.Add(StairQuantity.Table(q));   // cầu thang (Report/StairQuantity.cs)
+        if (q.MepWallWorks.Count > 0) sheets[4].Tables.Add(KetCauVXT.Mep.WallChases.Table(q));   // đục rãnh / trát vá điện nước (Mep/WallChases.cs)
         var doorRows = KetCauVXT.Drawing.WallPlanDrawing.Schedule(p);   // [Kiểu Revit] thống kê cửa gắn tường (Drawing/WallPlanDrawing.cs)
         if (doorRows.Count > 0)
         {
@@ -490,6 +491,11 @@ public static class QuantityReport
         {
             d.Heading($"{n}.{k++}. Cầu thang: xây bậc, ốp bậc, trát", 2);
             WordTable(d, StairQuantity.Table(q), 9);
+        }
+        if (q.MepWallWorks.Count > 0)
+        {
+            d.Heading($"{n}.{k++}. Đục rãnh tường, trát vá rãnh điện nước", 2);
+            WordTable(d, KetCauVXT.Mep.WallChases.Table(q), 9);
         }
         if (q.GroundWorks.Count > 0)   // [CừTràm]
         {

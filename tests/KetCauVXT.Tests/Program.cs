@@ -633,6 +633,8 @@ Console.WriteLine("82. Đặt đồ đạc bắt điểm, kích thước tạm, 
 PlaceSnap3DSectionTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("83. Thoát nước đi dưới sàn có độ dốc, cảnh báo nguy hiểm kết cấu, chi tiết gia cường");
 DrainSlopeImpactTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("84. Lỗ xuyên điện nước → hồ sơ kết cấu (KC-10, mặt đứng dầm, thống kê, kiểm tra cắt), tường trừ rãnh điện nước, mặt cắt nhìn thấy, kích thước tạm tường / cột");
+MepStructureFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

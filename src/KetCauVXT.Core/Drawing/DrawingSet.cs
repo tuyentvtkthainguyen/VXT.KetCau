@@ -34,6 +34,10 @@ public static class DrawingSet
         s ??= new DesignSummary();
         p.InvalidateIndex();
         var items = new List<DrawingItem>();
+        // [Điện nước → kết cấu] lỗ xuyên dầm / sàn có cảnh báo: lỗ trên mặt đứng dầm, kiểm tra cắt tại lỗ, thép gia cường vào thống kê
+        List<KetCauVXT.Mep.PenetrationMark> pens;
+        try { pens = KetCauVXT.Mep.PenetrationRegister.Build(p); KetCauVXT.Mep.PenetrationRegister.AttachToDesign(p, s, pens); }
+        catch (Exception) { pens = new List<KetCauVXT.Mep.PenetrationMark>(); }
 
         SheetComposer.SheetInfo Info(string title, string no) => new SheetComposer.SheetInfo
         {
@@ -105,6 +109,11 @@ public static class DrawingSet
         // KC-06 thống kê thép (vẽ theo mm giấy, tỷ lệ 1/1)
         if (s.All.Any(m => m.Bars.Count > 0))
             Write("KC-06_ThongKeThep.dxf", () => RebarSchedule.BuildFigures(s, 1), 1, "THỐNG KÊ CỐT THÉP", "KC-06", "BTK", notes: NotesScope.Schedule);
+
+        // KC-10 chi tiết gia cường lỗ xuyên kết cấu (từ cảnh báo bộ môn điện nước – Mep/PenetrationRegister.cs)
+        if (pens.Count > 0)
+            Write("KC-10_GiaCuongLoXuyen.dxf", () => KetCauVXT.Mep.PenetrationRegister.Figures(p, pens), 20,
+                KetCauVXT.Mep.PenetrationRegister.SheetTitle, "KC-10", "PEN");
 
         // KC-09 thống kê cửa (cửa gắn tường – mô hình kiểu Revit; Drawing/WallPlanDrawing.cs)
         if (WallPlanDrawing.Enabled(p))

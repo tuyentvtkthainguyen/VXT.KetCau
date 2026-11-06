@@ -17,6 +17,8 @@ public sealed class SectionDrawing
 {
     public SectionLine Line { get; init; }
     public List<SectionCutItem> Items { get; init; } = new();
+    /// <summary>Phần tử nhìn thấy phía sau mặt phẳng cắt (hình chiếu, nét mảnh)</summary>
+    public List<SectionCutItem> Beyond { get; init; } = new();
     /// <summary>Cao độ các mức ghi trên mặt cắt (m, thấp → cao)</summary>
     public List<double> Levels { get; init; } = new();
     /// <summary>Vị trí trục cắt qua (u, tên)</summary>
@@ -33,8 +35,9 @@ public static class SectionView
         var (x0, y0, x1, y1) = Extents(p);
         if (x1 - x0 < 1e-6 && y1 - y0 < 1e-6) return new List<SectionLine>();
         double ext = 1.5;
-        double ym = MidBay(p.GridsY.Select(g => g.Coord).ToList(), y0, y1);
-        double xm = MidBay(p.GridsX.Select(g => g.Coord).ToList(), x0, x1);
+        // chọn nhịp giữa có NHIỀU SÀN BỊ CẮT NHẤT (tránh ô cầu thang / lỗ thông tầng làm mất sàn trên mặt cắt), ưu tiên gần giữa nhà
+        double ym = BestBay(p, p.GridsY.Select(g => g.Coord).ToList(), y0, y1, c => new SectionLine { X1 = x0 - ext, Y1 = c, X2 = x1 + ext, Y2 = c });
+        double xm = BestBay(p, p.GridsX.Select(g => g.Coord).ToList(), x0, x1, c => new SectionLine { X1 = c, Y1 = y0 - ext, X2 = c, Y2 = y1 + ext });
         return new List<SectionLine>
         {
             new() { Name = "1-1", X1 = x0 - ext, Y1 = ym, X2 = x1 + ext, Y2 = ym, Auto = true },
@@ -60,6 +63,30 @@ public static class SectionView
         var s = new SectionLine { Name = string.IsNullOrWhiteSpace(name) ? NextName(p) : name, X1 = x1, Y1 = y1, X2 = x2, Y2 = y2 };
         p.Arch.Sections.Add(s);
         return s;
+    }
+
+    /// <summary>Nhịp có số khối sàn bị cắt lớn nhất (đường cắt qua giữa nhịp); bằng nhau → gần nhịp giữa nhất.</summary>
+    private static double BestBay(Project p, List<double> coords, double lo, double hi, Func<double, SectionLine> line)
+    {
+        coords = coords.Distinct().OrderBy(c => c).ToList();
+        if (coords.Count < 3) return MidBay(coords, lo, hi);
+        List<Solid> solids;
+        try { solids = ModelSolids.Build(p, null, false).Where(so => so.Category is "Sàn" or "Sàn nền").ToList(); }
+        catch (Exception) { return MidBay(coords, lo, hi); }
+        int mid = Math.Max(0, coords.Count / 2 - 1);
+        double best = MidBay(coords, lo, hi); int bestN = -1, bestD = int.MaxValue;
+        for (int k = 0; k + 1 < coords.Count; k++)
+        {
+            double c = (coords[k] + coords[k + 1]) / 2;
+            var sl = line(c);
+            double L = sl.Length;
+            if (L < 1e-9) continue;
+            double tx = (sl.X2 - sl.X1) / L, ty = (sl.Y2 - sl.Y1) / L;
+            int n = solids.Count(so => CutOne(so, sl.X1, sl.Y1, tx, ty, -ty, tx, L) != null);
+            int d = Math.Abs(k - mid);
+            if (n > bestN || (n == bestN && d < bestD)) { best = c; bestN = n; bestD = d; }
+        }
+        return best;
     }
 
     private static double MidBay(List<double> coords, double lo, double hi)
@@ -160,6 +187,52 @@ public static class SectionView
         return new SectionCutItem(so.Id, so.Category, so.Discipline, Math.Round(u0, 9), Math.Round(u1, 9), Math.Round(z0, 9), Math.Round(z1, 9));
     }
 
+    /// <summary>Chiều sâu nhìn mặc định (m): tới trục song song kế tiếp phía sau đường cắt, tối đa 6 m.</summary>
+    public static double ViewDepth(Project p, SectionLine s)
+    {
+        double L = s.Length;
+        if (L < 1e-9) return 6;
+        double tx = (s.X2 - s.X1) / L, ty = (s.Y2 - s.Y1) / L, nx = -ty, ny = tx;
+        var ds = new List<double>();
+        if (Math.Abs(ny) > 0.9) ds.AddRange(p.GridsY.Select(g => (g.Coord - s.Y1) * ny));
+        if (Math.Abs(nx) > 0.9) ds.AddRange(p.GridsX.Select(g => (g.Coord - s.X1) * nx));
+        var ahead = ds.Where(d => d > 0.05).OrderBy(d => d).ToList();
+        return ahead.Count > 0 ? Math.Min(6, ahead[0] + 0.3) : 6;
+    }
+
+    /// <summary>Hình chiếu (u, z) các khối nằm hoàn toàn phía sau mặt phẳng cắt trong chiều sâu nhìn (hướng pháp tuyến trái đường cắt),
+    /// không bị cắt; bỏ phần đã bị che hoàn toàn bởi phần tử bị cắt cùng loại.</summary>
+    public static List<SectionCutItem> Beyond(Project p, SectionLine s, List<SectionCutItem> cut = null, IEnumerable<Discipline> disciplines = null, double depth = 0)
+    {
+        double L = s.Length;
+        var res = new List<SectionCutItem>();
+        if (L < 1e-9) return res;
+        if (depth <= 0) depth = ViewDepth(p, s);
+        double tx = (s.X2 - s.X1) / L, ty = (s.Y2 - s.Y1) / L, nx = -ty, ny = tx;
+        cut ??= Cut(p, s, disciplines);
+        var cutIds = cut.Select(c => c.Id).ToHashSet();
+        List<Solid> solids;
+        try { solids = ModelSolids.Build(p, disciplines, false); } catch (Exception) { return res; }
+        foreach (var so in solids)
+        {
+            if (cutIds.Contains(so.Id)) continue;
+            var (bot, top) = so.Rings();
+            if (bot.Count < 3) continue;
+            var all = bot.Concat(top).ToList();
+            var sd = all.Select(v => (v.X - s.X1) * nx + (v.Y - s.Y1) * ny).ToList();
+            if (sd.Min() < -1e-6 || sd.Min() > depth) continue;
+            double u0 = all.Min(v => (v.X - s.X1) * tx + (v.Y - s.Y1) * ty), u1 = all.Max(v => (v.X - s.X1) * tx + (v.Y - s.Y1) * ty);
+            double z0 = all.Min(v => v.Z), z1 = all.Max(v => v.Z);
+            if (u1 < -1e-9 || u0 > L + 1e-9) continue;
+            u0 = Math.Max(0, u0); u1 = Math.Min(L, u1);
+            if (u1 - u0 < 1e-6 || z1 - z0 < 1e-6) continue;
+            var it = new SectionCutItem(so.Id, so.Category, so.Discipline, Math.Round(u0, 9), Math.Round(u1, 9), Math.Round(z0, 9), Math.Round(z1, 9));
+            if (cut.Any(c => c.U0 <= it.U0 + 1e-6 && c.U1 >= it.U1 - 1e-6 && c.Z0 <= it.Z0 + 1e-6 && c.Z1 >= it.Z1 - 1e-6)) continue;   // bị che
+            res.Add(it);
+        }
+        return res;
+    }
+
     public static string ElevText(double z)
     {
         if (Math.Abs(z) < 5e-4) return "±0.000";
@@ -188,6 +261,14 @@ public static class SectionView
             w.Polyline(door ? Lay.KyHieu : Lay.BeTong, pts, true);
             if (conc) w.FilledRect(Lay.BeTong, a, c, b, d);
         }
+        // phần tử NHÌN THẤY phía sau mặt phẳng cắt (trong chiều sâu nhìn): nét mảnh, không tô
+        var beyond = Beyond(p, s, items, disciplines);
+        foreach (var it in beyond)
+            w.Polyline(Lay.KyHieu, new List<(double X, double Y)> { (it.U0 * 1000, it.Z0 * 1000), (it.U1 * 1000, it.Z0 * 1000), (it.U1 * 1000, it.Z1 * 1000), (it.U0 * 1000, it.Z1 * 1000) }, true);
+        // mức sàn không có sàn bị cắt (ô cầu thang / lỗ thông tầng trên đường cắt): ghi chú
+        foreach (double zl in floorLv.Where(z => z > 1e-6))
+            if (!items.Any(i => i.Category is "Sàn" or "Sàn nền" && Math.Abs(i.Z1 - zl) < 0.15))
+                w.Text(Lay.Chu, (uMin + uMax) / 2 * 1000, zl * 1000 + 150, w.Th * 0.8, "(đường cắt qua ô cầu thang / lỗ sàn – không có sàn)", 0, 1, 0);
         // đường cao độ + ký hiệu
         double xl = uMin * 1000 - 1500, xr = uMax * 1000 + 1500;
         foreach (var l in lv)
@@ -227,7 +308,7 @@ public static class SectionView
             if (axes.Count > 2) w.DimChainH(new List<double> { xs[0], xs[^1] }, yTot, yTot);
         }
         w.Title((uMin + uMax) / 2 * 1000, yBub - w.BubbleR - 600, "MẶT CẮT " + s.Name, $"tl: 1/{scale:0}", true);
-        return new SectionDrawing { Line = s, Items = items, Levels = floorLv, Axes = axes, Figure = new Figure(w, "MẶT CẮT " + s.Name) };
+        return new SectionDrawing { Line = s, Items = items, Beyond = beyond, Levels = floorLv, Axes = axes, Figure = new Figure(w, "MẶT CẮT " + s.Name) };
     }
 
     /// <summary>Tờ hồ sơ kiến trúc cho mọi mặt cắt (Key "KT:MC:1-1").</summary>

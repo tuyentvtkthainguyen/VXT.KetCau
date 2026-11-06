@@ -328,7 +328,50 @@ public partial class MainWindow
             var w = _selWall;
             double h = WallDrawThickness(w) / 2 + 0.35;
             RvDimLine(layer, w, 0, w.Chord, h, $"{w.Chord * 1000:0}", null);
+            // khoảng cách tới tường / trục song song hai bên – bấm số để dời tường (Model/ElementTempDims.cs)
+            DrawElemDims(layer, ElementTempDims.ForWall(_p, w), d => EditElemDim(d, v => ElementTempDims.MoveWall(w, d, v), $"tường #{w.Id}"));
+            return;
         }
+        if (_revitOn && _sel != null && _sel.IsVerticalKind && _p.Frames.Contains(_sel))
+        {
+            var col = _sel;   // cột đang chọn: tâm cột → trục gần nhất (lệch tâm) – bấm số để đổi lệch tâm
+            DrawElemDims(layer, ElementTempDims.ForColumn(_p, col), d => EditElemDim(d, v => ElementTempDims.SetColumnOffset(_p, col, d, v), $"cột {col.Label}"));
+        }
+    }
+
+    /// <summary>Vẽ các kích thước tạm (đường xanh + số bấm sửa) giữa các cặp điểm mặt bằng.</summary>
+    private void DrawElemDims(Canvas cv, List<ElemTempDim> dims, Action<ElemTempDim> edit)
+    {
+        foreach (var d in dims)
+        {
+            var pa = W2S(d.X1, d.Y1); var pb = W2S(d.X2, d.Y2);
+            CLine(cv, pa, pb, RvBlue, 1, true);
+            var tb = new TextBlock
+            {
+                Text = $"{d.Value * 1000:0}", Foreground = RvBlue, FontSize = 11, Background = Brushes.White, Padding = new Thickness(2, 0, 2, 0),
+                Cursor = Cursors.IBeam, ToolTip = $"Khoảng cách tới {d.Target.ToLowerInvariant()} {d.RefName} – bấm để nhập số mới (mm)", TextDecorations = TextDecorations.Underline
+            };
+            tb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var m = new Point((pa.X + pb.X) / 2, (pa.Y + pb.Y) / 2);
+            Canvas.SetLeft(tb, m.X - tb.DesiredSize.Width / 2); Canvas.SetTop(tb, m.Y - tb.DesiredSize.Height - 1);
+            var dd = d;
+            tb.MouseLeftButtonDown += (s, e) => { e.Handled = true; edit(dd); };
+            cv.Children.Add(tb);
+        }
+    }
+
+    private void EditElemDim(ElemTempDim d, Func<double, bool> apply, string what)
+    {
+        string v = DialogUi.InputBox(this, "Kích thước tạm", $"Khoảng cách từ {what} tới {d.Target.ToLowerInvariant()} {d.RefName} (mm):", (d.Value * 1000).ToString("0", System.Globalization.CultureInfo.InvariantCulture));
+        if (v == null) return;
+        double mm = DialogUi.ParseNum(v, double.NaN);
+        if (double.IsNaN(mm) || mm < 0) { SetStatus("Số không hợp lệ (≥ 0)."); return; }
+        string snap = Snapshot();
+        if (!apply(mm / 1000)) { SetStatus("Không đổi được khoảng cách."); return; }
+        PushUndo(snap);
+        _p.InvalidateIndex();
+        RefreshAll();
+        SetStatus($"Đã đặt khoảng cách {what} → {d.Target.ToLowerInvariant()} {d.RefName} = {mm:0} mm.");
     }
 
     /// <summary>Kích thước tạm của cửa: hai đoạn trái / phải tới đầu tường hoặc cửa bên cạnh. editable = bấm số để sửa.</summary>

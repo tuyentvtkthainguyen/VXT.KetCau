@@ -186,6 +186,9 @@ public class ManualBeam : IDetailMember
     [Field("M âm gối lớn nhất (trị tuyệt đối)", Unit = "kN.m", Group = "Nội lực (tuỳ chọn)")] public double MSupport { get; set; }
     [Field("Q lớn nhất", Unit = "kN", Group = "Nội lực (tuỳ chọn)")] public double Q { get; set; }
 
+    /// <summary>Lỗ xuyên dầm (ống lồng điện nước) – nhập tay hoặc từ mô hình (ModelToDetailing / cảnh báo điện nước).</summary>
+    public List<BeamPenetration> Penetrations { get; set; } = new();
+
     public DetailResult Run(DetailSettings s)
     {
         var msgs = new List<string>();
@@ -377,8 +380,10 @@ public class ManualBeam : IDetailMember
         foreach (var k in d.Checks.Where(x => !x.Ok)) d.Messages.Add("LỖI " + k.Name + ": " + Dt.F(k.Demand, "0.0") + " > " + Dt.F(k.Capacity, "0.0") + " " + k.Unit);
 
         BarCutCheck.Evaluate(this, s, d.Checks, d.Messages, r.Calc);   // điểm cắt / nối người dùng điều chỉnh
+        var holes = BeamPenetration.Apply(this, d, r, nodeX, lcl, w, conc, small, ss, s);   // lỗ xuyên dầm: gia cường + kiểm tra cắt tại lỗ
         r.Calc.AddRange(RebarNotes.BeamOrder());
         RebarNumbering.Renumber(d.Bars);
+        d.Holes = holes;
         double clear = lcl.Sum();
         r.ConcreteVolume = B * H * clear;
         r.FormworkArea = (B + 2 * H) * clear;
@@ -717,6 +722,9 @@ public class ManualSlab : IDetailMember
     [Field("Mũ gối – bước", Unit = "mm", Scale = 1000, Group = "Thép")] public double TopS { get; set; }
     [Field("Xuất shop drawing thép sàn (gia công, cắt thép)", Group = "Shop drawing")] public bool ShopOut { get; set; }
 
+    /// <summary>Lỗ xuyên sàn (hộp kỹ thuật, ống đứng) – lỗ &gt; 300 mm có thép gia cường mép lỗ (Detailing/Penetrations.cs).</summary>
+    public List<SlabPenetration> Penetrations { get; set; } = new();
+
     public static readonly int[] Dias = { 6, 8, 10, 12 };
 
     /// <summary>Mô men dải 1 m (TCVN – Marcus): khớp–khớp qL²/8; ngàm–khớp 9qL²/128 / −qL²/8; ngàm–ngàm qL²/24 / −qL²/12.</summary>
@@ -825,8 +833,9 @@ public class ManualSlab : IDetailMember
         if (nDist > 0) r.Bars.Add(Dt.Straight("Thép phân bố mũ", 6, nDist, Dt.R10(Math.Max(lx, ly) / 2), true, 0.25));
         // thuyết minh nguyên tắc bố trí thép theo miền chịu kéo + thứ tự đặt thép (Detailing/SlabNotes.cs)
         r.Calc.AddRange(RebarNotes.SlabPrinciple(lx, T, w, c, bx.D, tp.D, RebarDetailing.LapLength(conc, St(bx.D), bx.D)));
-        RebarNumbering.Renumber(r.Bars);
         r.ConcreteVolume = lx * ly * T;
+        SlabPenetration.Apply(this, r, bx.D, bx.S);   // lỗ xuyên sàn: thép gia cường mép lỗ, trừ bê tông
+        RebarNumbering.Renumber(r.Bars);
         r.FormworkArea = lx * ly;
         r.Extra.Add(("Diện tích sàn", "m²", lx * ly));
         _lastQ = q; _twoWay = twoWay;
@@ -845,6 +854,7 @@ public class ManualSlab : IDetailMember
         double lx = Math.Min(Lx, Ly) * 1000, ly = Math.Max(Lx, Ly) * 1000, bw = BeamWidth * 1000;
         w.Rect(Lay.BeTong, 0, 0, lx, ly);
         w.Rect(Lay.BeTong, -bw / 2, -bw / 2, lx + bw / 2, ly + bw / 2, "DASHED");
+        SlabPenetration.DrawPlan(w, this);   // lỗ xuyên sàn + thép gia cường mép lỗ
         BarMark Find(string role) => r.Bars.FirstOrDefault(b => b.Role == role);
         var bX = Find("Lớp dưới phương ngắn"); var bY = Find("Lớp dưới phương dài");
         double hk = 0.9 * w.Th, e0 = -bw / 2 + 25, e1x = lx + bw / 2 - 25, e1y = ly + bw / 2 - 25;

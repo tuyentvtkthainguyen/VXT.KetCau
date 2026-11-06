@@ -102,6 +102,8 @@ public class MasonryItem
     public double Mortar { get; set; }
     /// <summary>Vữa trát (m³)</summary>
     public double PlasterMortar { get; set; }
+    /// <summary>Thể tích khối xây bị ống / ống gen / hộp điện nước chôn tường chiếm chỗ (m³) – đã trừ khỏi Volume</summary>
+    public double MepVoid { get; set; }
 }
 
 /// <summary>Khối lượng một lớp hoàn thiện sàn.</summary>
@@ -159,6 +161,8 @@ public class QuantityResult
     public List<StairWorkItem> StairWorks { get; set; } = new();
     /// <summary>[CừTràm] Gia cố nền: số cây cừ tràm, chiều dài, cát đệm (Report/CuTramQuantity.cs)</summary>
     public List<GroundWorkItem> GroundWorks { get; set; } = new();
+    /// <summary>Đục rãnh tường, trát vá rãnh / hộp điện nước chôn tường (Mep/WallChases.cs)</summary>
+    public List<GroundWorkItem> MepWallWorks { get; set; } = new();
     public List<MaterialLine> MaterialLines { get; set; } = new();
     public List<MaterialTotal> Materials { get; set; } = new();
     public List<string> Notes { get; set; } = new();
@@ -322,6 +326,8 @@ public static class QuantityCalculator
 
         // ---------------- tường + lanh tô ----------------
         WallQty(p, q, qs, cs, columns);
+        try { KetCauVXT.Mep.WallChases.ApplyToQuantities(p, q); }   // trừ rãnh / hộp điện nước chôn tường khỏi khối xây
+        catch (Exception ex) { q.Warnings.Add("Rãnh điện nước trong tường: " + ex.Message); }
 
         // ---------------- hoàn thiện sàn ----------------
         FinishQty(p, q);

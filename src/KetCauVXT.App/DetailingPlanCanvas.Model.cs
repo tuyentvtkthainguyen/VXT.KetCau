@@ -21,4 +21,17 @@ public sealed partial class DetailingPlanCanvas
         _changed(); FillMembers(); UpdateHint(); _fitted = false; Redraw();
         _status.Text = string.Join(" ", log);
     }
+
+    private void PenetrationsFromModel()
+    {
+        var model = Application.Current?.Windows.OfType<MainWindow>().FirstOrDefault()?.CadLinkProject;
+        if (model == null)
+        {
+            MessageBox.Show(_owner, "Mở mô hình ở chế độ Thiết kế (cửa sổ chính) có bố trí điện nước trước.", "Lỗ xuyên từ điện nước");
+            return;
+        }
+        var log = KetCauVXT.Detailing.ModelPenetrations.Apply(model, P);
+        _changed(); FillMembers(); UpdateHint(); Redraw();
+        _status.Text = string.Join(" ", log);
+    }
 }
