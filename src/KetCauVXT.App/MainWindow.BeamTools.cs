@@ -432,6 +432,7 @@ public partial class MainWindow
     private void MultiSelectClick(Point s)
     {
         CheckMultiSelOwner();
+        if (MemberMultiClick(s)) return;   // [Thanh lệnh cấu kiện] cột / ô sàn theo tab – MainWindow.MemberRibbon.cs
         var b = NearestBeam(s, 8);
         bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
         if (b == null)
@@ -466,7 +467,8 @@ public partial class MainWindow
         HideCoordBox(false);
         if (_winDrag) { _winDrag = false; DrawHover(); return true; }
         CheckMultiSelOwner();
-        if (_multiSel.Count > 0) { _multiSel.Clear(); DrawHover(); SetStatus("Đã bỏ chọn các dầm."); return true; }
+        if (_multiSlab.Count > 0 && _multiSel.Count == 0) { _multiSlab.Clear(); DrawHover(); UpdateRibbonInfo(); SetStatus("Đã bỏ chọn các ô sàn."); return true; }
+        if (_multiSel.Count > 0) { _multiSel.Clear(); _multiSlab.Clear(); DrawHover(); UpdateRibbonInfo(); SetStatus("Đã bỏ chọn."); return true; }
         return false;
     }
 
@@ -562,7 +564,7 @@ public partial class MainWindow
             var rc = WindowRect();
             bool remove = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
             int n = 0;
-            foreach (var f in PlanFrames().Where(q => !q.IsVerticalKind))
+            foreach (var f in PlanFrames().Where(q => !q.IsVerticalKind && BeamsAllowedInWindow))   // [Thanh lệnh cấu kiện] lọc theo tab
             {
                 var pts = BeamScreenPoints(f);
                 if (pts.Count < 2) continue;
@@ -571,7 +573,8 @@ public partial class MainWindow
                 n++;
                 if (remove) _multiSel.Remove(f.Id); else _multiSel.Add(f.Id);
             }
-            SetStatus($"{(remove ? "Bỏ chọn" : "Chọn")} {n} dầm bằng khung {(crossing ? "cắt (crossing)" : "bao (window)")} – đang chọn {_multiSel.Count} dầm.");
+            n += MemberWindowSelect(xa, ya, xb, yb, crossing, remove);   // [Thanh lệnh cấu kiện] cột / ô sàn
+            SetStatus($"{(remove ? "Bỏ chọn" : "Chọn")} {n} đối tượng bằng khung {(crossing ? "cắt (crossing)" : "bao (window)")} – đang chọn {SelectionCountText()}.");
         }
     }
 
@@ -600,6 +603,7 @@ public partial class MainWindow
     {
         if (_p == null) return false;
         CheckMultiSelOwner();
+        DrawMultiSlabOverlay();   // [Thanh lệnh cấu kiện] ô sàn chọn nhiều
         foreach (var f in PlanFrames().Where(q => !q.IsVerticalKind && _multiSel.Contains(q.Id)))
         {
             var pts = BeamScreenPoints(f);

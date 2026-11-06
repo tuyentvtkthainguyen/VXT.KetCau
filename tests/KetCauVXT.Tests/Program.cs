@@ -611,6 +611,8 @@ Console.WriteLine("71. Mở mặt bằng CAD: nguồn trục (layer / cột / ng
 CadPlanAxisTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("72. Chuẩn hoá layer CAD → VXT-… (tên, nội dung, block cửa, bộ ánh xạ, xuất DXF chuẩn hoá)");
 LayerConvertTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("73. Thanh lệnh cấu kiện, chọn nhiều, gán tải, tường CAD → dầm, dòng lệnh kiểu AutoCAD");
+PlanLoadCadTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

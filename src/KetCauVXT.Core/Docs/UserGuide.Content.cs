@@ -783,7 +783,7 @@ public static partial class UserGuide
                 "Xoá lỗ sàn (chế độ **Xoá**) sẽ đặt lại sàn.");
 
         c.Sec("mo-hinh.sua-dam", "Kéo, trim, extend dầm; pick đối tượng CAD")
-            .P("Sửa dầm như AutoCAD – không cần nhớ kích thước: các nút ở hàng **Sửa dầm** (khung *Dầm kiểu ETABS*) hoặc menu **Vẽ**. Mọi thao tác hoàn tác được (Ctrl+Z); nút giao được chia lại để mô hình chạy phân tích ngay.")
+            .P("Sửa dầm như AutoCAD – không cần nhớ kích thước: các nút ở tab **Dầm** của thanh lệnh trên mặt bằng, gõ lệnh ở dòng lệnh (ST, M, TR, EX) hoặc menu **Vẽ**. Mọi thao tác hoàn tác được (Ctrl+Z); nút giao được chia lại để mô hình chạy phân tích ngay.")
             .Steps("**Kéo dầm** ({m:stretchBeam}): bấm gần ĐẦU dầm cần kéo → bấm điểm mới (bắt nút, giao trục, điểm trên dầm, nét bản vẽ link). Đầu dầm đang nối cột / dầm khác được tách sang nút mới, không kéo theo cấu kiện khác. "
                 + "Giữ **Shift** khi bấm dầm để dời cả dầm.",
                 "**Dời dầm** ({m:moveBeam}): bấm dầm tại điểm gốc (hoặc dùng các dầm đã *Chọn nhiều*) → bấm điểm đích; dầm dời song song.",
@@ -793,6 +793,24 @@ public static partial class UserGuide
                 "**Pick CAD** ({m:pickCad}): nạp mặt bằng kiến trúc sơ bộ bằng {m:cadLinks}, chọn ô **tạo**: *Dầm* – bấm giữa hai mép dầm / tường song song (100…600 mm) → dầm đúng trục, bề rộng đo được (tự tạo tiết diện b×h, h theo tiết diện đang chọn); "
                 + "bấm sát một nét → dầm theo nét; *Sàn / Cầu thang / Giếng trời / Chỉ dầm bao* – bấm trong đa tuyến kín → dầm bao các cạnh còn thiếu + ô sàn / ô thang / lỗ.")
             .Tip("Vẽ nhanh theo kiến trúc: Pick CAD các dầm → **Nối dầm hở** → Pick CAD *Sàn* trong từng phòng → Pick CAD *Cầu thang* ở ô thang.");
+
+        c.Sec("mo-hinh.thanh-lenh", "Thanh lệnh theo cấu kiện, chọn nhiều, gán tải, dòng lệnh kiểu AutoCAD")
+            .P("Trên tab **Mặt bằng**, các nút được xếp thành tab theo cấu kiện: **Lưới – Tầng | Móng | Cột | Dầm | Sàn | Tường – Tải | Link CAD**. "
+                + "Cụm bên trái (Chọn, Chọn nhiều, Xoá, Hoàn tác, Chọn tương tự, Bỏ chọn) dùng chung. Nháy đúp tên tab để thu gọn / mở lại thanh lệnh; F11 ẩn cả thanh lệnh.")
+            .Steps("**Chọn nhiều**: bấm *Chọn nhiều* (hoặc gõ CH) rồi bấm từng đối tượng hoặc kéo khung – trái → phải (khung xanh liền) chọn đối tượng nằm TRỌN trong khung, phải → trái (khung xanh lá nét đứt) chọn đối tượng CHẠM khung; giữ Ctrl để bỏ chọn. "
+                + "Tab đang mở quyết định loại được chọn: Dầm → dầm, Cột / Móng → cột, Sàn → ô sàn, các tab khác → mọi loại.",
+                "**Chọn tương tự**: cùng tiết diện (tầng đang xem / mọi tầng), cùng loại – công năng, cùng tầng.",
+                "**Gán tải trọng** (nhóm *Gán tải* ở tab Dầm, Sàn, Cột, Móng): chọn trường hợp tải, nhập giá trị, chọn *Thay thế / Cộng thêm / Xoá* rồi bấm **Gán** – áp cho MỌI đối tượng đang chọn, một bước hoàn tác (Ctrl+Z). "
+                + "Dầm: q (kN/m) và lực tập trung P tại x/L; Sàn: q (kN/m²), *Theo công năng* (hoàn thiện / hoạt tải TCVN 2737 theo từng ô), tường xây trên sàn quy đổi q = g·h·L/A; Cột: N, Mx, My tại đầu cột; Móng: N, Mx, My tại chân cột.",
+                "Dòng *Đang chọn* cho biết giá trị chung của các đối tượng; khác nhau thì hiện **«khác nhau»** và khi *Thay thế* chương trình hỏi trước khi ghi đè. Chỉ tải nhập tay bị thay / xoá – tải tự dồn từ sàn, gió, động đất giữ nguyên.",
+                "**Tải tường**: tab *Tường – Tải* tính q = g_tường · h · (1 − tỷ lệ cửa) theo loại tường / chiều cao (0 = chiều cao tầng trên − 0,35 m); nút *q tường* điền giá trị vào ô q của tab Dầm.",
+                "**Link CAD** (nền như xref theo tầng): *Liên kết DWG/DXF…*, *Quản lý…* (layer, dời / xoay / tỷ lệ), *Ẩn / hiện*, *Độ mờ*, *Đọc lại*, *Căn 2 điểm*, *Khoá*, *Bắt điểm CAD*, *Pick CAD*. "
+                + "**Tường CAD → tải dầm**: cặp nét song song cách 110 / 220 mm trên layer tường nằm trên dầm (lệch ≤ t/2 + 50 mm) → tạo tường, tải tường dồn vào dầm khi phân tích.")
+            .P("**Dòng lệnh** dưới mặt bằng (gõ thẳng khi đang trỏ mặt bằng): L dầm, C cột, S sàn, W tường, M dời, ST kéo, TR trim, EX extend, CO sao chép (dx,dy n), AR mảng (nx ny dx dy), O offset, MI đối xứng (tên trục), "
+                + "E xoá, U hoàn tác, Z / ZE zoom, DI đo khoảng cách, MA sao tiết diện, TAI gán tải, SS chọn tương tự, ? trợ giúp – gõ có dấu / không dấu đều được. "
+                + "Toạ độ: x,y tuyệt đối, @dx,dy tương đối, @L<góc (vd @3000<90), hoặc chỉ gõ chiều dài theo hướng chuột. **F3** bắt điểm (□ đầu, △ giữa, × giao, ⊥ vuông góc, ○ tâm nét CAD), **F8** trực giao, **F10** góc cực 45°; "
+                + "Enter / Space lặp lệnh, Esc huỷ, ↑↓ lịch sử lệnh; con lăn chuột phóng to tại con trỏ, chuột giữa để kéo.")
+            .Tip("Gán tải nhanh cho cả tầng: tab Sàn → *Chọn nhiều* → kéo khung phải → trái qua toàn mặt bằng → trường hợp HT → *Theo công năng* → làm lại với HTHT.");
 
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")

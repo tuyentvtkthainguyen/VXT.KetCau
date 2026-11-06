@@ -63,6 +63,8 @@ public partial class MainWindow : Window
         InitBeamEditUi();    // [Sửa dầm] kéo, dời, trim, extend, nối dầm hở, pick CAD – MainWindow.BeamEdit.cs
         InitSlabDropUi();    // [Sàn hạ cốt] nút "Hạ cốt sàn", ô "Hạ cốt (mm)", hộp thoại – MainWindow.SlabDrop.cs
         InitWorkflowUi();    // [Workflow ETABS] cây mô hình, thanh trạng thái, phím tắt – MainWindow.Workflow.cs
+        InitMemberRibbon();  // [Thanh lệnh cấu kiện] tab Lưới/Móng/Cột/Dầm/Sàn/Tường/Link CAD + gán tải – MainWindow.MemberRibbon.cs
+        InitCadCommandLine(); // [Dòng lệnh] kiểu AutoCAD dưới mặt bằng, F3/F8/F10 – MainWindow.CadCommandLine.cs
         SetProject(ModelBuilder.NewProject(), null);
         SetStatus("Sẵn sàng – nhập lưới trục, chiều cao tầng rồi bấm 'Tạo mô hình', hoặc mở/nhập mô hình có sẵn.");
         HandleCommandLine();

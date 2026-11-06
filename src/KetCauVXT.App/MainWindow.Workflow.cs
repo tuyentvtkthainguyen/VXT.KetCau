@@ -206,6 +206,7 @@ public partial class MainWindow
         ShowPlanTab();
         var rb = PlanModeButtons().FirstOrDefault(b => b.Tag as string == tag);
         if (rb == null) { SetStatus("Không có chế độ " + tag); return false; }
+        RibbonTabFor(rb);   // [Thanh lệnh cấu kiện] – MainWindow.CadCommandLine.cs
         if (rb.IsChecked == true) PlanMode_Checked(rb, new RoutedEventArgs());
         else rb.IsChecked = true;
         planHost.Focus();

@@ -110,7 +110,8 @@ public partial class MainWindow
     {
         if (_p == null) return;
         if (CadLinkAlignClick(s)) return;   // [CadLink] căn bản vẽ liên kết theo 2 điểm – MainWindow.CadLink.cs
-        if (_mode == PlanEditMode.Select) { _multiSel.Clear(); SelectAt(s); return; }
+        if (CmdPlanClick(s)) return;   // [Dòng lệnh] cột, đo khoảng cách… – MainWindow.CadCommandLine.cs
+        if (_mode == PlanEditMode.Select) { _multiSel.Clear(); _multiSlab.Clear(); SelectAt(s); return; }
         if (_mode == PlanEditMode.MultiSelect) { MultiSelectClick(s); return; }   // [BeamTools]
         if (_busy) { SetStatus("Chương trình đang tính toán – chờ xong rồi sửa mô hình."); return; }
         string st = CurrentStory;
@@ -463,6 +464,12 @@ public partial class MainWindow
     // ------------------------------------------------------------------
     /// <summary>Bắt điểm theo ModelEdit.Snap với dung sai ≈ 10 px (0,15 … 0,5 m).</summary>
     private (double X, double Y) SnapPlan(string story, double x, double y)
+    {
+        if (_cmdExact) return (x, y);   // [Dòng lệnh] điểm gõ toạ độ – không bắt điểm
+        return DraftConstrain(x, y, SnapPlanCore(story, x, y));   // [Dòng lệnh] F3 / F8 / F10 – MainWindow.CadCommandLine.cs
+    }
+
+    private (double X, double Y) SnapPlanCore(string story, double x, double y)
     {
         double tol = Math.Clamp(10 / Math.Max(_scale, 1e-6), 0.15, 0.5);
         if (UseEtabsSnap) return EtabsSnap(story, x, y, tol);   // [BeamTools] bắt điểm kiểu ETABS cho ＋ Dầm

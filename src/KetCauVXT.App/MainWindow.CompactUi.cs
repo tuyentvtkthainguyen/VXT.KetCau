@@ -21,7 +21,7 @@ public partial class MainWindow
             if (SelfTestOut != null) CompactShell.NoPersist = true;   // tự kiểm CI: bố cục mặc định, không ghi ui.json
             _shell = CompactShell.Attach(this, "MainWindow", mainMenu, mainToolTray, mainStatus,
                 new[] { new CompactPanel(tabLeft, "trai", "Nhập liệu – kết quả", true, leftSplitter, colLeftSplit) },
-                new FrameworkElement[] { infoPanel },
+                _ribbonHost != null ? new FrameworkElement[] { infoPanel, _ribbonHost } : new FrameworkElement[] { infoPanel },   // [Thanh lệnh cấu kiện] ẩn khi F11
                 new (string, Action)[]
                 {
                     ("Vừa màn hình", () => BtnFit_Click(this, new RoutedEventArgs())),
