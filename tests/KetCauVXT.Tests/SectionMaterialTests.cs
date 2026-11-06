@@ -85,7 +85,7 @@ public static class SectionMaterialTests
         var onA = baseNodes.Where(n => n.Z < zBase + 0.05 && Math.Abs(n.Y) < 1e-6).ToList();
         var designs = onA.Select(n => new FootingDesign { NodeId = n.Id, Name = "M1", L = 1.6, B = 1.4, H = 0.5, Hb = 0.3 }).ToList();
         var kc = SectionView.Draw(p, sX, 100, null, new SectionOptions { ShowFoundation = true, Footings = designs });
-        var bodies = kc.Foundations.Where(f => f.Kind == "Móng đơn").ToList();
+        var bodies = kc.Foundations.Where(f => !f.Beyond).Where(f => f.Kind == "Móng đơn").ToList();
         check("KC: số móng bị cắt = số cột trục A", bodies.Count, onA.Count, 0);
         check("KC: 3 móng trục A", onA.Count, 3, 0);
         var fb = bodies.OrderBy(f => f.Points.Min(q => q.U)).FirstOrDefault();
@@ -93,14 +93,15 @@ public static class SectionMaterialTests
         check("KC: đáy móng tại −1,5", fb == null ? 0 : fb.Points.Min(q => q.Z), -1.5, 1e-9);
         check("KC: đỉnh móng = −1,5 + H 0,5", fb == null ? 0 : fb.Points.Max(q => q.Z), -1.0, 1e-9);
         check("KC: móng vát (6 đỉnh)", fb?.Points.Count ?? 0, 6, 0);
-        var lean = kc.Foundations.Where(f => f.Kind == "Bê tông lót").ToList();
+        var lean = kc.Foundations.Where(f => !f.Beyond).Where(f => f.Kind == "Bê tông lót").ToList();
         check("KC: bê tông lót mỗi móng", lean.Count, onA.Count, 0);
+        check("KC: móng phía sau mặt cắt vẽ hình chiếu (nét mảnh)", B(kc.Foundations.All(f => !f.Beyond || string.IsNullOrEmpty(f.Label))), 1, 0);
         var lb = lean.OrderBy(f => f.Points.Min(q => q.U)).FirstOrDefault();
         check("KC: lót rộng L + 2×100 = 1800", lb == null ? 0 : (lb.Points.Max(q => q.U) - lb.Points.Min(q => q.U)) * 1000, 1800, 1e-6);
         check("KC: lót dày 100", lb == null ? 0 : (lb.Points.Max(q => q.Z) - lb.Points.Min(q => q.Z)) * 1000, 100, 1e-6);
         check("KC: lót tô AR-CONC", B(lb?.Material == SectionMaterial.BeTongLot && SectionMaterials.Patterns(SectionMaterial.BeTongLot)[0].Pattern == HatchPatterns.ArConc), 1, 0);
         bool needNeck = zBase > -1.0 + 1e-6;
-        check("KC: cổ cột khi chân cột cao hơn đỉnh móng", kc.Foundations.Count(f => f.Kind == "Cổ cột"), needNeck ? onA.Count : 0, 0);
+        check("KC: cổ cột khi chân cột cao hơn đỉnh móng", kc.Foundations.Count(f => !f.Beyond && f.Kind == "Cổ cột"), needNeck ? onA.Count : 0, 0);
         string tKc = kc.Figure.W.ToDxfStringDec();
         check("KC: ghi đáy móng −1.500", B(tKc.Contains("-1.500")), 1, 0);
         check("KC: nhãn móng M1 1600×1400×500", B(tKc.Contains("M1 1600×1400×500")), 1, 0);
@@ -108,8 +109,8 @@ public static class SectionMaterialTests
         var pPile = p.Clone();
         pPile.Foundation.Type = FoundationType.Pile;
         var kcp = SectionView.Draw(pPile, sX, 100, null, new SectionOptions { ShowFoundation = true });
-        check("Móng cọc: đài cọc mỗi cột", kcp.Foundations.Count(f => f.Kind == "Đài cọc"), onA.Count, 0);
-        check("Móng cọc: 2 cọc mỗi đài, có nét cắt ngắt", kcp.Foundations.Count(f => f.Kind == "Cọc" && f.BreakAtBottom), 2 * onA.Count, 0);
+        check("Móng cọc: đài cọc mỗi cột", kcp.Foundations.Where(f => !f.Beyond).Count(f => f.Kind == "Đài cọc"), onA.Count, 0);
+        check("Móng cọc: 2 cọc mỗi đài, có nét cắt ngắt", kcp.Foundations.Where(f => !f.Beyond).Count(f => f.Kind == "Cọc" && f.BreakAtBottom), 2 * onA.Count, 0);
         kc.Figure.W.Save(Path.Combine(dir, "MatCat_KC_CoMong.dxf"));
         // mặc định: SectionLine.ShowFoundation = null → có móng; hồ sơ KT mặc định không móng, KC có móng
         var ktSheets = SectionView.Sheets(p, 100);
