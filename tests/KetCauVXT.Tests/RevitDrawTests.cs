@@ -186,7 +186,7 @@ public static class RevitDrawTests
         var w2b = p2.Walls.First(q => q.Id == 21);
         check("Lưu / mở: cửa gắn tường giữ vị trí, kiểu, lật", B(w2b.Openings.Count == 1 && Math.Abs(w2b.Openings[0].Offset - 2) < 1e-9 && w2b.Openings[0].Flip && w2b.Openings[0].Type == "S1 1200x1400"), 1, 0);
         var g2 = p2.WallTypes.First(q => q.Name == "Tường 220 ốp đá granite mặt ngoài");
-        check("Lưu / mở: kiểu tường giữ 4 lớp, tải 1 m²", B(g2.Layers.Count == 4 && Math.Abs(g2.WeightPerM2 - stone.WeightPerM2) < 1e-9), 1, 0);
+        check("Lưu / mở: kiểu tường giữ 4 lớp, tải 1 m²", B(g2.Layers.Count == 4 && Math.Abs(g2.WeightPerM2 - p.WallTypes.First(q => q.Name == g2.Name).WeightPerM2) < 1e-9), 1, 0);
         var pOld = JsonSerializer.Deserialize<Project>("{\"WallTypes\":[{\"Name\":\"T cũ\",\"Thickness\":0.22,\"UnitWeight\":18}],\"Walls\":[{\"Id\":1,\"Type\":\"T cũ\",\"X2\":3}]}", Project.JsonOptions);
         check("Mở file cũ (không có lớp, không có cửa): đọc được, kiểu một lớp", B(pOld.WallTypes[0].Layers.Count == 0 && pOld.Walls[0].Openings != null && pOld.OpeningTypes.Count > 0), 1, 0);
         check("File cũ: tải 1 m² kiểu một lớp = 0,22·18 + 2·0,015·18", pOld.WallTypes[0].WeightPerM2, 0.22 * 18 + 2 * 0.015 * 18, 1e-9);
