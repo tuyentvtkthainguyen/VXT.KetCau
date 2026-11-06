@@ -1341,6 +1341,21 @@ public static partial class UserGuide
                 "Tab Mô hình móng → **Kiểm tra an toàn…**: bảng kiểm tra an toàn và sự làm việc của móng đang chọn; tab Thiết kế → Móng: **Chọn bố trí thép…** (Ø – bước thép đáy).",
                 "Bản vẽ KC-02 mặt bằng và chi tiết móng.");
 
+        c.Sec("mong.ban-ve-bo-sung", "Bản vẽ móng, mặt cắt và điện nước bổ sung")
+            .Bullets("**Móng và cọc**:",
+                "Mặt bằng móng (Triển khai hồ sơ): móng bậc vẽ thêm **đường bao bậc trên** quanh tim cột và hai chuỗi kích thước (mép đế → bậc → mép đế) theo hai phương.",
+                "Chế độ Thiết kế, móng cọc: tờ **KC-02.1** gồm *mặt bằng định vị cọc* (cọc đánh số P1…Pn từ trên xuống, trái sang phải; trục, đường bao đài, **bảng toạ độ cọc** X, Y, cao độ đầu / mũi, **bảng thống kê cọc**) và – khi chọn phương pháp TCVN 10304 cho cọc khoan nhồi – **đường cong sức chịu tải theo chiều dài cọc** của hố khoan đang chọn ({s:mong.coc}).",
+                "Bê tông **B22,5** có trong mọi danh sách chọn bê tông của chế độ Thiết kế.")
+            .Bullets("**Mặt cắt công trình**:",
+                "Móng bè (Móng → bề dày bè > 0): mặt cắt vẽ bản bè liên tục (vươn ra ngoài tim cột biên), sườn bè, cổ cột và lót bê tông liền.",
+                "Móng băng chạy **dọc theo đường cắt**: vẽ thành một dải liên tục (bản cánh + sườn) thay cho các chữ T ngược rời.",
+                "Lớp hoàn thiện sàn vẽ **theo từng phòng** trên đường cắt: WC / vệ sinh / tắm có chống thấm + vữa + gạch men; phòng lát đá, sàn gỗ, phòng thường theo tên phòng / ô *Hoàn thiện sàn*. Ngoài phạm vi phòng không vẽ lớp hoàn thiện.")
+            .Bullets("**Điện nước**:",
+                "Bộ bản vẽ điện nước có thêm **mặt cắt dọc tuyến thoát** cho mỗi chuỗi ống thoát (tỉ lệ ngang 1/50, đứng 1/10): đáy sàn, đường đáy / đỉnh ống, nhãn Ø – i – L từng đoạn, phụ kiện, bảng khoảng cách – cao độ đáy ống – độ dốc. Chênh cao đáy ống mỗi đoạn = L·i.",
+                "**Độ dốc riêng theo hệ thống**: cài đặt điện nước → danh sách luật (hệ thống, Ø tối đa, độ dốc); ví dụ thoát nước mưa 1 % mọi Ø. Thứ tự ưu tiên: độ dốc nhập tay của tuyến → luật hệ thống → mặc định theo Ø.",
+                "Xuất khối lượng Excel có thêm sheet **Vật tư điện nước** (thiết bị, ống theo Ø, ống gen, dây, cáp, phụ kiện, quang treo) và bảng độ dốc từng tuyến thoát.",
+                "Nhập Revit: bật *Nhập ống / thiết bị Revit thành đối tượng điện nước* để thiết bị vệ sinh, ổ cắm, công tắc, đèn, quạt… được đặt theo họ trong thư viện điện nước (so tên họ Revit), ống / ống luồn dây thành tuyến giữ đúng hình học Revit, đầu ống trùng nhau nối chung một điểm. Phụ kiện ống bỏ qua (chương trình tự sinh); ống gió và phần tử không nhận ra vẫn nhập dạng khối chung. Cập nhật từ Revit xoá / thêm theo UniqueId.");
+
         c.Sec("thiet-ke.cau-thang", "Cầu thang")
             .P("Tab Thiết kế → **Cầu thang**: mỗi bộ phận một dòng (bản thang, chiếu nghỉ, dầm cốn, dầm chiếu nghỉ). Bản vẽ KC-08.n: mặt bằng, mặt cắt, bố trí thép, thống kê thép. Khai báo: {s:mo-hinh.cau-thang}.");
 

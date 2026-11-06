@@ -320,7 +320,13 @@ public static class RevitArchImport
         var newMep = mepIn.Values.Where(m => !have.Contains(m.Id)).ToList();
         if (newMep.Count > 0)
         {
-            if (MepHandler != null && UseMepHandler) { MepHandler(p, newMep, new ImportReport(), ox, oy); rep.Added += newMep.Count; }
+            if (MepHandler != null && UseMepHandler)
+            {
+                // phụ kiện ống không thành đối tượng (chương trình tự sinh) → không tính là thêm mới
+                MepHandler(p, newMep, new ImportReport(), ox, oy);
+                int nFit = newMep.Count(m => (m.Category ?? "").IndexOf("fitting", StringComparison.OrdinalIgnoreCase) >= 0);
+                rep.Added += newMep.Count - nFit; rep.Unchanged += nFit;
+            }
             else rep.Added += AddMepBoxes(p, newMep, lvElev, ox, oy);
         }
         rep.Unchanged += mepIn.Count - newMep.Count;

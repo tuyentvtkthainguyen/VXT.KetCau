@@ -256,6 +256,10 @@ public partial class MainWindow : Window
         var r = MessageBox.Show("Thay thế toàn bộ mô hình hiện tại bằng mô hình từ Revit?\n(Giữ lại vật liệu, tiết diện, trường hợp tải, thông số gió/động đất.)",
             AppTitle, MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (r != MessageBoxResult.OK) return;
+        RevitArchImport.UseMepHandler = MessageBox.Show(this,
+            "Nhập ống / thiết bị điện nước của Revit thành ĐỐI TƯỢNG ĐIỆN NƯỚC (thiết bị theo thư viện, tuyến ống giữ hình học Revit)?\n" +
+            "Chọn Không: nhập dạng khối chung bộ môn Điện nước như trước.", AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Question,
+            RevitArchImport.UseMepHandler ? MessageBoxResult.Yes : MessageBoxResult.No) == MessageBoxResult.Yes;
         try
         {
             ApplyUiToProject(false);
