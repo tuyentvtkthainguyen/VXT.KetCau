@@ -45,8 +45,11 @@ public static class RevitFinishTests
         check("3D: cửa cao bằng tường → không có khối trên", WallSolid3D.Pieces(p, w, 2.2).Count(q => Math.Abs(q.A - 0.55) < 1e-9), 0, 0);
         double hDef = WallSolid3D.DefaultHeight(p, w);
         var stories = p.Stories.OrderBy(s => s.Elevation).ToList();
-        int si = stories.FindIndex(s => s.Name == st);
-        check("3D: chiều cao mặc định = cao tầng − 0,35", hDef, stories[si + 1].Elevation - stories[si].Elevation - 0.35, 1e-9);
+        int si = stories.FindIndex(s => s.Name == w.Story);
+        if (si >= 0 && si + 1 < stories.Count)
+            check("3D: chiều cao mặc định = cao tầng − 0,35", hDef, stories[si + 1].Elevation - stories[si].Elevation - 0.35, 1e-9);
+        else
+            check("3D: chiều cao mặc định > 0 (tầng " + w.Story + " không có tầng trên trong danh sách)", B(hDef > 0), 1, 0);
 
         // ---- 2. Tay nắm: kéo đầu tường, cửa giữ vị trí tuyệt đối ----
         var r1 = WallGrips.MoveEnd(p, w, false, 1.0 - 1.0, 0);   // không đổi
