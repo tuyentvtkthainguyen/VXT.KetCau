@@ -260,7 +260,7 @@ jobs:
           $tag = "ketcau-vxt-latest"
           gh release delete $tag -y --cleanup-tag 2>$null
           $assets = @("dist\KetCauVXT-win-x64.zip") + (Get-ChildItem dist\setup -File | ForEach-Object { $_.FullName })
-          gh release create $tag @assets --target $env:GITHUB_SHA --title "Việt Const – bản Windows mới nhất" --notes "Bộ cài chuẩn: tải VietConst-Setup.exe và tất cả file VietConst-Setup-*.bin về cùng một thư mục, chạy VietConst-Setup.exe. Bản không cần cài: giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Add-in AutoCAD 2021–2026 (tích chọn tường, cột, dầm, sàn, trục gửi sang chương trình): chạy AutoCAD\CaiDatAutoCAD.cmd. Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
+          gh release create $tag @assets --target $env:GITHUB_SHA --title "Việt Const – bản Windows mới nhất" --notes "Bộ cài chuẩn: tải một file VietConst-Setup.exe và chạy. Bản không cần cài: giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Add-in AutoCAD 2021–2026 (tích chọn tường, cột, dầm, sàn, trục gửi sang chương trình): chạy AutoCAD\CaiDatAutoCAD.cmd. Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
           # nhánh chỉ chứa file phát hành (để tải bằng git)
           git config user.name "github-actions"; git config user.email "actions@github.com"
           git checkout --orphan ketcau-vxt-dist

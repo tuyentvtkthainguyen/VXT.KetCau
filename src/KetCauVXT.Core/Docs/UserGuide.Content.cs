@@ -100,7 +100,7 @@ public static partial class UserGuide
                 "Tuỳ chọn: AutoCAD 2021–2026 (add-in liên kết), Revit 2023–2026 (add-in xuất mô hình), Microsoft Word/Excel hoặc LibreOffice để mở thuyết minh và bảng tính, ETABS/SAP2000 để kiểm tra chéo.");
 
         c.Sec("cai-dat.bo-cai", "Cài bằng bộ cài VietConst-Setup.exe")
-            .P("Bộ cài được chia nhiều phần: **VietConst-Setup.exe** và các file **VietConst-Setup-*.bin**. Tải **tất cả** về **cùng một thư mục** rồi chạy file .exe (thiếu file .bin bộ cài sẽ báo hỏi đĩa tiếp theo).")
+            .P("Bộ cài là **một file duy nhất VietConst-Setup.exe**: tải về rồi chạy.")
             .Steps(
                 "Lưu và đóng Việt Const nếu đang mở – bộ cài không tự đóng chương trình để tránh mất dữ liệu chưa lưu.",
                 "Chạy **VietConst-Setup.exe**. Chọn kiểu cài: **chỉ cho tôi** (không cần quyền quản trị, cài vào %LocalAppData%\\Programs\\KetCauVXT) hoặc **cho mọi người dùng** (cần quyền quản trị, cài vào Program Files).",
@@ -112,7 +112,7 @@ public static partial class UserGuide
         c.Sec("cai-dat.smartscreen", "Cảnh báo Windows SmartScreen")
             .P("Bộ cài và chương trình chưa có chữ ký số thương mại nên lần đầu chạy Windows có thể hiện \"Windows đã bảo vệ máy tính của bạn\". "
                + "Bấm **Thông tin thêm** (More info) → **Vẫn chạy** (Run anyway). Chỉ làm như vậy với file tải từ trang phát hành chính thức của dự án (GitHub Releases của tác giả).")
-            .Tip("Nếu trình duyệt chặn tải file .bin, chọn \"Giữ lại\" (Keep). Có thể bấm chuột phải file → Properties → tích Unblock trước khi chạy.");
+            .Tip("Nếu trình duyệt cảnh báo khi tải, chọn \"Giữ lại\" (Keep). Có thể bấm chuột phải file → Properties → tích Unblock trước khi chạy.");
 
         c.Sec("cai-dat.autocad", "Add-in AutoCAD (liên kết AutoCAD → Việt Const)")
             .Steps(
@@ -130,7 +130,7 @@ public static partial class UserGuide
             .P("Giải nén **KetCauVXT-win-x64.zip** vào một thư mục bất kỳ (không cần quyền quản trị) và chạy **KetCauVXT.exe**. Bản zip có kèm thư mục AutoCAD (add-in + CaiDatAutoCAD.cmd) và HuongDan.md. Bản này không tạo liên kết file .kcvxt và không có mục gỡ cài đặt – xoá thư mục là gỡ.");
 
         c.Sec("cai-dat.cap-nhat", "Cập nhật phiên bản")
-            .Bullets("Tải bộ cài mới (cùng tất cả file .bin) và chạy đè lên bản cũ: bộ cài nhớ thư mục và các tuỳ chọn đã chọn lần trước.",
+            .Bullets("Tải bộ cài mới và chạy đè lên bản cũ: bộ cài nhớ thư mục và các tuỳ chọn đã chọn lần trước.",
                 "Dữ liệu dự án (.kcvxt) và thiết lập cá nhân (%AppData%\\KetCauVXT) **không bị xoá** khi cài đè hoặc gỡ cài đặt.",
                 "Sau khi cập nhật nên mở {m:regs} để xem danh mục văn bản mới và bấm **Kiểm tra dự án** với các dự án cũ.");
 
@@ -1219,7 +1219,7 @@ public static partial class UserGuide
                 "Không nhận được tường/trục: kiểm tra tên layer và quy tắc ở {m:cadStd}; dùng tab **Layer trong file** để gán tay.");
 
         c.Sec("hoi-dap.smartscreen", "Windows chặn bộ cài / chương trình")
-            .P("Xem {s:cai-dat.smartscreen}. Bộ cài báo thiếu đĩa: tải đủ mọi file VietConst-Setup-*.bin vào cùng thư mục với VietConst-Setup.exe.");
+            .P("Xem {s:cai-dat.smartscreen}. Bộ cài báo file hỏng: tải lại VietConst-Setup.exe (kiểm tra dung lượng đủ khoảng 50 MB).");
 
         c.Sec("hoi-dap.lech-etabs", "Kết quả lệch so với ETABS – nguyên nhân")
             .Bullets("ETABS mặc định có **vùng cứng đầu thanh** (End length offsets) và có thể đã gán **hệ số giảm độ cứng** (Property modifiers): tắt hoặc khai báo giống nhau ở hai bên.",
