@@ -89,7 +89,10 @@ public static class PunchingUpliftTests
         var rc4 = cap4.Run(s);
         var km = rc4.Checks.FirstOrDefault(k => k.Name.StartsWith("Chọc thủng cột – đài có kể mô men"));
         check("Đài 4 cọc: có kiểm tra chọc thủng kể mô men", B(km != null), 1, 0);
-        check("Đài 4 cọc tự chọn H: chọc thủng kể mô men đạt", B(km == null || km.Ok), 1, 0);
+        var cap4a = new ManualPileCap { N = 1600, Mx = 80, My = 120, Pa = 600, NumPiles = 4, Spacing = 1.5 };   // H = 0 → tự chọn
+        var rc4a = cap4a.Run(s);
+        var kma = rc4a.Checks.FirstOrDefault(k => k.Name.StartsWith("Chọc thủng cột – đài có kể mô men"));
+        check("Đài 4 cọc tự chọn H: chọc thủng kể mô men đạt", B(kma == null || kma.Ok), 1, 0);
         var capSk = new ManualPileCap { N = 600, My = 700, Pa = 600, NumPiles = 2, SkinFriction = 300, PileD = 0.25, PileLength = 15 };
         var rsk = capSk.Run(s);
         var pkCheck = rsk.Checks.First(k => k.Name.StartsWith("Cọc chịu nhổ: lực nhổ"));
