@@ -131,9 +131,10 @@ public static class SelectGridLevelTests
         var p2 = House();
         var o2 = p2.Stories.OrderBy(s => s.Elevation).ToList();
         int beams0 = p2.Frames.Count(f => f.Kind == FrameKind.Beam);
+        double topElev0 = o2[^1].Elevation;   // ghi lại trước khi chèn (Story là tham chiếu, sẽ bị nâng)
         string nMid = LevelOps.AddLevel(p2, o2[0].Name, true, 3.0, LevelCopyMode.Full);
         check("Chèn tầng giữa (chép toàn bộ): thêm dầm", B(p2.Frames.Count(f => f.Kind == FrameKind.Beam) > beams0), 1, 0);
-        check("Chèn tầng giữa: tầng trên nâng 3,0 m", p2.Stories.OrderBy(s => s.Elevation).Last().Elevation, o2[^1].Elevation + 3.0, 1e-6);
+        check("Chèn tầng giữa: tầng trên nâng 3,0 m", p2.Stories.OrderBy(s => s.Elevation).Last().Elevation, topElev0 + 3.0, 1e-6);
         var p3 = House();
         string nNone = LevelOps.AddLevel(p3, p3.Stories.OrderBy(s => s.Elevation).Last().Name, true, 3.2, LevelCopyMode.None);
         check("Thêm tầng không chép: không có cấu kiện tầng mới", p3.Frames.Count(f => f.Story == nNone), 0, 0);
