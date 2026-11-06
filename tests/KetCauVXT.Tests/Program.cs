@@ -651,6 +651,8 @@ Console.WriteLine("91. Bản vẽ / tính toán còn lại: bậc móng trên m�
 DrawingCalcLeftoverTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("92. Còn lại đợt 2: kéo cao độ mặt cắt, nắm trục giữa, bong bóng / ẩn trục hồ sơ, cài đặt điện nước, điều hoà – thông gió, kéo thiết bị 3D");
 RemainingRound2Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("93. Điều hoà – thông gió đợt 3: chọn / sửa từng phần tử, hạ ống gió qua dầm, kéo 3D, IFC đúng loại, tải lạnh và chọn máy");
+HvacRound3Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

@@ -57,6 +57,8 @@ public sealed partial class MepWindow
             SetStatus($"Đã xoá {n} phần tử điều hoà – thông gió tầng {st}.");
         })));
         sp.Children.Add(r2);
+        sp.Children.Add(BuildHvacEditRow());   // sửa / hạ ống qua dầm / máy theo phòng – MepWindow.HvacEdit.cs
+        _cv.MouseUp += HvacMouseUp;
         return sp;
     }
 
@@ -70,6 +72,7 @@ public sealed partial class MepWindow
     {
         _p.Mep.Hvac ??= new HvacModel();
         double btu = Num(_unitBtu.Text, 12000);
+        if (HvacEditClick(x, y)) return;   // vẽ lại tuyến / đặt máy theo phòng – MepWindow.HvacEdit.cs
         switch (_tool)
         {
             case "hvac-in":
@@ -95,10 +98,12 @@ public sealed partial class MepWindow
                 bool round = _ductRound.IsChecked == true;
                 Edit(() =>
                 {
-                    var d = HvacRouting.AddDuct(_p, Story, x0, y0, x, y, sys, q, round);
+                    var d = HvacRouting.AddDuctAvoidBeams(_p, Story, x0, y0, x, y, out var drop, sys, q, round);
                     HvacRouting.RebuildFittings(_p);
                     double v = d.Round ? HvacSizing.VelocityRound(q, d.Dia) : HvacSizing.Velocity(q, d.W, d.H);
-                    SetStatus($"Đã vẽ ống gió {d.SizeText} dài {d.Length:0.00} m" + (q > 0 ? $", v = {v:0.0} m/s" : "") + ". Bấm điểm tiếp theo (nối tiếp) hoặc Esc…");
+                    SetStatus($"Đã vẽ ống gió {d.SizeText} dài {d.Length:0.00} m" + (q > 0 ? $", v = {v:0.0} m/s" : "")
+                        + (drop.Drops > 0 ? $", hạ qua {drop.Drops} dầm (2 cút 45° mỗi phía)" : "") + (drop.WholeDuctLowered ? ", hạ cả tuyến dưới dầm" : "")
+                        + (drop.Warnings.Count > 0 ? $" – ⚠ {drop.Warnings.Count} chỗ không đủ trần để hạ ống (xem cảnh báo)" : "") + ". Bấm điểm tiếp theo (nối tiếp) hoặc Esc…");
                 });
                 _hvacFrom = (x, y);   // vẽ nối tiếp từ điểm cuối
                 break;
@@ -180,5 +185,6 @@ public sealed partial class MepWindow
             var tb = new TextBlock { Text = (u.Kind == HvacUnitKind.DanLanh ? "DL" : "DN") + u.Id, FontSize = 10, IsHitTestVisible = false };
             Canvas.SetLeft(tb, s.X - w / 2 + 2); Canvas.SetTop(tb, s.Y - 7); _cv.Children.Add(tb);
         }
+        DrawHvacSelection();   // MepWindow.HvacEdit.cs
     }
 }

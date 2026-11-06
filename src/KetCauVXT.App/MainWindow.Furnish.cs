@@ -424,7 +424,7 @@ public partial class MainWindow
             bool isFurn = so.Id.StartsWith("DD-"), isMep = so.Discipline == Discipline.DienNuoc && !isFurn;
             if (!isFurn && !isMep) continue;
             if (!Show3D(so.Id, so.Discipline)) continue;
-            var pm = so.Id == _v3SelId ? sel : isMep ? mep : furn;
+            var pm = so.Id == _v3SelId || HvacSame3D(so.Id) ? sel : isMep ? mep : furn;
             pm.Begin(so);
             AddPrism(pm.Mesh, so);
         }
@@ -496,7 +496,7 @@ public partial class MainWindow
         if (!ReferenceEquals(sender, view3DHost) || _p == null) return false;
         var f = Sel3DFurniture();
         var dev = f == null ? Sel3DDevice() : null;
-        if (f == null && dev == null) return false;
+        if (f == null && dev == null) return HvacDrag3DStart(e);   // ĐHKK – MainWindow.HvacDrag.cs
         var pt = e.GetPosition(viewport3D);
         var hit = Pick3D(viewport3D, pt, _pick3D) as Solid;
         if (hit == null || hit.Id != _v3SelId) return false;
@@ -525,6 +525,7 @@ public partial class MainWindow
     private bool View3DDragMove(MouseEventArgs e)
     {
         if (!_v3Drag) return false;
+        if (_v3HvId > 0) return HvacDrag3DMove(e);   // ĐHKK – MainWindow.HvacDrag.cs
         if (_v3DragDev > 0)
         {
             var dev = _p.Mep?.Devices.FirstOrDefault(d => d.Id == _v3DragDev);
@@ -557,6 +558,7 @@ public partial class MainWindow
         _v3Drag = false;
         view3DHost.ReleaseMouseCapture();
         if (_v3Moved && _v3DragDev > 0) { try { KetCauVXT.Mep.MepUpdater.Reconcile(_p); } catch (Exception) { } }
+        HvacDrag3DEnd();   // ĐHKK – MainWindow.HvacDrag.cs
         _v3DragDev = 0;
         if (_v3Moved && _v3DragSnap != null) { PushUndo(_v3DragSnap); MarkDirty(false); RedrawPlan(); }
         _v3DragSnap = null;
@@ -631,7 +633,7 @@ public partial class MainWindow
         var f = Sel3DFurniture();
         if (f != null) { DeleteFurniture(f); _v3SelId = null; Build3D(); return; }
         var d = Sel3DDevice();
-        if (d == null) return;
+        if (d == null) { HvacDelete3D(); return; }   // ĐHKK – MainWindow.HvacDrag.cs
         string snap = Snapshot();
         _p.Mep.Devices.Remove(d);
         _p.Mep.Runs.RemoveAll(r => r.FromId == d.Id || r.ToId == d.Id);

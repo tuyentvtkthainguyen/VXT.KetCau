@@ -106,9 +106,24 @@ public static class MepRegistration
             double a0 = u.Angle * Math.PI / 180, zc = HvacRouting.UnitZ(p, u);
             yield return new Solid
             {
-                Id = "DN-DH-" + u.Id, Name = u.Name, Discipline = Discipline.DienNuoc, Category = "Thiết bị điều hoà", IfcType = "IfcFlowTerminal", Story = u.Story,
+                Id = "DN-DH-" + u.Id, Name = u.Name, Discipline = Discipline.DienNuoc, Category = "Thiết bị điều hoà", IfcType = "IfcEnergyConversionDevice", Story = u.Story,
                 Origin = new Vec3(u.X, u.Y, zc - u.Hh / 2), XDir = new Vec3(Math.Cos(a0), Math.Sin(a0), 0), ZDir = Vec3.UnitZ,
                 Profile = Solid.Rect(-u.W / 2, -u.D / 2, u.W / 2, u.D / 2), Depth = Math.Max(0.05, u.Hh), Color = Rgb(u.Kind == HvacUnitKind.DanLanh ? "#E0F7FA" : "#B0BEC5"), AllowSleeve = true
+            };
+        }
+        // phụ kiện ống gió (cút / tê / côn) – khối hộp nhỏ tại điểm nối (IfcFlowFitting)
+        List<HvacFitting> fits;
+        try { fits = HvacRouting.RebuildFittings(p); } catch (Exception) { fits = new List<HvacFitting>(); }
+        for (int fi = 0; fi < fits.Count; fi++)
+        {
+            var f = fits[fi]; var dd = hv.Duct(f.DuctId);
+            if (dd == null) continue;
+            double hw = dd.Width / 2000 + 0.03, hh = dd.Depth / 2000 + 0.03;
+            yield return new Solid
+            {
+                Id = $"DN-PKG-{f.DuctId}-{fi}", Name = f.Name, Discipline = Discipline.DienNuoc, Category = "Phụ kiện ống gió", IfcType = "IfcFlowFitting", Story = dd.Story,
+                Origin = new Vec3(f.X, f.Y, f.Z - hh), XDir = Vec3.UnitX, ZDir = Vec3.UnitZ,
+                Profile = Solid.Rect(-hw, -hw, hw, hw), Depth = 2 * hh, Color = Rgb(HvacSizing.SystemColor(dd.System)), AllowSleeve = true
             };
         }
         foreach (var t in hv.Terminals)

@@ -150,6 +150,12 @@ public class HvacSettings
     public double CondensateDia { get; set; } = 21;
     /// <summary>Khoảng cách giá treo ống gió (m)</summary>
     public double DuctHangerSpacing { get; set; } = 2.4;
+    /// <summary>Chiều cao thông thủy tối thiểu dưới đáy ống gió so với sàn (m) – giới hạn khi hạ ống qua dầm</summary>
+    public double MinClearHeight { get; set; } = 2.4;
+    /// <summary>Khe hở đáy dầm – đỉnh ống gió khi hạ ống qua dầm (m)</summary>
+    public double BeamClearance { get; set; } = 0.05;
+    /// <summary>Tự hạ ống gió qua dầm (2 cút 45° mỗi phía) khi vẽ ống trên mặt bằng</summary>
+    public bool AutoDropUnderBeams { get; set; } = true;
 }
 
 /// <summary>Dữ liệu điều hoà – thông gió (MepModel.Hvac).</summary>
@@ -272,6 +278,15 @@ public static class HvacRouting
         return d;
     }
 
+    /// <summary>Thêm ống gió như AddDuct rồi (nếu cài đặt AutoDropUnderBeams) hạ ống qua các dầm va chạm bằng cặp cút 45°.</summary>
+    public static HvacDuct AddDuctAvoidBeams(Project p, string story, double x1, double y1, double x2, double y2, out HvacDropResult drop,
+        HvacDuctSystem sys = HvacDuctSystem.GioCap, double flow = 0, bool round = false, bool branch = false)
+    {
+        var d = AddDuct(p, story, x1, y1, x2, y2, sys, flow, round, branch);
+        drop = H(p).Settings.AutoDropUnderBeams ? HvacBeamAvoid.DropUnderBeams(p, d) : new HvacDropResult(d.Id, 0, false, new List<MepWarning>());
+        return d;
+    }
+
     /// <summary>Chọn lại cỡ ống theo lưu lượng (không đổi nếu Flow = 0).</summary>
     public static void Size(Project p, HvacDuct d, bool branch = false)
     {
@@ -374,7 +389,8 @@ public static class HvacRouting
             {
                 var a = d.Path[i - 1]; var b = d.Path[i]; var c = d.Path[i + 1];
                 double ang = MepRouting.TurnAngle(a, b, c);
-                if (ang > 10) res.Add(new HvacFitting { Kind = HvacFittingKind.Cut, DuctId = d.Id, X = b.X, Y = b.Y, Z = b.Z, Name = $"Cút ống gió {d.SizeText}" });
+                if (ang > 10) res.Add(new HvacFitting { Kind = HvacFittingKind.Cut, DuctId = d.Id, X = b.X, Y = b.Y, Z = b.Z,
+                    Name = ang < 60 ? $"Cút 45° ống gió {d.SizeText}" : $"Cút ống gió {d.SizeText}" });
             }
         }
         for (int k = 0; k < h.Ducts.Count; k++)

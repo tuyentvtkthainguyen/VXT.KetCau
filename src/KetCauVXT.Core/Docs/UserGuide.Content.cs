@@ -1029,6 +1029,29 @@ public static partial class UserGuide
                 "Mặt bằng kết cấu (Triển khai hồ sơ): chuột phải lên đường trục → bong bóng **cả hai đầu / chỉ đầu dưới–trái / chỉ đầu trên–phải / không**, **ẩn trục trên mặt bằng này**, **hiện lại mọi trục đã ẩn**. Kiểu trục đi theo tên trục khi thêm / xoá / dời trục và áp dụng cả trên bản vẽ DXF (chuỗi kích thước bỏ trục ẩn).",
                 "Khung **3D**: chọn thiết bị điện nước rồi **kéo** – thiết bị gắn tường trượt dọc tường chủ, thiết bị tự do dời trên mặt sàn; bắt bước 5 cm, tuyến nối với thiết bị đi lại ngay, thả chuột là một bước hoàn tác.");
 
+        c.Sec("mo-hinh.dhkk-sua", "Điều hoà – thông gió: sửa từng đối tượng, hạ ống qua dầm, chọn máy theo phòng")
+            .P("Tab **Điều hoà – thông gió** của cửa sổ Điện nước có thêm hàng lệnh **Sửa** và **Máy theo phòng**. Mỗi thao tác (kể cả một lần kéo) là một bước hoàn tác.")
+            .Bullets("**Chọn và sửa trên mặt bằng** (công cụ Chọn / sửa, hoặc chuột phải để về công cụ chọn):",
+                "Bấm vào **ống gió** (trong bề rộng ống), **miệng gió**, **dàn lạnh / dàn nóng**, **ống đồng / ống nước ngưng** để chọn – viền đỏ nét đứt; **Ctrl + bấm** thêm / bớt đối tượng.",
+                "**Quét khung**: kéo từ trái sang phải chọn đối tượng **nằm trọn** trong khung (khung xanh dương); kéo từ phải sang trái chọn đối tượng **chạm** khung (khung xanh lá, nét đứt).",
+                "**Kéo** đối tượng đã chọn để dời (bắt bước 5 cm). Kéo đúng **đỉnh tuyến** ống gió để nắn tuyến. Dời dàn lạnh / dàn nóng thì ống đồng đi lại tuyến, ống nước ngưng đi lại từ dàn mới và giữ điểm xả, độ dốc.",
+                "**Delete** xoá đối tượng đã chọn; xoá dàn lạnh / nóng xoá kèm ống đồng, ống ngưng nối với nó.",
+                "Bảng **Thuộc tính** ống gió: hệ, ống tròn / chữ nhật, w × h hoặc Ø (đổi cỡ **giữ cao độ đỉnh ống** – ống vẫn sát trần), lưu lượng Q (tự chọn lại cỡ theo vận tốc), cao độ đỉnh so với sàn, nút **Hạ ống qua dầm**, **Đưa lại sát trần**, **Vẽ lại tuyến** (bấm 2 điểm, giữ cỡ – hệ – cao độ). Hiển thị chiều dài, m² tôn, vận tốc thực, số cút (cút 45°) / tê / côn.",
+                "Thuộc tính **dàn lạnh / nóng**: công suất nhập theo **BTU/h hoặc kW** (1 BTU/h = 0,000293 kW), cao độ, hướng, toạ độ; đổi công suất thì cặp ống đồng chọn lại. Hiển thị lưu lượng gió, cỡ ống đồng, công suất điện, aptomat và dây cấp cho máy.",
+                "Thuộc tính **miệng gió** (cấp / hồi, kích thước, lưu lượng, cao độ) và **ống** (Ø ống lỏng / gas; ống ngưng: Ø, độ dốc ≥ 1 %).")
+            .Bullets("**Ống gió đi qua dầm**:",
+                "Khi vẽ ống (ô **Tự hạ ống qua dầm** đang bật – mặc định), ống sát trần mà va dầm được **hạ xuống dưới đáy dầm** (khe 50 mm): mỗi phía dầm một đoạn xiên **45°** (2 cút 45°), đoạn xiên chạy ngang bằng độ hạ; chiều dài vùng thấp = bề rộng dầm (tính theo góc ống – dầm) + bề rộng ống chiếu + 2 × khe.",
+                "Chỉ hạ khi trần còn chỗ: đáy ống sau khi hạ ≥ sàn + max(**chiều cao thông thủy tối thiểu** 2,4 m; cao độ trần của phòng chứa điểm cắt). Không đủ → giữ nguyên ống và báo cảnh báo **ONG_GIO_KHONG_QUA_DAM** (ghi rõ thiếu bao nhiêu mm) kèm đề xuất: đổi ống dẹt hơn, đi vòng, nâng trần, hoặc lỗ chờ dầm có gia cường được kết cấu duyệt.",
+                "Đoạn ống quá ngắn để xiên 45° → hạ cả tuyến dưới dầm (nếu trần cho phép). Lệnh **Hạ ống qua dầm** áp dụng cho ống đang chọn hoặc mọi ống gió của tầng; hai dầm sát nhau gộp thành một lần hạ.")
+            .Bullets("**Chọn máy theo phòng** (phòng vẽ / nhận diện ở môi trường Kiến trúc):",
+                "Tải lạnh theo phương pháp diện tích: **Q = 600 · A · max(1; h/3) · (1 + 0,15 nếu phòng có tường ngoài) + 500 · max(0; N − 2)** (BTU/h; A diện tích phòng m², h cao độ trần phòng hoặc chiều cao tầng, N số người). Đây là ước tính sơ bộ cho nhà ở – công trình lớn cần tính tải nhiệt chi tiết.",
+                "Chọn máy treo tường **9000 / 12000 / 18000 / 24000 BTU** nhỏ nhất ≥ Q; Q > 24000 → nhiều máy cùng cỡ. Nút **Tải lạnh các phòng** lập bảng cho mọi phòng của tầng.",
+                "**Đặt máy cho phòng**: bấm vào trong phòng – dàn lạnh đặt trên tường **không có cửa đi**, **xa cửa đi nhất** (thường là tường đối diện cửa), **ưu tiên tường ngoài**; dàn nóng ở mặt ngoài tường ngoài gần nhất; tự nối ống đồng (cỡ theo công suất) và ống nước ngưng xả ra ngoài tường.",
+                "Điện máy lạnh: P = Q · 0,000293 / COP (COP = 3), I = P / (220 · 0,85), dòng thiết kế 1,25 · I (động cơ máy nén) → aptomat chuẩn ≥ dòng thiết kế, dây có dòng cho phép ≥ aptomat và ≥ 2,5 mm².")
+            .Bullets("**3D và IFC**:",
+                "Khung **3D**: chọn dàn lạnh / dàn nóng, miệng gió, ống gió hoặc ống đồng rồi **kéo** trên mặt phẳng ngang (bắt 5 cm); cả tuyến ống gió được tô sáng; Delete xoá. Phụ kiện ống gió hiện thành khối nhỏ tại điểm nối.",
+                "Xuất **IFC2X3**: ống gió → IfcFlowSegment + **IfcDuctSegmentType**; cút / tê / côn → IfcFlowFitting + **IfcDuctFittingType** (BEND / JUNCTION / TRANSITION); miệng gió → IfcFlowTerminal + **IfcAirTerminalType**; dàn lạnh / nóng → **IfcEnergyConversionDevice** + **IfcUnitaryEquipmentType** (SPLITSYSTEM); ống đồng / ống ngưng → **IfcPipeSegmentType**; gắn kiểu bằng **IfcRelDefinesByType** (mỗi kích thước / tên một kiểu).");
+
         c.Sec("mo-hinh.choc-thung-nho-coc", "Chọc thủng đài cọc, cắt mép móng, cọc chịu nhổ, phản lực dầm móng")
             .P("Các kiểm tra móng theo **TCVN 5574:2018** (chọc thủng mục 8.1.6, cắt tiết diện nghiêng mục 8.1.3.3, neo thép mục 10.3.5) và **TCVN 10304:2014** (cọc), dùng chung cho chế độ Thiết kế và Triển khai hồ sơ.")
             .Bullets("**Đài cọc**:",

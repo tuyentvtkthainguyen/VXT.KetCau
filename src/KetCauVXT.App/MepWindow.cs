@@ -272,6 +272,7 @@ public sealed partial class MepWindow : Window
             _ox += b.X - a.X; _oy += b.Y - a.Y; _panFrom = b; Redraw();
             return;
         }
+        if (HvacDragMove(e)) return;   // kéo / quét ĐHKK – MepWindow.HvacEdit.cs
         SnapPreview(e.GetPosition(_cv));   // [Kiểu Revit] bóng thiết bị + kích thước tạm khi đặt – MepWindow.Snap.cs
     }
 
@@ -313,6 +314,7 @@ public sealed partial class MepWindow : Window
             }
             default:
             {
+                if (HvacSelectDown(pt, x, y)) return;   // chọn / kéo / quét ĐHKK – MepWindow.HvacEdit.cs
                 var dv = HitDevice(pt);
                 _selDevice = dv?.Id ?? 0;
                 _selRun = dv == null ? (HitRun(pt)?.Id ?? 0) : 0;
@@ -324,12 +326,13 @@ public sealed partial class MepWindow : Window
 
     private void OnKey(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape) { SetTool("select"); e.Handled = true; }
+        if (e.Key == Key.Escape) { _hvSel.Clear(); _hvacFrom = null; SetTool("select"); ShowProps(); e.Handled = true; }
         else if (e.Key == Key.Delete && Keyboard.FocusedElement is not TextBox) { DeleteSelected(); e.Handled = true; }
     }
 
     private void DeleteSelected()
     {
+        if (_selDevice == 0 && _selRun == 0 && DeleteHvacSelected()) return;   // MepWindow.HvacEdit.cs
         if (_selDevice > 0)
         {
             int id = _selDevice;
@@ -435,6 +438,7 @@ public sealed partial class MepWindow : Window
     private void ShowProps()
     {
         _props.Children.Clear();
+        if (_selDevice == 0 && _selRun == 0 && ShowHvacProps()) return;   // MepWindow.HvacEdit.cs
         var d = _p.Mep.Device(_selDevice);
         if (d != null)
         {

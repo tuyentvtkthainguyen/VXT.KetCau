@@ -167,6 +167,7 @@ public static class IfcWriter
         var solids = ModelSolids.Build(p, o.Disciplines);
         var contained = new Dictionary<string, List<int>>();
         var entityOf = new Dictionary<string, int>();
+        var typed = new Dictionary<string, List<int>>();   // kiểu IFC ĐHKK → các đối tượng
         foreach (var s in solids.Where(x => !x.IsVoid))
         {
             int shape = Shape(w, s, ctx);
@@ -181,14 +182,29 @@ public static class IfcWriter
                 "IFCSLAB" => w.Add($"IFCSLAB('{gid}',{Ref(owner)},{name},{desc},$,{Ref(pl)},{Ref(shape)},$,.FLOOR.)"),
                 "IFCROOF" => w.Add($"IFCROOF('{gid}',{Ref(owner)},{name},{desc},$,{Ref(pl)},{Ref(shape)},$,.NOTDEFINED.)"),
                 "IFCCOVERING" => w.Add($"IFCCOVERING('{gid}',{Ref(owner)},{name},{desc},$,{Ref(pl)},{Ref(shape)},$,.CEILING.)"),
-                "IFCCOLUMN" or "IFCBEAM" or "IFCWALLSTANDARDCASE" or "IFCFURNISHINGELEMENT" or "IFCFLOWSEGMENT" or "IFCFLOWTERMINAL" or "IFCFLOWFITTING"
+                "IFCCOLUMN" or "IFCBEAM" or "IFCWALLSTANDARDCASE" or "IFCFURNISHINGELEMENT" or "IFCFLOWSEGMENT" or "IFCFLOWTERMINAL" or "IFCFLOWFITTING" or "IFCENERGYCONVERSIONDEVICE"
                     => w.Add($"{ifc}('{gid}',{Ref(owner)},{name},{desc},$,{Ref(pl)},{Ref(shape)},$)"),
                 _ => w.Add($"IFCBUILDINGELEMENTPROXY('{gid}',{Ref(owner)},{name},{desc},$,{Ref(pl)},{Ref(shape)},$,$)")
             };
             entityOf[s.Id] = e;
+            var ty = KetCauVXT.Mep.HvacIfc.TypeOf(s);
+            if (ty != null)
+            {
+                string key = ty.Value.Entity + "|" + ty.Value.Predefined + "|" + s.Name;
+                if (!typed.TryGetValue(key, out var tl)) typed[key] = tl = new List<int>();
+                tl.Add(e);
+            }
             string st = StoreyOf(s.Story);
             if (!contained.TryGetValue(st, out var lst)) contained[st] = lst = new List<int>();
             lst.Add(e);
+        }
+        // kiểu IFC ĐHKK (IfcDuctSegmentType, IfcDuctFittingType, IfcAirTerminalType, IfcUnitaryEquipmentType, IfcPipeSegmentType) + IfcRelDefinesByType
+        foreach (var kv in typed.OrderBy(k => k.Key, StringComparer.Ordinal))
+        {
+            var parts = kv.Key.Split('|');
+            // IfcFlowSegmentType…: GlobalId, OwnerHistory, Name, Description, ApplicableOccurrence, HasPropertySets, RepresentationMaps, Tag, ElementType, PredefinedType
+            int te = w.Add($"{parts[0]}('{GlobalId("TY:" + kv.Key)}',{Ref(owner)},{Str(parts[2])},$,$,$,$,$,{Str(parts[2])},.{parts[1]}.)");
+            w.Add($"IFCRELDEFINESBYTYPE('{GlobalId("RT:" + kv.Key)}',{Ref(owner)},$,$,{RefList(kv.Value)},{Ref(te)})");
         }
         // lỗ cửa + cửa lấp
         foreach (var v in solids.Where(x => x.IsVoid))
