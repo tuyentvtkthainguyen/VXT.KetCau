@@ -30,7 +30,7 @@ public partial class MainWindow
     private DesignSummary _b3dDesign;
     private Project _b3dProj;
     private bool _view3DInit;
-    private CheckBox _chkDim3D;
+    private CheckBox _chkDim3D, _chkWall3D;
 
     private static readonly Color SelColor3D = Color.FromRgb(255, 230, 0);
 
@@ -98,6 +98,16 @@ public partial class MainWindow
             _chkDim3D.Checked += (s, e) => BuildMain3D(false);
             _chkDim3D.Unchecked += (s, e) => BuildMain3D(false);
             g.Children.Add(_chkDim3D);
+            // [Kiểu Revit] tường kiến trúc trong 3D, ô cửa khoét thật (Model/RevitFinish.cs WallSolid3D)
+            _chkWall3D = new CheckBox
+            {
+                Content = "Tường (có ô cửa)", IsChecked = true, Foreground = Brushes.WhiteSmoke, Margin = new Thickness(170, 6, 8, 6),
+                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
+                ToolTip = "Hiện tường xây trong 3D: tường tự khoét ô cửa đi / cửa sổ đã đặt (phần dưới bậu, trên đầu cửa giữ lại)"
+            };
+            _chkWall3D.Checked += (s, e) => BuildMain3D(false);
+            _chkWall3D.Unchecked += (s, e) => BuildMain3D(false);
+            g.Children.Add(_chkWall3D);
             var hint = new TextBlock
             {
                 Text = "Kéo chuột: xoay  •  Con lăn: thu phóng  •  Bấm: chọn cấu kiện",
@@ -208,8 +218,41 @@ public partial class MainWindow
             AddPickModel(group, pick, footMesh, Diffuse(Color.FromArgb(a, 150, 150, 150)), true);
         }
         AddPickModel(group, pick, slabMesh, Diffuse(Color.FromArgb((byte)(dim ? 30 : 110), 150, 210, 150)), true);
+        if (_chkWall3D == null || _chkWall3D.IsChecked == true)
+        {
+            var wallMesh = new MeshGeometry3D();
+            AddWalls3D(wallMesh);
+            AddModel(group, wallMesh, Color.FromArgb((byte)(dim ? 40 : 150), 214, 168, 130), true);
+        }
         if (overlay != null) group.Children.Add(overlay);
         return group;
+    }
+
+    /// <summary>Tường xây: mỗi đoạn tường tách thành các khối quanh ô cửa (WallSolid3D.Pieces) – ô cửa đi / cửa sổ hiện là lỗ thật.</summary>
+    private void AddWalls3D(MeshGeometry3D m)
+    {
+        if (_p?.Walls == null) return;
+        foreach (var w in _p.Walls)
+        {
+            var st = _p.Stories.FirstOrDefault(q => q.Name == w.Story);
+            if (st == null || w.Chord < 0.05) continue;
+            var wt = _p.WallTypes?.FirstOrDefault(q => q.Name == w.Type);
+            double t = wt == null ? 0.22 : Math.Max(0.05, wt.TotalThickness);
+            double H = WallSolid3D.DefaultHeight(_p, w);
+            double dx = w.X2 - w.X1, dy = w.Y2 - w.Y1, L = Math.Sqrt(dx * dx + dy * dy);
+            double ux = dx / L, uy = dy / L, nx = -uy * t / 2, ny = ux * t / 2;
+            foreach (var pc in WallSolid3D.Pieces(_p, w, H))
+            {
+                double z0 = st.Elevation + pc.Z0, z1 = st.Elevation + pc.Z1;
+                double ax = w.X1 + ux * pc.A, ay = w.Y1 + uy * pc.A, bx = w.X1 + ux * pc.B, by = w.Y1 + uy * pc.B;
+                Point3D[] Ring(double z) => new[]
+                {
+                    new Point3D(ax - nx, ay - ny, z), new Point3D(bx - nx, by - ny, z),
+                    new Point3D(bx + nx, by + ny, z), new Point3D(ax + nx, ay + ny, z)
+                };
+                AddHexa(m, Ring(z0), Ring(z1));
+            }
+        }
     }
 
     private Dictionary<int, Node> NodeMap()

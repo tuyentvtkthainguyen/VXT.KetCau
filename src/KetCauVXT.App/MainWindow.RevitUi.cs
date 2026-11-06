@@ -68,6 +68,9 @@ public partial class MainWindow
         _rvRibbon.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         if (_rvOptions != null) _rvOptions.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         if (_ribbonHost != null) _ribbonHost.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+        // [Hoàn thiện] vùng vẽ chiếm hết chỗ: bảng thông tin dưới mặt bằng ẩn (thông tin đã có ở khung Thuộc tính)
+        if (infoPanel != null) infoPanel.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+        _fitPending = true;
         if (on)
         {
             if (!_rvInputShown) _rvSavedLeftW = colLeftPanel.Width;
@@ -177,6 +180,7 @@ public partial class MainWindow
     {
         if (tabLeft?.Parent is not Grid root || root.Parent is not DockPanel dock) return;
         _rvTabs = new TabControl { Padding = new Thickness(0), BorderThickness = new Thickness(0, 1, 0, 0), Background = RvRibbonBack };
+        OneRowTabs.Apply(_rvTabs);   // [Hoàn thiện] ribbon một hàng tab, nút » khi hẹp
         RvTab("Kiến trúc",
             RvGroup("Xây dựng",
                 RvBtn("Tường", "", "Vẽ tường theo kiểu tường đang chọn (vẽ chuỗi, đường định vị, kích thước tạm) – WA", RvWallTool),
@@ -229,7 +233,8 @@ public partial class MainWindow
             RvGroup("Đồ hoạ",
                 RvBtn("Hiển thị / Đồ hoạ…", "", "Bật / tắt thẻ dầm, cột, sàn, tường, cửa; mức chi tiết; tránh chồng nhãn (VG)", OpenVisibility),
                 RvBtn("Thanh lệnh cấu kiện", "", "Hiện / ẩn thanh lệnh theo cấu kiện (gán tải, sửa dầm, Link CAD)", ToggleMemberRibbon),
-                RvBtn("Mở rộng (F11)", "", "Ẩn ribbon, khung bên – chỉ còn vùng vẽ", () => _shell?.SetFull(!_shell.IsFull))));
+                RvBtn("Mở rộng (F11)", "", "Ẩn ribbon, khung bên – chỉ còn vùng vẽ", () => _shell?.SetFull(!_shell.IsFull))),
+            QuickVgGroup());   // [Hoàn thiện] bật / tắt nhanh thẻ, kích thước, tải – MainWindow.RevitFinish.cs
         RvTab("Quản lý",
             RvGroup("Dự án",
                 RvBtn("Thông tin dự án", "", "Các ô nhập liệu: công trình, lưới trục, tầng, tải, gió, động đất, vật liệu, địa chất, kết quả", () => ShowInputPanel(true)),
@@ -852,6 +857,7 @@ public partial class MainWindow
         var dlg = new VisibilityGraphicsWindow(_vg, () => RedrawPlan()) { Owner = this };
         dlg.ShowDialog();
         _rvSig = "";
+        SyncQuickVg();
     }
 
     private void ShowLintelProposals()

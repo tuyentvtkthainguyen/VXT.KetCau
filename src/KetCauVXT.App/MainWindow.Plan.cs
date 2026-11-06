@@ -184,12 +184,14 @@ public partial class MainWindow
             AddBubble(g.Name, new Point(a.X - bub, a.Y), bub);
             AddBubble(g.Name, new Point(b.X + bub, b.Y), bub);
         }
-        // kích thước bước trục
+        // kích thước bước trục ([Hoàn thiện] bật / tắt ở Xem → Hiện nhanh)
+        if (!_revitOn || _vg.GridDims)
         for (int i = 0; i + 1 < gxs.Count; i++)
         {
             var a = W2S((gxs[i].Coord + gxs[i + 1].Coord) / 2, gyMin - ext);
             AddText($"{(gxs[i + 1].Coord - gxs[i].Coord) * 1000:0}", new Point(a.X, a.Y + 2 * bub + 10), GridBrush, 10, true);
         }
+        if (!_revitOn || _vg.GridDims)
         for (int i = 0; i + 1 < gys.Count; i++)
         {
             var a = W2S(gxMin - ext, (gys[i].Coord + gys[i + 1].Coord) / 2);
@@ -254,6 +256,7 @@ public partial class MainWindow
 
         // ---- tô sáng đối tượng đang chọn (vẽ trên cùng) ----
         DrawSelectionHighlight();
+        DrawGrips();   // [Kiểu Revit] tay nắm đầu / giữa tường, dầm đang chọn – MainWindow.RevitGrips.cs
 
         // tiêu đề
         AddText($"Mặt bằng: {CurrentStory}   –   tỷ lệ {_scale:0.#} px/m", new Point(8, 6), Brushes.Gray, 11, false);
@@ -365,6 +368,7 @@ public partial class MainWindow
     private void DrawHover()
     {
         planOverlay.Children.Clear();
+        if (DrawGripOrEditOverlay()) return;   // [Kiểu Revit] kéo tay nắm, bóng đối tượng khi CO / M / MI / AR / O – MainWindow.RevitGrips.cs
         if (DrawCadAlignOverlay()) return;   // [CadLink] căn bản vẽ theo 2 điểm – MainWindow.CadLink.cs
         if (DrawBeamToolOverlay()) return;   // [BeamTools] chọn nhiều, khung chọn, công cụ dầm – MainWindow.BeamTools.cs
         if (DrawBeamEditOverlay()) return;   // [Sửa dầm] kéo, trim, extend, pick CAD – MainWindow.BeamEdit.cs
@@ -469,7 +473,9 @@ public partial class MainWindow
 
     private void AddText(string s, Point p, Brush br, double size, bool center, bool vcenter = false, Canvas target = null)
     {
-        var t = new TextBlock { Text = s, Foreground = br, FontSize = size, IsHitTestVisible = false };
+        // [Hoàn thiện] chữ giữ cỡ trên màn hình; nhãn cấu kiện (≤ 10 pt, không phải trục) ẩn khi thu nhỏ quá mức
+        if ((target == null || target == planCanvas) && size <= 10 && !ReferenceEquals(br, GridBrush) && !PlanLabelRules.Visible(_scale, true, _vg.MinLabelScale)) return;
+        var t = new TextBlock { Text = s, Foreground = br, FontSize = PlanLabelRules.ScreenFont(size, _scale), IsHitTestVisible = false };
         t.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double x = center ? p.X - t.DesiredSize.Width / 2 : p.X;
         double y = vcenter || center ? p.Y - t.DesiredSize.Height / 2 : p.Y;
@@ -502,6 +508,7 @@ public partial class MainWindow
     private void PlanHost_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         planHost.Focus(); // để Delete / Esc / Ctrl+Z tác động lên mặt bằng
+        if (GripMouseDown(e.GetPosition(planHost))) return;   // [Kiểu Revit] kéo tay nắm – MainWindow.RevitGrips.cs
         _panning = true; _dragged = false;
         _panStart = e.GetPosition(planHost);
         _panOx = _ox; _panOy = _oy;
@@ -511,9 +518,11 @@ public partial class MainWindow
 
     private void PlanHost_MouseMove(object sender, MouseEventArgs e)
     {
+        if (GripMouseMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // [Kiểu Revit] tay nắm
         if (!_panning)
         {
             _lastMouse = e.GetPosition(planHost);
+            if (MouseEditMove(_lastMouse.Value)) return;   // [Kiểu Revit] CO / M / MI / AR / O: dây chun + bóng đối tượng
             if (RevitPlanMove(_lastMouse.Value)) return;   // [Kiểu Revit] đặt cửa, kích thước tạm khi vẽ – MainWindow.RevitDraw.cs
             if (IsLineMode || IsBeamToolMode || IsBeamEditMode || CadAlignActive) { DrawHover(); return; }   // [CadLink] CadAlignActive   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
             UpdateHover(_lastMouse.Value);
@@ -530,6 +539,7 @@ public partial class MainWindow
 
     private void PlanHost_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (GripMouseUp(e.GetPosition(planHost))) return;   // [Kiểu Revit] thả tay nắm → 1 bước hoàn tác
         if (!_panning) return;
         _panning = false;
         planHost.ReleaseMouseCapture();

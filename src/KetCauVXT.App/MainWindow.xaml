@@ -58,6 +58,7 @@
             </MenuItem>
             <MenuItem Header="_Sửa">
                 <MenuItem Header="_Hoàn tác" Click="MnuUndo_Click" InputGestureText="Ctrl+Z"/>
+                <MenuItem Header="_Làm lại" Click="MnuRedo_Click" InputGestureText="Ctrl+Y"/>
                 <Separator/>
                 <MenuItem Header="_Xoá đối tượng đang chọn" Click="MnuDeleteSel_Click" InputGestureText="Delete"/>
                 <MenuItem Header="Sao chép / Đối xứng dầm đã chọn…" Click="MnuReplicate_Click" ToolTip="Replicate – sao chép theo Δx, Δy, đối xứng, chép sang tầng khác (MainWindow.BeamTools.cs)"/>

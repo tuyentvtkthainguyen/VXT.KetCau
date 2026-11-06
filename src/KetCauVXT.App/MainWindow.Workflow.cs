@@ -146,6 +146,7 @@ public partial class MainWindow
     // Sửa
     // ------------------------------------------------------------------
     private void MnuUndo_Click(object sender, RoutedEventArgs e) => Undo();
+    private void MnuRedo_Click(object sender, RoutedEventArgs e) => Redo();
     private void MnuDeleteSel_Click(object sender, RoutedEventArgs e) => DeleteSelection();
     private void MnuReplicate_Click(object sender, RoutedEventArgs e) => ReplicateSelection();
     private void MnuInsertion_Click(object sender, RoutedEventArgs e) => InsertionForSelection();

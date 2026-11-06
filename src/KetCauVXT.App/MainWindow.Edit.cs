@@ -34,6 +34,7 @@ public partial class MainWindow
     // hoàn tác: ảnh chụp JSON của dự án TRƯỚC mỗi thao tác sửa (tối đa 30); chỉ dùng cho đúng đối tượng Project đã chụp
     private const int MaxUndo = 30;
     private readonly List<string> _undo = new();
+    private readonly List<string> _redo = new();   // [Kiểu Revit] làm lại (Ctrl+Y) – Model/RevitFinish.cs SnapshotHistory
     private Project _undoOwner;
 
     private static string ModeHint(PlanEditMode m) => m switch
@@ -317,10 +318,11 @@ public partial class MainWindow
     private bool HandlePlanEditKey(Key key, bool ctrl)
     {
         if (_p == null) return false;
+        if (key == Key.Tab && !ctrl && !IsTextInputFocused() && TabCycle()) return true;   // [Kiểu Revit] Tab chuyển vòng đối tượng chồng nhau – MainWindow.RevitGrips.cs
         if (!ctrl && RevitPlanKey(key)) return true;   // [Kiểu Revit] Esc / Delete khi đặt / chọn cửa – MainWindow.RevitDraw.cs
         if (key == Key.Enter && !ctrl && !IsTextInputFocused() && BeamEditAuto()) return true;   // [Sửa dầm] Extend tự động
-        bool del = key == Key.Delete && !ctrl, esc = key == Key.Escape, undo = ctrl && key == Key.Z;
-        if (!del && !esc && !undo) return false;
+        bool del = key == Key.Delete && !ctrl, esc = key == Key.Escape, undo = ctrl && key == Key.Z, redo = ctrl && key == Key.Y;
+        if (!del && !esc && !undo && !redo) return false;
         if (IsTextInputFocused()) return false; // để ô nhập / bảng tự xử lý
         if (esc && HandleCadLinkKey(key)) return true;   // [CadLink] huỷ căn bản vẽ
         if (esc && _lineStart != null)
@@ -340,6 +342,7 @@ public partial class MainWindow
             return true;
         }
         if (undo) { Undo(); return true; }
+        if (redo) { Redo(); return true; }
         DeleteSelection();
         return true;
     }
@@ -410,9 +413,8 @@ public partial class MainWindow
 
     private void PushUndo(string snap)
     {
-        if (!ReferenceEquals(_undoOwner, _p)) { _undo.Clear(); _undoOwner = _p; }
-        _undo.Add(snap);
-        while (_undo.Count > MaxUndo) _undo.RemoveAt(0);
+        if (!ReferenceEquals(_undoOwner, _p)) { _undo.Clear(); _redo.Clear(); _undoOwner = _p; }
+        SnapshotHistory.Push(_undo, _redo, snap, MaxUndo);
         UpdateUndoButton();
     }
 
@@ -432,14 +434,33 @@ public partial class MainWindow
             SetStatus("Không có thao tác sửa mặt bằng nào để hoàn tác.");
             return;
         }
-        string snap = _undo[^1];
-        _undo.RemoveAt(_undo.Count - 1);
+        string snap = SnapshotHistory.Undo(_undo, _redo, Snapshot(), MaxUndo);
         try
         {
             RestoreSnapshot(snap);
-            SetStatus($"Đã hoàn tác thao tác sửa mặt bằng (còn {_undo.Count} bước hoàn tác).");
+            SetStatus($"Đã hoàn tác thao tác sửa mặt bằng (còn {_undo.Count} bước hoàn tác, {_redo.Count} bước làm lại – Ctrl+Y).");
         }
         catch (Exception ex) { ShowError("Không hoàn tác được", ex); }
+        UpdateUndoButton();
+    }
+
+    /// <summary>Làm lại thao tác vừa hoàn tác (Ctrl+Y / lệnh REDO).</summary>
+    private void Redo()
+    {
+        if (_busy) return;
+        if (_redo.Count == 0 || !ReferenceEquals(_undoOwner, _p))
+        {
+            _redo.Clear();
+            SetStatus("Không có thao tác nào để làm lại.");
+            return;
+        }
+        string snap = SnapshotHistory.Redo(_undo, _redo, Snapshot(), MaxUndo);
+        try
+        {
+            RestoreSnapshot(snap);
+            SetStatus($"Đã làm lại (còn {_redo.Count} bước làm lại).");
+        }
+        catch (Exception ex) { ShowError("Không làm lại được", ex); }
         UpdateUndoButton();
     }
 

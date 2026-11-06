@@ -39,6 +39,23 @@ public partial class MainWindow
             await Pause(1000);
             ShotWindow(dlg, $"{tag}_46d_SuaKieuTuong");
             dlg.Close();
+            // [Hoàn thiện] tường đang chọn: tay nắm 2 đầu + ô giữa (kéo để kéo dài / dời)
+            _rvSelOpen = null; _rvSelWall = null;
+            Select(wall: w);
+            RedrawPlan();
+            await Pause(700);
+            StLog($"giao diện Revit – tay nắm tường đang chọn: {Grips().Count}");
+            Shot($"{tag}_46e_Revit_TayNam");
+            // [Hoàn thiện] 3D: tường khoét ô cửa thật
+            var pieces = WallSolid3D.Pieces(_p, w, WallSolid3D.DefaultHeight(_p, w));
+            StLog($"giao diện Revit – 3D tường quanh {w.Openings.Count} ô cửa: {pieces.Count} khối");
+            ClearSelection();
+            tabView.SelectedItem = ViewTab("3D");
+            await Pause(400);
+            BuildMain3D(true);
+            await Pause(1200);
+            Shot($"{tag}_46f_Revit_3D_TuongCoCua");
+            tabView.SelectedItem = ViewTab("Mặt bằng");
         }
         catch (Exception ex) { StLog("giao diện Revit: lỗi " + ex.Message); }
         finally

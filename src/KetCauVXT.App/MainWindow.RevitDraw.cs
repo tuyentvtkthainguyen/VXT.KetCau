@@ -48,7 +48,7 @@ public partial class MainWindow
     /// <summary>Gọi đầu RedrawPlan: bật / tắt tránh chồng nhãn.</summary>
     private void BeginLabelLayout()
     {
-        _lblBoxes = _revitOn && _vg.AvoidOverlap ? new List<Rect>() : null;
+        _lblBoxes = _vg.AvoidOverlap ? new List<Rect>() : null;   // [Hoàn thiện] tránh chồng nhãn mọi loại – cả giao diện cổ điển
         _rvDimLayer?.Children.Clear();
     }
     private void EndLabelLayout() => _lblBoxes = null;

@@ -19,7 +19,8 @@ namespace KetCauVXT.App;
 // =====================================================================
 public partial class MainWindow
 {
-    private enum CmdStage { None, ColumnPick, Dist1, Dist2, MatchSource, MatchTarget, CopyVec, ArrayParams, OffsetDist, MirrorAxis }
+    private enum CmdStage { None, ColumnPick, Dist1, Dist2, MatchSource, MatchTarget, CopyVec, ArrayParams, OffsetDist, MirrorAxis,
+        EditBase, EditTarget, MirrorP1, MirrorP2, ArrayCount, OffsetPick }   // [Kiểu Revit] lệnh sửa bằng chuột – MainWindow.RevitGrips.cs
 
     private TextBox _cmdBox;
     private TextBlock _cmdPrompt;
@@ -151,6 +152,8 @@ public partial class MainWindow
         if (raw.Length > 0) { _cmdHistory.Remove(raw); _cmdHistory.Add(raw); if (_cmdHistory.Count > 40) _cmdHistory.RemoveAt(0); _cmdHistIdx = -1; }
         try
         {
+            // [Kiểu Revit] lệnh sửa bằng chuột: chữ gõ trong bước lệnh (số phần tử, khoảng offset, chiều dài, @dx,dy, tên trục) – MainWindow.RevitGrips.cs
+            if ((IsMouseEditStage || _cmdStage == CmdStage.OffsetDist) && (raw.Length > 0 || _cmdStage == CmdStage.OffsetPick) && MouseEditText(raw)) return;
             if (raw.Length > 0 && _cmdStage is CmdStage.CopyVec or CmdStage.ArrayParams or CmdStage.OffsetDist or CmdStage.MirrorAxis
                 && CadCommand.Resolve(raw.Split(' ')[0]) == CadCmd.None)
             { StageText(raw); return; }
@@ -216,7 +219,9 @@ public partial class MainWindow
             case CadCmd.Beam: SetPlanMode(nameof(PlanEditMode.AddBeam)); SetPrompt("DẦM – bấm / gõ điểm đầu (x,y), rồi các điểm tiếp (@dx,dy | @L<góc | chiều dài); Enter kết thúc:"); break;
             case CadCmd.Wall: SetPlanMode(nameof(PlanEditMode.AddWall)); SetPrompt("TƯỜNG – bấm / gõ điểm đầu, điểm cuối; Enter kết thúc:"); break;
             case CadCmd.Slab: SetPlanMode(nameof(PlanEditMode.AddSlab)); SetPrompt("SÀN – bấm vào ô kín bởi dầm để thêm ô sàn:"); break;
-            case CadCmd.Move: SetPlanMode(nameof(PlanEditMode.MoveBeam)); SetPrompt("DỜI DẦM – bấm dầm (hoặc dầm đã chọn) tại điểm gốc, rồi điểm đích:"); break;
+            case CadCmd.Move:
+                if (HasEditSelection()) { StartMouseEdit(CadCmd.Move); break; }   // [Kiểu Revit] dời dầm / tường đang chọn: điểm gốc → điểm đích
+                SetPlanMode(nameof(PlanEditMode.MoveBeam)); SetPrompt("DỜI DẦM – bấm dầm (hoặc dầm đã chọn) tại điểm gốc, rồi điểm đích:"); break;
             case CadCmd.Stretch: SetPlanMode(nameof(PlanEditMode.StretchBeam)); SetPrompt("KÉO DẦM – bấm gần đầu dầm, rồi điểm mới:"); break;
             case CadCmd.Trim: SetPlanMode(nameof(PlanEditMode.TrimBeam)); SetPrompt("TRIM – bấm đoạn dầm cần cắt bỏ:"); break;
             case CadCmd.Extend: SetPlanMode(nameof(PlanEditMode.ExtendBeam)); SetPrompt("EXTEND – bấm gần đầu dầm, rồi dầm đích (Enter: tới dầm vuông góc gần nhất):"); break;
@@ -231,7 +236,7 @@ public partial class MainWindow
                 break;
             }
             case CadCmd.Undo: Undo(); break;
-            case CadCmd.Redo: SetStatus("Chưa có làm lại (Redo) – dùng U / Ctrl+Z để hoàn tác."); break;
+            case CadCmd.Redo: Redo(); break;
             case CadCmd.Zoom:
             {
                 if (BeamTools.TryLength(arg, CoordUnit.M, out double k) && k > 0.05 && k < 50)
@@ -256,10 +261,11 @@ public partial class MainWindow
                 SetStatus("GÁN TẢI – chọn đối tượng (Chọn nhiều), chọn trường hợp tải, nhập giá trị rồi bấm 'Gán'.");
                 break;
             }
-            case CadCmd.Copy: if (NeedBeams()) StartStage(CmdStage.CopyVec, "SAO CHÉP – gõ dx,dy [số bản] (vd 3600,0 2):"); break;
-            case CadCmd.Array: if (NeedBeams()) StartStage(CmdStage.ArrayParams, "MẢNG – gõ số cột số hàng dx dy (vd 3 2 3600 4500):"); break;
-            case CadCmd.Offset: if (NeedBeams()) StartStage(CmdStage.OffsetDist, "OFFSET – gõ khoảng cách (dương: bên trái hướng I→J, âm: bên phải):"); break;
-            case CadCmd.Mirror: if (NeedBeams()) StartStage(CmdStage.MirrorAxis, "ĐỐI XỨNG – gõ tên trục đối xứng (vd 2 hoặc B):"); break;
+            // [Kiểu Revit] sao chép / mảng / offset / đối xứng bằng chuột (vẫn nhận kiểu gõ số cũ) – MainWindow.RevitGrips.cs
+            case CadCmd.Copy: StartMouseEdit(CadCmd.Copy); break;
+            case CadCmd.Array: StartMouseEdit(CadCmd.Array); break;
+            case CadCmd.Offset: StartMouseEdit(CadCmd.Offset); break;
+            case CadCmd.Mirror: StartMouseEdit(CadCmd.Mirror); break;
             case CadCmd.Ortho: _tgOrtho.IsChecked = !_orthoOn; break;
             case CadCmd.Polar: _tgPolar.IsChecked = !_polarOn; break;
             case CadCmd.Osnap: _tgOsnap.IsChecked = !_osnapOn; break;
@@ -289,7 +295,7 @@ public partial class MainWindow
     {
         _cmdStage = stage; _cmdStageMode = _mode;
         SetPrompt(prompt);
-        if (stage is CmdStage.CopyVec or CmdStage.ArrayParams or CmdStage.OffsetDist or CmdStage.MirrorAxis) { _cmdBox?.Focus(); }
+        if (stage is CmdStage.CopyVec or CmdStage.ArrayParams or CmdStage.OffsetDist or CmdStage.MirrorAxis or CmdStage.ArrayCount) { _cmdBox?.Focus(); }
     }
 
     private void CancelStage(bool report = true)
@@ -314,6 +320,7 @@ public partial class MainWindow
         string st = CurrentStory;
         if (st == AllStories || _p.Stories.All(q => q.Name != st)) { SetStatus("Chọn một tầng cụ thể ở ô 'Tầng đang xem'."); return true; }
         var (x, y) = S2W(s);
+        if (IsMouseEditStage) { if (_cmdStage != CmdStage.ArrayCount) MouseEditClick(SnapPlan(st, x, y)); return true; }   // [Kiểu Revit] – MainWindow.RevitGrips.cs
         switch (_cmdStage)
         {
             case CmdStage.ColumnPick: AddColumnAt(st, SnapPlan(st, x, y)); return true;

@@ -669,6 +669,7 @@ public partial class MainWindow
     internal void CadLinkStartAlign(CadLink l)
     {
         if (l == null) return;
+        if (l.Locked) { SetStatus($"Bản vẽ {l.DisplayName} đang khoá vị trí – bỏ khoá (tab Link CAD / Quản lý) trước khi căn."); return; }
         if (CadLinkCache.Get(l) == null) { SetStatus("Bản vẽ link chưa đọc được – không căn được."); return; }
         _clAlignStep = 1; _clAlignLink = l.Id;
         try { tabView.SelectedItem = ViewTab("Mặt bằng"); } catch (Exception) { }

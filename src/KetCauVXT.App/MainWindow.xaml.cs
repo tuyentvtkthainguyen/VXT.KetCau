@@ -1067,6 +1067,8 @@ public partial class MainWindow : Window
     private void CbStory_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded || _p == null) return;
+        _fitPending = true;           // [Kiểu Revit] đổi tầng → vừa màn hình (có lề)
+        SyncCadTabFromLinks();        // độ mờ / khoá bản vẽ nền của tầng mới – MainWindow.MemberRibbon.cs
         RedrawPlan();
     }
 

@@ -31,7 +31,7 @@ public partial class MainWindow
     /// <summary>Ô sàn đang chọn nhiều (Id).</summary>
     private readonly HashSet<int> _multiSlab = new();
     private readonly Dictionary<string, TextBlock> _ribbonInfo = new();
-    private readonly HashSet<string> _clLocked = new();
+    private ToggleButton _clLockBtn;
     private Slider _clOpacity;
     private ComboBox _cbColSec;
     private static readonly Brush SlabSelFill = Frozen(Color.FromArgb(70, 255, 160, 0));
@@ -132,6 +132,7 @@ public partial class MainWindow
         BuildCadTab(P(RtCad));
 
         _ribbon = new TabControl { Padding = new Thickness(0), BorderThickness = new Thickness(0, 1, 0, 0), MinHeight = 30 };
+        OneRowTabs.Apply(_ribbon);   // [Hoàn thiện] tiêu đề tab một hàng (không xuống dòng khi khung hẹp)
         foreach (var k in new[] { RtLuoi, RtMong, RtCot, RtDam, RtSan, RtTuong, RtCad })
         {
             var sv = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 92, Content = P(k) };
@@ -290,7 +291,7 @@ public partial class MainWindow
         Ins(SmallBtn("Ẩn / hiện", () => ForStoryLinks(l => l.Visible = !l.Visible, "Đã ẩn / hiện bản vẽ nền."), "Ẩn hoặc hiện bản vẽ nền của tầng đang xem", out _));
         Ins(RLab("Độ mờ:"));
         _clOpacity = new Slider { Minimum = 0.1, Maximum = 1, Value = 0.55, Width = 70, Margin = new Thickness(0, 0, 6, 2), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Độ đậm nét bản vẽ nền" };
-        _clOpacity.ValueChanged += (s, e) => ForStoryLinks(l => l.Opacity = Math.Round(_clOpacity.Value, 2), null);
+        _clOpacity.ValueChanged += (s, e) => { if (!_clSyncing) ForStoryLinks(l => l.Opacity = Math.Round(_clOpacity.Value, 2), null); };
         Ins(_clOpacity);
         Ins(SmallBtn("Đọc lại", async () =>
         {
@@ -302,12 +303,14 @@ public partial class MainWindow
         {
             var l = StoryLinks().FirstOrDefault();
             if (l == null) { SetStatus("Tầng đang xem chưa có bản vẽ liên kết."); return; }
-            if (_clLocked.Contains(l.Id)) { SetStatus($"Bản vẽ {l.DisplayName} đang khoá – bỏ khoá trước khi căn."); return; }
+            if (l.Locked) { SetStatus($"Bản vẽ {l.DisplayName} đang khoá – bỏ khoá trước khi căn."); return; }
             CadLinkStartAlign(l);
         }, "Căn bản vẽ nền: bấm 1 điểm trên bản vẽ rồi điểm tương ứng trên mô hình (giao trục / nút)", out _));
         var lockBtn = new ToggleButton { Content = "🔒 Khoá", Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(0, 0, 3, 2), ToolTip = "Khoá vị trí bản vẽ nền (không căn / dời nhầm)" };
-        lockBtn.Checked += (s, e) => { foreach (var l in StoryLinks()) _clLocked.Add(l.Id); SetStatus("Đã khoá vị trí bản vẽ nền."); };
-        lockBtn.Unchecked += (s, e) => { foreach (var l in StoryLinks()) _clLocked.Remove(l.Id); SetStatus("Đã bỏ khoá bản vẽ nền."); };
+        // khoá lưu trong dự án (CadLink.Locked) – mở lại dự án vẫn giữ
+        lockBtn.Checked += (s, e) => { if (!_clSyncing) ForStoryLinks(l => l.Locked = true, "Đã khoá vị trí bản vẽ nền (lưu trong dự án)."); };
+        lockBtn.Unchecked += (s, e) => { if (!_clSyncing) ForStoryLinks(l => l.Locked = false, "Đã bỏ khoá bản vẽ nền."); };
+        _clLockBtn = lockBtn;
         Ins(lockBtn);
         var snapBtn = new ToggleButton { Content = "Bắt điểm CAD", IsChecked = true, Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(0, 0, 3, 2), ToolTip = "Bắt điểm vào nét bản vẽ nền: đầu nét □, trung điểm △, giao ×, tâm ○ (F3 bật/tắt mọi bắt điểm)" };
         snapBtn.Checked += (s, e) => CadLinkSnapEnabled = true; snapBtn.Unchecked += (s, e) => CadLinkSnapEnabled = false;
@@ -315,6 +318,22 @@ public partial class MainWindow
         Ins(RSep());
         w.Children.Add(RSep());
         w.Children.Add(SmallBtn("Tường CAD → tải dầm…", CadWallsToBeams, "Tìm cặp nét tường (layer tường, cách 110 / 220 mm) trên bản vẽ nền nằm trên dầm của tầng → tạo tường (tải tường dồn vào dầm khi phân tích)", out _));
+    }
+
+    private bool _clSyncing;
+
+    /// <summary>Đồng bộ ô độ mờ / nút khoá của tab Link CAD theo bản vẽ nền của tầng đang xem (giá trị lưu trong dự án).</summary>
+    private void SyncCadTabFromLinks()
+    {
+        if (_clOpacity == null && _clLockBtn == null) return;
+        var l = StoryLinks().FirstOrDefault();
+        _clSyncing = true;
+        try
+        {
+            if (_clOpacity != null && l != null) _clOpacity.Value = Math.Clamp(l.Opacity, _clOpacity.Minimum, _clOpacity.Maximum);
+            if (_clLockBtn != null) _clLockBtn.IsChecked = l != null && l.Locked;
+        }
+        finally { _clSyncing = false; }
     }
 
     private IEnumerable<CadLink> StoryLinks()

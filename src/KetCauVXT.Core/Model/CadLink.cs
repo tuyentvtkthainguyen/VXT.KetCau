@@ -44,6 +44,8 @@ public class CadLink
     public int InsUnits { get; set; }
 
     public bool Visible { get; set; } = true;
+    /// <summary>Khoá vị trí bản vẽ nền (không cho căn / dời) – lưu trong dự án như Revit "Pin".</summary>
+    public bool Locked { get; set; }
     /// <summary>Độ đậm nét nền 0,05 … 1.</summary>
     public double Opacity { get; set; } = 0.55;
     /// <summary>true = vẽ theo màu layer (nhạt theo Opacity); false = xám nhạt.</summary>

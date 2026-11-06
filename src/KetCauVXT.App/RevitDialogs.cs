@@ -500,6 +500,9 @@ internal sealed class VisibilityGraphicsWindow : Window
 internal sealed class PlanVisibility
 {
     public bool BeamTags = true, BeamNameOnly, ColumnTags = true, SlabTags = true, RoomUse = true, WallTags = true, DoorTags = true, AvoidOverlap = true;
+    /// <summary>[Hoàn thiện] kích thước bước trục; ẩn nhãn cấu kiện khi thu nhỏ dưới MinLabelScale (px/m).</summary>
+    public bool GridDims = true;
+    public double MinLabelScale = KetCauVXT.Model.PlanLabelRules.DefaultMinScale;
     public const string Coarse = "Thô", Medium = "Trung bình", Fine = "Chi tiết";
     public static readonly string[] Details = { Coarse, Medium, Fine };
     public string Detail = Medium;
