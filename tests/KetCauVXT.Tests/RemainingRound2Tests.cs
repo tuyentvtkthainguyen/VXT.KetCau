@@ -163,10 +163,13 @@ public static class RemainingRound2Tests
         string s1 = q.Stories.OrderBy(s => s.Elevation).First().Name;
         double top = MepRouting.StoryElevation(q, s1) + MepRouting.StoryHeight(q, s1, q.Mep.Settings);
         var duct = HvacRouting.AddDuct(q, s1, 1, 1, 8, 3, HvacDuctSystem.GioCap, 1800);
-        check("ĐHKK: ống gió tự chọn 500 × 200", duct.W * 1000 + duct.H, 500200, 0);
-        check("ĐHKK: tim ống sát trần = đỉnh tầng − 0,1 − 0,1", duct.Path[0].Z, top - 0.1 - 0.1, 1e-9);
+        // ống chính dùng vận tốc mặc định VelocityMain = 6 m/s: A = 1800/3600/6 = 0,0833 m² → h = 150 cho w = 600 (w/h = 4 ≤ MaxAspect) –
+        // quy tắc chọn h chuẩn NHỎ NHẤT (ống dẹt nhất cho phép) để giữ chiều cao trần; 500 × 200 chỉ đúng với v = 5 m/s (mục 5)
+        check("ĐHKK: ống gió tự chọn (v = 6 m/s) 600 × 150", duct.W * 1000 + duct.H, 600150, 0);
+        check("ĐHKK: v thực ≤ 6 m/s", B(HvacSizing.Velocity(1800, duct.W, duct.H) <= 6 + 1e-9), 1, 0);
+        check("ĐHKK: tim ống sát trần = đỉnh tầng − 0,1 − 0,075", duct.Path[0].Z, top - 0.1 - 0.075, 1e-9);
         check("ĐHKK: tuyến trực giao dài 7 + 2 = 9 m", duct.Length, 9, 1e-9);
-        check("ĐHKK: m² tôn = 2(0,5 + 0,2) × 9 = 12,6", duct.SheetArea, 12.6, 1e-9);
+        check("ĐHKK: m² tôn = 2(0,6 + 0,15) × 9 = 13,5", duct.SheetArea, 13.5, 1e-9);
         var fits = HvacRouting.RebuildFittings(q);
         check("ĐHKK: 1 cút ở điểm đổi hướng", fits.Count(f => f.Kind == HvacFittingKind.Cut), 1, 0);
         var br = HvacRouting.AddDuct(q, s1, 4, 1, 4, -1.5, HvacDuctSystem.GioCap, 400, false, true);

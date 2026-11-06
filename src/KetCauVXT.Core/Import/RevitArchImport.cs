@@ -316,6 +316,20 @@ public static class RevitArchImport
             rep.Removed += rr + rd;
             foreach (var r in p.Mep.Runs) if (r.ExternalId != null) have.Add(r.ExternalId);
             foreach (var d in p.Mep.Devices) if (d.ExternalId != null) have.Add(d.ExternalId);
+            // điều hoà – thông gió (ống gió, miệng gió, dàn lạnh / nóng nhập từ Revit): khớp theo UniqueId như thiết bị / tuyến
+            var hv = p.Mep.Hvac;
+            if (hv != null)
+            {
+                var gone = mepIn.Keys.ToHashSet();
+                int rh = hv.Ducts.RemoveAll(d => d.ExternalId != null && !gone.Contains(d.ExternalId))
+                       + hv.Terminals.RemoveAll(d => d.ExternalId != null && !gone.Contains(d.ExternalId))
+                       + hv.Units.RemoveAll(d => d.ExternalId != null && !gone.Contains(d.ExternalId))
+                       + hv.Pipes.RemoveAll(d => d.ExternalId != null && !gone.Contains(d.ExternalId));
+                rep.Removed += rh;
+                foreach (var id in hv.Ducts.Select(d => d.ExternalId).Concat(hv.Terminals.Select(d => d.ExternalId))
+                             .Concat(hv.Units.Select(d => d.ExternalId)).Concat(hv.Pipes.Select(d => d.ExternalId)))
+                    if (id != null) have.Add(id);
+            }
         }
         var newMep = mepIn.Values.Where(m => !have.Contains(m.Id)).ToList();
         if (newMep.Count > 0)
