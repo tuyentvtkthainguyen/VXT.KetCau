@@ -578,8 +578,15 @@ public partial class MainWindow
         dock.Children.Add(bar); dock.Children.Add(host);
         w.Content = dock;
         BuildingElevationView cur = null;
-        double curK = 1, curX1 = 0;
+        double curK = 1, curX1 = 0, curY1 = 0, curH = 0;
         Rect curBounds = Rect.Empty;
+        Story dragLv = null; double dragZ = 0;   // kéo đường cao độ (bấm gần đường cao độ khi không bật "Thêm trục")
+        double? ModelZ(Point pt)
+        {
+            if (cur == null || curBounds.IsEmpty || img.ActualHeight < 1) return null;
+            double drawY = curBounds.Y + pt.Y / img.ActualHeight * curBounds.Height;    // mm giấy (trục y hướng xuống)
+            return (curY1 + (curH * curK - drawY) / curK) / 1000.0;                     // m cao độ
+        }
         void Titles()
         {
             int keep = Math.Max(0, cb.SelectedIndex);
@@ -595,7 +602,7 @@ public partial class MainWindow
             double k = 1.0 / Math.Max(fw.Scale, 1e-9);
             var d = SheetRender.Render(new[] { (fw, k, -e.X1 * k, -e.Y1 * k) }, 0, e.H * k, 0.1, x => x.GetPrimitives());
             img.Source = new DrawingImage(d);
-            curK = k; curX1 = e.X1; curBounds = d.Bounds;
+            curK = k; curX1 = e.X1; curY1 = e.Y1; curH = e.H; curBounds = d.Bounds;
             info.Text = $"{cur.Items.Count} khối · {cur.Levels.Count} cao độ · {cur.Axes.Count} trục";
         }
         cb.SelectionChanged += (s, e) => { if (cb.SelectedIndex >= 0) Show(); };
@@ -603,6 +610,13 @@ public partial class MainWindow
         cb.SelectedIndex = Array.IndexOf(BuildingElevation.Sides, side);
         img.MouseLeftButtonDown += (s, e) =>
         {
+            if (tgGrid.IsChecked != true && ModelZ(e.GetPosition(img)) is double zz)
+            {
+                // bắt đầu kéo đường cao độ: tầng gần con trỏ (≤ 0,3 m)
+                dragLv = LevelDragMath.NearestStory(_p, zz, 0.3);
+                if (dragLv != null) { dragZ = dragLv.Elevation; img.CaptureMouse(); info.Text = $"Kéo cao độ {dragLv.Name}: {dragZ:+0.000;-0.000} m – thả chuột để đặt."; }
+                return;
+            }
             if (tgGrid.IsChecked != true || cur == null || curBounds.IsEmpty || img.ActualWidth < 1) return;
             var pt = e.GetPosition(img);
             double drawX = curBounds.X + pt.X / img.ActualWidth * curBounds.Width;   // mm giấy
@@ -616,6 +630,32 @@ public partial class MainWindow
             string snap = Snapshot();
             var g = GridOps.AddGrid(_p, dir, cc);
             AfterModelEdit($"Đã thêm trục {g.Name} từ mặt đứng ({(dir == GridDir.X ? "X" : "Y")} = {g.Coord:0.###} m).", snap);
+            Titles(); Show();
+        };
+        img.MouseMove += (s, e) =>
+        {
+            if (dragLv == null || ModelZ(e.GetPosition(img)) is not double z) return;
+            dragZ = LevelDragMath.Clamp(_p, dragLv.Name, z);
+            int iLv = _p.Stories.OrderBy(q => q.Elevation).ToList().FindIndex(q => q.Name == dragLv.Name);
+            var ord = _p.Stories.OrderBy(q => q.Elevation).ToList();
+            double below = iLv <= 0 ? _p.BaseElevation : ord[iLv - 1].Elevation;
+            info.Text = $"Kéo cao độ {dragLv.Name}: {dragZ:+0.000;-0.000} m · cao tầng {(dragZ - below) * 1000:0} mm – thả chuột để đặt.";
+        };
+        img.MouseLeftButtonUp += (s, e) =>
+        {
+            if (dragLv == null) return;
+            img.ReleaseMouseCapture();
+            var lv = dragLv; dragLv = null;
+            if (Math.Abs(dragZ - lv.Elevation) < 1e-6) { Show(); return; }
+            if (_busy) { SetStatus("Chương trình đang tính toán – chờ xong rồi sửa mô hình."); return; }
+            string snap = Snapshot();
+            double old = lv.Elevation;
+            try
+            {
+                double zNew = LevelDragMath.Drop(_p, lv.Name, dragZ);
+                AfterModelEdit($"Đã kéo cao độ {lv.Name}: {old:+0.000;-0.000} → {zNew:+0.000;-0.000} m (chiều cao các tầng tự tính lại).", snap);
+            }
+            catch (Exception ex) { MessageBox.Show(w, ex.Message, AppTitle); }
             Titles(); Show();
         };
         bDxf.Click += (s, e) =>

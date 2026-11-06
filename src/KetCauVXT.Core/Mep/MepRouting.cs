@@ -172,6 +172,7 @@ public static class MepRouting
     public static bool Route(Project p, MepRun r)
     {
         var m = p.Mep; var a = m.Device(r.FromId); var b = m.Device(r.ToId);
+        if (r.FixedPath && r.Path != null && r.Path.Count >= 2) return true;   // tuyến nhập từ Revit: giữ nguyên hình học gốc
         r.Path = new List<MepPt>();
         if (a == null || b == null) return false;
         // thoát nước: đi dưới sàn có độ dốc tới ống đứng (MepDrainage) – không đi trong tường trừ khi ép (DrainInWall)

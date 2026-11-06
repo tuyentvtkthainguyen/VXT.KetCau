@@ -710,6 +710,7 @@ public partial class MainWindow
     private void PlanHost_RightUp(object sender, MouseButtonEventArgs e)
     {
         if (_coordBox != null && _coordBox.IsMouseOver) return;
+        if (_mode == PlanEditMode.Select && GridBubbleContextMenu(e.GetPosition(planHost))) { e.Handled = true; return; }   // bong bóng / ẩn trục – MainWindow.GridDrag.cs
         if (BeamEditAuto() || CancelBeamEdit()) { e.Handled = true; return; }   // [Sửa dầm] Extend tự động / huỷ bước dở
         if (IsLineMode && _lineStart != null)
         {

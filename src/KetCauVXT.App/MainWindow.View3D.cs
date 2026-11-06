@@ -475,6 +475,7 @@ public partial class MainWindow
     private void View3D_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (View3DDragStart(sender, e)) return;   // kéo đồ đạc đang chọn trên mặt sàn – MainWindow.Furnish.cs
+        if (View3DBoxStart(sender, e)) return;    // quét chọn 3D – MainWindow.Select3D.cs
         _rotHost = sender as FrameworkElement ?? view3DHost;
         _rotating = true; _rotMoved = false;
         _rotStart = e.GetPosition(_rotHost);
@@ -485,6 +486,7 @@ public partial class MainWindow
     private void View3D_MouseMove(object sender, MouseEventArgs e)
     {
         if (View3DDragMove(e)) return;
+        if (View3DBoxMove(e)) return;
         if (!_rotating || _rotHost == null) return;
         var p = e.GetPosition(_rotHost);
         if (!_rotMoved && Math.Abs(p.X - _rotStart.X) + Math.Abs(p.Y - _rotStart.Y) < 4) return;
@@ -497,6 +499,7 @@ public partial class MainWindow
     private void View3D_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (View3DDragEnd()) return;
+        if (View3DBoxEnd(e)) return;
         if (!_rotating) return;
         _rotating = false;
         var host = _rotHost ?? view3DHost;

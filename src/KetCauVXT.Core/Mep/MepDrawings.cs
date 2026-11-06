@@ -211,6 +211,8 @@ public static class MepDrawings
                 var f = Plan(p, st, k);
                 if (f != null) figs.Add(f);
             }
+        // mặt cắt dọc tuyến thoát (cao độ đáy ống, độ dốc i, phụ kiện) – Mep/MepLongSection.cs
+        try { figs.AddRange(MepLongSection.Figures(p)); } catch (Exception) { }
         var sch = MepQuantities.ScheduleFigure(p);
         if (sch != null) figs.Add(sch);
         return figs;

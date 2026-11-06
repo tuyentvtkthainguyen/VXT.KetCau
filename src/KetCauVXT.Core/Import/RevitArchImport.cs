@@ -87,6 +87,9 @@ public static class RevitArchImport
 {
     /// <summary>Cách nhận ống / thiết bị điện nước (bộ môn Điện nước gán). null = tạo khối thiết bị chung (FurnitureItem bộ môn Điện nước).</summary>
     public static Action<Project, List<RvMep>, ImportReport, double, double> MepHandler;
+    /// <summary>Nhập ống / thiết bị Revit thành ĐỐI TƯỢNG ĐIỆN NƯỚC (thiết bị theo thư viện MEP + tuyến ống) thay vì khối chung.
+    /// Mặc định false (giữ cách cũ: khối thiết bị/ống bộ môn Điện nước); bật trong hộp thoại nhập Revit.</summary>
+    public static bool UseMepHandler { get; set; }
 
     private static string StoryFor(Project p, Dictionary<string, double> lvElev, string level, double extra = 0)
     {
@@ -112,7 +115,7 @@ public static class RevitArchImport
         var mep = ex.Mep.Where(m => m != null).ToList();
         if (mep.Count > 0)
         {
-            if (MepHandler != null) MepHandler(p, mep, rep, ox, oy);
+            if (MepHandler != null && UseMepHandler) MepHandler(p, mep, rep, ox, oy);
             else
             {
                 int nm = AddMepBoxes(p, mep, lvElev, ox, oy);
@@ -224,7 +227,7 @@ public static class RevitArchImport
         return "Thiết bị điện nước";
     }
 
-    private static int AddMepBoxes(Project p, List<RvMep> mep, Dictionary<string, double> lvElev, double ox, double oy)
+    internal static int AddMepBoxes(Project p, List<RvMep> mep, Dictionary<string, double> lvElev, double ox, double oy)
     {
         int n = 0;
         foreach (var m in mep)
@@ -303,8 +306,23 @@ public static class RevitArchImport
         int rm = p.Arch.Furniture.RemoveAll(f => f.ExternalId != null && f.Discipline == Discipline.DienNuoc && !mepIn.ContainsKey(f.ExternalId));
         rep.Removed += rm;
         var have = p.Arch.Furniture.Where(f => f.ExternalId != null).Select(f => f.ExternalId).ToHashSet();
+        if (p.Mep != null)
+        {
+            // đối tượng điện nước đã nhập dạng thiết bị / tuyến MEP (UseMepHandler): xoá phần không còn trong Revit, giữ phần còn lại
+            int rr = p.Mep.Runs.RemoveAll(r => r.ExternalId != null && !mepIn.ContainsKey(r.ExternalId));
+            int rd = p.Mep.Devices.RemoveAll(d => d.ExternalId != null && !d.ExternalId.StartsWith("rv-node:") && !mepIn.ContainsKey(d.ExternalId));
+            var used = p.Mep.Runs.SelectMany(r => new[] { r.FromId, r.ToId }).ToHashSet();
+            p.Mep.Devices.RemoveAll(d => d.ExternalId != null && d.ExternalId.StartsWith("rv-node:") && !used.Contains(d.Id));
+            rep.Removed += rr + rd;
+            foreach (var r in p.Mep.Runs) if (r.ExternalId != null) have.Add(r.ExternalId);
+            foreach (var d in p.Mep.Devices) if (d.ExternalId != null) have.Add(d.ExternalId);
+        }
         var newMep = mepIn.Values.Where(m => !have.Contains(m.Id)).ToList();
-        if (newMep.Count > 0) rep.Added += AddMepBoxes(p, newMep, lvElev, ox, oy);
+        if (newMep.Count > 0)
+        {
+            if (MepHandler != null && UseMepHandler) { MepHandler(p, newMep, new ImportReport(), ox, oy); rep.Added += newMep.Count; }
+            else rep.Added += AddMepBoxes(p, newMep, lvElev, ox, oy);
+        }
         rep.Unchanged += mepIn.Count - newMep.Count;
         return rep;
     }

@@ -466,7 +466,7 @@ public sealed partial class MepWindow : Window
                            (prof.Count > 0 ? $"\nĐáy ống đầu {prof[0].Invert:0.000} → cuối {prof[^1].Invert:0.000} m" : ""),
                     TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 2)
                 });
-                Field($"Độ dốc (%) – 0 = mặc định {MepDrainage.DefaultSlope(_p.Mep.Settings, r.Size) * 100:0.#} %", (r.Slope * 100).ToString("0.##"), v =>
+                Field($"Độ dốc (%) – 0 = mặc định {MepDrainage.DefaultSlope(_p.Mep.Settings, r.Size, r.System) * 100:0.#} %", (r.Slope * 100).ToString("0.##"), v =>
                 {
                     if (double.TryParse(v.Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var sl) && sl >= 0) r.Slope = sl / 100;
                 });

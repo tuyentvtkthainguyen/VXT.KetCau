@@ -20,6 +20,7 @@ public static class MepRegistration
         ModelSolids.Providers.Add(Solids);
         DisciplineDocs.MepSheets = Sheets;
         ClashDetector.SleeveRule = SleeveAllowed;
+        KetCauVXT.Import.RevitArchImport.MepHandler = MepRevitImport.Handle;   // dùng khi bật RevitArchImport.UseMepHandler
     }
 
     /// <summary>Ống lồng qua dầm có hợp lệ? (quy tắc lỗ xuyên dầm – StructuralImpact). Ống đứng xuyên dầm: không.</summary>

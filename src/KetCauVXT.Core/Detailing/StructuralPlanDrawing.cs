@@ -311,6 +311,22 @@ public static class StructuralPlanDrawing
                 double cx = x + ex, cy = y + ey;   // tim cột tại L/2 − ex so với mép trái móng
                 w.Rect(Lay.BeTong, cx - L / 2, cy - B / 2, cx + L / 2, cy + B / 2);
                 w.Rect(Lay.KyHieu, cx - L / 2 - lean, cy - B / 2 - lean, cx + L / 2 + lean, cy + B / 2 + lean, "DASHED");
+                // móng bậc: bậc trên (quanh tim cột) + kích thước bậc trên / đế móng
+                if (f != null && f.StepL > 1e-6 && f.StepB > 1e-6 && f.Hb < f.H - 1e-6)
+                {
+                    double sl = f.StepL * 1000, sb = f.StepB * 1000;
+                    double sx0 = Math.Max(cx - L / 2, Math.Min(x - sl / 2, cx + L / 2 - sl)), sy0 = Math.Max(cy - B / 2, Math.Min(y - sb / 2, cy + B / 2 - sb));
+                    w.Rect(Lay.BeTong, sx0, sy0, sx0 + sl, sy0 + sb);
+                    void Dm(double a1, double b1, double a2, double b2, double off) { if (Math.Abs(a2 - a1) + Math.Abs(b2 - b1) > 1) w.Dim(a1, b1, a2, b2, off); }
+                    double yd = cy - B / 2 - lean;
+                    Dm(cx - L / 2, yd, sx0, yd, -2.2 * th);
+                    Dm(sx0, yd, sx0 + sl, yd, -2.2 * th);
+                    Dm(sx0 + sl, yd, cx + L / 2, yd, -2.2 * th);
+                    double xd = cx + L / 2 + lean;
+                    Dm(xd, cy - B / 2, xd, sy0, 2.2 * th);
+                    Dm(xd, sy0, xd, sy0 + sb, 2.2 * th);
+                    Dm(xd, sy0 + sb, xd, cy + B / 2, 2.2 * th);
+                }
                 w.Text(Lay.Chu, cx - L / 2, cy + B / 2 + 0.4 * th, th, nm, 0, 0, 0);
                 return;
             }

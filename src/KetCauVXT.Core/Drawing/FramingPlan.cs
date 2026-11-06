@@ -233,16 +233,17 @@ public static class FramingPlan
                     var n = p.Nodes.FirstOrDefault(q => q.Id == id);
                     if (n != null) box = box.Union(n.X * 1000, n.Y * 1000);
                 }
-        DrawGrids(w, p, ref box);
+        DrawGrids(w, p, ref box, st?.Name);
         return box;
     }
 
     /// <summary>Lưới trục, đầu trục (dưới + trái + trên + phải), chuỗi kích thước trục và tổng (dưới, trái).</summary>
-    internal static void DrawGrids(DxfWriter w, Project p, ref Rect2 box)
+    internal static void DrawGrids(DxfWriter w, Project p, ref Rect2 box, string story = null)
     {
         double th = w.Th;
-        var gx = p.GridsX.ToList();
-        var gy = p.GridsY.ToList();
+        // trục ẩn trên tầng này không vẽ; bong bóng theo lựa chọn từng đầu (GridDisplay)
+        var gx = p.GridsX.Where(g => GridDisplay.Visible(g, story)).ToList();
+        var gy = p.GridsY.Where(g => GridDisplay.Visible(g, story)).ToList();
         foreach (var g in gx) box = box.Union(g.Coord * 1000, box.IsEmpty ? 0 : box.Cy);
         foreach (var g in gy) box = box.Union(box.IsEmpty ? 0 : box.Cx, g.Coord * 1000);
         if (box.IsEmpty) return;
@@ -254,15 +255,15 @@ public static class FramingPlan
         {
             double x = g.Coord * 1000;
             w.Line(Lay.Truc, x, yB, x, yT, "CENTER");
-            w.GridBubble(x, yB - r, g.Name);
-            w.GridBubble(x, yT + r, g.Name);
+            if (g.BubbleStart) w.GridBubble(x, yB - r, g.Name);
+            if (g.BubbleEnd) w.GridBubble(x, yT + r, g.Name);
         }
         foreach (var g in gy)
         {
             double y = g.Coord * 1000;
             w.Line(Lay.Truc, xL, y, xR, y, "CENTER");
-            w.GridBubble(xL - r, y, g.Name);
-            w.GridBubble(xR + r, y, g.Name);
+            if (g.BubbleStart) w.GridBubble(xL - r, y, g.Name);
+            if (g.BubbleEnd) w.GridBubble(xR + r, y, g.Name);
         }
         if (!w.Style.ShowGridDims) return;   // tắt kích thước lưới trục (Thiết lập bản vẽ)
         double yd1 = box.Y1 - 3.5 * th, yd2 = box.Y1 - 6 * th;

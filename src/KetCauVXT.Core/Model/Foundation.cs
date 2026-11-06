@@ -106,4 +106,13 @@ public class FoundationSettings
     public double SubgradeModulus { get; set; }
     /// <summary>Độ vươn đầu móng băng ra ngoài tim cột biên (m)</summary>
     public double StripOverhang { get; set; } = 0.6;
+
+    // ---- móng bè (thể hiện trên mặt cắt – Drawing/SectionView.RaftShapes) ----
+    /// <summary>Chiều dày bản móng bè (m); 0 = không dùng móng bè (mặt cắt vẽ móng đơn / băng / đài như cũ)</summary>
+    public double RaftThickness { get; set; }
+    /// <summary>Bè vươn ra ngoài tim cột biên (m)</summary>
+    public double RaftOverhang { get; set; } = 0.5;
+    /// <summary>Sườn bè: bề rộng và chiều cao toàn bộ (m); RaftBeamH ≤ RaftThickness = bè phẳng không sườn</summary>
+    public double RaftBeamB { get; set; } = 0.4;
+    public double RaftBeamH { get; set; }
 }

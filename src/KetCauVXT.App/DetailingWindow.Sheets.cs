@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -129,6 +130,8 @@ public sealed partial class DetailingWindow
     {
         bool typing = Keyboard.FocusedElement is TextBox || Keyboard.FocusedElement is DataGridCell;
         if (typing) return;
+        bool ctrlK = Keyboard.Modifiers == ModifierKeys.Control;
+        if (ctrlK && (e.Key == Key.Z || e.Key == Key.Y) && ReferenceEquals(_tabs.SelectedItem, _sheetTab)) { SheetUndoRedo(e.Key == Key.Y); e.Handled = true; return; }
         if (e.Key == Key.Escape && _returnSheet != null) { BackToSheet(); e.Handled = true; }
         else if (e.Key == Key.Delete && ReferenceEquals(_tabs.SelectedItem, _sheetTab) && _selVp != null) { RemoveSelectedViewport(); e.Handled = true; }
     }
@@ -137,6 +140,7 @@ public sealed partial class DetailingWindow
     /// <summary>Lập lại danh mục khung nhìn từ cấu kiện hiện tại (force = bỏ bộ đệm hình).</summary>
     private void RebuildViews(bool force)
     {
+        if (_sheetLast == null || !ReferenceEquals(_sheetPrj, _prj)) SheetHistoryTrack();   // trạng thái gốc cho hoàn tác
         try
         {
             if (force || _vcat.Count == 0 || _viewsStale)
@@ -273,8 +277,41 @@ public sealed partial class DetailingWindow
     }
 
     /// <summary>Đã sửa bộ bản vẽ: lưu cờ, làm mới trình duyệt và tờ.</summary>
+    // ------------------------------------------------------------------ hoàn tác / làm lại thao tác bản vẽ (Ctrl+Z / Ctrl+Y ở tab Bản vẽ)
+    private readonly SheetUndoStack _sheetUndo = new();
+    private string _sheetLast;
+    private DetailingProject _sheetPrj;
+
+    /// <summary>Ghi nhận trạng thái bộ bản vẽ sau mỗi thao tác: khác lần trước → trạng thái cũ vào ngăn hoàn tác.</summary>
+    private void SheetHistoryTrack()
+    {
+        if (!ReferenceEquals(_sheetPrj, _prj)) { _sheetUndo.Clear(); _sheetLast = null; _sheetPrj = _prj; }
+        string now;
+        try { now = SheetUndoStack.Snap(VSet); } catch (Exception) { return; }
+        if (_sheetLast != null && now != _sheetLast) _sheetUndo.PushSnap(_sheetLast);
+        _sheetLast = now;
+    }
+
+    private void SheetUndoRedo(bool redo)
+    {
+        SheetHistoryTrack();
+        if (redo ? !_sheetUndo.CanRedo : !_sheetUndo.CanUndo) { SetStatus(redo ? "Không còn thao tác bản vẽ để làm lại." : "Không còn thao tác bản vẽ để hoàn tác."); return; }
+        var set = redo ? _sheetUndo.Redo(VSet) : _sheetUndo.Undo(VSet);
+        _prj.Sheets = set ?? new DetailSheetSet();
+        _sheetLast = SheetUndoStack.Snap(VSet);
+        string no = _curSheet?.No;
+        _curSheet = no == null ? null : VSet.Sheets.FirstOrDefault(x => x.No == no) ?? VSet.Sheets.FirstOrDefault();
+        _selVp = null;
+        _dirty = true; UpdateTitle();
+        RebuildViews(true);
+        if (ReferenceEquals(_tabs.SelectedItem, _sheetTab)) RenderSheet();
+        ShowProps(_curSheet);
+        SetStatus((redo ? "Đã làm lại" : "Đã hoàn tác") + $" thao tác bản vẽ (còn {_sheetUndo.UndoCount} bước hoàn tác, {_sheetUndo.RedoCount} bước làm lại).");
+    }
+
     private void Touch()
     {
+        SheetHistoryTrack();
         _dirty = true; UpdateTitle();
         // danh mục bản vẽ phụ thuộc danh sách tờ → vẽ lại khung nhìn danh mục
         if (_vmap.TryGetValue(SheetViews.IndexViewId, out var idx)) { idx.F = new Figure(SheetViews.IndexTable(VSet, _vmap), SheetViews.IndexCaption); _vDraw.Remove(SheetViews.IndexViewId + "@0@1"); }
@@ -284,6 +321,7 @@ public sealed partial class DetailingWindow
 
     private void OpenSheet(DetailSheet sh)
     {
+        if (_sheetLast == null || !ReferenceEquals(_sheetPrj, _prj)) SheetHistoryTrack();
         _curSheet = sh; _selVp = null; _returnSheet = null; if (_btnBack != null) _btnBack.IsEnabled = false;
         if (!ReferenceEquals(_tabs.SelectedItem, _sheetTab)) _tabs.SelectedItem = _sheetTab;
         RebuildViews(false);
@@ -603,6 +641,54 @@ public sealed partial class DetailingWindow
         edit("Tên cấu kiện", m.Name, v => { if (!string.IsNullOrWhiteSpace(v)) { m.Name = v.Trim(); _res.Remove(m); ViewsChanged(); RefreshTree(m); RebuildViews(true); Touch(); } });
         edit("Số lượng", m.Quantity.ToString(CultureInfo.InvariantCulture), v => { if (int.TryParse(v, out int q) && q > 0) { m.Quantity = q; _res.Remove(m); ViewsChanged(); RefreshTree(m); RebuildViews(true); Touch(); } });
         if (_res.TryGetValue(m, out var r)) info("Kết quả", r.Ok ? "Đạt" : "KHÔNG ĐẠT");
+        MemberFieldProps(m);
+    }
+
+    /// <summary>Toàn bộ ô nhập của cấu kiện (FieldAttribute) trong bảng thuộc tính – sửa ở đây đồng bộ bảng nhập giữa,
+    /// tính lại cấu kiện và vẽ lại khung nhìn khi rời ô / chọn xong.</summary>
+    private void MemberFieldProps(IDetailMember m)
+    {
+        string group = null;
+        string rowTitle = null, rowKey = null;
+        foreach (var pi in m.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(q => q.CanRead && q.CanWrite))
+        {
+            var fa = pi.GetCustomAttribute<FieldAttribute>();
+            if (fa == null) continue;
+            if (!string.IsNullOrEmpty(fa.Group) && fa.Group != group)
+            {
+                group = fa.Group;
+                _props.Children.Add(new TextBlock { Text = fa.Group.ToUpperInvariant(), FontWeight = FontWeights.SemiBold, FontSize = 11, Margin = new Thickness(0, 6, 0, 2), Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x5F, 0xA8)) });
+            }
+            if (!string.IsNullOrEmpty(fa.Row)) { if (fa.Row != rowKey) { rowKey = fa.Row; rowTitle = fa.RowTitle; } }
+            else { rowKey = null; rowTitle = null; }
+            var ed = Editor(m, pi, fa);
+            if (ed == null) continue;
+            void Commit() => AfterPaletteEdit(m);
+            switch (ed)
+            {
+                case TextBox tb:
+                    tb.LostKeyboardFocus += (s, e) => Commit();
+                    tb.KeyDown += (s, e) => { if (e.Key == Key.Enter) { Commit(); e.Handled = true; } };
+                    break;
+                case CheckBox cb: cb.Click += (s, e) => Commit(); break;
+                case ComboBox cbx: cbx.SelectionChanged += (s, e) => { if (cbx.IsKeyboardFocusWithin || cbx.IsDropDownOpen) Commit(); }; cbx.LostKeyboardFocus += (s, e) => Commit(); break;
+            }
+            string sh = !string.IsNullOrEmpty(fa.Row) && !string.IsNullOrEmpty(fa.Short) ? (rowTitle ?? "") + " – " + fa.Short : fa.Label;
+            string lab = sh + (string.IsNullOrEmpty(fa.Unit) ? "" : " (" + fa.Unit + ")");
+            var row = Row(lab, ed);
+            if (!string.IsNullOrEmpty(fa.Hint)) row.ToolTip = fa.Hint;
+            _props.Children.Add(row);
+        }
+    }
+
+    private void AfterPaletteEdit(IDetailMember m)
+    {
+        _res[m] = DetailingProject.RunSafe(m, _prj.Settings);
+        UpdateTreeLabel(m, _res[m]);
+        if (ReferenceEquals(_cur, m)) ShowMember(m);   // đồng bộ bảng nhập giữa
+        ViewsChanged();
+        RebuildViews(true);
+        Touch();
     }
 
     /// <summary>Cỡ chữ in của hồ sơ (mm giấy; trống = theo Thiết lập bản vẽ).</summary>

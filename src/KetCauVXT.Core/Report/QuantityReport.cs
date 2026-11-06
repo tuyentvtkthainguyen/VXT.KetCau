@@ -199,6 +199,16 @@ public static class QuantityReport
 
         // ---------------- ĐỊNH MỨC ----------------
         foreach (var t in NormTables(qs)) sheets[7].Tables.Add(t);
+
+        // ---------------- VẬT TƯ ĐIỆN NƯỚC (khi có bộ môn điện nước – Mep/MepQuantities.Tables) ----------------
+        List<QtyTable> mepT;
+        try { mepT = p == null ? new List<QtyTable>() : KetCauVXT.Mep.MepQuantities.Tables(p); } catch (Exception) { mepT = new List<QtyTable>(); }
+        if (mepT.Count > 0)
+        {
+            var ms = new QtySheet { Name = KetCauVXT.Mep.MepQuantities.SheetName };
+            ms.Tables.AddRange(mepT);
+            sheets.Add(ms);
+        }
         return sheets;
     }
 

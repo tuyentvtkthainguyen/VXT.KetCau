@@ -293,14 +293,17 @@ public sealed class DetailSheetWindow : Window
         _loading = false;
     }
 
-    private System.Windows.Media.Drawing FigureDrawing(SheetFigure f, double scale)
+    /// <summary>Hệ số cỡ chữ của khung nhìn (0 = 1).</summary>
+    private static double Tf(PlacedFigure pf) => pf != null && pf.TextFactor > 0 ? pf.TextFactor : 1;
+
+    private System.Windows.Media.Drawing FigureDrawing(SheetFigure f, double scale, double tf = 1)
     {
-        string key = f.Id + "@" + scale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string key = f.Id + "@" + scale.ToString(System.Globalization.CultureInfo.InvariantCulture) + "@" + tf.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (_figDraw.TryGetValue(key, out var d)) return d;
-        var fw = f.At(scale).W;
+        var fw = f.At(scale, tf).W;
         var e = fw.Extents;
         double k = 1.0 / Math.Max(fw.Scale, 1e-9);
-        d = SheetRender.Render(new[] { (fw, k, -e.X1 * k, -e.Y1 * k) }, 0, f.HAt(scale), 0.1, x => x.GetPrimitives());
+        d = SheetRender.Render(new[] { (fw, k, -e.X1 * k, -e.Y1 * k) }, 0, f.HAt(scale, tf), 0.1, x => x.GetPrimitives());
         _figDraw[key] = d;
         return d;
     }
@@ -384,8 +387,8 @@ public sealed class DetailSheetWindow : Window
             if (!_map.TryGetValue(pf.Id, out var f)) continue;
             var r = rects[i++];
             bool bad = rects.Any(o => !o.Equals(r) && SheetGeometry.Overlap(o, r)) || SheetGeometry.Overlap(r, tz) || r.X1 < area.X1 - 9 || r.Y1 < area.Y1 - 9 || r.X2 > area.X2 + 9 || r.Y2 > area.Y2 + 9;
-            double fwm = f.WAt(pf.Scale), fhm = f.HAt(pf.Scale);
-            var host = new DrawingHost { Drawing = FigureDrawing(f, pf.Scale), Scale = _k, Width = fwm * _k, Height = fhm * _k, Background = Brushes.Transparent };
+            double fwm = f.WAt(pf.Scale, Tf(pf)), fhm = f.HAt(pf.Scale, Tf(pf));
+            var host = new DrawingHost { Drawing = FigureDrawing(f, pf.Scale, Tf(pf)), Scale = _k, Width = fwm * _k, Height = fhm * _k, Background = Brushes.Transparent };
             var bd = new Border
             {
                 Child = host, Tag = pf, Cursor = Cursors.SizeAll, ToolTip = f.Caption,
@@ -428,7 +431,7 @@ public sealed class DetailSheetWindow : Window
         if (Math.Abs(p.X - _dragStart.X) < 2 && Math.Abs(p.Y - _dragStart.Y) < 2) return;
         var (pw, ph) = sh.Size;
         double x = (Canvas.GetLeft(bd) - 20) / _k, top = (Canvas.GetTop(bd) - 20) / _k;
-        double fwm = f.WAt(pf.Scale), fhm = f.HAt(pf.Scale);
+        double fwm = f.WAt(pf.Scale, Tf(pf)), fhm = f.HAt(pf.Scale, Tf(pf));
         pf.X = Math.Round(Math.Clamp(x, 0, Math.Max(0, pw - fwm)), 1);
         pf.Y = Math.Round(Math.Clamp(ph - top - fhm, 0, Math.Max(0, ph - fhm)), 1);
         if (!sh.Locked) { sh.Locked = true; SetStatus("Tờ " + sh.No + " đã chỉnh tay → tự khoá (giữ nguyên khi tự dàn trang)."); }

@@ -30,7 +30,17 @@ public static class MepDrainage
     public static double MinSlope(double dia) => dia <= 50 + 1e-9 ? 0.02 : dia < 110 - 1e-9 ? 0.015 : 0.01;
 
     /// <summary>Độ dốc dùng cho tuyến: nhập tay (Slope &gt; 0) hoặc mặc định theo Ø.</summary>
-    public static double SlopeOf(Project p, MepRun r) => r.Slope > 0 ? r.Slope : DefaultSlope(p.Mep.Settings, r.Size);
+    public static double SlopeOf(Project p, MepRun r) => r.Slope > 0 ? r.Slope : DefaultSlope(p.Mep.Settings, r.Size, r.System);
+
+    /// <summary>Độ dốc mặc định theo hệ thống + Ø: luật riêng của hệ (MepSettings.SlopeRules – DiaMax nhỏ nhất còn ≥ Ø, 0 = mọi Ø) nếu có,
+    /// không thì theo Ø (DefaultSlope).</summary>
+    public static double DefaultSlope(MepSettings s, double dia, MepSystemKind system)
+    {
+        var rule = (s.SlopeRules ?? new List<MepSlopeRule>())
+            .Where(q => q.System == system && q.Slope > 0 && (q.DiaMax <= 0 || dia <= q.DiaMax + 1e-9))
+            .OrderBy(q => q.DiaMax <= 0 ? double.MaxValue : q.DiaMax).FirstOrDefault();
+        return rule != null ? rule.Slope : DefaultSlope(s, dia);
+    }
 
     /// <summary>Khoảng cách quang treo ống ngang (m) theo Ø: ≤ 50: 0,8; ≤ 90: 1,0; ≥ 110: 1,2.</summary>
     public static double HangerSpacing(double dia) => dia <= 50 + 1e-9 ? 0.8 : dia < 110 - 1e-9 ? 1.0 : 1.2;
@@ -405,7 +415,7 @@ public static class MepDrainage
                 {
                     Code = "DO_DOC", RunId = r.Id, Story = r.Story, X = q0.X, Y = q0.Y, Severity = "Cảnh báo",
                     Message = $"Tuyến thoát {r.Id} Ø{r.Size:0}: độ dốc {r.Slope * 100:0.##} % ngoài khoảng {MinSlope(r.Size) * 100:0.#}…{set.DrainSlopeMax * 100:0.#} %",
-                    Fix = $"Dùng độ dốc mặc định {DefaultSlope(set, r.Size) * 100:0.#} %"
+                    Fix = $"Dùng độ dốc mặc định {DefaultSlope(set, r.Size, r.System) * 100:0.#} %"
                 });
             var prof = Profile(r);
             if (prof.Count == 0) continue;

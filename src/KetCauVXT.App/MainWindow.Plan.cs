@@ -172,7 +172,8 @@ public partial class MainWindow
         int dsB = planCanvas.Children.Count;
         // ---- trục ----
         double bub = 11;
-        var gxs = _p.GridsX.ToList(); var gys = _p.GridsY.ToList();
+        string gStory = CurrentStory == AllStories ? null : CurrentStory;
+        var gxs = _p.GridsX.Where(g => GridDisplay.Visible(g, gStory)).ToList(); var gys = _p.GridsY.Where(g => GridDisplay.Visible(g, gStory)).ToList();
         double gyMin = gys.Count > 0 ? gys.First().Coord : 0, gyMax = gys.Count > 0 ? gys.Last().Coord : 10;
         double gxMin = gxs.Count > 0 ? gxs.First().Coord : 0, gxMax = gxs.Count > 0 ? gxs.Last().Coord : 10;
         double ext = 1.2;
@@ -180,15 +181,15 @@ public partial class MainWindow
         {
             var a = W2S(g.Coord, gyMin - ext); var b = W2S(g.Coord, gyMax + ext);
             AddLine(a, b, GridBrush, 0.8, true);
-            AddBubble(g.Name, new Point(a.X, a.Y + bub), bub);
-            AddBubble(g.Name, new Point(b.X, b.Y - bub), bub);
+            if (g.BubbleStart) AddBubble(g.Name, new Point(a.X, a.Y + bub), bub);
+            if (g.BubbleEnd) AddBubble(g.Name, new Point(b.X, b.Y - bub), bub);
         }
         foreach (var g in gys)
         {
             var a = W2S(gxMin - ext, g.Coord); var b = W2S(gxMax + ext, g.Coord);
             AddLine(a, b, GridBrush, 0.8, true);
-            AddBubble(g.Name, new Point(a.X - bub, a.Y), bub);
-            AddBubble(g.Name, new Point(b.X + bub, b.Y), bub);
+            if (g.BubbleStart) AddBubble(g.Name, new Point(a.X - bub, a.Y), bub);
+            if (g.BubbleEnd) AddBubble(g.Name, new Point(b.X + bub, b.Y), bub);
         }
         // kích thước bước trục ([Hoàn thiện] bật / tắt ở Xem → Hiện nhanh)
         if (!_revitOn || _vg.GridDims)
@@ -528,6 +529,7 @@ public partial class MainWindow
     private void PlanHost_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         planHost.Focus(); // để Delete / Esc / Ctrl+Z tác động lên mặt bằng
+        if (GridDragDown(e.GetPosition(planHost))) return;   // kéo trục bằng bong bóng – MainWindow.GridDrag.cs
         if (GripMouseDown(e.GetPosition(planHost))) return;   // [Kiểu Revit] kéo tay nắm – MainWindow.RevitGrips.cs
         _panning = true; _dragged = false;
         _panStart = e.GetPosition(planHost);
@@ -538,6 +540,7 @@ public partial class MainWindow
 
     private void PlanHost_MouseMove(object sender, MouseEventArgs e)
     {
+        if (GridDragMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // kéo trục
         if (GripMouseMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // [Kiểu Revit] tay nắm
         if (!_panning)
         {
@@ -560,6 +563,7 @@ public partial class MainWindow
 
     private void PlanHost_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (GridDragUp(e.GetPosition(planHost))) return;   // thả trục → 1 bước hoàn tác
         if (GripMouseUp(e.GetPosition(planHost))) return;   // [Kiểu Revit] thả tay nắm → 1 bước hoàn tác
         if (!_panning) return;
         _panning = false;

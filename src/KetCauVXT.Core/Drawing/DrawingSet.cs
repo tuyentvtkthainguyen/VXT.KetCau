@@ -83,6 +83,11 @@ public static class DrawingSet
         Write("KC-02_Mong.dxf", () => FootingDrawing.BuildAll(p, s), FootingDrawing.SheetScale,
             "MẶT BẰNG VÀ CHI TIẾT MÓNG", "KC-02", "FOOT", notes: NotesScope.Foundation);
 
+        // KC-02.1 mặt bằng định vị cọc + đường cong sức chịu tải cọc (chế độ thiết kế – Drawing/DesignPileDrawings.cs)
+        if (s.PileCaps != null && s.PileCaps.Count > 0)
+            Write("KC-02.1_DinhViCoc.dxf", () => DesignPileDrawings.Figures(p, s), 100,
+                "MẶT BẰNG ĐỊNH VỊ CỌC – SỨC CHỊU TẢI CỌC", "KC-02.1", "PILE");
+
         // KC-03 cột
         Write("KC-03_Cot.dxf", () => ColumnDrawing.BuildAll(p, s.Columns), ColumnDrawing.CurrentScale,
             "CHI TIẾT CỘT", "KC-03", "COL", notes: NotesScope.Column);

@@ -517,6 +517,7 @@ public partial class MainWindow
         sp.Children.Add(box);
         _v3Bar = new Border { Child = sp, Background = new SolidColorBrush(Color.FromArgb(150, 30, 34, 40)), Padding = new Thickness(4), Margin = new Thickness(8, 32, 8, 6), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
         g.Children.Add(_v3Bar);
+        EnsureBox3DToggle();
         view3DHost.Focusable = true;
         view3DHost.PreviewKeyDown += (s, e) =>
         {

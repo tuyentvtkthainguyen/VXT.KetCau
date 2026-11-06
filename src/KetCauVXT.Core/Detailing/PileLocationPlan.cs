@@ -78,42 +78,56 @@ public static class PileLocationPlan
         var caps = Caps(p);
         if (caps.Count == 0) return null;
         var rows = Rows(p);
-        double S = 100;
-        var w = new DxfWriter(S);
-        var plan = p.Plan;
-        double[] xs = plan.Xs, ys = plan.Ys;
-        double minX = rows.Count > 0 ? rows.Min(r => r.X) : 0, maxX = rows.Count > 0 ? rows.Max(r => r.X) : 0;
-        double minY = rows.Count > 0 ? rows.Min(r => r.Y) : 0, maxY = rows.Count > 0 ? rows.Max(r => r.Y) : 0;
-        if (xs.Length > 0) { minX = Math.Min(minX, xs.Min()); maxX = Math.Max(maxX, xs.Max()); }
-        if (ys.Length > 0) { minY = Math.Min(minY, ys.Min()); maxY = Math.Max(maxY, ys.Max()); }
-        double ext = 1500, r0 = w.BubbleR;
-        // trục định vị
-        for (int i = 0; i < xs.Length; i++)
-        {
-            double x = xs[i] * 1000;
-            w.Line(Lay.Truc, x, minY * 1000 - ext, x, maxY * 1000 + ext, "CENTER");
-            w.Circle(Lay.Truc, x, maxY * 1000 + ext + r0, r0);
-            w.Text(Lay.Chu, x, maxY * 1000 + ext + r0, w.Th, (i + 1).ToString(), 0, 1, 2);
-            if (i + 1 < xs.Length) w.Dim(x, maxY * 1000 + ext, xs[i + 1] * 1000, maxY * 1000 + ext, -0.8 * ext);
-        }
-        for (int j = 0; j < ys.Length; j++)
-        {
-            double y = ys[j] * 1000;
-            w.Line(Lay.Truc, minX * 1000 - ext, y, maxX * 1000 + ext, y, "CENTER");
-            w.Circle(Lay.Truc, minX * 1000 - ext - r0, y, r0);
-            w.Text(Lay.Chu, minX * 1000 - ext - r0, y, w.Th, ((char)('A' + j)).ToString(), 0, 1, 2);
-            if (j + 1 < ys.Length) w.Dim(minX * 1000 - ext, y, minX * 1000 - ext, ys[j + 1] * 1000, -0.8 * ext);
-        }
-        // đài (nét mảnh) + cọc (vòng tròn, số hiệu)
+        var outlines = new List<(string Name, List<(double X, double Y)> Pts)>();
         foreach (var (it, cap) in caps)
         {
             if (cap.CapL <= 0) continue;
             double a = it.Rotation * Math.PI / 180, ca = Math.Cos(a), sa = Math.Sin(a);
             double hx = cap.CapL / 2, hy = cap.CapB / 2;
-            var pts = new[] { (-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy) }
-                .Select(c => ((it.X1 + (c.Item1 + cap.CapCx) * ca - (c.Item2 + cap.CapCy) * sa) * 1000, (it.Y1 + (c.Item1 + cap.CapCx) * sa + (c.Item2 + cap.CapCy) * ca) * 1000)).ToList();
+            outlines.Add((cap.Name, new[] { (-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy) }
+                .Select(c => (it.X1 + (c.Item1 + cap.CapCx) * ca - (c.Item2 + cap.CapCy) * sa, it.Y1 + (c.Item1 + cap.CapCx) * sa + (c.Item2 + cap.CapCy) * ca)).ToList()));
+        }
+        var plan = p.Plan;
+        var gx = plan.Xs.Select((v, i) => ((i + 1).ToString(), v)).ToList();
+        var gy = plan.Ys.Select((v, j) => (((char)('A' + j)).ToString(), v)).ToList();
+        return DrawPlan(rows, outlines, gx, gy);
+    }
+
+    /// <summary>Vẽ mặt bằng định vị cọc dùng chung cho chế độ hồ sơ và chế độ thiết kế: trục (tên, toạ độ m), đường bao đài (m), cọc + bảng.</summary>
+    public static Figure DrawPlan(List<PileCoordRow> rows, List<(string Name, List<(double X, double Y)> Pts)> outlines,
+        List<(string Name, double Coord)> gridX, List<(string Name, double Coord)> gridY)
+    {
+        double S = 100;
+        var w = new DxfWriter(S);
+        double minX = rows.Count > 0 ? rows.Min(r => r.X) : 0, maxX = rows.Count > 0 ? rows.Max(r => r.X) : 0;
+        double minY = rows.Count > 0 ? rows.Min(r => r.Y) : 0, maxY = rows.Count > 0 ? rows.Max(r => r.Y) : 0;
+        if (gridX.Count > 0) { minX = Math.Min(minX, gridX.Min(g => g.Coord)); maxX = Math.Max(maxX, gridX.Max(g => g.Coord)); }
+        if (gridY.Count > 0) { minY = Math.Min(minY, gridY.Min(g => g.Coord)); maxY = Math.Max(maxY, gridY.Max(g => g.Coord)); }
+        double ext = 1500, r0 = w.BubbleR;
+        var gxs = gridX.OrderBy(g => g.Coord).ToList();
+        var gys = gridY.OrderBy(g => g.Coord).ToList();
+        for (int i = 0; i < gxs.Count; i++)
+        {
+            double x = gxs[i].Coord * 1000;
+            w.Line(Lay.Truc, x, minY * 1000 - ext, x, maxY * 1000 + ext, "CENTER");
+            w.Circle(Lay.Truc, x, maxY * 1000 + ext + r0, r0);
+            w.Text(Lay.Chu, x, maxY * 1000 + ext + r0, w.Th, gxs[i].Name, 0, 1, 2);
+            if (i + 1 < gxs.Count) w.Dim(x, maxY * 1000 + ext, gxs[i + 1].Coord * 1000, maxY * 1000 + ext, -0.8 * ext);
+        }
+        for (int j = 0; j < gys.Count; j++)
+        {
+            double y = gys[j].Coord * 1000;
+            w.Line(Lay.Truc, minX * 1000 - ext, y, maxX * 1000 + ext, y, "CENTER");
+            w.Circle(Lay.Truc, minX * 1000 - ext - r0, y, r0);
+            w.Text(Lay.Chu, minX * 1000 - ext - r0, y, w.Th, gys[j].Name, 0, 1, 2);
+            if (j + 1 < gys.Count) w.Dim(minX * 1000 - ext, y, minX * 1000 - ext, gys[j + 1].Coord * 1000, -0.8 * ext);
+        }
+        foreach (var (name, pts0) in outlines)
+        {
+            var pts = pts0.Select(q => (q.X * 1000, q.Y * 1000)).ToList();
+            if (pts.Count < 3) continue;
             w.Polyline(Lay.BeTong, pts, true);
-            w.Text(Lay.Chu, pts[3].Item1, pts[3].Item2 + 0.4 * w.Th, 0.8 * w.Th, cap.Name, 0, 0, 0);
+            w.Text(Lay.Chu, pts[3 % pts.Count].Item1, pts[3 % pts.Count].Item2 + 0.4 * w.Th, 0.8 * w.Th, name, 0, 0, 0);
         }
         foreach (var r in rows)
         {
@@ -123,14 +137,12 @@ public static class PileLocationPlan
             w.Line(Lay.KyHieu, x, y - rr * 1.3, x, y + rr * 1.3);
             w.Text(Lay.Chu, x + rr + 0.2 * w.Th, y + rr + 0.2 * w.Th, 0.7 * w.Th, r.No, 0, 0, 0);
         }
-        // bảng toạ độ cọc
         double tx = maxX * 1000 + ext + 4 * r0 + 1000, ty = maxY * 1000 + ext;
         double rowH = 1.8 * w.Th;
         double[] cw = { 6 * w.Th, 6 * w.Th, 8 * w.Th, 8 * w.Th, 7 * w.Th };
         string[] hd = { "CỌC", "ĐÀI", "X (m)", "Y (m)", "P (kN)" };
         Table(w, tx, ty, cw, rowH, "BẢNG TOẠ ĐỘ CỌC", hd,
             rows.Select(r => new[] { r.No, r.Cap, r.X.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture), r.Y.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture), DxfWriter.N0(r.P) }).ToList());
-        // bảng thống kê cọc
         var sch = Schedule(rows);
         double ty2 = ty - (rows.Count + 3) * rowH - 2 * rowH;
         double[] cw2 = { 6 * w.Th, 6 * w.Th, 7 * w.Th, 8 * w.Th, 8 * w.Th, 7 * w.Th, 5 * w.Th };

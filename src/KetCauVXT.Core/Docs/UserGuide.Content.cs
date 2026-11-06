@@ -480,6 +480,8 @@ public static partial class UserGuide
                 "**Kích đúp khung nhìn** (trên tờ hoặc trong trình duyệt) để **sửa cấu kiện** (mở bảng nhập + bản vẽ xem trước) hoặc **mặt bằng** (mở không gian vẽ đúng tầng) như *Activate View* của Revit; xong bấm **↩ Quay lại bản vẽ** hoặc **Esc** – khung nhìn vẽ lại theo cấu kiện đã sửa.",
                 "**Bảng THUỘC TÍNH** (dưới trình duyệt) theo đối tượng đang chọn: *Bản vẽ* (số hiệu, tên, khổ, khổ đứng, khoá, ngày, thông tin dự án trong khung tên); *Khung nhìn trên tờ* (tên khung nhìn, hiện tiêu đề tên + tỷ lệ dưới hình, **tỷ lệ** – hình được vẽ lại, **cỡ chữ riêng** ×0,7…×2, vị trí X/Y, nút sửa cấu kiện / gỡ khỏi tờ); *Khung nhìn* (mục, tỷ lệ gốc, tờ đang chứa, đặt vào bản vẽ đang mở); *Cấu kiện* (tên, số lượng).",
                 "**Cỡ chữ in**: chọn nút gốc trình duyệt (hoặc bỏ chọn) → mục **CỠ CHỮ IN**: ghi chú, nhãn thép, tên hình, tên mặt cắt, kích thước, chữ trục, bảng thống kê, vòng số hiệu Ø, đầu trục Ø (mm khi in; để trống = theo Thiết lập bản vẽ) và **hệ số chung**. Mọi hình triển khai (xem trước, bản vẽ, xuất DWG/DXF/PDF, in) vẽ lại theo cỡ mới; chữ trong mô hình = cỡ in × mẫu số tỷ lệ.",
+                "Khi chọn **cấu kiện**, bảng Thuộc tính liệt kê **mọi trường nhập** của cấu kiện theo nhóm (như bảng nhập ở giữa): sửa một ô rồi Enter / chuyển ô – cấu kiện được tính lại, bảng nhập giữa và các khung nhìn trên tờ cập nhật ngay.",
+                "**Hoàn tác / làm lại trên bộ bản vẽ**: ở thẻ Bản vẽ (sheet), **Ctrl+Z** hoàn tác, **Ctrl+Y** làm lại các thao tác tạo / xoá / đổi tên / đánh số tờ, đặt / dời / gỡ khung nhìn, đổi tỷ lệ và cỡ chữ khung nhìn (tối đa 50 bước; mở hồ sơ khác thì xoá lịch sử). Cửa sổ xem trước bộ bản vẽ cũ cũng vẽ theo cỡ chữ riêng của từng khung nhìn.",
                 "**DANH MỤC BẢN VẼ** là một khung nhìn bảng: kéo vào tờ đầu – bảng tự cập nhật khi thêm, xoá, đổi tên, đánh số bản vẽ. **Tự dàn trang** xếp các khung nhìn chưa đặt vào tờ (tờ đã khoá giữ nguyên). Xuất bản vẽ / PDF / in dùng đúng bộ bản vẽ bạn đã dàn.",
                 "Chế độ Thiết kế: **Hiển thị → Cỡ chữ nhãn mặt bằng…** đặt cỡ chữ (px màn hình, 7–30) cho tên cột, dầm, sàn trên mặt bằng; lưu trên máy (ui.json).");
         return c;
@@ -760,6 +762,7 @@ public static partial class UserGuide
                 "Tab **Trục & tầng** → **Bộ lọc…**: đánh dấu các loại cần giữ (kiểu Revit), bỏ các loại còn lại khỏi nhóm.",
                 "Cột, dầm, ô sàn trong nhóm dùng chung cho các lệnh sửa nhiều cấu kiện (gán tải, tiết diện, sao chép…).",
                 "Dời khung nhìn bằng nút giữa chuột (kéo trái ở chế độ Chọn dành cho quét chọn).")
+            .Bullets("**Quét chọn trong khung nhìn 3D**: tích ô **Quét chọn (kéo khung)** trên thanh nổi của tab 3D rồi kéo chuột trái – trái → phải là khung bao (chọn khối nằm trọn khung), phải → trái là khung cắt (chọn khối chạm khung); Ctrl + kéo thêm, Shift + kéo bớt. Nhóm chọn dùng chung với mặt bằng: thanh trạng thái báo số đối tượng, **Delete** xoá cả nhóm (một bước hoàn tác), **Esc** bỏ chọn, bảng thuộc tính sửa được nhóm như trên mặt bằng. Bỏ tích ô để kéo chuột xoay mô hình như cũ.")
             .Tip("Trong cửa sổ Triển khai hồ sơ, tab Mặt bằng kết cấu, công cụ **Chọn** cũng quét chọn được nhiều vị trí cấu kiện; Shift + bấm thêm / bớt từng vị trí, Delete xoá khỏi mặt bằng.");
 
         c.Sec("mo-hinh.sua-luoi-truc", "Thêm, dời, xoá lưới trục")
@@ -768,7 +771,10 @@ public static partial class UserGuide
                 "Bấm đúp gần đầu trục (bong bóng) trên mặt bằng để đổi tên nhanh.",
                 "Mọi thay đổi trong một lần mở hộp thoại là một bước hoàn tác.")
             .Bullets("Có thể quét chọn trục rồi nhấn Delete để xoá nhiều trục ({s:mo-hinh.quet-chon}).",
-                "Triển khai hồ sơ: nút **Thêm trục…** trên mặt bằng kết cấu; chuột phải lên đường trục → dời trục (kéo theo / giữ cấu kiện), thêm trục song song, xoá trục. Ô bước trục tự cập nhật.")
+                "Triển khai hồ sơ: nút **Thêm trục…** trên mặt bằng kết cấu; chuột phải lên đường trục → dời trục (kéo theo / giữ cấu kiện), thêm trục song song, xoá trục. Ô bước trục tự cập nhật.",
+                "**Kéo trục bằng chuột**: ở chế độ **Chọn** (bật nắm kéo), bấm giữ bong bóng trục rồi kéo – đường trục mới hiện nét đứt kèm **kích thước tạm** (mm) tới trục kề hai bên, vị trí bắt bước 10 mm. Thả chuột để dời trục; cột, đầu dầm, góc sàn, đầu tường nằm trên trục dời theo. Giữ **Ctrl** khi thả để chỉ dời trục. Mỗi lần kéo là một bước hoàn tác.",
+                "**Bong bóng trục**: chuột phải lên bong bóng → *Cả hai đầu*, *Chỉ đầu dưới / trái*, *Chỉ đầu trên / phải* hoặc *Không bong bóng*.",
+                "**Ẩn trục theo tầng**: khi đang xem một tầng, chuột phải lên bong bóng → **Ẩn trục … trên tầng …**; trục vẫn hiện ở các tầng khác và khi xem mọi tầng. **Hiện lại mọi trục đã ẩn** (trên tầng này) trả lại. Thiết lập bong bóng và ẩn trục lưu trong dự án, áp dụng cho mặt bằng trên màn hình và bản vẽ mặt bằng kết cấu xuất DXF / DWG.")
             .Note("Sau khi dời trục có kéo theo cấu kiện, chạy lại phân tích để cập nhật nội lực.");
 
         c.Sec("mo-hinh.them-tang", "Thêm tầng, sửa cao độ tầng")
@@ -781,6 +787,7 @@ public static partial class UserGuide
             .P("Tab **Trục & tầng** → **Mặt đứng** (hoặc cây dự án → Mặt đứng) mở khung nhìn mặt đứng 4 hướng: trước, sau, trái, phải. Mặt đứng thể hiện đường cao độ các tầng kèm ký hiệu cao độ, trục thẳng đứng có bong bóng ở trên và dưới, dãy kích thước trục, hình chiếu tường, cột, dầm, cửa đi, cửa sổ.")
             .Steps("Chọn hướng nhìn trong danh sách.",
                 "Bật **Thêm trục (bấm lên hình)** rồi bấm vào vị trí cần thêm trục: chương trình đổi vị trí bấm sang toạ độ mặt bằng, hiện để sửa cho chính xác, rồi thêm trục số (mặt đứng trước / sau) hoặc trục chữ (mặt đứng trái / phải).",
+                "**Kéo đường cao độ**: khi ô Thêm trục đang tắt, bấm giữ gần đường cao độ một tầng (trong khoảng 0,3 m) rồi kéo lên / xuống – dòng thông tin hiện cao độ mới (bắt 10 mm) và chiều cao tầng; thả chuột để đặt. Cột, dầm, sàn co giãn theo, mỗi tầng vẫn cao ít nhất 0,5 m; một lần kéo là một bước hoàn tác.",
                 "**Xuất DXF…** lưu bản vẽ mặt đứng đang xem.")
             .Bullets("Bộ hồ sơ kiến trúc (KT) có thêm 4 bản vẽ mặt đứng KT_MatDung_1…4.dxf.",
                 "Lưới trục và cao độ dùng chung với mặt bằng ({s:mo-hinh.sua-luoi-truc}, {s:mo-hinh.them-tang}).");

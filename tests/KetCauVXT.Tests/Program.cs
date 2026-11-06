@@ -645,6 +645,8 @@ Console.WriteLine("88. Cọc khoan nhồi nâng cao: chế độ thiết kế th
 BoredPileAdvancedTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("89. Quét chọn mọi đối tượng, sửa lưới trục, thêm / kéo tầng, mặt đứng có trục");
 SelectGridLevelTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("90. Thao tác còn lại: quét chọn 3D, kéo trục, kéo cao độ, bong bóng trục, hoàn tác bộ bản vẽ");
+InteractionLeftoverTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

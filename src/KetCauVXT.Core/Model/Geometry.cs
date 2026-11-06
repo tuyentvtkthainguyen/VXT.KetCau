@@ -24,6 +24,12 @@ public class GridLine
     public GridDir Dir { get; set; }
     /// <summary>Toạ độ, m</summary>
     public double Coord { get; set; }
+    /// <summary>Hiện bong bóng tên trục ở đầu nhỏ (dưới / trái) – mặc định có.</summary>
+    public bool BubbleStart { get; set; } = true;
+    /// <summary>Hiện bong bóng tên trục ở đầu lớn (trên / phải) – mặc định có.</summary>
+    public bool BubbleEnd { get; set; } = true;
+    /// <summary>Các tầng ẩn trục này trên mặt bằng (giới hạn trục theo tầng); rỗng = hiện mọi tầng.</summary>
+    public List<string> HiddenStories { get; set; } = new();
     public override string ToString() => $"{Name} ({Dir}={Coord:0.###})";
 }
 

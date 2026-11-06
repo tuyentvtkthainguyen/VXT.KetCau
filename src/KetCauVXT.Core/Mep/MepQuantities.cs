@@ -39,6 +39,45 @@ public static class MepQuantities
         return rows;
     }
 
+    public const string SheetName = "Vật tư điện nước";
+
+    /// <summary>Bảng Excel / Word "Vật tư điện nước" (STT, nhóm, vật tư, đơn vị, khối lượng, ghi chú) + bảng tóm tắt độ dốc tuyến thoát; rỗng khi không có điện nước.</summary>
+    public static List<KetCauVXT.Report.QtyTable> Tables(Project p)
+    {
+        var res = new List<KetCauVXT.Report.QtyTable>();
+        var rows = Rows(p);
+        if (rows.Count == 0) return res;
+        var t = new KetCauVXT.Report.QtyTable
+        {
+            Title = "Thống kê vật tư điện nước (thiết bị, ống theo Ø, ống gen, dây, cáp, phụ kiện)",
+            Headers = new[] { "STT", "Nhóm", "Vật tư", "Đơn vị", "Khối lượng", "Ghi chú" },
+            Widths = new double[] { 6, 16, 40, 8, 12, 30 }
+        };
+        int k = 0;
+        foreach (var r in rows) t.Add(++k, r.Group, r.Item, r.Unit, r.Qty, r.Note);
+        res.Add(t);
+        var chains = MepLongSection.Chains(p);
+        if (chains.Count > 0)
+        {
+            var d = new KetCauVXT.Report.QtyTable
+            {
+                Title = "Tuyến thoát nước: chiều dài ngang, độ dốc, cao độ đáy ống đầu / cuối",
+                Headers = new[] { "Tuyến", "Tầng", "Ø (mm)", "Chiều dài ngang (m)", "Độ dốc i", "Đáy ống đầu (m)", "Đáy ống cuối (m)" },
+                Widths = new double[] { 14, 10, 8, 14, 10, 14, 14 }
+            };
+            foreach (var ch in chains)
+                foreach (var sg in MepLongSection.Segments(MepLongSection.Points(ch)).GroupBy(q => q.RunId))
+                {
+                    var pts = MepLongSection.Points(ch).Where(q => q.RunId == sg.Key).ToList();
+                    double L = sg.Sum(q => q.Length), drop = sg.Sum(q => q.Drop);
+                    d.Add("T" + sg.Key, ch[0].Story, sg.First().Size, Math.Round(L, 2), MepLongSection.Pct(L > 1e-9 ? drop / L : 0),
+                        pts.Count > 0 ? Math.Round(pts[0].Invert, 3) : 0.0, pts.Count > 0 ? Math.Round(pts[^1].Invert, 3) : 0.0);
+                }
+            if (d.Rows.Count > 0) res.Add(d);
+        }
+        return res;
+    }
+
     /// <summary>Đếm phụ kiện theo loại.</summary>
     public static int Count(Project p, MepFittingKind k) => p.Mep.Fittings.Count(f => f.Kind == k);
 

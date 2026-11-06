@@ -270,6 +270,8 @@ public class MepDevice
     public string Mark { get; set; } = "";
     /// <summary>Đặt nổi (không chôn tường) – mặc định false = chôn ngầm</summary>
     public bool Exposed { get; set; }
+    /// <summary>Id phần tử nguồn (Revit UniqueId) khi nhập từ Revit; null = vẽ trong chương trình</summary>
+    public string ExternalId { get; set; }
 }
 
 /// <summary>Điểm 3D của tuyến (m), kèm Id tường mà đoạn tới điểm này nằm trong (0 = ngoài tường: trong sàn / trần).</summary>
@@ -310,6 +312,10 @@ public class MepRun
     public double Slope { get; set; }
     /// <summary>Ép đi ống thoát trong tường (không khuyến khích – có cảnh báo); mặc định đi dưới sàn</summary>
     public bool DrainInWall { get; set; }
+    /// <summary>Id phần tử nguồn (Revit UniqueId) khi nhập từ Revit; null = vẽ trong chương trình</summary>
+    public string ExternalId { get; set; }
+    /// <summary>Giữ nguyên đường đi đã có (tuyến nhập từ Revit) – không tự đi lại khi Reconcile / Route</summary>
+    public bool FixedPath { get; set; }
     [JsonIgnore] public double Length => MepGeom.Length(Path);
 }
 
@@ -397,6 +403,16 @@ public class MepWallSnap
     public string Openings { get; set; } = "";
 }
 
+/// <summary>Độ dốc ống thoát riêng cho một hệ thống (và tuỳ chọn giới hạn Ø).</summary>
+public class MepSlopeRule
+{
+    public MepSystemKind System { get; set; }
+    /// <summary>Áp dụng cho Ø ≤ DiaMax (mm); 0 = mọi Ø</summary>
+    public double DiaMax { get; set; }
+    /// <summary>Độ dốc (vd. 0,01 = 1 %)</summary>
+    public double Slope { get; set; }
+}
+
 /// <summary>Cài đặt đi tuyến.</summary>
 public class MepSettings
 {
@@ -424,6 +440,9 @@ public class MepSettings
     public double DrainSlopeLarge { get; set; } = 0.02;
     /// <summary>Độ dốc lớn nhất khuyến nghị</summary>
     public double DrainSlopeMax { get; set; } = 0.08;
+    /// <summary>Độ dốc riêng theo HỆ THỐNG (+ Ø): ghi đè độ dốc mặc định theo Ø. DiaMax = 0 → mọi Ø của hệ.
+    /// Ví dụ: thoát nước mưa 1 % mọi Ø; thoát nước xám Ø ≤ 60 → 2,5 %. Dòng khớp đầu tiên (DiaMax nhỏ nhất ≥ Ø) được dùng.</summary>
+    public List<MepSlopeRule> SlopeRules { get; set; } = new();
     /// <summary>Khe từ đáy sàn tới đỉnh ống treo (m)</summary>
     public double DrainHangerGap { get; set; } = 0.05;
     /// <summary>Chiều sâu không gian trần (từ đáy sàn xuống trần giả) cho phép ống thoát (m)</summary>
