@@ -625,6 +625,8 @@ Console.WriteLine("78. Bản vẽ kiểu Revit: cỡ chữ in, trình duyệt kh
 RevitSheetsTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("79. Chọn / bỏ chọn tất cả layer: ô Tất cả ba trạng thái, chọn hết / bỏ hết / đảo, chỉ dòng đang hiện");
 CheckAllTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("80. Cao độ móng → mái, bộ môn, va chạm, IFC / OBJ / DAE, thư viện 3D, Revit kiến trúc + điện nước, hồ sơ theo bộ môn");
+LevelsDisciplineIfcTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("81. Bộ môn điện nước: thư viện, thiết bị chôn tường, tuyến + phụ kiện, chọn cỡ, đối chiếu kiến trúc, thống kê, bản vẽ DN");
 MepTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 

@@ -187,8 +187,8 @@ public static class RevitArchImport
                 ot = new OpeningType { Name = $"{tag} {Math.Round(o.Width * 1000)}x{Math.Round(o.Height * 1000)}", Kind = kind, Width = o.Width, Height = o.Height, Sill = door ? 0 : o.Sill, Operation = door ? "1 cánh" : "2 cánh" };
                 p.OpeningTypes.Add(ot);
             }
-            double t = WallAssembly.ProjectPoint(host, x, y, out _);
-            var r = WallAssembly.PlaceOpening(p, host, ot.Name, t, o.Flipped);
+            double along = WallAssembly.ProjectPoint(host, x, y, out _);
+            var r = WallAssembly.PlaceOpening(p, host, ot.Name, along, o.Flipped);
             if (r.Ok) n++;
         }
         return n;

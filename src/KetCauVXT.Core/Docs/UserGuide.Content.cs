@@ -679,6 +679,22 @@ public static partial class UserGuide
                 + "Gán trong bộ ánh xạ được ưu tiên trước tự nhận; xref NHA|A-WALL dùng lại gán của A-WALL.")
             .Tip("Kiểm tra lại các dòng tin cậy thấp và các layer \"(giữ nguyên)\" trước khi áp dụng; layer 0, DEFPOINTS và layer của xref không bị đổi tên.");
 
+        c.Sec("khoi-tao.cao-do-bo-mon", "Cao độ từ móng đến mái, bộ môn Kiến trúc – Kết cấu – Điện nước, IFC / SketchUp / Revit")
+            .P("Mô hình đi từ **đáy móng → mặt móng (chân cột) → nền tầng 1 (±0.000) → sàn tầng 2, sàn tầng 3… → sàn mái (→ sàn tum)**. "
+               + "Các sàn do khung đỡ là tầng phân tích; **sàn nền tầng 1** nằm trên đất (on grade) – không dồn tải lên dầm cột, chỉ tính khối lượng, bản vẽ, IFC. "
+               + "Độ sâu móng dùng chung với thiết kế móng (Địa chất → chiều sâu chôn móng).")
+            .Bullets("**BIM → Tạo cao độ tầng…**: số tầng, chiều cao tầng 1 / tầng trên, cao độ nền, chiều sâu móng, mặt móng, kiểu mái, tầng tum; tuỳ chọn sinh khung + sàn theo lưới trục và sàn nền tầng 1 (chỉ dùng cho mô hình chưa có cấu kiện).",
+                "**Chèn tầng…** (phía trên tầng đang xem: sao dầm, sàn, cắt cột, nâng các tầng trên), **Xoá tầng** (nối cột, hạ các tầng trên), tên tầng tự đặt lại T2, T3…, MAI, TUM; **Sàn mọi ô** tạo ô sàn còn thiếu; **Sàn nền** tạo sàn trên đất theo ô lưới. Vẫn vẽ sàn trực tiếp bằng công cụ Sàn.",
+                "**Bộ môn**: công tắc **Kiến trúc | Kết cấu | Điện nước** ở đầu ribbon – mỗi bộ môn hiện tab của mình; đối tượng bộ môn khác vẽ **mờ như xref**, không chọn được. **BIM → Bộ môn hiển thị…** bật / tắt, chỉnh độ mờ. "
+                + "Tường, cửa, phòng, trần, mái, đồ đạc thuộc Kiến trúc; cột, dầm, sàn, móng thuộc Kết cấu; ống, phụ kiện, thiết bị vệ sinh, điện, đèn thuộc Điện nước.",
+                "**Kiến trúc**: vẽ tường, đặt cửa (tường tự cắt ô cửa); **Tìm phòng** tạo phòng từ mạng tường (tên, diện tích), **Đặt tên phòng…** (tên quyết định công năng sàn); **Kiến trúc → kết cấu**: tường → tải dầm / sàn, phòng → công năng ô sàn (WC → sàn vệ sinh…), cửa → lanh tô, giao tường chữ L/T chưa có cột → đề xuất (và tuỳ chọn thêm) cột.",
+                "**Thư viện 3D…**: nhập đồ đạc / thiết bị từ SketchUp (File → Export → 3D Model → OBJ hoặc COLLADA .dae; OBJ hỏi hệ số đơn vị) hoặc từ Revit (*.vxtmesh.json); lưu trên máy tại %AppData%\\VietConst\\ThuVien3D (không gửi đi đâu); đặt vào tầng đang xem theo toạ độ, góc xoay.",
+                "**Kiểm tra va chạm**: giữa các bộ môn – **Cứng** (giao nhau), **Ống lồng** (ống xuyên dầm / tường – cần ống lồng), **Khe hở** (gần hơn khe hở yêu cầu). Nháy đúp một dòng để xem vị trí trên mặt bằng. Không báo nút khung (dầm–cột), cửa với tường chủ.",
+                "**Trao đổi**: **Xuất IFC…** (IFC2X3 – Revit: File → Open → IFC; SketchUp Pro: File → Import → IFC), **Xuất SketchUp…** (COLLADA .dae, nhóm theo bộ môn / loại), **Xuất OBJ…** (+ MTL), chọn bộ môn cần xuất. "
+                + "**Nhập IFC…** đọc cột, dầm, sàn (sàn nền), tường, cửa đi / cửa sổ, phòng. Add-in Revit (schema 2.0) xuất thêm tường (lớp cấu tạo), cửa, phòng, ống – thiết bị điện nước; **Cập nhật từ Revit…** so khớp theo UniqueId: thêm / sửa / xoá tường và thiết bị điện nước đã đổi trong Revit.",
+                "**Hồ sơ theo bộ môn…**: chọn bộ môn – Kiến trúc (KT-01…: mặt bằng các tầng có tường, cửa, tên + diện tích phòng, đồ đạc; thống kê cửa; thống kê phòng), Kết cấu (KC-…: bộ bản vẽ kết cấu), Điện nước (DN-…); trên mặt bằng, bộ môn khác hiện nét xám làm nền đối chiếu.")
+            .Tip("Ở bộ môn Điện nước, phần kiến trúc là nền tham chiếu: sửa tường / cửa ở bộ môn Kiến trúc rồi chạy **Kiểm tra va chạm** để thấy thiết bị, ống bị ảnh hưởng.");
+
         c.Sec("khoi-tao.lien-ket-autocad", "Liên kết bản vẽ AutoCAD (DWG/DXF) làm nền mặt bằng")
             .P("Như Xref / \"Import DXF as background\" của ETABS: bản vẽ kiến trúc được gắn vào dự án làm **nền mờ** cho mặt bằng từng tầng, bắt điểm vào nét bản vẽ, tự cập nhật khi bản vẽ được lưu trong AutoCAD.")
             .Steps("{m:cadLinks}: cửa sổ **Bản vẽ liên kết (AutoCAD DWG/DXF)** (không chặn) → **Thêm bản vẽ…**.",

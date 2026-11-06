@@ -22,7 +22,7 @@ public class GroundSlab
     /// <summary>Luôn true: sàn trên nền đất (không do dầm đỡ)</summary>
     public bool OnGrade { get; set; } = true;
     public string Note { get; set; } = "Sàn nền BTCT trên lớp cát đầm chặt, bê tông lót";
-    public double Area => Geo2.Area(Outline);
+    [System.Text.Json.Serialization.JsonIgnore] public double Area => Geo2.Area(Outline);
 }
 
 /// <summary>Phòng (không gian kiến trúc).</summary>
@@ -37,8 +37,8 @@ public class Room
     public string FloorFinish { get; set; } = "Gạch ceramic 600x600";
     /// <summary>Cao độ trần so với sàn (m), 0 = không trần</summary>
     public double CeilingHeight { get; set; }
-    public double Area => Geo2.Area(Outline);
-    public (double X, double Y) Center => Geo2.Centroid(Outline);
+    [System.Text.Json.Serialization.JsonIgnore] public double Area => Geo2.Area(Outline);
+    [System.Text.Json.Serialization.JsonIgnore] public (double X, double Y) Center => Geo2.Centroid(Outline);
 }
 
 /// <summary>Trần (đơn giản: tấm phẳng theo đường bao).</summary>
