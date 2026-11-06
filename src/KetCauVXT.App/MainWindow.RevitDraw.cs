@@ -370,7 +370,7 @@ public partial class MainWindow
         if (!apply(mm / 1000)) { SetStatus("Không đổi được khoảng cách."); return; }
         PushUndo(snap);
         _p.InvalidateIndex();
-        RefreshAll();
+        RefreshAll(false);
         SetStatus($"Đã đặt khoảng cách {what} → {d.Target.ToLowerInvariant()} {d.RefName} = {mm:0} mm.");
     }
 
