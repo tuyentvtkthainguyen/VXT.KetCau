@@ -579,6 +579,24 @@ public static partial class UserGuide
                 "Bấm **Tạo mô hình** ({m:buildGrid} cùng tác dụng). Sau này chỉ đổi thông số (không xoá mô hình) thì bấm **Áp dụng thông số**.")
             .Warn("**Tạo mô hình** xoá mô hình hiện có và sinh lại lưới trục, tầng, cột, dầm, sàn và tải. Các sửa đổi trên mặt bằng sẽ mất – lưu dự án trước.");
 
+        c.Sec("khoi-tao.mat-bang-cad", "Mở mặt bằng CAD lấy dữ liệu: chọn trục, trục qua tim / mép cột")
+            .P("Trong hộp **Tải mặt bằng để lấy kích thước…**, sau khi mở bản vẽ DWG/DXF, bản vẽ hiện ở giữa (cuộn chuột để thu phóng, giữ nút giữa để kéo; "
+               + "bật / tắt từng nhóm nét theo màu: tường, trục, cột, cửa, thang, dầm, sàn). Cột tô **xanh** = đúng tim trục, **cam** = lệch tâm so với trục, **xám** = không nằm trên giao trục.")
+            .Bullets("**Nguồn trục – Tự nhận theo layer trục**: đọc các nét trên layer trục (TRUC, AXIS, GRID…). Bản vẽ đặt tên layer khác: mở mục **Layer trục**, tích các layer là trục rồi **Đọc lại**.",
+                "**Nguồn trục – Tự nhận theo cột**: gom các cột thẳng hàng (sai số mặc định 50 mm) thành trục – dùng khi bản vẽ không có layer trục.",
+                "**Nguồn trục – Người dùng chọn trục**: bấm lên nét trục để thêm trục theo phương nét; bấm lên cột để thêm trục qua cột (chọn trục đứng X hoặc trục ngang Y); "
+                + "chuột phải lên trục để xoá. **Lấy trục tự nhận** chép trục layer / cột sang danh sách để sửa tay. Chọn trục trong danh sách để **Đổi tên** / **Xoá**; **Tên tự động** đặt 1, 2, 3… / A, B, C….",
+                "**Trục đi qua**: Tim cột; Mép cột – mép trái / dưới; Mép cột – mép phải / trên; Mép cột – **mép ngoài nhà** (trục biên qua mép ngoài cột, trục giữa qua tim – hay gặp ở nhà phố sát ranh đất). "
+                + "Cột có tâm lệch khỏi trục được ghi **lệch tâm** (vd. ±110 mm với cột 220): mặt bằng kết cấu, mặt bằng định vị cột và mặt bằng móng vẽ cột / móng đúng vị trí thật; sơ đồ tính giữ nút tại giao trục.",
+                "**Đơn vị bản vẽ**: Tự động (theo $INSUNITS và kích thước bản vẽ) hoặc chọn mm / cm / m nếu bản vẽ khai báo sai.",
+                "**Thông số đọc được**: bước trục X, Y; cột trên giao trục và tiết diện (vd. C30x22 – cạnh theo Y × cạnh theo X); tường trên trục (tổng chiều dài tường 110, 220); "
+                + "công năng ô sàn theo tên phòng (WC → vệ sinh, ban công, hành lang, kho…); lỗ sàn cầu thang / thông tầng.",
+                "**Áp dụng**: tích các mục cần cập nhật (tiết diện cột, lệch tâm cột, xoá cột ở giao trục không có cột, tường → tải tường lên dầm, công năng ô sàn, lỗ sàn). "
+                + "**Đồng ý** điền bước trục vào ô Lưới trục và tầng, dựng lại mô hình theo lưới mới (nếu chọn hoặc lưới khác) rồi áp dụng; hộp xác nhận liệt kê các thay đổi, hoàn tác bằng Ctrl+Z.",
+                "Chế độ **Triển khai hồ sơ** (nút **Tải mặt bằng…** ở không gian vẽ mặt bằng kết cấu): cập nhật bước trục của mặt bằng kết cấu và đặt cột lên mặt bằng đang xem tại vị trí thật (giao trục + lệch tâm); "
+                + "cột cùng tiết diện dùng chung một cấu kiện (C1, C2…).")
+            .Tip("Tường, công năng, lỗ sàn được áp cho các tầng điển hình (trừ tầng mái). Kiểm tra lại các tầng có mặt bằng khác (tầng 1 kinh doanh, tầng tum…).");
+
         c.Sec("khoi-tao.mau", "Mẫu định dạng (template)")
             .P("{m:templates} mở thư viện mẫu của người dùng (%AppData%\\KetCauVXT\\Templates). Mẫu **không chứa mô hình** mà chứa các thiết lập dùng lại giữa các dự án: "
                + "chuẩn CAD (layer, font, kiểu bản vẽ), khung tên người dùng, tờ mẫu, thông tin khung tên (đơn vị thiết kế, người ký, logo, tiền tố số hiệu), tuỳ chọn thuyết minh, định mức khối lượng, tuỳ chọn thép.")

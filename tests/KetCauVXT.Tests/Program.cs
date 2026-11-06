@@ -607,6 +607,8 @@ Console.WriteLine("69. Chia dầm nhiều đoạn, xuất tất cả theo bộ d
 BeamSplitTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("70. Giao diện gọn: tìm lệnh không dấu, biểu tượng nút, lưu bố cục ui.json");
 CompactUiTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("71. Mở mặt bằng CAD: nguồn trục (layer / cột / người dùng), trục qua tim / mép cột, đọc và áp dụng dữ liệu mặt bằng");
+CadPlanAxisTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

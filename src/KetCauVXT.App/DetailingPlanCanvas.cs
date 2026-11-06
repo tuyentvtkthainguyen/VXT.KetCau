@@ -172,11 +172,22 @@ public sealed partial class DetailingPlanCanvas : DockPanel
 
     private void LoadPlanGrid()
     {
-        var d = new GridFromPlanDialog(_sx.Text, _sy.Text, "") { Owner = _owner };
+        var d = new GridFromPlanDialog(_sx.Text, _sy.Text, "", true) { Owner = _owner };
         if (d.ShowDialog() != true) return;
         if (!string.IsNullOrWhiteSpace(d.SpansX)) _sx.Text = d.SpansX;
         if (!string.IsNullOrWhiteSpace(d.SpansY)) _sy.Text = d.SpansY;
         ApplyGrid();
+        // [Mở mặt bằng CAD] đặt cột ở vị trí thật (giao trục + lệch tâm) lên mặt bằng đang xem – PlanAxisPicker.ApplyToDetailing
+        var pr = d.PickResult;
+        if (pr != null && d.Rebuild && pr.Columns.Any(c => c.OnGrid) && Level != null)
+        {
+            bool replace = !Level.Items.Any(i => i.Kind == PlanKinds.Column)
+                           || MessageBox.Show(_owner, "Mặt bằng " + Level.Name + " đã có cột. Thay vị trí cột cũ bằng cột đọc từ bản vẽ?", "Mở mặt bằng CAD", MessageBoxButton.YesNo) == MessageBoxResult.Yes;
+            _undo.Push(Plan);
+            var log = KetCauVXT.Import.Arch.PlanAxisPicker.ApplyToDetailing(P, Level, pr, true, replace);
+            _changed(); FillMembers(); _fitted = false; Redraw();
+            _status.Text = string.Join(" ", log);
+        }
     }
 
     private void AddLevel()

@@ -42,7 +42,7 @@ public static class FramingPlan
             string nm = colName.TryGetValue(f.Id, out var cn) ? cn : ids ? f.Label : "";
             if (string.IsNullOrEmpty(nm)) continue;
             double half = Math.Max(si.B, si.H) * 500;
-            w.Text(Lay.Chu, n.X * 1000 + half + 0.4 * th, n.Y * 1000 + half + 0.4 * th, th, nm, 0, 0, 0);
+            w.Text(Lay.Chu, (n.X + f.ColOffsetX) * 1000 + half + 0.4 * th, (n.Y + f.ColOffsetY) * 1000 + half + 0.4 * th, th, nm, 0, 0, 0);   // [Trục qua mép cột]
         }
 
         // nhãn dầm: mỗi dầm liên tục ghi 1 lần ở phần tử giữa
@@ -136,7 +136,7 @@ public static class FramingPlan
     }
 
     /// <summary>Đỉnh hình chữ nhật cột trên mặt bằng (mm). Quy ước ETABS cột đứng góc 0: trục 2 ∥ X (cạnh H), trục 3 ∥ Y (cạnh B).</summary>
-    internal static List<(double X, double Y)> ColumnRect(Project p, FrameElement f, double grow = 0)
+    public static List<(double X, double Y)> ColumnRect(Project p, FrameElement f, double grow = 0)
     {
         var top = p.Node(f.NodeJ);
         var si = DrawUtil.SectionOf(p, f.Section);
