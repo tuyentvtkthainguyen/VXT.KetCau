@@ -37,6 +37,18 @@ public class FoundationSettings
     public bool PileBored { get; set; }
     /// <summary>Diện tích thép dọc cọc As (m²) dùng tính Pvl; 0 = tự lấy 4Ø16 (d ≤ 300 mm) hoặc 6Ø18</summary>
     public double PileRebarArea { get; set; }
+    // ---- cọc khoan nhồi theo TCVN 10304:2014 (Design/Foundation/BoredPileAdvanced.cs) ----
+    /// <summary>Cọc khoan nhồi: phương pháp tính sức chịu tải theo bảng lớp đất chuyển từ hố khoan ("Chỉ tiêu cơ lý (Bảng 3, Bảng 7)" / "SPT (Phụ lục G.3.2)");
+    /// rỗng = công thức SPT cũ (GeotechCalc.PileCapacity). File cũ không có mục này giữ nguyên kết quả.</summary>
+    public string BoredMethod { get; set; } = "";
+    /// <summary>Công nghệ khoan (γcf, γ'cb): dung dịch bentonite / ống vách / khoan khô</summary>
+    public string BoredDrill { get; set; } = "";
+    /// <summary>Tự chọn chiều dài cọc: L nhỏ nhất (bước 0,5 m) để [P] ≥ PileCapacity (yêu cầu) và mũi trong lớp tốt</summary>
+    public bool PileAutoLength { get; set; }
+    /// <summary>Bê tông cọc (rỗng = bê tông móng)</summary>
+    public string PileConcrete { get; set; } = "";
+    /// <summary>Kể hệ số nhóm Converse–Labarre (cọc ma sát): kiểm tra N + G ≤ η·n·[P]</summary>
+    public bool PileGroupEfficiency { get; set; }
 
     // ---- [FoundationChecks] bố trí cọc do người dùng chọn + kiểm tra an toàn bổ sung ----
     /// <summary>Bố trí cọc / kích thước đài do người dùng chọn theo từng chân cột (PileCapOverride.NodeId); rỗng = tự chọn hoàn toàn.

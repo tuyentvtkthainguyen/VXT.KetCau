@@ -618,7 +618,7 @@ public class ManualPileCap : IDetailMember
     [Field("γ0", Group = "Cọc khoan nhồi – sức chịu tải theo đất nền (TCVN 10304:2014)")] public double Gamma0 { get; set; } = 1.15;
     [Field("γn", Group = "Cọc khoan nhồi – sức chịu tải theo đất nền (TCVN 10304:2014)")] public double GammaN { get; set; } = 1.15;
     [Field("γk", Group = "Cọc khoan nhồi – sức chịu tải theo đất nền (TCVN 10304:2014)", Hint = "1,4 theo bảng tra; 1,75 khi ít hố khoan / không thử tải")] public double GammaK { get; set; } = 1.4;
-    [Field("Bê tông cọc", Group = "Cọc khoan nhồi – sức chịu tải theo đất nền (TCVN 10304:2014)", Choices = "B20|B25|B30")] public string PileConcrete { get; set; } = "B25";
+    [Field("Bê tông cọc", Group = "Cọc khoan nhồi – sức chịu tải theo đất nền (TCVN 10304:2014)", Choices = "B20|B22.5|B25|B30|B35")] public string PileConcrete { get; set; } = "B25";
     [Field("Tải ngang tại chân cột H (0 = không kiểm tra)", Unit = "kN", Group = "Cọc khoan nhồi – tải ngang, lồng thép")] public double HLat { get; set; }
     [Field("Hệ số tỉ lệ K của nền (Phụ lục A)", Unit = "kN/m⁴", Group = "Cọc khoan nhồi – tải ngang, lồng thép")] public double KLat { get; set; } = 5000;
     [Field("Chiều dài lồng thép (0 = tự chọn)", Unit = "m", Group = "Cọc khoan nhồi – tải ngang, lồng thép")] public double CageLen { get; set; }
@@ -626,6 +626,15 @@ public class ManualPileCap : IDetailMember
     [Field("Đai xoắn – bước thân cọc", Unit = "mm", Scale = 1000, Group = "Cọc khoan nhồi – tải ngang, lồng thép")] public double SpiralS { get; set; } = 0.20;
     [Field("Hệ số hao hụt bê tông cọc (mở rộng thành lỗ)", Group = "Cọc khoan nhồi – tải ngang, lồng thép")] public double Overcut { get; set; } = 1.15;
     [Field("Góc ma sát trung bình thân cọc φtb (lún khối quy ước)", Unit = "°", Group = "Cọc khoan nhồi – sức chịu tải theo đất nền (TCVN 10304:2014)")] public double PhiAvg { get; set; } = 20;
+    [Field("Tự chọn chiều dài cọc (L nhỏ nhất để [P] ≥ ô [P] và mũi vào lớp tốt)", Group = "Cọc khoan nhồi – nâng cao",
+        Hint = "bước 0,5 m; cần bật Tính [P] theo địa chất; ô [P] là sức chịu tải yêu cầu")] public bool AutoLength { get; set; }
+    [Field("Kể hệ số nhóm cọc ma sát (Converse–Labarre)", Group = "Cọc khoan nhồi – nâng cao")] public bool GroupEfficiency { get; set; }
+    /// <summary>Đường cong sức chịu tải Rc,u(L) (khi tính theo địa chất) – dùng vẽ biểu đồ.</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public List<CapacityCurvePoint> CapacityCurve { get; private set; } = new();
+    [System.Text.Json.Serialization.JsonIgnore] public NegativeFrictionResult NegFriction { get; private set; }
+    [System.Text.Json.Serialization.JsonIgnore] public StrutTieResult StrutTieResult { get; private set; }
+    [System.Text.Json.Serialization.JsonIgnore] public CageSpliceResult CageSplice { get; private set; }
+    [System.Text.Json.Serialization.JsonIgnore] public int SonicTubeCount => IsBored ? BoredPileDesign.SonicTubes(PileD) : 0;
     /// <summary>Bảng lớp đất (từ mặt đất tự nhiên) – dùng khi "Tính [P] theo địa chất".</summary>
     public List<PileSoilLayer> SoilLayers { get; set; } = new()
     {
@@ -746,6 +755,7 @@ public class ManualPileCap : IDetailMember
         // ---- cọc khoan nhồi: sức chịu tải theo đất nền + vật liệu (TCVN 10304:2014) ----
         double Pa = this.Pa;
         BoredResult = null; LateralResult = null; SettlementResult = null; CageLenUsed = 0;
+        CapacityCurve = new(); NegFriction = null; StrutTieResult = null; CageSplice = null;
         double skinF = SkinFriction;
         Material concP = conc;
         if (IsBored)
@@ -758,13 +768,28 @@ public class ManualPileCap : IDetailMember
                        + Dt.F(concP.Rb, "0") + "·" + Dt.F(areaP, "0.0000") + " + " + Dt.F(main.Rsc, "0") + "·" + Dt.F(asP, "0.000000") + ") = " + Dt.F(pvl, "0.0") + " kN (TCVN 10304:2014 mục 7.1.9; φ = 1 cọc ngàm hoàn toàn trong đất)");
             if (CapacityFromSoil && SoilLayers != null && SoilLayers.Count > 0)
             {
+                if (AutoLength)
+                {
+                    // tự chọn chiều dài: L nhỏ nhất (bước 0,5 m) để [P] ≥ ô [P] (yêu cầu) và mũi trong lớp tốt
+                    var al = BoredPileDesign.AutoLength(SoilLayers, PileD, Df, this.Pa, pvl, CapacityMethod, DrillMethod, GammaCfUser, Gamma0, GammaN, GammaK);
+                    if (al.Length > 0) PileLength = al.Length;
+                    r.Calc.Add(al.Text);
+                    if (!al.Ok) r.Messages.Add(al.Text);
+                    CapacityCurve = al.Curve;
+                }
                 var bp = BoredPile.Capacity(SoilLayers, PileD, Df, PileLength, CapacityMethod, DrillMethod, GammaCfUser, Gamma0, GammaN, GammaK);
                 bp.As = asP; bp.Pvl = pvl;
                 BoredResult = bp;
                 r.Calc.AddRange(bp.Calc);
                 foreach (var nt in bp.Notes) r.Messages.Add(nt);
-                Pa = Math.Floor(Math.Min(bp.Psoil, pvl));
-                r.Calc.Add("[P] = min([P]đ; Pvl) = min(" + Dt.F(bp.Psoil, "0.0") + "; " + Dt.F(pvl, "0.0") + ") = " + Dt.F(Pa, "0") + " kN");
+                double psoil = bp.Psoil;
+                var nf = BoredPileDesign.NegativeFriction(bp, SoilLayers);
+                if (nf != null) { NegFriction = nf; psoil = nf.PsoilNet; r.Calc.Add(nf.Text); }
+                if (CapacityCurve.Count == 0)
+                    CapacityCurve = BoredPileDesign.Curve(SoilLayers, PileD, Df, PileD < 0.8 ? 6 : 10, Math.Max(BoredPileDesign.TotalDepth(SoilLayers) - Df - 0.5, PileD < 0.8 ? 6 : 10), 1.0,
+                        CapacityMethod, DrillMethod, pvl, GammaCfUser, Gamma0, GammaN, GammaK);
+                Pa = Math.Floor(Math.Min(psoil, pvl));
+                r.Calc.Add("[P] = min([P]đ" + (nf != null ? ",net" : "") + "; Pvl) = min(" + Dt.F(psoil, "0.0") + "; " + Dt.F(pvl, "0.0") + ") = " + Dt.F(Pa, "0") + " kN");
                 if (skinF <= 0) skinF = bp.SumFiLi;
             }
             else
@@ -779,8 +804,10 @@ public class ManualPileCap : IDetailMember
             r.Messages.Add("LỖI cần N > 0, [P] > 0, D cọc ≥ 100 mm");
             return r;
         }
-        double sp = Spacing > 0 ? Spacing : 3 * PileD;
-        double edge = Edge > 0 ? Edge : Math.Max(PileD, 0.7 * PileD + 0.15);
+        // cọc khoan nhồi D ≥ 0,8 m: tim cọc ≥ max(2,5D; D + 1 m), mép cọc – mép đài ≥ max(250; D/3) (BoredPileDesign)
+        bool large = IsBored && PileD >= 0.8 - 1e-9;
+        double sp = Spacing > 0 ? Spacing : large ? Math.Ceiling(BoredPileDesign.MinSpacing(PileD) * 20 - 1e-9) / 20 : 3 * PileD;
+        double edge = Edge > 0 ? Edge : large ? PileD / 2 + BoredPileDesign.MinEdgeClear(PileD) : Math.Max(PileD, 0.7 * PileD + 0.15);
         bool longX = Math.Abs(My) >= Math.Abs(Mx);
         int n = NumPiles > 0 ? NumPiles : Math.Max(1, (int)Math.Ceiling(1.15 * N / Pa));
         double[] P = Array.Empty<double>(); List<(double X, double Y)> piles = new(); double L = 0, B = 0, G = 0, xc = 0, yc = 0, capCx = 0, capCy = 0;
@@ -835,7 +862,9 @@ public class ManualPileCap : IDetailMember
                 r.Checks.Add(Dt.Check("Nhổ khối nhóm cọc ΣNt ≤ [Pk,khối]", sumT, blk.Cap, "kN", "TCVN 10304:2014"));
             }
         }
-        r.Checks.Add(Dt.Check("Khoảng cách tim cọc ≥ 3D (TCVN 10304:2014 mục 8.13)", 3 * PileD, sp, "m"));
+        if (IsBored && PileD >= 0.8 - 1e-9)
+            r.Checks.Add(Dt.Check("Khoảng cách tim cọc khoan nhồi D ≥ 800 ≥ max(2,5D; D + 1 m) (TCVN 10304:2014 mục 8.13)", BoredPileDesign.MinSpacing(PileD), sp, "m"));
+        else r.Checks.Add(Dt.Check("Khoảng cách tim cọc ≥ 3D (TCVN 10304:2014 mục 8.13)", 3 * PileD, sp, "m"));
 
         // ---- chiều cao đài: chọc thủng cột ----
         double c = Math.Max(s.CoverFooting, 0.05) + Embed;
@@ -940,6 +969,42 @@ public class ManualPileCap : IDetailMember
         r.Checks.Add(Dt.Check("Chịu uốn phương X " + Dt.Spaced(bx.Item1, bx.Item2), mX, muX, "kN.m"));
         r.Checks.Add(Dt.Check("Chịu uốn phương Y " + Dt.Spaced(by.Item1, by.Item2), mY, muY, "kN.m"));
         if (n == 1) r.Messages.Add("Đài 1 cọc: thép đài cấu tạo, cọc đặt đúng tim cột; cần giằng móng 2 phương để chịu mô men");
+        if (n == 1 && IsBored)
+        {
+            var mn = BoredPileDesign.SinglePileCapMin(PileD, Math.Max(ColX, ColY), AnchorUsed, Embed);
+            r.Calc.Add("Đài đơn cọc: cạnh ≥ max(D + 2·mép; cạnh cột + 200) = " + Dt.Mm(mn.Side) + " mm; H ≥ max(600; La + ngàm + 100) = " + Dt.Mm(mn.H) + " mm");
+            r.Checks.Add(Dt.Check("Đài đơn cọc: cạnh nhỏ nhất ≥ cạnh tối thiểu", mn.Side, Math.Min(L, B), "m"));
+            r.Checks.Add(Dt.Check("Đài đơn cọc: chiều cao ≥ chiều cao tối thiểu", mn.H, hh, "m"));
+        }
+        if (IsBored && n >= 2 && n <= 4)
+        {
+            // đài sâu / cọc lớn: mô hình thanh chống – giằng (Blévot)
+            double rr = piles.Average(q => Math.Sqrt(q.X * q.X + q.Y * q.Y)), cEq = Math.Sqrt(Math.Max(ColX * ColY, 1e-6));
+            bool deep = Math.Max(rr - cEq / 2, 0) / Math.Max(h0x, 1e-6) <= 1.0 + 1e-9;
+            if (PileD >= 0.8 - 1e-9 || deep)
+            {
+                double apl = Math.PI * PileD * PileD / 4;
+                var stt = BoredPileDesign.StrutTie(N, n, rr, cEq, h0x, ColX * ColY, apl, conc.Rb, main.Rs, conc.Rbn / 1000);
+                StrutTieResult = stt;
+                r.Calc.AddRange(stt.Calc);
+                double band = Math.Min(Math.Min(L, B), PileD + h0x);
+                bool tieX = Math.Abs(My) >= Math.Abs(Mx) || n != 2;
+                double asBand = Dt.AreaPerM(tieX ? bx.Item1 : by.Item1, tieX ? bx.Item2 : by.Item2) * band;
+                r.Calc.Add("Thép giằng trên dải đầu cọc rộng ≈ min(D + h0; cạnh đài) = " + Dt.Mm(band) + " mm: As = " + Dt.F(asBand * 1e4, "0.00") + " cm² ≥ T/Rs = " + Dt.F(stt.AsReq * 1e4, "0.00") + " cm²");
+                r.Checks.Add(Dt.Check("Thanh chống – giằng: thép giằng trên dải đầu cọc As ≥ T/Rs", stt.AsReq * 1e4, asBand * 1e4, "cm²", "Blévot"));
+                r.Checks.Add(Dt.Check("Thanh chống – giằng: góc thanh chống θ ≥ 40°", 40, stt.ThetaDeg, "°", "Blévot 45°–55°"));
+                r.Checks.Add(Dt.Check("Thanh chống – giằng: ứng suất nút cột ≤ ν'·Rb", stt.SigmaColNode / 1000, stt.LimitColNode / 1000, "MPa", "EN 1992-1-1 mục 6.5.4 (tham khảo)"));
+                r.Checks.Add(Dt.Check("Thanh chống – giằng: ứng suất nút đầu cọc ≤ 0,85·ν'·Rb", stt.SigmaPileNode / 1000, stt.LimitPileNode / 1000, "MPa", "EN 1992-1-1 mục 6.5.4 (tham khảo)"));
+                if (stt.ThetaDeg > 55 + 1e-9) r.Messages.Add("Góc thanh chống θ = " + Dt.F(stt.ThetaDeg, "0.0") + "° > 55°: đài rất dày so với khoảng cách cọc – có thể giảm H");
+            }
+        }
+        if (GroupEfficiency && n >= 2)
+        {
+            var (gnx, gny) = BoredPileDesign.Rows(piles);
+            double eta = BoredPileDesign.GroupEfficiency(gnx, gny, PileD, sp);
+            r.Calc.Add("Hệ số nhóm Converse–Labarre: θ = arctan(D/s) = " + Dt.F(Math.Atan(PileD / sp) * 180 / Math.PI, "0.0") + "°, η = 1 − θ·[(n1−1)n2 + (n2−1)n1]/(90·n1·n2) = " + Dt.F(eta, "0.000") + " (" + gnx + "×" + gny + ")");
+            r.Checks.Add(Dt.Check("Nhóm cọc ma sát: N + G ≤ η·n·[P]", N + G, eta * n * Pa, "kN"));
+        }
         foreach (var k in r.Checks.Where(x => !x.Ok)) r.Messages.Add("LỖI " + k.Name + ": " + Dt.F(k.Demand, "0.0") + " > " + Dt.F(k.Capacity, "0.0") + " " + k.Unit);
 
         // ---- thép ----
@@ -1022,13 +1087,41 @@ public class ManualPileCap : IDetailMember
         double dsp = d - 2 * cover + sd / 1000.0;
         int turns = (int)Math.Ceiling(lTop / sTop + (cage - lTop) / ss);
         double spiralLen = Dt.R10(turns * Math.Sqrt(Math.Pow(Math.PI * dsp, 2) + ss * ss));
-        r.Calc.Add("Đai xoắn Ø" + sd + " a" + Dt.Mm(sTop) + " đoạn đầu cọc " + Dt.F(lTop) + " m, a" + Dt.Mm(ss) + " thân cọc; đai gia cường Ø16 mỗi 2 m; con kê 4 cái/tầng mỗi 2 m");
-        var bl = Dt.Straight("Cọc – thép dọc", db, nb * n, Dt.R10(cage + Embed));
+        r.Calc.Add("Đai xoắn Ø" + sd + " a" + Dt.Mm(sTop) + " đoạn đầu cọc " + Dt.F(lTop) + " m, a" + Dt.Mm(ss) + " thân cọc; đai gia cường Ø16 mỗi 2 m; con kê " + BoredPileDesign.SpacersPerLevel(d) + " cái/tầng mỗi 2 m");
+        // lồng thép dài > 11,7 m: chia đoạn, nối chồng 40d so le 50 %
+        var spl = BoredPileDesign.CageSplices(cage, db, s.StockLength > 0 ? s.StockLength : BoredPileDesign.StockLength);
+        CageSplice = spl;
+        if (spl.Splices > 0)
+            r.Calc.Add("Lồng thép dài " + Dt.F(cage) + " m > cây thép " + Dt.F(s.StockLength > 0 ? s.StockLength : BoredPileDesign.StockLength) + " m: chia " + spl.Segments.Count + " đoạn ("
+                       + string.Join(" + ", spl.Segments.Select(x => Dt.F(x))) + " m), nối chồng lap = 40d = " + Dt.Mm(spl.Lap) + " mm tại độ sâu " + string.Join("; ", spl.SpliceDepths.Select(x => Dt.F(x)))
+                       + " m; so le 50 % số thanh, lệch " + Dt.Mm(spl.Stagger) + " mm (≥ 1,3·lap); hàn / buộc nối lồng khi hạ");
+        var bl = Dt.Straight("Cọc – thép dọc", db, nb * n, Dt.R10((spl.Splices > 0 ? spl.BarLength : cage) + Embed));
         r.Bars.Add(bl);
         r.Bars.Add(new BarMark { Role = "Cọc – đai xoắn", Dia = sd, Count = n, Shape = "Xoắn", Length = spiralLen, Spacing = ss, Segments = new List<double> { Math.Round(dsp * 1000), Math.Round(ss * 1000) } });
         int rings = Math.Max(1, (int)Math.Floor(cage / 2.0) + 1);
         double ringD = d - 2 * cover - 2 * db / 1000.0;
         r.Bars.Add(new BarMark { Role = "Cọc – đai gia cường", Dia = 16, Count = rings * n, Shape = "Vòng", Length = Dt.R10(Math.PI * ringD + 0.20), Segments = new List<double> { Math.Round(ringD * 1000) } });
+        // con kê, ống siêu âm, ống khoan lõi mũi cọc, hệ số hao hụt gợi ý
+        int spLv = BoredPileDesign.SpacerLevels(cage), spPer = BoredPileDesign.SpacersPerLevel(d);
+        r.Extra.Add(("Con kê lồng thép (bê tông / nhựa)", "cái", (double)(n * spLv * spPer)));
+        int tubes = BoredPileDesign.SonicTubes(d);
+        double tubeLen = PileLength + Embed + 0.5;
+        if (tubes > 0)
+        {
+            r.Calc.Add("Ống siêu âm kiểm tra bê tông cọc (TCVN 9396:2012): " + tubes + " ống thép D60×2 mỗi cọc D" + Dt.Mm(d) + ", dài " + Dt.F(tubeLen) + " m (từ mũi cọc tới trên đầu cọc 0,5 m), hàn vào mặt trong lồng thép, nút kín đầu dưới, bơm đầy nước trước khi đổ bê tông; sau thí nghiệm bơm vữa lấp");
+            r.Extra.Add(("Ống siêu âm thép D60×2", "m", n * tubes * tubeLen));
+        }
+        if (d >= 1.0 - 1e-9)
+        {
+            r.Calc.Add("Cọc D ≥ 1000: đặt 1 ống thép D114 tới cách mũi cọc 1,0 m để khoan lấy lõi kiểm tra tiếp xúc mũi cọc (lắng cặn ≤ 50 mm)");
+            r.Extra.Add(("Ống khoan lõi mũi cọc D114", "m", n * Math.Max(PileLength - 1.0 + Embed + 0.5, 0)));
+        }
+        r.Calc.Add("Móc cẩu lồng thép Ø" + (d >= 1.0 ? 25 : 20) + " (2–4 móc mỗi đoạn lồng) – thép tròn trơn; con kê " + spPer + " cái/tầng × " + spLv + " tầng (a2000)");
+        if (SoilLayers != null && SoilLayers.Count > 0)
+        {
+            double ocs = BoredPileDesign.OvercutFactor(SoilLayers, Df, PileLength);
+            r.Calc.Add("Hệ số hao hụt bê tông gợi ý theo địa chất thân cọc (đất yếu 1,20; cát 1,15; đất dính cứng 1,10 – bình quân bề dày) = " + Dt.F(ocs) + "; đang dùng " + Dt.F(Math.Max(Overcut, 1.0)));
+        }
         double vPile = n * ab * PileLength * Math.Max(Overcut, 1.0);
         r.Extra.Add(("Bê tông cọc khoan nhồi " + concP.Name + " (kể hao hụt ×" + Dt.F(Math.Max(Overcut, 1.0)) + ")", "m³", vPile));
         r.Extra.Add(("Khoan tạo lỗ cọc D" + Dt.Mm(d) + " (từ mặt đất)", "m", n * (PileLength + Df)));
@@ -1042,6 +1135,12 @@ public class ManualPileCap : IDetailMember
             SettlementResult = st;
             r.Calc.AddRange(st.Calc);
             r.Checks.Add(Dt.Check("Lún khối móng quy ước S ≤ 80 mm", st.S * 1000, 80, "mm", "TCVN 10304:2014 / TCVN 9362:2012"));
+            if (n >= 2)
+            {
+                var se = BoredPileDesign.SettlementEquivalentRaft(SoilLayers, Math.Min(bgx, bgy), Math.Max(bgx, bgy), PileLength, Df, ntc);
+                r.Calc.AddRange(se.Calc);
+                r.Calc.Add("So sánh: khối móng quy ước S = " + Dt.F(st.S * 1000, "0.0") + " mm; móng tương đương 2L/3 S = " + Dt.F(se.S * 1000, "0.0") + " mm (tham khảo)");
+            }
         }
         r.Messages.AddRange(BoredPile.ConstructionNotes(n * Math.Max(1, Quantity), d));
     }

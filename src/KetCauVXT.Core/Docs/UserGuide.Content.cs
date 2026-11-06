@@ -1007,7 +1007,21 @@ public static partial class UserGuide
             .Bullets("**Bản vẽ & khối lượng**:",
                 "Chi tiết cọc (mặt đứng có lồng thép, hai vùng bước đai, chân lồng thép, cao độ đầu / mũi), mặt cắt cọc, trụ địa chất với chiều dài cọc và [P].",
                 "Thống kê thép cọc (thép dọc, đai xoắn, đai gia cường); bê tông cọc kể hao hụt mở rộng thành lỗ (×1,15), khoan tạo lỗ (m, từ mặt đất), dung dịch bentonite / ống vách.",
-                "Ghi chú thi công và **thử tải**: tremie, bentonite, vét lắng; thử tĩnh ≥ max(1 %; 1 cọc) (TCVN 9393:2012), PIT / siêu âm (TCVN 9396:2012).");
+                "Ghi chú thi công và **thử tải**: tremie, bentonite, vét lắng; thử tĩnh ≥ max(1 %; 1 cọc) (TCVN 9393:2012), PIT / siêu âm (TCVN 9396:2012).")
+            .Bullets("**Cọc khoan nhồi đường kính lớn (D800–1500+) và tính năng nâng cao**:",
+                "*Khoảng cách tim cọc* tối thiểu: cọc mini 3D; D ≥ 800 lấy max(2,5D; D + 1 m). Tim cọc tới mép đài ≥ D/2 + max(0,25 m; D/3). Đài tự chọn dùng các giá trị này.",
+                "*Bê tông B22,5* (nội suy B20 – B25): Rb = 13,0 MPa, Rbt = 0,975 MPa, Eb = 28 750 MPa – chọn được cho cọc và mọi cấu kiện.",
+                "*Ma sát âm*: đánh dấu lớp **Đất yếu cố kết / đắp nền** trong bảng lớp đất. Mặt trung hoà lấy ở đáy lớp cố kết sâu nhất; bỏ ma sát dương phía trên và trừ lực kéo xuống Pn = u·Σfi·li: [P]đ,net = γ0·(Rc,u − ΣQ)/(γn·γk) − Pn.",
+                "*Tự chọn chiều dài cọc* (ô [P] là sức chịu tải yêu cầu): L nhỏ nhất, bước 0,5 m, để [P] ≥ yêu cầu và mũi nằm trong lớp tốt (cát N ≥ 15, sét IL ≤ 0,5 hoặc N ≥ 15, hoặc có qb nhập tay). Không đạt: lấy L có [P] lớn nhất và cảnh báo. Bản vẽ có thêm **đường cong sức chịu tải Rc,u và [P] theo độ sâu mũi cọc**.",
+                "*Hệ số nhóm Converse–Labarre* (tuỳ chọn): η = 1 − θ·[(n1 − 1)·n2 + (n2 − 1)·n1]/(90·n1·n2), θ = arctan(D/s); kiểm tra N + G ≤ η·n·[P].",
+                "*Đài 1 cọc*: cạnh ≥ max(D + 2·mép; cạnh cột + 200), H ≥ max(600; neo râu thép + ngàm + 100). *Đài 2/3/4 cọc* với D ≥ 800 hoặc đài sâu ((r − c/2)/h0 ≤ 1): mô hình **thanh chống – giằng Blévot** – a = r − k·c (k = 0,25 / 0,30 / √2/4), θ = arctan(h0/a) ≥ 40° (nên 45°–55°), giằng T = R·a/h0 (2 cọc), chia √3 (3 cọc), √2 (4 cọc) theo cạnh, As ≥ T/Rs trên dải đầu cọc; ứng suất nút cột ≤ ν'·Rb, nút đầu cọc ≤ 0,85·ν'·Rb, ν' = 1 − fck/250.",
+                "*Lồng thép dài* hơn cây thép 11,7 m: chia đoạn, nối chồng 40d so le 50 % (lệch ≥ 1,3 lần chiều dài nối), thể hiện trên mặt đứng cọc; móc cẩu lồng; con kê 4 / 6 / 8 cái mỗi tầng (D < 800 / < 1200 / ≥ 1200), a2000.",
+                "*Ống siêu âm* thép D60×2 (TCVN 9396:2012): 2 ống khi D800–<1000, 3 ống khi D1000–1500, 4 ống khi > 1500; D ≥ 1000 thêm ống khoan lõi mũi cọc D114. Có trong bảng khối lượng, mặt đứng và mặt cắt cọc.",
+                "*Hệ số hao hụt bê tông gợi ý* theo địa chất thân cọc (đất yếu 1,20; cát 1,15; sét cứng 1,10); *lún nhóm cọc theo móng tương đương* đặt ở 2L/3 để so sánh với khối móng quy ước.",
+                "*Chế độ Thiết kế*: trong hộp thoại Thiết kế móng chọn cọc khoan nhồi và phương pháp TCVN 10304:2014 (Bảng 3/7 hoặc SPT): hố khoan được chia lớp tại mực nước ngầm (γ' = γsat − 10 dưới nước), đất đắp / bùn được coi là cố kết (ma sát âm); có tuỳ chọn tự chọn chiều dài cọc, bê tông cọc riêng và hệ số nhóm. Để trống phương pháp: tính như phiên bản trước.")
+            .Bullets("**Mặt bằng định vị cọc** (Triển khai hồ sơ):",
+                "Khi có đài cọc đặt trên mặt bằng móng, cây thư mục thêm nút **Mặt bằng định vị cọc** ngay sau Mặt bằng móng; bản vẽ gồm lưới trục, đường bao đài, cọc đánh số P1…Pn (theo đài từ trên xuống, trong đài theo hàng), kể cả đài xoay.",
+                "**Bảng toạ độ cọc** (X, Y theo hệ trục công trình, lực lớn nhất lên cọc) và **bảng thống kê cọc** (đài, D, L, cao độ đầu cọc = −Df + ngàm, cao độ mũi = −Df − L, [P], số lượng) – dùng cho định vị cọc ngoài hiện trường.");
 
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")

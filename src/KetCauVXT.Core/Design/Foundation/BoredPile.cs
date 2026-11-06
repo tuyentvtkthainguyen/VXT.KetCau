@@ -32,6 +32,7 @@ public class PileSoilLayer
     [Field("γ (γ' dưới mực nước)", Unit = "kN/m³")] public double Gamma { get; set; } = 18;
     [Field("Mô đun biến dạng E", Unit = "kPa")] public double E { get; set; } = 10000;
     [Field("qb nhập tay (0 = theo bảng)", Unit = "kPa")] public double QbUser { get; set; }
+    [Field("Đất yếu cố kết / đắp nền (ma sát âm)")] public bool Consolidating { get; set; }
 
     [System.Text.Json.Serialization.JsonIgnore] public bool IsSand => BoredPile.IsSandKind(Kind);
 }

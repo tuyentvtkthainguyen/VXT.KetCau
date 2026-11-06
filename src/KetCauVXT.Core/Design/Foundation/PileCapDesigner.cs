@@ -237,7 +237,14 @@ public static class PileCapDesigner
         double edgeRule = Math.Max(PileLayout.MinEdgeClear, PileLayout.MinEdgeCentre * d - d / 2);
         bool edgeRaised = edge < edgeRule - 1e-9;
         if (edgeRaised) edge = edgeRule;
+        // cọc khoan nhồi D ≥ 0,8 m: mép cọc – mép đài ≥ max(250; D/3), tim cọc ≥ max(2,5D; D + 1 m) (BoredPileDesign)
+        if (fs.PileBored && d >= 0.8 - 1e-9)
+        {
+            double eB = BoredPileDesign.MinEdgeClear(d);
+            if (edge < eB - 1e-9) { edge = eB; edgeRaised = true; }
+        }
         double s = RcSection.CeilTo(Math.Max(fs.PileSpacingFactor, 1.5) * d, 0.05);
+        if (fs.PileBored) s = Math.Max(s, RcSection.CeilTo(BoredPileDesign.MinSpacing(d), 0.05));
         double embed = Math.Clamp(fs.PileEmbed, 0, 0.5);
         double Df = Math.Max(soil.Depth, 0);
         double gtb = soil.GammaAvg;
@@ -362,6 +369,33 @@ public static class PileCapDesigner
         double qbL = ShearCap(B, h0, MinClear(piles, true, hc, d), rbt), qbB = ShearCap(L, h0, MinClear(piles, false, bc, d), rbt);
         if (ev.QL > 1e-9) dsn.Checks.Add(new CheckItem { Name = "Cắt tiết diện nghiêng tại mép cột phương L", Demand = ev.QL, Capacity = qbL, Unit = "kN" });
         if (ev.QB > 1e-9) dsn.Checks.Add(new CheckItem { Name = "Cắt tiết diện nghiêng tại mép cột phương B", Demand = ev.QB, Capacity = qbB, Unit = "kN" });
+
+        // ---- cọc khoan nhồi: hệ số nhóm (Converse–Labarre), thanh chống – giằng cho đài 2–4 cọc (D ≥ 0,8 m hoặc đài sâu) ----
+        if (fs.PileGroupEfficiency && piles.Count >= 2)
+        {
+            var (gnx, gny) = BoredPileDesign.Rows(piles);
+            double eta = BoredPileDesign.GroupEfficiency(gnx, gny, d, dsn.Spacing);
+            dsn.Checks.Add(new CheckItem { Name = "Nhóm cọc ma sát: N + G ≤ η·n·[P] (Converse–Labarre)", Demand = Math.Max(gv.N, 0) + G, Capacity = eta * piles.Count * P, Unit = "kN",
+                Note = "η = " + DesignUtil.F(eta, "0.000") + " (" + gnx + "×" + gny + " cọc, s = " + DesignUtil.F(dsn.Spacing, "0.00") + " m)" });
+        }
+        if (fs.PileBored && piles.Count >= 2 && piles.Count <= 4)
+        {
+            double rr = piles.Average(q => Math.Sqrt(q.X * q.X + q.Y * q.Y));   // cọc tính từ tim cột
+            double cEq = Math.Sqrt(Math.Max(hc * bc, 1e-6));
+            if (d >= 0.8 - 1e-9 || Math.Max(rr - cEq / 2, 0) / Math.Max(h0, 1e-6) <= 1.0)
+            {
+                double ap = fs.PileRound ? Math.PI * d * d / 4 : d * d;
+                var stt = BoredPileDesign.StrutTie(Math.Max(Nmax, 0), piles.Count, rr, cEq, h0, hc * bc, ap, conc.Rb, main.Rs, conc.Rbn / 1000);
+                dsn.Messages.AddRange(stt.Calc);
+                if (d >= 0.8 - 1e-9)
+                {
+                dsn.Checks.Add(new CheckItem { Name = "Thanh chống – giằng: góc thanh chống θ ≥ 40°", Demand = 40, Capacity = stt.ThetaDeg, Unit = "°", Note = "Blévot 45°–55°" });
+                dsn.Checks.Add(new CheckItem { Name = "Thanh chống – giằng: ứng suất nút cột ≤ ν'·Rb", Demand = stt.SigmaColNode, Capacity = stt.LimitColNode, Unit = "kN/m²" });
+                dsn.Checks.Add(new CheckItem { Name = "Thanh chống – giằng: ứng suất nút đầu cọc ≤ 0,85·ν'·Rb", Demand = stt.SigmaPileNode, Capacity = stt.LimitPileNode, Unit = "kN/m²" });
+                }
+                dsn.Messages.Add("Thép giằng đáy đài tập trung trên dải đầu cọc (rộng ≈ D + h0): As ≥ " + DesignUtil.F(stt.AsReq * 1e4, "0.00") + " cm² mỗi giằng");
+            }
+        }
 
         // ---- cốt thép đáy ----
         int[] dias = DesignUtil.Sorted(cs.FootingBars, new[] { 12, 14, 16 }).Union(new[] { 16, 18, 20, 22, 25 }).Distinct().OrderBy(x => x).ToArray();

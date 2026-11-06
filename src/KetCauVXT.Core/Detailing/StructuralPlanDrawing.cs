@@ -29,6 +29,8 @@ public static class StructuralPlanDrawing
         {
             figs.Add(new Figure(Level(plan, fnd, map, TitleFoundation, false), TitleFoundation, true));
             figs.AddRange(SectionFigures(plan, fnd, map, st));
+            var pf = PileLocationPlan.PlanFigure(p);   // chỉ khi có đài cọc đặt trên mặt bằng móng
+            if (pf != null) figs.Add(pf);
         }
         var colLevel = fnd != null && fnd.Items.Any(i => i.Kind == PlanKinds.Column) ? fnd : plan.Levels.FirstOrDefault(l => l.Items.Any(i => i.Kind == PlanKinds.Column));
         if (colLevel != null) figs.Add(new Figure(Level(plan, colLevel, map, TitleColumns, true), TitleColumns, true));
@@ -68,6 +70,12 @@ public static class StructuralPlanDrawing
             case "DamMong":
                 if (g.Level != null) { figs.Add(new Figure(Level(plan, g.Level, map, TitleFoundation, false), TitleFoundation, true)); figs.AddRange(SectionFigures(plan, g.Level, map, st)); }
                 break;
+            case PileLocationPlan.Kind:
+            {
+                var pf = PileLocationPlan.PlanFigure(p);
+                if (pf != null) figs.Add(pf);
+                break;
+            }
             case "Cot":
             {
                 var fnd = plan.Foundation;

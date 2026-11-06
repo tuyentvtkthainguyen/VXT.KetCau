@@ -451,6 +451,9 @@ public static class GeotechCalc
     public static PileCapacityResult PileCapacity(Project p, Borehole bh, FoundationSettings fs = null)
     {
         fs ??= p?.Foundation ?? new FoundationSettings();
+        // cọc khoan nhồi theo TCVN 10304:2014 (bảng lớp đất từ hố khoan, Bảng 3/7 hoặc SPT, ma sát âm, tự chọn chiều dài)
+        if (fs.PileBored && !string.IsNullOrWhiteSpace(fs.BoredMethod) && bh != null)
+            return KetCauVXT.Design.Foundation.BoredPileDesign.DesignCapacity(p, bh, fs);
         double cut = Math.Max(p?.Soil?.Depth ?? 1.5, 0);
         var notes = new List<string>();
         double tip = fs.PileTipDepth > 0 ? fs.PileTipDepth : AutoTipDepth(bh, fs.PileSize, cut, notes);

@@ -641,6 +641,8 @@ Console.WriteLine("86. Chọc thủng đài cọc / móng có kể mô men, cắ
 PunchingUpliftTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("87. Cọc khoan nhồi mini (TCVN 10304), chọc thủng bậc móng / móng băng, nhổ khối nhóm cọc, tự chuyển phản lực giằng");
 MiniBoredPileTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("88. Cọc khoan nhồi nâng cao: chế độ thiết kế theo TCVN 10304, B22,5, ma sát âm, tự chọn chiều dài, hệ số nhóm, đài thanh chống – giằng, ống siêu âm, nối lồng thép, mặt bằng định vị cọc");
+BoredPileAdvancedTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

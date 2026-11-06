@@ -24,6 +24,10 @@ internal sealed class FoundationDialog : Window
     private readonly TextBox _tLat;
     private readonly CheckBox _chkPyr, _chkMom;
     private readonly CheckBox _chkCuTram;   // [CừTràm]
+    // cọc khoan nhồi TCVN 10304:2014 (BoredPileAdvanced)
+    private readonly ComboBox _cbBoredMethod, _cbBoredDrill, _cbPileConc;
+    private readonly CheckBox _chkAutoLen, _chkGroupEff;
+    private static readonly string[] BoredMethodNames = { "Công thức SPT cũ (Rc,u/FS)", BoredPile.MethodTable, BoredPile.MethodSpt };
 
     /// <summary>true = người dùng bấm "Thiết kế móng" (chạy thiết kế sau khi đóng)</summary>
     public bool RunDesign { get; private set; }
@@ -49,6 +53,14 @@ internal sealed class FoundationDialog : Window
         _tCapH = Box(f.CapMinHeight * 1000, "0");
         _chkGeo = new CheckBox { Content = "Tính [P] và chiều dài cọc từ hố khoan (SPT – TCVN 10304:2014 G.3.2)", IsChecked = f.PileCapacityFromBorehole, VerticalAlignment = VerticalAlignment.Center };
         _chkBored = new CheckBox { Content = "Cọc khoan nhồi (qb = 150·Np; bỏ chọn = cọc ép / đóng, qb = 300·Np)", IsChecked = f.PileBored, VerticalAlignment = VerticalAlignment.Center };
+        _cbBoredMethod = new ComboBox { ItemsSource = BoredMethodNames, Width = 230,
+            SelectedIndex = f.BoredMethod == BoredPile.MethodTable ? 1 : f.BoredMethod == BoredPile.MethodSpt ? 2 : 0 };
+        var drills = new[] { BoredPile.DrillSlurry, BoredPile.DrillCasing, BoredPile.DrillDry };
+        _cbBoredDrill = new ComboBox { ItemsSource = drills, Width = 230, SelectedIndex = Math.Max(Array.IndexOf(drills, f.BoredDrill ?? ""), 0) };
+        var concs = new[] { "(bê tông móng)" }.Concat(Material.ConcreteClasses).ToArray();
+        _cbPileConc = new ComboBox { ItemsSource = concs, Width = 120, SelectedIndex = Math.Max(Array.IndexOf(concs, f.PileConcrete ?? ""), 0) };
+        _chkAutoLen = new CheckBox { Content = "Tự chọn chiều dài cọc (bước 0,5 m, [P] ≥ [P] nén yêu cầu, mũi trong lớp tốt)", IsChecked = f.PileAutoLength, VerticalAlignment = VerticalAlignment.Center };
+        _chkGroupEff = new CheckBox { Content = "Kể hệ số nhóm cọc ma sát Converse–Labarre (N + G ≤ η·n·[P])", IsChecked = f.PileGroupEfficiency, VerticalAlignment = VerticalAlignment.Center };
         _tTip = Box(f.PileTipDepth, "0.##");
         _tFs = Box(f.PileSafetyFactor, "0.##");
         _tLat = Box(f.PileLateralCapacity, "0.#");
@@ -76,6 +88,12 @@ internal sealed class FoundationDialog : Window
         pile.Children.Add(DialogUi.Hint("[P] lấy theo thí nghiệm nén tĩnh hoặc tính theo TCVN 10304:2014 (giá trị nhỏ hơn giữa vật liệu và đất nền)."));
         pile.Children.Add(_chkGeo);
         pile.Children.Add(_chkBored);
+        pile.Children.Add(Line("Cọc khoan nhồi – phương pháp TCVN 10304:2014", _cbBoredMethod));
+        pile.Children.Add(Line("Cọc khoan nhồi – công nghệ khoan", _cbBoredDrill));
+        pile.Children.Add(Line("Bê tông cọc", _cbPileConc));
+        pile.Children.Add(_chkAutoLen);
+        pile.Children.Add(_chkGroupEff);
+        pile.Children.Add(DialogUi.Hint("Cọc khoan nhồi theo Bảng 3/7 hoặc SPT: hố khoan chia lớp tại mực nước ngầm, đất đắp / bùn kể ma sát âm, [P]đ = γ0·Rc,u/(γn·γk), Pvl kể γcb·γ'cb; khoảng cách cọc D ≥ 800 ≥ max(2,5D; D + 1 m)."));
         pile.Children.Add(Line("Độ sâu mũi cọc từ mặt đất (m, 0 = tự chọn)", _tTip));
         pile.Children.Add(Line("Hệ số an toàn FS ([P]đn = Rc,u/FS)", _tFs));
         pile.Children.Add(Line("[H] chịu tải ngang 1 cọc (kN, 0 = ước lượng 0,1[P])", _tLat));
@@ -173,6 +191,10 @@ internal sealed class FoundationDialog : Window
         _f.PileRound = _cbPileShape.SelectedIndex == 1;
         _f.PileCapacityFromBorehole = _chkGeo.IsChecked == true; _f.PileBored = _chkBored.IsChecked == true;
         _f.PileTipDepth = tip; _f.PileSafetyFactor = fsf;
+        _f.BoredMethod = _cbBoredMethod.SelectedIndex == 1 ? BoredPile.MethodTable : _cbBoredMethod.SelectedIndex == 2 ? BoredPile.MethodSpt : "";
+        _f.BoredDrill = _cbBoredDrill.SelectedItem as string ?? "";
+        _f.PileConcrete = _cbPileConc.SelectedIndex > 0 ? _cbPileConc.SelectedItem as string ?? "" : "";
+        _f.PileAutoLength = _chkAutoLen.IsChecked == true; _f.PileGroupEfficiency = _chkGroupEff.IsChecked == true;
         _f.PileSize = size / 1000; _f.PileLength = len; _f.PileCapacity = cap; _f.PileTension = ten;
         _f.PileSpacingFactor = sp; _f.CapEdge = edge / 1000; _f.PileEmbed = emb / 1000; _f.CapMinHeight = capH / 1000;
         _f.StripDirection = Math.Clamp(_cbStripDir.SelectedIndex, 0, 3);

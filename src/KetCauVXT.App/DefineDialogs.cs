@@ -72,7 +72,7 @@ internal sealed class MaterialsWindow : Window
         _grid.Columns.Add(DialogUi.Text("Đang dùng", "Used", true, 160));
         _grid.CellEditEnding += (s, e) => { Changed = true; };
 
-        var cbC = new ComboBox { Width = 70, ItemsSource = Model.Material.ConcreteClasses, SelectedIndex = 2, Margin = new Thickness(0, 0, 4, 0) };
+        var cbC = new ComboBox { Width = 70, ItemsSource = Model.Material.ConcreteClasses, SelectedIndex = 3, Margin = new Thickness(0, 0, 4, 0) };
         var cbR = new ComboBox { Width = 86, ItemsSource = Model.Material.RebarGrades, SelectedIndex = 2, Margin = new Thickness(0, 0, 4, 0) };
         var cbS = new ComboBox { Width = 80, ItemsSource = Model.Material.SteelGrades, SelectedIndex = 2, Margin = new Thickness(0, 0, 4, 0) };
         var bar = DialogUi.Row(

@@ -110,7 +110,7 @@ public class PlanTreeGroup
 {
     /// <summary>Tiêu đề nút, vd. "Mặt bằng móng", "Mặt bằng kết cấu Tầng 2", "Chưa đặt trên mặt bằng".</summary>
     public string Title { get; set; } = "";
-    /// <summary>"Mong", "DamMong", "Cot", "Tang", "ChuaDat".</summary>
+    /// <summary>"Mong", "DamMong", "Coc" (định vị cọc), "Cot", "Tang", "ChuaDat".</summary>
     public string Kind { get; set; } = "";
     /// <summary>Mặt bằng tương ứng (null với nhóm cột / chưa đặt).</summary>
     public PlanLevel Level { get; set; }
@@ -202,6 +202,17 @@ public partial class StructuralPlan
                 if (!gC.Members.Contains(m)) gC.Members.Add(m);
 
         if (fnd != null) groups.Add(gF);
+        // mặt bằng định vị cọc: chỉ khi có đài cọc đặt trên mặt bằng móng (toạ độ cọc P1…Pn, bảng thống kê cọc)
+        if (fnd != null)
+        {
+            var pc = PileLocationPlan.Caps(p);
+            if (pc.Count > 0)
+            {
+                var gP = new PlanTreeGroup { Title = "Mặt bằng định vị cọc", Kind = PileLocationPlan.Kind, Level = fnd };
+                foreach (var (_, cap) in pc) if (!gP.Members.Contains(cap)) gP.Members.Add(cap);
+                groups.Add(gP);
+            }
+        }
         if (gB.Members.Count > 0) groups.Add(gB);
         if (gC.Members.Count > 0) groups.Add(gC);
         groups.AddRange(tangs);

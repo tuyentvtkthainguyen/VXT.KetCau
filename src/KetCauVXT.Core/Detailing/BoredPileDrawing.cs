@@ -15,6 +15,8 @@ public static class BoredPileDrawing
         figs.Add(Elevation(cap, r));
         figs.Add(Section(cap, r));
         if (cap.SoilLayers != null && cap.SoilLayers.Count > 0) figs.Add(SoilProfile(cap));
+        if (cap.CapacityCurve != null && cap.CapacityCurve.Count >= 2)
+            figs.Add(BoredPileDesign.CurveFigure(cap.CapacityCurve, "ĐƯỜNG CONG SỨC CHỊU TẢI CỌC D" + DxfWriter.N0(cap.PileD * 1000) + " (" + cap.Name + ")"));
         return figs;
     }
 
@@ -57,7 +59,23 @@ public static class BoredPileDrawing
             foreach (double sg in new[] { -1.0, 1.0 }) w.Circle(Lay.KyHieu, sg * (d / 2 - cover / 2), y, cover / 2);
         }
         if (rg != null) w.LeaderTag(xs, -1000, d / 2 + 3 * w.Th, -1000 - 2.5 * w.Th, "Ø" + rg.Dia + " đai gia cường a2000", rg.Mark);
-        w.Text(Lay.KyHieu, d / 2 + 0.5 * w.Th, -3000, 0.6 * w.Th, "CON KÊ 4 CÁI / TẦNG, a2000", 0, 0, 2);
+        w.Text(Lay.KyHieu, d / 2 + 0.5 * w.Th, -3000, 0.6 * w.Th, "CON KÊ " + BoredPileDesign.SpacersPerLevel(cap.PileD) + " CÁI / TẦNG, a2000", 0, 0, 2);
+        // mối nối chồng lồng thép (lồng dài > 11,7 m): nhóm 1 tại độ sâu nối, nhóm 2 lệch 1,3·lap
+        var spl = cap.CageSplice;
+        if (spl != null && spl.Splices > 0)
+            foreach (double z in spl.SpliceDepths)
+            {
+                double y0 = -z * 1000, lap = spl.Lap * 1000, stg = spl.Stagger * 1000;
+                w.Rect(Lay.KyHieu, xs - 40, y0 - lap, xs + 40, y0, "DASHED");
+                w.Rect(Lay.KyHieu, -xs - 40, y0 - stg - lap, -xs + 40, y0 - stg, "DASHED");
+                w.Text(Lay.Chu, d / 2 + 0.5 * w.Th, y0 - lap / 2, 0.6 * w.Th, "NỐI CHỒNG 40d = " + DxfWriter.N0(lap) + " (SO LE 50 %)", 0, 0, 2);
+            }
+        // ống siêu âm (D ≥ 800)
+        if (cap.SonicTubeCount > 0)
+        {
+            w.Line(Lay.KyHieu, 0, -L + 50, 0, em + 500, "DASHED");
+            w.Text(Lay.KyHieu, 0.5 * w.Th, -L / 2, 0.6 * w.Th, cap.SonicTubeCount + " ỐNG SIÊU ÂM D60×2", 90, 1, 0);
+        }
         // chân lồng thép
         if (cage < L - 1)
         {
@@ -91,6 +109,15 @@ public static class BoredPileDrawing
             double a = 2 * Math.PI * i / Math.Max(nb, 1) + Math.PI / 2;
             w.Dot(Lay.Thep, rs * Math.Cos(a), rs * Math.Sin(a), Math.Max(cap.PileBarD / 2.0, 6));
         }
+        // ống siêu âm phân bố đều bên trong lồng thép
+        int nt = cap.SonicTubeCount;
+        double rt = rs - cap.PileBarD / 2.0 - 60;
+        for (int i = 0; i < nt; i++)
+        {
+            double a = 2 * Math.PI * i / nt + Math.PI / 4;
+            w.Circle(Lay.KyHieu, rt * Math.Cos(a), rt * Math.Sin(a), 30);
+        }
+        if (nt > 0) w.Text(Lay.KyHieu, 0, -d / 2 - 3.2 * w.Th, 0.6 * w.Th, nt + " ỐNG SIÊU ÂM D60", 0, 1, 0);
         var bl = Bar(r, "Cọc – thép dọc");
         var sp = Bar(r, "Cọc – đai xoắn");
         if (bl != null) w.LeaderTag(0, rs, d / 2 + 2 * w.Th, d / 2 + 1.5 * w.Th, bl.Count / Math.Max(cap.Piles.Count, 1) + "Ø" + bl.Dia, bl.Mark);

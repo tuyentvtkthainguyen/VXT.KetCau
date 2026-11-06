@@ -317,6 +317,7 @@ public sealed partial class DetailingWindow : Window
         {
             "Mong" or "DamMong" => StructuralPlanDrawing.TitleFoundation,
             "Cot" => StructuralPlanDrawing.TitleColumns,
+            PileLocationPlan.Kind => PileLocationPlan.Title,
             "Tang" => StructuralPlanDrawing.LevelTitle(g.Level),
             StructuralPlan.LintelGroupKind => LintelPlanDrawing.Title(g.Level),
             _ => null

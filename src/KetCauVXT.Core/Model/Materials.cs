@@ -64,6 +64,8 @@ public class Material
         {
             "B15" => (8.5, 0.75, 24000, 11.0),
             "B20" => (11.5, 0.90, 27500, 15.0),
+            // B22,5: TCVN 5574:2018 Bảng 7 không liệt kê – nội suy tuyến tính B20…B25 (thường dùng cho cọc khoan nhồi theo TCVN 9395 / 5574:2012)
+            "B22.5" or "B22,5" => (13.0, 0.975, 28750, 16.75),
             "B25" => (14.5, 1.05, 30000, 18.5),
             "B30" => (17.0, 1.15, 32500, 22.0),
             "B35" => (19.5, 1.30, 34500, 25.5),
@@ -115,7 +117,7 @@ public class Material
         };
     }
 
-    public static readonly string[] ConcreteClasses = { "B15", "B20", "B25", "B30", "B35", "B40" };
+    public static readonly string[] ConcreteClasses = { "B15", "B20", "B22.5", "B25", "B30", "B35", "B40" };
     public static readonly string[] RebarGrades = { "CB240-T", "CB300-V", "CB400-V", "CB500-V" };
     public static readonly string[] SteelGrades = { "CCT34", "CCT38", "SS400", "Q345B", "G350" };
 }
