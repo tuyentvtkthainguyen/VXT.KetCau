@@ -35,6 +35,9 @@ public class Story
     public string Name { get; set; } = "";
     public double Elevation { get; set; }
     public double Height { get; set; }
+    /// <summary>Loại cao độ: "San" (sàn tầng), "Mai" (sàn mái), "Tum" (sàn tum/mái tum); null = tự suy (Model/Levels.cs).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string Kind { get; set; }
     public override string ToString() => $"{Name} (+{Elevation:0.000})";
 }
 

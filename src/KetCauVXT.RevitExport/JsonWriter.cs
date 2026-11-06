@@ -44,6 +44,7 @@ namespace KetCauVXT.RevitExport
 
         public JsonWriter Prop(string name, string value) { Key(name); Str(value ?? ""); return this; }
         public JsonWriter Prop(string name, double value) { Key(name); _sb.Append(Num(value)); return this; }
+        public JsonWriter Prop(string name, bool value) { Key(name); _sb.Append(value ? "true" : "false"); return this; }
 
         /// <summary>Mảng số [x, y] viết trên một dòng.</summary>
         public JsonWriter Pair(double a, double b) { Key(null); _sb.Append('[').Append(Num(a)).Append(", ").Append(Num(b)).Append(']'); return this; }

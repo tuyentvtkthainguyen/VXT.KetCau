@@ -17,6 +17,11 @@ public class RevitExchange
     public List<RvColumn> Columns { get; set; } = new();
     public List<RvBeam> Beams { get; set; } = new();
     public List<RvFloor> Floors { get; set; } = new();
+    // ---- [Bộ môn – Import/RevitArchImport.cs] (schema 2.0; file 1.0 không có → rỗng) ----
+    public List<RvWall> Walls { get; set; } = new();
+    public List<RvOpening> Openings { get; set; } = new();
+    public List<RvRoom> Rooms { get; set; } = new();
+    public List<RvMep> Mep { get; set; } = new();
 }
 
 public class RvLevel
@@ -329,6 +334,7 @@ public static class RevitJsonImporter
         }
 
         p.InvalidateIndex();
+        RevitArchImport.Build(p, ex, rep, ox, oy);
         DxfImporter.RemoveOrphanNodes(p);
         rep.SplitCount = ModelBuilder.SplitFramesAtNodes(p);
         ComboGenerator.Generate(p);

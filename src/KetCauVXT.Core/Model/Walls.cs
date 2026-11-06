@@ -93,6 +93,9 @@ public class WallLine
     public double Sagitta { get; set; }
     /// <summary>[Kiểu Revit] Cửa đi / cửa sổ / ô thoáng gắn vào tường – tường tự cắt ô cửa (Model/WallAssembly.cs)</summary>
     public List<WallOpening> Openings { get; set; } = new();
+    /// <summary>Mã đối tượng ở phần mềm nguồn (Revit UniqueId, IFC GlobalId) – dùng "Cập nhật từ Revit"; null = tạo trong chương trình.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string ExternalId { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsCurved => Math.Abs(Sagitta) > 1e-6;
     /// <summary>Chiều dài dây cung (tường thẳng: chiều dài tường), m</summary>

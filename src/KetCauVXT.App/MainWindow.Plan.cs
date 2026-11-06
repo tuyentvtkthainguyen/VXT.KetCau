@@ -149,6 +149,7 @@ public partial class MainWindow
 
         DrawCadLinks();   // [CadLink] nền bản vẽ AutoCAD liên kết (dưới mô hình) – MainWindow.CadLink.cs
 
+        int dsA = planCanvas.Children.Count;   // [Bộ môn] phạm vi kết cấu / kiến trúc để vẽ mờ bộ môn tham chiếu – MainWindow.Disciplines.cs
         // ---- sàn ----
         foreach (var s in PlanSlabs())
         {
@@ -168,6 +169,7 @@ public partial class MainWindow
         // ---- lỗ sàn: cầu thang, giếng trời ----
         foreach (var o in PlanOpenings()) DrawOpening(o);
 
+        int dsB = planCanvas.Children.Count;
         // ---- trục ----
         double bub = 11;
         var gxs = _p.GridsX.ToList(); var gys = _p.GridsY.ToList();
@@ -202,6 +204,7 @@ public partial class MainWindow
             AddText($"{(gys[i + 1].Coord - gys[i].Coord) * 1000:0}", new Point(a.X - 2 * bub - 22, a.Y), GridBrush, 10, true);
         }
 
+        int dsC = planCanvas.Children.Count;
         // ---- dầm / kèo ----
         foreach (var f in PlanFrames().Where(q => !q.IsVerticalKind))
         {
@@ -221,8 +224,11 @@ public partial class MainWindow
             }
         }
 
+        int dsD = planCanvas.Children.Count;
         // ---- tường (MainWindow.Walls.cs) ----
         DrawWalls(labels);
+        DrawArchExtras(labels);   // [Bộ môn] phòng, đồ đạc, thiết bị điện nước – MainWindow.Disciplines.cs
+        int dsE = planCanvas.Children.Count;
 
         // ---- cột ----
         foreach (var f in PlanFrames().Where(q => q.IsVerticalKind))
@@ -243,6 +249,7 @@ public partial class MainWindow
             if (labels && VgColumnTags) AddText($"{f.Label}", new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 1), Brushes.Black, 9, false);
         }
 
+        ApplyDisciplineOpacity(dsA, dsB, dsC, dsD, dsE, planCanvas.Children.Count);
         // ---- gối ----
         if (CurrentStory == AllStories || _p.Stories.OrderBy(s => s.Elevation).FirstOrDefault()?.Name == CurrentStory)
             foreach (var n in _p.Nodes.Where(q => q.IsSupport))

@@ -13,6 +13,8 @@
 // Dữ liệu xuất (đơn vị m, độ): Levels, Grids (đường thẳng), Structural Columns (b, h lấy từ tham số
 // "b"/"h" của họ cột, nếu không có thì lấy theo hộp bao), Structural Framing (đường định vị, b/h),
 // Floors (chiều dày theo loại sàn, đường bao lấy từ mặt trên).
+// Schema 2.0 (ExportCommand.Arch.cs): Walls (lớp cấu tạo), Openings (cửa đi/cửa sổ + tường chủ), Rooms, Mep (ống, phụ kiện,
+// thiết bị vệ sinh, ống luồn, đèn, thiết bị điện). Id = UniqueId để "Cập nhật từ Revit".
 // Toạ độ là toạ độ nội bộ (internal origin) của Revit; Việt Const tự dời gốc về giao trục đầu tiên.
 // =====================================================================
 using System;
@@ -29,7 +31,7 @@ namespace KetCauVXT.RevitExport
 {
     [Transaction(TransactionMode.ReadOnly)]
     [Regeneration(RegenerationOption.Manual)]
-    public class ExportCommand : IExternalCommand
+    public partial class ExportCommand : IExternalCommand
     {
         /// <summary>1 ft (đơn vị nội bộ Revit) = 0.3048 m</summary>
         private const double Ft = 0.3048;
@@ -56,18 +58,24 @@ namespace KetCauVXT.RevitExport
                 var w = new JsonWriter();
                 w.BeginObject();
                 w.Prop("ProjectName", doc.Title);
-                w.Prop("SchemaVersion", "1.0");
+                w.Prop("SchemaVersion", "2.0");
                 int nl = WriteLevels(doc, w);
                 int ng = WriteGrids(doc, w);
                 int nc = WriteColumns(doc, w);
                 int nb = WriteBeams(doc, w);
                 int nf = WriteFloors(doc, w);
+                // [Bộ môn – ExportCommand.Arch.cs] kiến trúc + điện nước
+                int nw = WriteWalls(doc, w);
+                int no = WriteOpenings(doc, w);
+                int nr = WriteRooms(doc, w);
+                int nm = WriteMep(doc, w);
                 w.EndObject();
                 File.WriteAllText(path, w.ToString(), new UTF8Encoding(false));
 
                 var sb = new StringBuilder();
                 sb.AppendLine("Đã xuất: " + path);
                 sb.AppendLine($"Cao độ: {nl}, trục: {ng}, cột: {nc}, dầm: {nb}, sàn: {nf}");
+                sb.AppendLine($"Tường: {nw}, cửa: {no}, phòng: {nr}, điện nước: {nm}");
                 if (_warnings.Count > 0)
                 {
                     sb.AppendLine();

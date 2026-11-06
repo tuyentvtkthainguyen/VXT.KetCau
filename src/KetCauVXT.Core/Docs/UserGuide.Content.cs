@@ -875,6 +875,26 @@ public static partial class UserGuide
                 "Giao diện kiểu Revit ẩn bảng thông tin dưới mặt bằng để vùng vẽ rộng tối đa (thông tin đối tượng xem ở khung Thuộc tính); đổi tầng thì mặt bằng tự **vừa màn hình**.",
                 "Link CAD: **khoá** bản vẽ nền (tab Link CAD → 🔒 Khoá) được lưu trong dự án cùng độ mờ, ẩn / hiện và vị trí căn – mở lại dự án vẫn giữ; bản vẽ đang khoá không căn 2 điểm được.");
 
+        c.Sec("mo-hinh.dien-nuoc", "Bộ môn Điện nước: thiết bị chôn ngầm trong tường, tuyến ống / dây, cảnh báo khi kiến trúc thay đổi")
+            .P("Menu **Thiết kế → Môi trường Điện nước** mở cửa sổ riêng của bộ môn điện nước. Phần kiến trúc (tường, cửa) hiện **mờ như bản vẽ tham chiếu (xref)** – không sửa được ở đây. "
+                + "Mặc định **mọi thiết bị, ống gen, khớp nối, điểm chia, đoạn đổi tiết diện của đường cấp thoát nước và dây điện đều chôn ngầm trong tường**: tuyến đi theo tim tường ở cao độ ngang chuẩn "
+                + "(ổ cắm / cấp nước 0,3 m trên sàn, chiếu sáng sát trần, thoát nước trong sàn), lên / xuống thiết bị trong tường.")
+            .Steps("**Đặt thiết bị**: tab *Cấp thoát nước* (bồn cầu, lavabo, sen tắm, vòi nước, thoát sàn, van, điểm nối ống, bình nóng lạnh) hoặc *Điện* (ổ cắm đơn / đôi, công tắc 1–3 hạt, đèn ốp trần / tuýp / downlight / hắt tường, quạt trần / treo tường, hộp chia, aptomat, tủ điện) "
+                + "→ bấm gần tường (≤ 1 m): thiết bị gắn vào **mặt tường phía bấm**, cao độ lắp mặc định theo họ (ổ cắm 0,4 m, công tắc 1,25 m, lavabo 0,8 m…; đèn, quạt trần đặt trên trần). Esc để thôi.",
+                "**Nối tuyến**: chọn hệ thống (cấp nước lạnh / nóng, thoát nước thải / xám / mưa, điện chiếu sáng / ổ cắm / điều hoà / điện nhẹ) → *Nối tuyến ống* hoặc *Nối dây (ống gen)* → bấm thiết bị nguồn rồi thiết bị đích. "
+                + "Tuyến tự đi trong các tường liền nhau (đường ngắn nhất), tự sinh **cút 90° / chếch 45°** tại chỗ đổi hướng, **măng sông / khớp nối ống gen** theo chiều dài cây ống (ống nước 4 m, ống gen 2,9 m), "
+                + "**tê / tê giảm** (điện: **hộp nối**) tại điểm có ≥ 3 tuyến, **côn thu** khi đổi tiết diện tại điểm nối ống.",
+                "**Tự chọn cỡ**: cấp nước theo đương lượng N (q = 0,2·α·√N + K·N, α = 2,15, K = 0,002 – TCVN 4513, ống PPR v ≤ 1,5 m/s); thoát nước theo tổng DFU (có bồn cầu → Ø110); "
+                + "dây điện I = P/(U·cosφ) → aptomat → dây Cu/PVC trong ống chôn tường (tối thiểu chiếu sáng 1,5 mm², ổ cắm 2,5 mm²) → ống gen sao cho dây chiếm ≤ 40 % tiết diện.",
+                "**Kiến trúc thay đổi**: khi tường dời, đổi dài / dày, bị xoá hoặc thêm cửa, lúc quay lại cửa sổ Điện nước (hoặc bấm *Kiểm tra → Cập nhật theo kiến trúc*) chương trình tự **dời thiết bị theo tường**, đi lại tuyến, tính lại phụ kiện "
+                + "và liệt kê **cảnh báo**: thiết bị nằm trong ô cửa, tường bị xoá (thiết bị mồ côi), tường quá mỏng không chôn được ống (Ø ngoài > ½ lõi + 1 lớp trát, vd ống Ø110 trong tường 110), "
+                + "thiết bị chồng nhau, tuyến xuyên cột / dầm (cần ống lồng). *Đi tới* phóng tới chỗ lỗi, *Sửa nhanh* dời thiết bị ra cạnh ô cửa / gắn vào tường gần nhất.",
+                "**Thống kê và bản vẽ**: *Kiểm tra → Bảng thống kê vật tư* (thiết bị, ống theo Ø – m, ống gen, dây theo tiết diện – m ruột, cáp, cút / chếch / tê / côn / măng sông / hộp nối); "
+                + "*Xuất bản vẽ điện nước (DXF)* ra các mặt bằng **cấp nước, thoát nước, điện chiếu sáng, điện ổ cắm** từng tầng (nền kiến trúc, ký hiệu thiết bị, nhãn tuyến, **bảng ký hiệu**) và bảng thống kê, số hiệu DN-01….")
+            .Bullets("Thư viện điện nước: *Thư viện MEP → Xem thư viện / Thêm họ thiết bị*. Họ thêm được lưu trong dự án và trong thư viện người dùng **chỉ trên máy này** (%AppData%\\VietConst\\ThuVienMEP.json).",
+                "Chọn thiết bị để sửa ký hiệu, cao độ, vị trí dọc tường, mạch điện, đổi mặt tường chôn; chọn tuyến để sửa cỡ hoặc bật / tắt *Tự chọn cỡ*. Delete xoá; mọi thao tác hoàn tác được (Ctrl+Z ở cửa sổ chính).",
+                "Thiết bị và tuyến điện nước có khối 3D (dùng cho khung nhìn 3D, IFC / OBJ và kiểm tra va chạm giữa các bộ môn).");
+
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")
             .Steps("Thanh sửa mặt bằng: nhập độ hạ ở ô **Hạ cốt (mm)** (vd. −50; gõ 50 cũng hiểu là hạ 50 mm).",

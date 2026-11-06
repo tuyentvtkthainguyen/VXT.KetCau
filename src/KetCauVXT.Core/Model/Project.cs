@@ -121,6 +121,8 @@ public partial class Project
     /// <summary>[Kiểu Revit – Model/WallAssembly.cs] Thư viện vật liệu tường (γ) và kiểu cửa gắn tường; file cũ không có → mặc định</summary>
     public List<WallMaterial> WallMaterials { get; set; } = KetCauVXT.Model.WallMaterials.Defaults();
     public List<OpeningType> OpeningTypes { get; set; } = OpeningType.Defaults();
+    /// <summary>[Bộ môn điện nước – Core/Mep] Thiết bị, tuyến ống / dây (mặc định chôn ngầm trong tường); file cũ không có → rỗng</summary>
+    public KetCauVXT.Mep.MepModel Mep { get; set; } = new();
     /// <summary>Thư viện cấu tạo sàn (lớp hoàn thiện + hoạt tải); Slab.BuildUp tham chiếu theo tên</summary>
     public List<FloorBuildUp> FloorBuildUps { get; set; } = FloorBuildUp.Defaults();
     public FoundationSettings Foundation { get; set; } = new();
@@ -161,6 +163,16 @@ public partial class Project
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public SlabDropSettings SlabDrop { get; set; }
     // ---- [hết Sàn hạ cốt] ----
+    // ---- [Bộ môn – Model/Disciplines.cs, Model/Levels.cs, Model/ArchModel.cs] ----
+    /// <summary>Bộ môn đang mở (môi trường làm việc); file cũ không có → Kết cấu.</summary>
+    public Discipline ActiveDiscipline { get; set; } = Discipline.KetCau;
+    /// <summary>Hiện / mờ các bộ môn tham chiếu.</summary>
+    public DisciplineSettings DisciplineDisplay { get; set; } = new();
+    /// <summary>Cao độ mặt nền tầng 1 (±0.000 thường = 0), m.</summary>
+    public double GroundElevation { get; set; }
+    /// <summary>Phần kiến trúc: phòng, sàn nền, trần, mái, đồ đạc (file cũ → rỗng).</summary>
+    public ArchModel Arch { get; set; } = new();
+    // ---- [hết Bộ môn] ----
 
     // ------------------------------------------------------------------
     // Truy vấn
