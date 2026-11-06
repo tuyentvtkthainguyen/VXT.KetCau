@@ -114,8 +114,7 @@ public partial class MainWindow
     {
         switch (e.Key)
         {
-            case Key.Enter:
-            case Key.Return:
+            case Key.Enter:   // Key.Return trùng giá trị Key.Enter
                 e.Handled = true;
                 ExecuteCommandLine(_cmdBox.Text);
                 break;
