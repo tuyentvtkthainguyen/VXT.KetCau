@@ -83,6 +83,60 @@ public static class MepRegistration
                 Origin = a, XDir = x, ZDir = z, Profile = Solid.Rect(-r, -r, r, r), Depth = L, Color = Rgb(s.Color), AllowSleeve = true
             };
         }
+        // ---- điều hoà – thông gió: ống gió (tiết diện thật), dàn lạnh / nóng, miệng gió, ống đồng / nước ngưng ----
+        var hv = m.Hvac;
+        if (hv == null) yield break;
+        foreach (var d in hv.Ducts)
+            for (int i = 1; i < d.Path.Count; i++)
+            {
+                var a = new Vec3(d.Path[i - 1].X, d.Path[i - 1].Y, d.Path[i - 1].Z); var c = new Vec3(d.Path[i].X, d.Path[i].Y, d.Path[i].Z);
+                var dir = c - a; double L = dir.Length;
+                if (L < 1e-6) continue;
+                var z = dir.Normalize();
+                var x = Math.Abs(z.Z) > 0.9 ? Vec3.UnitX : Vec3.UnitZ.Cross(z).Normalize();
+                double hw = d.Width / 2000, hh = d.Depth / 2000;
+                yield return new Solid
+                {
+                    Id = $"DN-GIO-{d.Id}-{i}", Name = "Ống gió " + d.SizeText, Discipline = Discipline.DienNuoc, Category = "Ống gió", IfcType = "IfcFlowSegment", Story = d.Story,
+                    Origin = a, XDir = x, ZDir = z, Profile = Solid.Rect(-hw, -hh, hw, hh), Depth = L, Color = Rgb(HvacSizing.SystemColor(d.System)), AllowSleeve = true
+                };
+            }
+        foreach (var u in hv.Units)
+        {
+            double a0 = u.Angle * Math.PI / 180, zc = HvacRouting.UnitZ(p, u);
+            yield return new Solid
+            {
+                Id = "DN-DH-" + u.Id, Name = u.Name, Discipline = Discipline.DienNuoc, Category = "Thiết bị điều hoà", IfcType = "IfcFlowTerminal", Story = u.Story,
+                Origin = new Vec3(u.X, u.Y, zc - u.Hh / 2), XDir = new Vec3(Math.Cos(a0), Math.Sin(a0), 0), ZDir = Vec3.UnitZ,
+                Profile = Solid.Rect(-u.W / 2, -u.D / 2, u.W / 2, u.D / 2), Depth = Math.Max(0.05, u.Hh), Color = Rgb(u.Kind == HvacUnitKind.DanLanh ? "#E0F7FA" : "#B0BEC5"), AllowSleeve = true
+            };
+        }
+        foreach (var t in hv.Terminals)
+        {
+            double zc = MepRouting.StoryElevation(p, t.Story) + t.Height;
+            yield return new Solid
+            {
+                Id = "DN-MG-" + t.Id, Name = t.Name, Discipline = Discipline.DienNuoc, Category = "Miệng gió", IfcType = "IfcFlowTerminal", Story = t.Story,
+                Origin = new Vec3(t.X, t.Y, zc), XDir = Vec3.UnitX, ZDir = Vec3.UnitZ,
+                Profile = Solid.Rect(-t.W / 2000, -t.H / 2000, t.W / 2000, t.H / 2000), Depth = 0.05, Color = Rgb(t.Supply ? "#90CAF9" : "#A5D6A7"), AllowSleeve = true
+            };
+        }
+        foreach (var q in hv.Pipes)
+            for (int i = 1; i < q.Path.Count; i++)
+            {
+                var a = new Vec3(q.Path[i - 1].X, q.Path[i - 1].Y, q.Path[i - 1].Z); var c = new Vec3(q.Path[i].X, q.Path[i].Y, q.Path[i].Z);
+                var dir = c - a; double L = dir.Length;
+                if (L < 1e-6) continue;
+                var z = dir.Normalize();
+                var x = Math.Abs(z.Z) > 0.9 ? Vec3.UnitX : Vec3.UnitZ.Cross(z).Normalize();
+                double r = (q.Kind == HvacPipeKind.OngDong ? q.GasDia + 20 : q.Dia) / 2000;
+                yield return new Solid
+                {
+                    Id = $"DN-DHO-{q.Id}-{i}", Name = (q.Kind == HvacPipeKind.OngDong ? "Ống đồng " : "Ống nước ngưng ") + q.SizeText, Discipline = Discipline.DienNuoc,
+                    Category = q.Kind == HvacPipeKind.OngDong ? "Ống đồng" : "Ống nước ngưng", IfcType = "IfcFlowSegment", Story = q.Story,
+                    Origin = a, XDir = x, ZDir = z, Profile = Solid.Rect(-r, -r, r, r), Depth = L, Color = Rgb(q.Kind == HvacPipeKind.OngDong ? "#B87333" : "#78909C"), AllowSleeve = true
+                };
+            }
     }
 
     private static string Slug(string s)

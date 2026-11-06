@@ -30,17 +30,33 @@ public static class MepDrainage
     public static double MinSlope(double dia) => dia <= 50 + 1e-9 ? 0.02 : dia < 110 - 1e-9 ? 0.015 : 0.01;
 
     /// <summary>Độ dốc dùng cho tuyến: nhập tay (Slope &gt; 0) hoặc mặc định theo Ø.</summary>
-    public static double SlopeOf(Project p, MepRun r) => r.Slope > 0 ? r.Slope : DefaultSlope(p.Mep.Settings, r.Size, r.System);
+    public static double SlopeOf(Project p, MepRun r) => r.Slope > 0 ? ClampRule(RuleFor(p.Mep.Settings, r.Size, r.System), r.Slope) : DefaultSlope(p.Mep.Settings, r.Size, r.System);
 
     /// <summary>Độ dốc mặc định theo hệ thống + Ø: luật riêng của hệ (MepSettings.SlopeRules – DiaMax nhỏ nhất còn ≥ Ø, 0 = mọi Ø) nếu có,
     /// không thì theo Ø (DefaultSlope).</summary>
     public static double DefaultSlope(MepSettings s, double dia, MepSystemKind system)
     {
-        var rule = (s.SlopeRules ?? new List<MepSlopeRule>())
-            .Where(q => q.System == system && q.Slope > 0 && (q.DiaMax <= 0 || dia <= q.DiaMax + 1e-9))
-            .OrderBy(q => q.DiaMax <= 0 ? double.MaxValue : q.DiaMax).FirstOrDefault();
-        return rule != null ? rule.Slope : DefaultSlope(s, dia);
+        var rule = RuleFor(s, dia, system);
+        return rule != null ? ClampRule(rule, rule.Slope) : DefaultSlope(s, dia);
     }
+
+    /// <summary>Luật độ dốc của hệ khớp Ø (DiaMin ≤ Ø ≤ DiaMax; DiaMax nhỏ nhất trước); null = không có.</summary>
+    public static MepSlopeRule RuleFor(MepSettings s, double dia, MepSystemKind system) =>
+        (s?.SlopeRules ?? new List<MepSlopeRule>())
+            .Where(q => q != null && q.System == system && q.Slope > 0 && (q.DiaMax <= 0 || dia <= q.DiaMax + 1e-9) && (q.DiaMin <= 0 || dia >= q.DiaMin - 1e-9))
+            .OrderBy(q => q.DiaMax <= 0 ? double.MaxValue : q.DiaMax).FirstOrDefault();
+
+    /// <summary>Kẹp độ dốc theo giới hạn min / max của luật (0 = bỏ qua).</summary>
+    public static double ClampRule(MepSlopeRule r, double i)
+    {
+        if (r == null) return i;
+        if (r.SlopeMin > 0 && i < r.SlopeMin) i = r.SlopeMin;
+        if (r.SlopeMax > 0 && i > r.SlopeMax) i = r.SlopeMax;
+        return i;
+    }
+
+    /// <summary>Khoảng cách quang treo theo cài đặt: HangerSpacing &gt; 0 thì dùng, không thì theo Ø.</summary>
+    public static double HangerSpacing(MepSettings s, double dia) => s != null && s.HangerSpacing > 0 ? s.HangerSpacing : HangerSpacing(dia);
 
     /// <summary>Khoảng cách quang treo ống ngang (m) theo Ø: ≤ 50: 0,8; ≤ 90: 1,0; ≥ 110: 1,2.</summary>
     public static double HangerSpacing(double dia) => dia <= 50 + 1e-9 ? 0.8 : dia < 110 - 1e-9 ? 1.0 : 1.2;
@@ -472,6 +488,6 @@ public static class MepDrainage
         if (ModeOf(p, r, (prof[0].X, prof[0].Y)) != DrainMode.DuoiSan) return 0;
         double Lh = prof[^1].S;
         if (Lh < 1e-6) return 0;
-        return (int)Math.Ceiling(Lh / HangerSpacing(r.Size) - 1e-9) + 1;
+        return (int)Math.Ceiling(Lh / HangerSpacing(p.Mep.Settings, r.Size) - 1e-9) + 1;
     }
 }

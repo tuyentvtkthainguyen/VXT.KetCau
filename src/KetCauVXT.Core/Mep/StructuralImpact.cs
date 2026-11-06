@@ -420,7 +420,7 @@ public static class StructuralImpact
                 list.Add(new StructuralImpactItem
                 {
                     Code = "TREO_ONG", Severity = ImpactSeverity.GoiY, Story = r.Story, X = q0.X, Y = q0.Y, Z = q0.Z, RunId = r.Id, Dia = dia,
-                    Message = $"Tuyến thoát {r.Id} Ø{dia:0} treo dưới sàn: {nh2} quang treo, khoảng cách ≤ {MepDrainage.HangerSpacing(r.Size):0.#} m",
+                    Message = $"Tuyến thoát {r.Id} Ø{dia:0} treo dưới sàn: {nh2} quang treo, khoảng cách ≤ {MepDrainage.HangerSpacing(p.Mep.Settings, r.Size):0.#} m",
                     Rule = "Ty ren + nở đóng vào đáy sàn; không khoan vào đáy dầm trong vùng 1/4 nhịp sát gối", Reference = RefSlab,
                     Proposal = "Bắt quang treo vào đáy sàn giữa ô sàn, tránh vùng thép chịu lực đáy dầm"
                 });

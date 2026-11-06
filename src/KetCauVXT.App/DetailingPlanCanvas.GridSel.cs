@@ -148,6 +148,19 @@ public sealed partial class DetailingPlanCanvas
             GridChanged("Đã thêm trục.");
         });
         cm.Items.Add(new Separator());
+        // bong bóng từng đầu + ẩn trục trên mặt bằng đang xem (StructuralPlan.GridStyles)
+        var gst = Plan.StyleOf(xDir, idx);
+        string sA = xDir ? "dưới" : "trái", sB = xDir ? "trên" : "phải";
+        Item("Bong bóng: cả hai đầu" + (gst.BubbleStart && gst.BubbleEnd ? " ✓" : ""), () => { _undo.Push(Plan); Plan.SetBubbles(xDir, idx, true, true); GridChanged("Trục " + name + ": bong bóng hai đầu."); });
+        Item("Bong bóng: chỉ đầu " + sA + (gst.BubbleStart && !gst.BubbleEnd ? " ✓" : ""), () => { _undo.Push(Plan); Plan.SetBubbles(xDir, idx, true, false); GridChanged("Trục " + name + ": bong bóng đầu " + sA + "."); });
+        Item("Bong bóng: chỉ đầu " + sB + (!gst.BubbleStart && gst.BubbleEnd ? " ✓" : ""), () => { _undo.Push(Plan); Plan.SetBubbles(xDir, idx, false, true); GridChanged("Trục " + name + ": bong bóng đầu " + sB + "."); });
+        Item("Không bong bóng" + (!gst.BubbleStart && !gst.BubbleEnd ? " ✓" : ""), () => { _undo.Push(Plan); Plan.SetBubbles(xDir, idx, false, false); GridChanged("Trục " + name + ": không bong bóng."); });
+        var lvG = Level;
+        if (lvG != null)
+            Item("Ẩn trục " + name + " trên mặt bằng " + lvG.Name, () => { _undo.Push(Plan); Plan.SetGridHidden(xDir, idx, lvG.Name, true); GridChanged("Đã ẩn trục " + name + " trên " + lvG.Name + "."); });
+        if ((Plan.GridStyles ?? new()).Any(q => q.HiddenLevels.Count > 0))
+            Item("Hiện lại mọi trục đã ẩn", () => { _undo.Push(Plan); int k = Plan.ShowAllGrids(); GridChanged("Đã hiện lại " + k + " trục ẩn."); });
+        cm.Items.Add(new Separator());
         Item("Xoá trục " + name, () =>
         {
             _undo.Push(Plan);

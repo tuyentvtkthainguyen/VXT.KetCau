@@ -584,8 +584,7 @@ public partial class MainWindow
         double? ModelZ(Point pt)
         {
             if (cur == null || curBounds.IsEmpty || img.ActualHeight < 1) return null;
-            double drawY = curBounds.Y + pt.Y / img.ActualHeight * curBounds.Height;    // mm giấy (trục y hướng xuống)
-            return (curY1 + (curH * curK - drawY) / curK) / 1000.0;                     // m cao độ
+            return LevelDragMath.ModelZFromView(pt.Y, img.ActualHeight, curBounds.Y, curBounds.Height, curY1, curH, curK);   // m cao độ
         }
         void Titles()
         {

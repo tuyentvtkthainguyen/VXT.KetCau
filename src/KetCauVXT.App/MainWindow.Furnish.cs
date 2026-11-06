@@ -31,6 +31,8 @@ public partial class MainWindow
     private bool _v3Drag, _v3Moved;
     private Ray3 _v3DragRay;
     private double _v3X0, _v3Y0, _v3Z;
+    /// <summary>Đang kéo thiết bị điện nước trong 3D (Id thiết bị; 0 = kéo đồ đạc).</summary>
+    private int _v3DragDev;
     private string _v3DragSnap;
     private Border _v3Bar;
 
@@ -296,6 +298,14 @@ public partial class MainWindow
         dock.Children.Add(bar); dock.Children.Add(host);
         w.Content = dock;
         SectionDrawing cur = null;
+        double curK = 1, curY1 = 0, curH = 0;
+        Rect curBounds = Rect.Empty;
+        Story dragLv = null; double dragZ = 0;   // kéo đường cao độ trên mặt cắt (bấm gần đường cao độ ≤ 0,3 m)
+        double? ModelZ(Point pt)
+        {
+            if (cur == null || curBounds.IsEmpty || img.ActualHeight < 1) return null;
+            return LevelDragMath.ModelZFromView(pt.Y, img.ActualHeight, curBounds.Y, curBounds.Height, curY1, curH, curK);
+        }
         void Show()
         {
             int i = Math.Max(0, cb.SelectedIndex);
@@ -307,6 +317,7 @@ public partial class MainWindow
             double k = 1.0 / Math.Max(fw.Scale, 1e-9);
             var d = SheetRender.Render(new[] { (fw, k, -e.X1 * k, -e.Y1 * k) }, 0, e.H * k, 0.1, x => x.GetPrimitives());
             img.Source = new DrawingImage(d);
+            curK = k; curY1 = e.Y1; curH = e.H; curBounds = d.Bounds;
             info.Text = $"{cur.Items.Count} cấu kiện bị cắt · {cur.Levels.Count} cao độ · {cur.Axes.Count} trục" + (cur.Foundations.Count > 0 ? $" · {cur.Foundations.Count} khối móng" : "");
         }
         cb.SelectionChanged += (s, e) => Show();
@@ -322,6 +333,36 @@ public partial class MainWindow
             catch (Exception ex) { MessageBox.Show(w, ex.Message, AppTitle); }
         };
         bNew.Click += (s, e) => { w.Close(); StartSectionTool(); };
+        // kéo đường cao độ trên mặt cắt (giống mặt đứng): bắt 10 mm, kẹp mỗi tầng ≥ 0,5 m, một bước hoàn tác
+        img.MouseLeftButtonDown += (s, e) =>
+        {
+            if (ModelZ(e.GetPosition(img)) is not double zz) return;
+            dragLv = LevelDragMath.NearestStory(_p, zz, 0.3);
+            if (dragLv != null) { dragZ = dragLv.Elevation; img.CaptureMouse(); info.Text = $"Kéo cao độ {dragLv.Name}: {dragZ:+0.000;-0.000} m – thả chuột để đặt."; }
+        };
+        img.MouseMove += (s, e) =>
+        {
+            if (dragLv == null || ModelZ(e.GetPosition(img)) is not double z) return;
+            dragZ = LevelDragMath.Clamp(_p, dragLv.Name, z);
+            info.Text = $"Kéo cao độ {dragLv.Name}: {dragZ:+0.000;-0.000} m – thả chuột để đặt.";
+        };
+        img.MouseLeftButtonUp += (s, e) =>
+        {
+            if (dragLv == null) return;
+            img.ReleaseMouseCapture();
+            var lv = dragLv; dragLv = null;
+            if (Math.Abs(dragZ - lv.Elevation) < 1e-6) { Show(); return; }
+            if (_busy) { SetStatus("Chương trình đang tính toán – chờ xong rồi sửa mô hình."); return; }
+            string snap = Snapshot();
+            double old = lv.Elevation;
+            try
+            {
+                double zNew = LevelDragMath.Drop(_p, lv.Name, dragZ);
+                AfterModelEdit($"Đã kéo cao độ {lv.Name} trên mặt cắt: {old:+0.000;-0.000} → {zNew:+0.000;-0.000} m.", snap);
+            }
+            catch (Exception ex) { MessageBox.Show(w, ex.Message, AppTitle); }
+            Show();
+        };
         w.Show();
         return w;
     }
@@ -454,11 +495,25 @@ public partial class MainWindow
     {
         if (!ReferenceEquals(sender, view3DHost) || _p == null) return false;
         var f = Sel3DFurniture();
-        if (f == null) return false;
+        var dev = f == null ? Sel3DDevice() : null;
+        if (f == null && dev == null) return false;
         var pt = e.GetPosition(viewport3D);
         var hit = Pick3D(viewport3D, pt, _pick3D) as Solid;
         if (hit == null || hit.Id != _v3SelId) return false;
         _v3Drag = true; _v3Moved = false;
+        if (dev != null)
+        {
+            // thiết bị điện nước: kéo trên mặt phẳng ngang qua tâm thiết bị – gắn tường thì trượt dọc tường chủ, tự do thì bắt bước 5 cm
+            var pos = KetCauVXT.Mep.MepRouting.DevicePos(_p, dev);
+            _v3DragDev = dev.Id;
+            _v3DragRay = CameraRayAt(pt);
+            _v3X0 = pos.X; _v3Y0 = pos.Y; _v3Z = pos.Z;
+            _v3DragSnap = Snapshot();
+            view3DHost.CaptureMouse();
+            e.Handled = true;
+            return true;
+        }
+        _v3DragDev = 0;
         _v3DragRay = CameraRayAt(pt);
         _v3X0 = f.X; _v3Y0 = f.Y; _v3Z = ModelSolids.StoryZ(_p, f.Story) + f.Elevation;
         _v3DragSnap = Snapshot();
@@ -470,6 +525,19 @@ public partial class MainWindow
     private bool View3DDragMove(MouseEventArgs e)
     {
         if (!_v3Drag) return false;
+        if (_v3DragDev > 0)
+        {
+            var dev = _p.Mep?.Devices.FirstOrDefault(d => d.Id == _v3DragDev);
+            if (dev == null) { _v3Drag = false; return false; }
+            var qd = Pick3DMath.Drag(_v3DragRay, CameraRayAt(e.GetPosition(viewport3D)), _v3Z, _v3X0, _v3Y0);
+            if (qd == null) return true;
+            if (!KetCauVXT.Mep.MepDeviceDragMath.Apply(_p, dev, qd.Value.X, qd.Value.Y, 0.05)) return true;
+            foreach (var run in _p.Mep.Runs.Where(x => x.FromId == dev.Id || x.ToId == dev.Id)) KetCauVXT.Mep.MepRouting.Route(_p, run);
+            _v3Moved = true;
+            Build3D();
+            SetStatus(dev.WallId > 0 ? $"Kéo {dev.Family} dọc tường {dev.WallId}: cách đầu tường {dev.Offset:0.00} m" : $"Kéo {dev.Family}: ({dev.X:0.00}; {dev.Y:0.00})");
+            return true;
+        }
         var f = Sel3DFurniture();
         if (f == null) { _v3Drag = false; return false; }
         var q = Pick3DMath.Drag(_v3DragRay, CameraRayAt(e.GetPosition(viewport3D)), _v3Z, _v3X0, _v3Y0);
@@ -488,6 +556,8 @@ public partial class MainWindow
         if (!_v3Drag) return false;
         _v3Drag = false;
         view3DHost.ReleaseMouseCapture();
+        if (_v3Moved && _v3DragDev > 0) { try { KetCauVXT.Mep.MepUpdater.Reconcile(_p); } catch (Exception) { } }
+        _v3DragDev = 0;
         if (_v3Moved && _v3DragSnap != null) { PushUndo(_v3DragSnap); MarkDirty(false); RedrawPlan(); }
         _v3DragSnap = null;
         return true;

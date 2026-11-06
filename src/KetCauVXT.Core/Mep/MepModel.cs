@@ -411,6 +411,19 @@ public class MepSlopeRule
     public double DiaMax { get; set; }
     /// <summary>Độ dốc (vd. 0,01 = 1 %)</summary>
     public double Slope { get; set; }
+    /// <summary>Áp dụng cho Ø ≥ DiaMin (mm); 0 = không giới hạn dưới</summary>
+    public double DiaMin { get; set; }
+    /// <summary>Độ dốc nhỏ nhất cho phép (kẹp cả độ dốc nhập tay theo hệ này); 0 = không kẹp</summary>
+    public double SlopeMin { get; set; }
+    /// <summary>Độ dốc lớn nhất cho phép; 0 = không kẹp</summary>
+    public double SlopeMax { get; set; }
+}
+
+/// <summary>Cao độ lắp đặt mặc định theo nhóm thiết bị (m so với sàn hoàn thiện) – ghi đè MountHeight của họ khi đặt mới.</summary>
+public class MepCategoryHeight
+{
+    public MepCategory Category { get; set; }
+    public double Height { get; set; }
 }
 
 /// <summary>Cài đặt đi tuyến.</summary>
@@ -449,6 +462,10 @@ public class MepSettings
     public double CeilingVoid { get; set; } = 0.6;
     /// <summary>Khoảng cách ống kiểm tra (nắp thăm) trên tuyến ngang dài (m)</summary>
     public double CleanoutSpacing { get; set; } = 12;
+    /// <summary>Khoảng cách quang treo ống ngang cố định (m); 0 = theo Ø (0,8 / 1,0 / 1,2 m)</summary>
+    public double HangerSpacing { get; set; }
+    /// <summary>Cao độ mặc định theo nhóm thiết bị (rỗng = theo họ)</summary>
+    public List<MepCategoryHeight> CategoryHeights { get; set; } = new();
 }
 
 /// <summary>Toàn bộ dữ liệu điện nước của dự án (Project.Mep).</summary>
@@ -462,6 +479,8 @@ public class MepModel
     public List<MepFamily> ProjectFamilies { get; set; } = new();
     /// <summary>Ảnh chụp tường lần cập nhật gần nhất</summary>
     public List<MepWallSnap> WallSnaps { get; set; } = new();
+    /// <summary>Điều hoà – thông gió (ống gió, miệng gió, dàn lạnh / dàn nóng, ống đồng, ống nước ngưng) – Mep/MepHvac.cs</summary>
+    public HvacModel Hvac { get; set; } = new();
 
     [JsonIgnore] public List<MepFitting> Fittings { get; set; } = new();
     [JsonIgnore] public List<MepWarning> Warnings { get; set; } = new();
@@ -492,7 +511,7 @@ public class MepModel
     public MepRun Run(int id) => Runs.FirstOrDefault(r => r.Id == id);
     public int NextDeviceId() => Devices.Count == 0 ? 1 : Devices.Max(d => d.Id) + 1;
     public int NextRunId() => Runs.Count == 0 ? 1 : Runs.Max(r => r.Id) + 1;
-    [JsonIgnore] public bool IsEmpty => Devices.Count == 0 && Runs.Count == 0;
+    [JsonIgnore] public bool IsEmpty => Devices.Count == 0 && Runs.Count == 0 && (Hvac == null || Hvac.IsEmpty);
 }
 
 /// <summary>Tiện ích hình học.</summary>

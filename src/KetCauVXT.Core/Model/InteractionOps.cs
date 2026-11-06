@@ -137,6 +137,35 @@ public static class GridDragMath
         return best;
     }
 
+    /// <summary>Nắm trục ở GIỮA đường trục (không chỉ bong bóng): điểm (x, y) cách đường trục ≤ tol và nằm trong đoạn trục vẽ
+    /// [min trục vuông góc − ext; max + ext]. anywhere = false: chỉ nhận phần "đuôi" trục ngoài khung lưới (không lẫn với cấu kiện bên trong);
+    /// anywhere = true (giữ Alt): nhận cả đoạn trong khung lưới. Trục ẩn ở tầng story bỏ qua.</summary>
+    public static GridLine HitGridLine(Project p, string story, double x, double y, double tol, double ext = 1.2, bool anywhere = false)
+    {
+        var gxs = p.GridsX.Where(g => GridDisplay.Visible(g, story)).ToList();
+        var gys = p.GridsY.Where(g => GridDisplay.Visible(g, story)).ToList();
+        double yMin = gys.Count > 0 ? gys.Min(g => g.Coord) : 0, yMax = gys.Count > 0 ? gys.Max(g => g.Coord) : 10;
+        double xMin = gxs.Count > 0 ? gxs.Min(g => g.Coord) : 0, xMax = gxs.Count > 0 ? gxs.Max(g => g.Coord) : 10;
+        GridLine best = null; double bd = tol;
+        foreach (var g in gxs)
+        {
+            double d = Math.Abs(x - g.Coord);
+            if (d > bd || y < yMin - ext - 1e-9 || y > yMax + ext + 1e-9) continue;
+            bool tail = y < yMin - 1e-9 || y > yMax + 1e-9;
+            if (!anywhere && !tail) continue;
+            bd = d; best = g;
+        }
+        foreach (var g in gys)
+        {
+            double d = Math.Abs(y - g.Coord);
+            if (d > bd || x < xMin - ext - 1e-9 || x > xMax + ext + 1e-9) continue;
+            bool tail = x < xMin - 1e-9 || x > xMax + 1e-9;
+            if (!anywhere && !tail) continue;
+            bd = d; best = g;
+        }
+        return best;
+    }
+
     /// <summary>Kết thúc kéo: bắt 10 mm rồi dời trục (GridOps.MoveGrid). Trả (toạ độ mới, số đối tượng dời theo).</summary>
     public static (double Coord, int Moved) Drop(Project p, GridLine g, double rawCoord, bool dragMembers, double step = 0.01)
     {
@@ -170,6 +199,22 @@ public static class LevelDragMath
         if (v < lo) v = GridDragMath.Snap(Math.Ceiling(lo / Math.Max(step, 1e-9) - 1e-6) * step, step);
         if (v > hi) v = GridDragMath.Snap(Math.Floor(hi / Math.Max(step, 1e-9) + 1e-6) * step, step);
         return v;
+    }
+
+    /// <summary>Đổi vị trí con trỏ trên ảnh khung nhìn (mặt đứng / mặt cắt vẽ ở toạ độ mm, y = z·1000) ra cao độ mô hình (m).
+    /// ptY, imgH: px trên ảnh; boundsY, boundsH: khung bản vẽ đã kết xuất (mm giấy, y hướng xuống);
+    /// extY1, extH: phạm vi bản vẽ gốc (mm mô hình); k = 1 / tỷ lệ.</summary>
+    public static double ModelZFromView(double ptY, double imgH, double boundsY, double boundsH, double extY1, double extH, double k)
+    {
+        double drawY = boundsY + ptY / Math.Max(imgH, 1e-9) * boundsH;
+        return (extY1 + (extH * k - drawY) / Math.Max(k, 1e-12)) / 1000.0;
+    }
+
+    /// <summary>Ngược lại: cao độ z (m) → toạ độ px trên ảnh.</summary>
+    public static double ViewYFromModelZ(double z, double imgH, double boundsY, double boundsH, double extY1, double extH, double k)
+    {
+        double drawY = extH * k - (z * 1000.0 - extY1) * k;
+        return (drawY - boundsY) / Math.Max(boundsH, 1e-12) * imgH;
     }
 
     /// <summary>Thả đường cao độ: đặt cao độ mới (đã bắt / kẹp). Trả cao độ đã đặt.</summary>

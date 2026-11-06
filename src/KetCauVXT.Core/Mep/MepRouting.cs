@@ -134,8 +134,13 @@ public static class MepRouting
         return PlaceFree(p, family, story, x, y);
     }
 
-    public static double DefaultHeight(Project p, MepFamily fam, string story) =>
-        fam.Ceiling ? Math.Max(0.1, StoryHeight(p, story, p.Mep.Settings) - 0.1) : fam.MountHeight;
+    public static double DefaultHeight(Project p, MepFamily fam, string story)
+    {
+        // cao độ theo nhóm trong "Cài đặt điện nước" (ghi đè họ; thiết bị trần vẫn theo trần)
+        var ch = p.Mep?.Settings?.CategoryHeights?.FirstOrDefault(c => c != null && c.Category == fam.Category);
+        if (ch != null && !fam.Ceiling) return ch.Height;
+        return fam.Ceiling ? Math.Max(0.1, StoryHeight(p, story, p.Mep.Settings) - 0.1) : fam.MountHeight;
+    }
 
     /// <summary>Thêm tuyến nối 2 thiết bị và đi tuyến ngay.</summary>
     public static MepRun Connect(Project p, int fromId, int toId, MepSystemKind sys, double size = 0, MepRunKind? kind = null)

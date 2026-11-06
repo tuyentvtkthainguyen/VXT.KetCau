@@ -127,18 +127,27 @@ public static class StructuralPlanDrawing
 
         // lưới trục + đầu trục 2 phía
         double R = w.BubbleR;
+        // kiểu trục: bong bóng từng đầu, ẩn trục trên mặt bằng này (StructuralPlan.GridStyles)
+        string lvName = lv?.Name;
         for (int i = 0; i < xs.Count; i++)
         {
+            if (!plan.GridVisible(true, i, lvName)) continue;
+            var gs = plan.StyleOf(true, i);
             w.Line(Lay.Truc, xs[i], gy0, xs[i], gy1, "CENTER");
-            w.GridBubble(xs[i], gy0 - R, StructuralPlan.NameX(i));
-            w.GridBubble(xs[i], gy1 + R, StructuralPlan.NameX(i));
+            if (gs.BubbleStart) w.GridBubble(xs[i], gy0 - R, StructuralPlan.NameX(i));
+            if (gs.BubbleEnd) w.GridBubble(xs[i], gy1 + R, StructuralPlan.NameX(i));
         }
         for (int j = 0; j < ys.Count; j++)
         {
+            if (!plan.GridVisible(false, j, lvName)) continue;
+            var gs = plan.StyleOf(false, j);
             w.Line(Lay.Truc, gx0, ys[j], gx1, ys[j], "CENTER");
-            w.GridBubble(gx0 - R, ys[j], StructuralPlan.NameY(j));
-            w.GridBubble(gx1 + R, ys[j], StructuralPlan.NameY(j));
+            if (gs.BubbleStart) w.GridBubble(gx0 - R, ys[j], StructuralPlan.NameY(j));
+            if (gs.BubbleEnd) w.GridBubble(gx1 + R, ys[j], StructuralPlan.NameY(j));
         }
+        // chuỗi kích thước chỉ qua các trục hiện
+        xs = xs.Where((_, gi) => plan.GridVisible(true, gi, lvName)).ToList();
+        ys = ys.Where((_, gj) => plan.GridVisible(false, gj, lvName)).ToList();
 
         // cấu kiện: móng / sàn / ô văng / cầu thang trước (nằm dưới), dầm, lanh tô, cột sau cùng
         int Order(PlanItem it) => it.Kind switch { PlanKinds.Footing => 0, PlanKinds.Slab => 1, PlanKinds.Stair => 2, PlanKinds.Canopy => 3, PlanKinds.Beam => 4, PlanKinds.Lintel => 5, _ => 6 };

@@ -110,6 +110,7 @@ public static class MepUpdater
         res.Warnings.AddRange(CheckOverlaps(p));
         res.Warnings.AddRange(CheckStructure(p));
         res.Warnings.AddRange(MepDrainage.Check(p));
+        try { res.Warnings.AddRange(HvacClashCheck.Warnings(p)); } catch (Exception) { }
 
         // 4. ảnh chụp mới
         var used = m.Devices.Where(d => d.WallId > 0).Select(d => d.WallId).Concat(m.Runs.SelectMany(r => r.Path.Select(q => q.WallId))).Where(id => id > 0).ToHashSet();

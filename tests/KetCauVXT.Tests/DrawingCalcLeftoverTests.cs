@@ -247,7 +247,8 @@ public static class DrawingCalcLeftoverTests
             check("Revit MEP: đầu ống trùng nhau dùng chung điểm nối → 5 điểm nối", mm.Devices.Count(d => d.Family == MepRevitImport.NodeFamily), 5, 0);
             check("Revit MEP: tổng 7 thiết bị", mm.Devices.Count, 7, 0);
             check("Revit MEP: phụ kiện ống bỏ qua (tự sinh)", last.Skipped, 1, 0);
-            check("Revit MEP: ống gió → khối chung bộ môn điện nước", pm.Arch.Furniture.Count(f => f.Discipline == Discipline.DienNuoc && f.ExternalId == "m7"), 1, 0);
+            // ống gió nay thành đối tượng điều hoà – thông gió (Mep/MepHvac.cs) thay cho khối chung
+            check("Revit MEP: ống gió → ống gió ĐHKK (không còn khối chung)", (mm.Hvac?.Ducts.Count(d => d.ExternalId == "m7") ?? 0) * 10 + pm.Arch.Furniture.Count(f => f.Discipline == Discipline.DienNuoc && f.ExternalId == "m7"), 10, 0);
             check("Revit MEP: không còn khối chung cho ống / thiết bị đã nhận", pm.Arch.Furniture.Count(f => f.Discipline == Discipline.DienNuoc && f.ExternalId != "m7"), 0, 0);
             var lavD = mm.Devices.FirstOrDefault(d => d.ExternalId == "m2");
             check("Revit MEP: lavabo → họ \"Lavabo\"", B(lavD?.Family == "Lavabo"), 1, 0);

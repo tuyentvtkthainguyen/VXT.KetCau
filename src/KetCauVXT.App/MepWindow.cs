@@ -152,6 +152,9 @@ public sealed partial class MepWindow : Window
         elec.Children.Add(erow);
         tabs.Items.Add(new TabItem { Header = "Điện", Content = new ScrollViewer { Content = elec, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
 
+        // Điều hoà – thông gió (MepWindow.Hvac.cs)
+        tabs.Items.Add(new TabItem { Header = "Điều hoà – thông gió", Content = new ScrollViewer { Content = BuildHvacRibbon(), VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
+
         // Thư viện
         var libp = new WrapPanel();
         libp.Children.Add(Btn("Xem thư viện…", ShowLibrary));
@@ -165,6 +168,7 @@ public sealed partial class MepWindow : Window
         chk.Children.Add(Btn("Bảng thống kê vật tư", ShowQuantities));
         chk.Children.Add(Btn("Xuất bản vẽ điện nước (DXF)…", ExportDxf));
         chk.Children.Add(Btn("Vừa màn hình", () => { Fit(); Redraw(); }));
+        chk.Children.Add(Btn("Cài đặt điện nước…", ShowSettings, "Độ dốc theo hệ / Ø, cao độ mặc định theo nhóm thiết bị, chiều dài cây ống, trần giả, nắp thăm, quang treo (MepWindow.Settings.cs)"));
         tabs.Items.Add(new TabItem { Header = "Kiểm tra", Content = chk });
         return tabs;
     }
@@ -278,6 +282,7 @@ public sealed partial class MepWindow : Window
         if (e.ChangedButton == MouseButton.Right) { SetTool("select"); return; }
         if (e.ChangedButton != MouseButton.Left) return;
         var (x, y) = W(pt);
+        if (_tool.StartsWith("hvac", StringComparison.Ordinal)) { HvacClick(x, y); return; }   // MepWindow.Hvac.cs
         switch (_tool)
         {
             case "place":
@@ -421,6 +426,7 @@ public sealed partial class MepWindow : Window
             Canvas.SetLeft(tb, s.X - 16); Canvas.SetTop(tb, s.Y + 2); _cv.Children.Add(tb);
         }
         DrawDeviceDims();   // [Kiểu Revit] kích thước tạm thiết bị gắn tường – MepWindow.Snap.cs
+        DrawHvac();         // điều hoà – thông gió – MepWindow.Hvac.cs
     }
 
     // ------------------------------------------------------------------

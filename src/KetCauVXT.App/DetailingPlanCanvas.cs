@@ -433,17 +433,22 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         double ex = 1.0;
         double gx0 = (xs.Length > 0 ? xs[0] : 0) - ex, gx1 = (xs.Length > 0 ? xs[^1] : 0) + ex, gy0 = (ys.Length > 0 ? ys[0] : 0) - ex, gy1 = (ys.Length > 0 ? ys[^1] : 0) + ex;
         var gridBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x30, 0x30));
+        string lvGrid = Level?.Name;   // kiểu trục: bong bóng từng đầu, ẩn trục trên mặt bằng đang xem
         for (int i = 0; i < xs.Length; i++)
         {
+            if (!Plan.GridVisible(true, i, lvGrid)) continue;
+            var gs = Plan.StyleOf(true, i);
             Line(xs[i], gy0, xs[i], gy1, gridBrush, 0.8, true);
-            Bubble(xs[i], gy0, StructuralPlan.NameX(i), 0, -1);
-            Bubble(xs[i], gy1, StructuralPlan.NameX(i), 0, 1);
+            if (gs.BubbleStart) Bubble(xs[i], gy0, StructuralPlan.NameX(i), 0, -1);
+            if (gs.BubbleEnd) Bubble(xs[i], gy1, StructuralPlan.NameX(i), 0, 1);
         }
         for (int j = 0; j < ys.Length; j++)
         {
+            if (!Plan.GridVisible(false, j, lvGrid)) continue;
+            var gs = Plan.StyleOf(false, j);
             Line(gx0, ys[j], gx1, ys[j], gridBrush, 0.8, true);
-            Bubble(gx0, ys[j], StructuralPlan.NameY(j), -1, 0);
-            Bubble(gx1, ys[j], StructuralPlan.NameY(j), 1, 0);
+            if (gs.BubbleStart) Bubble(gx0, ys[j], StructuralPlan.NameY(j), -1, 0);
+            if (gs.BubbleEnd) Bubble(gx1, ys[j], StructuralPlan.NameY(j), 1, 0);
         }
         var lv = Level;
         DrawUnderlay(lv);

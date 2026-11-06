@@ -1007,6 +1007,28 @@ public static partial class UserGuide
                 "Mặt cắt 1-1 / 2-2 tự chọn nhịp **cắt được nhiều sàn nhất** (tránh ô cầu thang); mức sàn không có sàn trên đường cắt ghi chú \"ô cầu thang / lỗ sàn\"; phần tử **nhìn thấy phía sau** mặt cắt (tới trục kế tiếp, ≤ 6 m) vẽ nét mảnh.",
                 "Giao diện kiểu Revit: chọn **tường** → kích thước tạm tới tường / trục song song hai bên (bấm số → dời tường song song); chọn **cột** → khoảng cách tâm cột tới trục gần nhất (bấm số → đổi lệch tâm cột).");
 
+        c.Sec("mo-hinh.dhkk", "Điều hoà – thông gió, cài đặt điện nước, kéo cao độ trên mặt cắt, kiểu trục mặt bằng kết cấu")
+            .P("Cửa sổ Môi trường Điện nước có thêm tab **Điều hoà – thông gió** và nút **Cài đặt điện nước…** (tab Kiểm tra). Mọi thay đổi là một bước hoàn tác (Ctrl+Z ở cửa sổ chính).")
+            .Bullets("**Điều hoà – thông gió (ĐHKK)**:",
+                "Đặt **dàn lạnh / dàn nóng** (nhập công suất BTU/h), **miệng gió cấp / hồi** (sát trần).",
+                "**Vẽ ống gió**: chọn hệ (gió cấp / hồi / thải / tươi), nhập lưu lượng Q (m³/h), bấm điểm đầu – điểm cuối (vẽ nối tiếp được). Ống đi trực giao sát đáy sàn trên (khe 0,1 m). Cỡ ống tự chọn: **A = Q / (3600·v)**; ống tròn lấy Ø chuẩn ≥ √(4A/π), ống chữ nhật lấy chiều cao chuẩn nhỏ nhất sao cho w/h ≤ 4, w làm tròn bội 50 mm.",
+                "Phụ kiện ống gió tự sinh: **cút** ở điểm đổi hướng, **tê** khi đầu ống chạm thân ống khác, **côn** khi hai ống nối đầu khác tiết diện.",
+                "**Ống đồng gas**: bấm dàn lạnh rồi dàn nóng – cặp ống lỏng / gas theo công suất dàn lạnh (≤ 12000 BTU: Ø6,35/Ø9,52; 18000: Ø6,35/Ø12,7; 24000: Ø6,35/Ø15,88; tới 48000: Ø9,52/Ø15,88).",
+                "**Ống nước ngưng**: bấm dàn lạnh rồi điểm xả – uPVC, cao độ giảm theo độ dốc cài đặt (tối thiểu **1 %**).",
+                "**Va chạm ống gió – dầm**: ống có đỉnh cao hơn đáy dầm tại chỗ cắt qua dầm được cảnh báo (mã VA_CHAM_ONG_GIO) kèm đề xuất hạ ống / dùng ống dẹt – không khoét dầm.",
+                "Bảng vật tư điện nước thêm: **tôn mạ kẽm (m²) = chu vi × chiều dài** (độ dày 0,5 / 0,75 / 1,0 / 1,2 mm theo cạnh lớn), ống gió theo cỡ (m), bảo ôn, giá treo, phụ kiện ống gió, **cặp ống đồng (m)** và bảo ôn, ống nước ngưng (m), dàn lạnh / nóng, miệng gió.",
+                "Bộ bản vẽ điện nước thêm **MẶT BẰNG ĐIỀU HOÀ – THÔNG GIÓ** từng tầng: ống gió 2 nét + tim và nhãn cỡ – lưu lượng, ký hiệu miệng gió (MGC / MGH), dàn lạnh (DL), dàn nóng (DN), ống gas (G), ống nước ngưng (N, ghi i%), bảng ký hiệu. Khung nhìn 3D / IFC có khối ống gió đúng tiết diện, dàn lạnh / nóng, miệng gió, ống đồng.",
+                "Nhập Revit (đối tượng điện nước): **ống gió** (Duct) thành ống gió ĐHKK giữ tiết diện chữ nhật / tròn và hệ cấp / hồi / thải theo tên hệ; **miệng gió** (Air Terminal); thiết bị cơ (Mechanical Equipment) có tên dàn lạnh / indoor / FCU / cassette hoặc dàn nóng / outdoor thành dàn lạnh / nóng (đọc công suất \"… BTU\" trong tên). Phụ kiện ống gió bỏ qua (tự sinh).")
+            .Bullets("**Cài đặt điện nước…**:",
+                "Thông số chung: cao độ tuyến chôn tường, tuyến chiếu sáng cách trần, chiều dài cây ống / ống gen, chiều cao tầng mặc định, độ dốc mặc định theo Ø, không gian trần, khoảng cách nắp thăm, **khoảng cách quang treo** (0 = theo Ø), thông số ĐHKK (vận tốc ống chính / nhánh, tỷ lệ cạnh, khe trần, giá treo ống gió, độ dốc và Ø ống nước ngưng).",
+                "Bảng **độ dốc theo hệ thống + dải Ø**: hệ thống, Ø từ – Ø đến (0 = mọi Ø), độ dốc %, **Min / Max %** (kẹp cả độ dốc nhập tay của tuyến thuộc hệ đó). Áp dụng xong mọi tuyến được đi lại – cao độ đáy ống theo độ dốc mới.",
+                "Bảng **cao độ mặc định theo nhóm thiết bị** (ổ cắm, công tắc…): dùng khi đặt thiết bị mới thay cho cao độ của họ; thiết bị trên trần vẫn theo trần.")
+            .Bullets("**Thao tác kiểu Revit bổ sung**:",
+                "Khung **mặt cắt** (xem mặt cắt): bấm giữ chuột trái gần một đường cao độ tầng rồi kéo để đổi cao độ tầng (bắt 10 mm, không vượt quá tầng kề ±0,5 m) – giống kéo trên mặt đứng; cột, dầm, sàn dời theo.",
+                "Mặt bằng (chế độ Thiết kế): nắm trục ở **phần đuôi đường trục** ngoài khung lưới (không chỉ ở bong bóng) để kéo; giữ **Alt** để nắm cả đoạn trục bên trong khung lưới.",
+                "Mặt bằng kết cấu (Triển khai hồ sơ): chuột phải lên đường trục → bong bóng **cả hai đầu / chỉ đầu dưới–trái / chỉ đầu trên–phải / không**, **ẩn trục trên mặt bằng này**, **hiện lại mọi trục đã ẩn**. Kiểu trục đi theo tên trục khi thêm / xoá / dời trục và áp dụng cả trên bản vẽ DXF (chuỗi kích thước bỏ trục ẩn).",
+                "Khung **3D**: chọn thiết bị điện nước rồi **kéo** – thiết bị gắn tường trượt dọc tường chủ, thiết bị tự do dời trên mặt sàn; bắt bước 5 cm, tuyến nối với thiết bị đi lại ngay, thả chuột là một bước hoàn tác.");
+
         c.Sec("mo-hinh.choc-thung-nho-coc", "Chọc thủng đài cọc, cắt mép móng, cọc chịu nhổ, phản lực dầm móng")
             .P("Các kiểm tra móng theo **TCVN 5574:2018** (chọc thủng mục 8.1.6, cắt tiết diện nghiêng mục 8.1.3.3, neo thép mục 10.3.5) và **TCVN 10304:2014** (cọc), dùng chung cho chế độ Thiết kế và Triển khai hồ sơ.")
             .Bullets("**Đài cọc**:",
@@ -1352,9 +1374,9 @@ public static partial class UserGuide
                 "Lớp hoàn thiện sàn vẽ **theo từng phòng** trên đường cắt: WC / vệ sinh / tắm có chống thấm + vữa + gạch men; phòng lát đá, sàn gỗ, phòng thường theo tên phòng / ô *Hoàn thiện sàn*. Ngoài phạm vi phòng không vẽ lớp hoàn thiện.")
             .Bullets("**Điện nước**:",
                 "Bộ bản vẽ điện nước có thêm **mặt cắt dọc tuyến thoát** cho mỗi chuỗi ống thoát (tỉ lệ ngang 1/50, đứng 1/10): đáy sàn, đường đáy / đỉnh ống, nhãn Ø – i – L từng đoạn, phụ kiện, bảng khoảng cách – cao độ đáy ống – độ dốc. Chênh cao đáy ống mỗi đoạn = L·i.",
-                "**Độ dốc riêng theo hệ thống**: cài đặt điện nước → danh sách luật (hệ thống, Ø tối đa, độ dốc); ví dụ thoát nước mưa 1 % mọi Ø. Thứ tự ưu tiên: độ dốc nhập tay của tuyến → luật hệ thống → mặc định theo Ø.",
+                "**Độ dốc riêng theo hệ thống**: **Cài đặt điện nước…** → bảng luật (hệ thống, Ø từ – đến, độ dốc, min / max); ví dụ thoát nước mưa 1 % mọi Ø. Thứ tự ưu tiên: độ dốc nhập tay của tuyến → luật hệ thống → mặc định theo Ø.",
                 "Xuất khối lượng Excel có thêm sheet **Vật tư điện nước** (thiết bị, ống theo Ø, ống gen, dây, cáp, phụ kiện, quang treo) và bảng độ dốc từng tuyến thoát.",
-                "Nhập Revit: bật *Nhập ống / thiết bị Revit thành đối tượng điện nước* để thiết bị vệ sinh, ổ cắm, công tắc, đèn, quạt… được đặt theo họ trong thư viện điện nước (so tên họ Revit), ống / ống luồn dây thành tuyến giữ đúng hình học Revit, đầu ống trùng nhau nối chung một điểm. Phụ kiện ống bỏ qua (chương trình tự sinh); ống gió và phần tử không nhận ra vẫn nhập dạng khối chung. Cập nhật từ Revit xoá / thêm theo UniqueId.");
+                "Nhập Revit: bật *Nhập ống / thiết bị Revit thành đối tượng điện nước* để thiết bị vệ sinh, ổ cắm, công tắc, đèn, quạt… được đặt theo họ trong thư viện điện nước (so tên họ Revit), ống / ống luồn dây thành tuyến giữ đúng hình học Revit, đầu ống trùng nhau nối chung một điểm. Phụ kiện ống bỏ qua (chương trình tự sinh); ống gió / miệng gió / dàn lạnh – dàn nóng thành đối tượng điều hoà – thông gió; khay cáp và phần tử không nhận ra vẫn nhập dạng khối chung. Cập nhật từ Revit xoá / thêm theo UniqueId.");
 
         c.Sec("thiet-ke.cau-thang", "Cầu thang")
             .P("Tab Thiết kế → **Cầu thang**: mỗi bộ phận một dòng (bản thang, chiếu nghỉ, dầm cốn, dầm chiếu nghỉ). Bản vẽ KC-08.n: mặt bằng, mặt cắt, bố trí thép, thống kê thép. Khai báo: {s:mo-hinh.cau-thang}.");

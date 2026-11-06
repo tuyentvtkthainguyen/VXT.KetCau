@@ -213,6 +213,8 @@ public static class MepDrawings
             }
         // mặt cắt dọc tuyến thoát (cao độ đáy ống, độ dốc i, phụ kiện) – Mep/MepLongSection.cs
         try { figs.AddRange(MepLongSection.Figures(p)); } catch (Exception) { }
+        // mặt bằng điều hoà – thông gió (Mep/MepHvac.cs)
+        try { figs.AddRange(HvacDrawings.Figures(p)); } catch (Exception) { }
         var sch = MepQuantities.ScheduleFigure(p);
         if (sch != null) figs.Add(sch);
         return figs;

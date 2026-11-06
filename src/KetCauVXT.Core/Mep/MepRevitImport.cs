@@ -6,7 +6,7 @@ namespace KetCauVXT.Mep;
 /// <summary>Nhập ống / thiết bị điện nước từ Revit (RevitArchImport.MepHandler, bật bằng RevitArchImport.UseMepHandler) thành
 /// ĐỐI TƯỢNG ĐIỆN NƯỚC: thiết bị đặt theo họ trong thư viện MEP (so tên họ Revit với từ khoá), ống / ống luồn dây thành tuyến
 /// giữ nguyên hình học gốc (FixedPath) nối giữa các "Điểm nối ống" ở hai đầu (đầu trùng nhau ≤ 1 cm dùng chung một điểm).
-/// Phần tử không nhận ra (ống gió, khay cáp, loại lạ) → khối chung bộ môn Điện nước như cách nhập cũ. Phụ kiện ống (PipeFitting)
+/// Ống gió / miệng gió / dàn lạnh – dàn nóng → đối tượng điều hoà – thông gió (HvacRevitImport). Phần tử không nhận ra (khay cáp, loại lạ) → khối chung bộ môn Điện nước như cách nhập cũ. Phụ kiện ống (PipeFitting)
 /// bỏ qua vì chương trình tự sinh cút / tê theo tuyến.</summary>
 public static class MepRevitImport
 {
@@ -17,6 +17,8 @@ public static class MepRevitImport
 
     /// <summary>Kết quả nhập (đếm) – lần gọi gần nhất.</summary>
     public static (int Devices, int Runs, int Generic, int Skipped) Last { get; private set; }
+    /// <summary>Số phần tử ĐHKK (ống gió, miệng gió, dàn lạnh / nóng) lần nhập gần nhất.</summary>
+    public static int LastHvac { get; private set; }
 
     /// <summary>Gọi từ RevitArchImport.Build / Update. ox, oy: gốc toạ độ đã dời.</summary>
     public static void Handle(Project p, List<RvMep> items, ImportReport rep, double ox, double oy)
@@ -28,8 +30,9 @@ public static class MepRevitImport
         var ids = items.Where(i => i != null && !string.IsNullOrEmpty(i.Id)).Select(i => i.Id).ToHashSet();
         m.Runs.RemoveAll(r => r.ExternalId != null && ids.Contains(r.ExternalId));
         m.Devices.RemoveAll(d => d.ExternalId != null && ids.Contains(d.ExternalId));
+        HvacRevitImport.RemoveImported(p, ids);
 
-        int nd = 0, nr = 0, ns = 0;
+        int nd = 0, nr = 0, ns = 0, nh = 0;
         var generic = new List<RvMep>();
         foreach (var it in items.Where(i => i != null))
         {
@@ -37,6 +40,8 @@ public static class MepRevitImport
             // phần tử dạng đoạn: có đường kính và hai đầu khác nhau (thiết bị Revit chỉ có điểm X1,Y1,Z1 – X2..Z2 = 0, Diameter = 0;
             // cùng quy ước với RevitArchImport.AddMepBoxes)
             bool linear = it.Diameter > 0 && Math.Abs(it.X2 - it.X1) + Math.Abs(it.Y2 - it.Y1) + Math.Abs(it.Z2 - it.Z1) > 1e-6;
+            // điều hoà – thông gió: ống gió, miệng gió, dàn lạnh / dàn nóng → đối tượng ĐHKK (Mep/MepHvac.cs)
+            if (HvacRevitImport.TryAdd(p, it, ox, oy)) { nh++; continue; }
             if (cat.Contains("fitting") || (cat.Contains("accessory") && cat.Contains("pipe"))) { ns++; continue; }
             if ((cat == "pipe" || cat == "pipes" || cat.Contains("pipecurve") || cat.Contains("flexpipe")) && linear)
             {
@@ -53,8 +58,10 @@ public static class MepRevitImport
         }
         int ng = generic.Count > 0 ? RevitArchImport.AddMepBoxes(p, generic, new Dictionary<string, double>(), ox, oy) : 0;
         try { MepRouting.RebuildAll(p); } catch (Exception) { }
+        try { HvacRouting.RebuildFittings(p); } catch (Exception) { }
         Last = (nd, nr, ng, ns);
-        rep?.Info.Add($"Điện nước từ Revit (đối tượng MEP): {nd} thiết bị, {nr} tuyến ống/ống luồn dây, {ng} khối chung, bỏ qua {ns} phụ kiện (tự sinh)");
+        LastHvac = nh;
+        rep?.Info.Add($"Điện nước từ Revit (đối tượng MEP): {nd} thiết bị, {nr} tuyến ống/ống luồn dây, {nh} phần tử điều hoà – thông gió, {ng} khối chung, bỏ qua {ns} phụ kiện (tự sinh)");
     }
 
     /// <summary>Tầng chứa cao độ z (ưu tiên tên Level Revit trùng tên tầng).</summary>

@@ -25,7 +25,7 @@ public static class MepQuantities
         foreach (var g in m.Runs.Where(r => r.Kind == MepRunKind.Ong && MepSystems.IsDrain(r.System)).GroupBy(r => r.Size).OrderBy(g => g.Key))
         {
             int nh = g.Sum(r => MepDrainage.Hangers(p, r));
-            if (nh > 0) rows.Add(new MepQtyRow("Phụ kiện treo", $"Quang treo + ty ren ống uPVC Ø{g.Key:0}", "bộ", nh, $"khoảng cách ≤ {MepDrainage.HangerSpacing(g.Key):0.#} m"));
+            if (nh > 0) rows.Add(new MepQtyRow("Phụ kiện treo", $"Quang treo + ty ren ống uPVC Ø{g.Key:0}", "bộ", nh, $"khoảng cách ≤ {MepDrainage.HangerSpacing(m.Settings, g.Key):0.#} m"));
         }
         var elec = m.Runs.Where(r => r.Kind != MepRunKind.Ong).ToList();
         foreach (var g in elec.GroupBy(r => r.ConduitSize > 0 ? r.ConduitSize : MepSizing.ConduitFor(r.Size, Math.Max(1, r.Conductors))).OrderBy(g => g.Key))
@@ -36,6 +36,8 @@ public static class MepQuantities
             rows.Add(new MepQtyRow("Cáp điện", $"Cáp CVV {Math.Max(1, g.Key.Conductors)}x{N(g.Key.Size)} mm²", "m", Math.Round(g.Sum(r => r.Length), 2)));
         foreach (var g in m.Fittings.GroupBy(f => f.Name).OrderBy(g => g.Key))
             rows.Add(new MepQtyRow("Phụ kiện", g.Key, "cái", g.Count()));
+        // điều hoà – thông gió (Mep/MepHvac.cs)
+        rows.AddRange(HvacQuantities.Rows(p));
         return rows;
     }
 

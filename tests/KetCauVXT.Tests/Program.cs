@@ -649,6 +649,8 @@ Console.WriteLine("90. Thao tác còn lại: quét chọn 3D, kéo trục, kéo 
 InteractionLeftoverTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("91. Bản vẽ / tính toán còn lại: bậc móng trên mặt bằng, cọc chế độ thiết kế, móng bè / móng băng dọc mặt cắt, hoàn thiện theo phòng, mặt cắt dọc thoát nước, độ dốc theo hệ, Excel điện nước, Revit MEP");
 DrawingCalcLeftoverTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("92. Còn lại đợt 2: kéo cao độ mặt cắt, nắm trục giữa, bong bóng / ẩn trục hồ sơ, cài đặt điện nước, điều hoà – thông gió, kéo thiết bị 3D");
+RemainingRound2Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

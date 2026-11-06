@@ -20,6 +20,15 @@ public static class PlanGridEdit
 
     private static List<double> Get(StructuralPlan pl, bool x) => (x ? pl.Xs : pl.Ys).ToList();
 
+    private static List<string> Names(List<double> cs, bool x) => cs.Select((_, i) => StructuralPlan.GridName(x, i)).ToList();
+
+    /// <summary>Giữ kiểu hiển thị (bong bóng / ẩn) theo trục khi thứ tự trục đổi.</summary>
+    private static void Remap(StructuralPlan pl, bool x, List<double> cs, List<string> names)
+    {
+        var order = cs.Select((v, i) => (V: v, N: names[i])).OrderBy(t => t.V).Select(t => t.N).ToList();
+        pl.RemapStyles(x, order);
+    }
+
     private static void Set(StructuralPlan pl, bool x, List<double> c)
     {
         c = c.OrderBy(v => v).ToList();
@@ -46,8 +55,10 @@ public static class PlanGridEdit
     {
         var cs = Get(pl, xDir);
         if (cs.Any(v => Math.Abs(v - c) < Tol)) return false;
-        cs.Add(Math.Round(c, 4));
+        var names = Names(cs, xDir);
+        cs.Add(Math.Round(c, 4)); names.Add(null);
         Set(pl, xDir, cs);
+        Remap(pl, xDir, cs, names);
         return true;
     }
 
@@ -56,8 +67,10 @@ public static class PlanGridEdit
     {
         var cs = Get(pl, xDir);
         if (index < 0 || index >= cs.Count || cs.Count <= 2) return false;
-        cs.RemoveAt(index);
+        var names = Names(cs, xDir);
+        cs.RemoveAt(index); names.RemoveAt(index);
         Set(pl, xDir, cs);
+        Remap(pl, xDir, cs, names);
         return true;
     }
 
@@ -86,8 +99,10 @@ public static class PlanGridEdit
                     }
                     if (m) n++;
                 }
+        var names = Names(cs, xDir);
         cs[index] = Math.Round(c, 4);
         Set(pl, xDir, cs);
+        Remap(pl, xDir, cs, names);
         return n;
     }
 

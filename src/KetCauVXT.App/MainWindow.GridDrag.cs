@@ -52,6 +52,14 @@ public partial class MainWindow
     {
         if (!GripsEnabled) return false;
         var g = GridAtBubble(s);
+        if (g == null && _p != null && _scale > 1e-9)
+        {
+            // nắm giữa đường trục: phần đuôi ngoài khung lưới, hoặc bất kỳ đâu khi giữ Alt
+            var (wx, wy) = S2W(s);
+            string stG = CurrentStory == AllStories ? null : CurrentStory;
+            bool alt = (Keyboard.Modifiers & ModifierKeys.Alt) != 0;
+            g = GridDragMath.HitGridLine(_p, stG, wx, wy, 5 / _scale, 1.2, alt);
+        }
         if (g == null) return false;
         _gdGrid = g; _gdDrag = true; _gdCoord = g.Coord;
         planHost.Focus();
