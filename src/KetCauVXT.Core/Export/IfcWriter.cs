@@ -82,7 +82,7 @@ public static class IfcWriter
     {
         byte[] h = MD5.HashData(Encoding.UTF8.GetBytes(key ?? ""));
         // 128 bit → 22 ký tự: ký tự đầu 2 bit, còn lại 6 bit/ký tự
-        var bits = new System.Collections.BitArray(h.Reverse().ToArray());
+        var bits = new System.Collections.BitArray(Enumerable.Reverse(h).ToArray());
         var sb = new StringBuilder();
         int pos = 128;
         int first = (bits[127] ? 2 : 0) + (bits[126] ? 1 : 0);
