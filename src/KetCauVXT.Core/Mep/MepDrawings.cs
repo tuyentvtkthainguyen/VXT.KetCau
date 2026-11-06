@@ -215,6 +215,8 @@ public static class MepDrawings
         try { figs.AddRange(MepLongSection.Figures(p)); } catch (Exception) { }
         // mặt bằng điều hoà – thông gió (Mep/MepHvac.cs)
         try { figs.AddRange(HvacDrawings.Figures(p)); } catch (Exception) { }
+        // sơ đồ nguyên lý tủ điện, sơ đồ không gian cấp nước, sơ đồ ống đứng thoát nước – Mep/MepRound4.cs
+        try { figs.AddRange(MepRound4.Figures(p)); } catch (Exception) { }
         var sch = MepQuantities.ScheduleFigure(p);
         if (sch != null) figs.Add(sch);
         return figs;

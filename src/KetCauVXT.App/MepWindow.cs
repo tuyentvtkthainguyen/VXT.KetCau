@@ -137,6 +137,7 @@ public sealed partial class MepWindow : Window
             SetStatus($"Đã nối {n} thiết bị thoát về ống đứng (đi dưới sàn, có độ dốc).");
         }), "Đề xuất ống đứng (hộp gen) tại góc tường gần nhóm thiết bị vệ sinh, nối các thiết bị thoát đi dưới sàn có độ dốc"));
         wrow.Children.Add(Btn("Chọn / sửa", () => SetTool("select")));
+        AddRound4WaterButtons(wrow);   // MepWindow.Round4.cs
         water.Children.Add(wrow);
         tabs.Items.Add(new TabItem { Header = "Cấp thoát nước", Content = new ScrollViewer { Content = water, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
 
@@ -149,6 +150,7 @@ public sealed partial class MepWindow : Window
         erow.Children.Add(Btn("Nối dây (ống gen)", () => StartConnect((MepSystemKind)((ComboBoxItem)_sysElec.SelectedItem).Tag), "Dây luồn ống gen chôn tường; điểm chia ≥ 3 tuyến sinh hộp nối"));
         erow.Children.Add(Btn("Tự chọn tiết diện dây", AutoSize, "I = P/(U·cosφ) → aptomat → dây Cu/PVC (IEC 60364 B1) → ống gen ≤ 40 %"));
         erow.Children.Add(Btn("Chọn / sửa", () => SetTool("select")));
+        AddRound4ElecButtons(erow);   // MepWindow.Round4.cs
         elec.Children.Add(erow);
         tabs.Items.Add(new TabItem { Header = "Điện", Content = new ScrollViewer { Content = elec, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
 

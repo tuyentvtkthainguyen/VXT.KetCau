@@ -52,6 +52,7 @@ public sealed partial class MepWindow
         r3.Children.Add(Btn("Đặt máy cho phòng", () => HvacTool("hvac-ac", "Chọn máy theo phòng: bấm vào trong một phòng (tính tải lạnh, đặt dàn lạnh + dàn nóng, nối ống)."),
             "Tải lạnh theo diện tích → máy 9000/12000/18000/24000 BTU; dàn lạnh tường đối diện cửa, ưu tiên tường ngoài; dàn nóng tường ngoài"));
         r3.Children.Add(Btn("Tải lạnh các phòng", HvacLoadReport, "Bảng tải lạnh, máy chọn, ống đồng, aptomat / dây cho các phòng tầng này"));
+        AddRound4HvacButtons(r3);   // MepWindow.Round4.cs
         return r3;
     }
 
@@ -240,7 +241,7 @@ public sealed partial class MepWindow
         if (rooms.Count == 0) { MessageBox.Show(this, "Tầng này chưa có phòng (vẽ / nhận diện phòng ở môi trường Kiến trúc).", "Tải lạnh", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         int people = (int)Math.Max(0, Dbl(_hvPeople.Text, 2));
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine(HvacLoad.MethodText).AppendLine();
+        sb.AppendLine(_p.Mep?.Hvac?.Settings?.CoolingMethod == HvacMount.DetailMethod ? HvacMount.DetailMethod + ": " + HvacCoolingDetailed.MethodText : HvacMount.QuickMethod + ": " + HvacLoad.MethodText).AppendLine();
         foreach (var r in rooms)
         {
             var l = HvacLoad.RoomLoad(_p, r, people);

@@ -583,8 +583,15 @@ public static class HvacLoad
         double hgt = r.CeilingHeight > 0 ? r.CeilingHeight : MepRouting.StoryHeight(p, r.Story, (p.Mep ?? new MepModel()).Settings);
         bool ext = RoomWalls(p, r).Any(w => IsExterior(p, w));
         double a = r.Area, q = Load(a, hgt, ext, people);
+        string method = MethodText;
+        if (p.Mep?.Hvac?.Settings?.CoolingMethod == HvacMount.DetailMethod)
+        {
+            // tải lạnh chi tiết (CLTD rút gọn) – Mep/MepRound4.cs
+            q = HvacCoolingDetailed.Room(p, r, new CoolingInput { People = people }).Btu;
+            method = HvacCoolingDetailed.MethodText;
+        }
         var (btu, n) = Choose(q);
-        return new HvacRoomLoad(r.Id, string.IsNullOrEmpty(r.Name) ? $"Phòng {r.Id}" : r.Name, a, hgt, ext, people, q, q * BtuToKw, btu, n, MethodText);
+        return new HvacRoomLoad(r.Id, string.IsNullOrEmpty(r.Name) ? $"Phòng {r.Id}" : r.Name, a, hgt, ext, people, q, q * BtuToKw, btu, n, method);
     }
 
     private static (double X, double Y) DoorPoint(WallLine w, WallOpening o) =>

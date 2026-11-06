@@ -466,6 +466,10 @@ public class MepSettings
     public double HangerSpacing { get; set; }
     /// <summary>Cao độ mặc định theo nhóm thiết bị (rỗng = theo họ)</summary>
     public List<MepCategoryHeight> CategoryHeights { get; set; } = new();
+    /// <summary>Tủ điện: chia mạch, hệ số nhu cầu, 1 / 3 pha (Mep/MepRound4.cs)</summary>
+    public PanelOptions Panel { get; set; } = new();
+    /// <summary>Bể nước mái / bể ngầm, bơm (Mep/MepRound4.cs)</summary>
+    public WaterTankOptions Water { get; set; } = new();
 }
 
 /// <summary>Toàn bộ dữ liệu điện nước của dự án (Project.Mep).</summary>

@@ -156,6 +156,30 @@ public class HvacSettings
     public double BeamClearance { get; set; } = 0.05;
     /// <summary>Tự hạ ống gió qua dầm (2 cút 45° mỗi phía) khi vẽ ống trên mặt bằng</summary>
     public bool AutoDropUnderBeams { get; set; } = true;
+    /// <summary>Cách lắp dàn nóng: "Đặt sàn / ban công" (cao độ 0,4 m) hoặc "Giá treo tường" (cao độ OutdoorBracketHeight)</summary>
+    public string OutdoorMount { get; set; } = HvacMount.Floor;
+    /// <summary>Cao độ tâm dàn nóng lắp giá treo tường so với sàn (m)</summary>
+    public double OutdoorBracketHeight { get; set; } = 2.2;
+    /// <summary>Phương pháp tải lạnh: "Ước lượng nhanh" (theo diện tích) hoặc "Chi tiết (CLTD)"</summary>
+    public string CoolingMethod { get; set; } = HvacMount.QuickMethod;
+    /// <summary>Bước lưới dò tuyến ống gió tránh cột / tường (m)</summary>
+    public double RouteStep { get; set; } = 0.1;
+    /// <summary>Phạt mỗi lần đổi hướng khi dò tuyến (m tương đương)</summary>
+    public double BendPenalty { get; set; } = 1.0;
+    /// <summary>Phạt mỗi lần cắt qua dầm (phải hạ ống) (m tương đương)</summary>
+    public double BeamPenalty { get; set; } = 2.0;
+    /// <summary>Phạt mỗi lần xuyên tường (m tương đương)</summary>
+    public double WallPenalty { get; set; } = 3.0;
+}
+
+/// <summary>Hằng tên lựa chọn ĐHKK (lưu dạng chuỗi).</summary>
+public static class HvacMount
+{
+    public const string Floor = "Đặt sàn / ban công";
+    public const string Bracket = "Giá treo tường";
+    public const string QuickMethod = "Ước lượng nhanh";
+    public const string DetailMethod = "Chi tiết (CLTD)";
+    public const double FloorHeight = 0.4;
 }
 
 /// <summary>Dữ liệu điều hoà – thông gió (MepModel.Hvac).</summary>
@@ -305,7 +329,7 @@ public static class HvacRouting
             Id = h.NextId(), Story = story, Kind = kind, X = x, Y = y, CapacityBtu = btu,
             Name = kind == HvacUnitKind.DanLanh ? $"Dàn lạnh treo tường {btu:0} BTU" : $"Dàn nóng {btu:0} BTU",
             W = kind == HvacUnitKind.DanLanh ? 0.9 : 0.8, D = kind == HvacUnitKind.DanLanh ? 0.25 : 0.3, Hh = kind == HvacUnitKind.DanLanh ? 0.3 : 0.6,
-            Height = double.IsNaN(height) ? (kind == HvacUnitKind.DanLanh ? 2.4 : 0.4) : height
+            Height = double.IsNaN(height) ? (kind == HvacUnitKind.DanLanh ? 2.4 : OutdoorHeight(p)) : height
         };
         h.Units.Add(u);
         return u;
@@ -322,6 +346,13 @@ public static class HvacRouting
         };
         h.Terminals.Add(t);
         return t;
+    }
+
+    /// <summary>Cao độ lắp dàn nóng mặc định theo cài đặt (đặt sàn 0,4 m / giá treo tường OutdoorBracketHeight).</summary>
+    public static double OutdoorHeight(Project p)
+    {
+        var set = H(p).Settings;
+        return set.OutdoorMount == HvacMount.Bracket ? Math.Max(0.3, set.OutdoorBracketHeight) : HvacMount.FloorHeight;
     }
 
     /// <summary>Cao độ tuyệt đối tâm thiết bị.</summary>

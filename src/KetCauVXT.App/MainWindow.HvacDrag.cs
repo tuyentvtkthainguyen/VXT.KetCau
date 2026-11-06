@@ -6,7 +6,7 @@ using KetCauVXT.Model;
 namespace KetCauVXT.App;
 
 /// <summary>Kéo đối tượng điều hoà – thông gió trong khung 3D chính: dàn lạnh / dàn nóng / miệng gió / ống gió / ống đồng
-/// (chọn khối rồi kéo trên mặt phẳng ngang qua điểm neo, bắt bước 5 cm; dời dàn → ống đồng, ống ngưng đi lại tuyến; ống gió → phụ kiện sinh lại).
+/// (chọn khối rồi kéo trên mặt phẳng ngang qua điểm neo, bắt bước 5 cm; dàn lạnh / dàn nóng bám mặt tường gần nhất; dời dàn → ống đồng, ống ngưng đi lại tuyến; ống gió → phụ kiện sinh lại).
 /// Lõi: Mep/MepHvacEdit.cs (HvacEdit.FromSolidId / Anchor / Move).</summary>
 public partial class MainWindow
 {
@@ -50,6 +50,19 @@ public partial class MainWindow
     {
         var q = Pick3DMath.Drag(_v3DragRay, CameraRayAt(e.GetPosition(viewport3D)), _v3Z, _v3X0, _v3Y0);
         if (q == null) return true;
+        if (_v3HvKind == HvacElemKind.Unit)
+        {
+            // dàn lạnh / dàn nóng: bám mặt tường gần nhất (tâm cách mặt tường = chiều sâu / 2, bước 5 cm) – Mep/MepRound4.cs
+            var u = _p.Mep.Hvac.Unit(_v3HvId);
+            if (u == null) { _v3Drag = false; _v3HvId = 0; return false; }
+            double ox = u.X, oy = u.Y, oa = u.Angle;
+            var sr = MepWallFaceSnap.MoveUnit(_p, u, q.Value.X, q.Value.Y);
+            if (Math.Abs(u.X - ox) + Math.Abs(u.Y - oy) + Math.Abs(u.Angle - oa) < 1e-9) return true;
+            _v3Moved = true;
+            Build3D();
+            SetStatus($"Kéo {u.Name}: ({u.X:0.00}; {u.Y:0.00}) · {(sr.Snapped ? "✓ " : "")}{sr.Text}");
+            return true;
+        }
         const double step = 0.05;
         double tx = Math.Round((q.Value.X - _v3X0) / step) * step, ty = Math.Round((q.Value.Y - _v3Y0) / step) * step;
         double dx = tx - _v3HvDoneX, dy = ty - _v3HvDoneY;

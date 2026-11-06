@@ -77,6 +77,8 @@ public static class MepQuantities
                 }
             if (d.Rows.Count > 0) res.Add(d);
         }
+        // bảng tủ điện, bể nước / bơm, tải lạnh chi tiết – Mep/MepRound4.cs
+        res.AddRange(MepRound4.Tables(p));
         return res;
     }
 

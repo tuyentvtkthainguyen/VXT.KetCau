@@ -73,6 +73,40 @@ public sealed partial class MepWindow
         Add("ĐHKK – khoảng cách giá treo ống gió (m)", hv.DuctHangerSpacing, (_, h, v) => h.DuctHangerSpacing = Math.Max(0.5, v));
         Add("ĐHKK – độ dốc ống nước ngưng (%, ≥ 1)", hv.CondensateSlope * 100, (_, h, v) => h.CondensateSlope = Math.Max(0.01, v / 100));
         Add("ĐHKK – Ø ống nước ngưng (mm)", hv.CondensateDia, (_, h, v) => h.CondensateDia = Math.Max(16, v));
+        Add("ĐHKK – dàn nóng giá treo: cao độ tâm so với sàn (m)", hv.OutdoorBracketHeight, (_, h, v) => h.OutdoorBracketHeight = Math.Max(0.3, v));
+        Add("ĐHKK – dò tuyến ống gió: bước lưới (m)", hv.RouteStep, (_, h, v) => h.RouteStep = Math.Max(0.02, v));
+        Add("ĐHKK – dò tuyến: phạt mỗi lần đổi hướng (m)", hv.BendPenalty, (_, h, v) => h.BendPenalty = v);
+        Add("ĐHKK – dò tuyến: phạt mỗi lần cắt dầm (m)", hv.BeamPenalty, (_, h, v) => h.BeamPenalty = v);
+        Add("ĐHKK – dò tuyến: phạt mỗi lần xuyên tường (m)", hv.WallPenalty, (_, h, v) => h.WallPenalty = v);
+        var pn = cur.Panel ??= new PanelOptions(); var wt = cur.Water ??= new WaterTankOptions();
+        Add("Tủ điện – số điểm chiếu sáng tối đa / mạch", pn.MaxLightingPoints, (s, _, v) => s.Panel.MaxLightingPoints = Math.Max(1, (int)Math.Round(v)));
+        Add("Tủ điện – số ổ cắm tối đa / mạch", pn.MaxSocketPoints, (s, _, v) => s.Panel.MaxSocketPoints = Math.Max(1, (int)Math.Round(v)));
+        Add("Tủ điện – Kc chiếu sáng", pn.KcLighting, (s, _, v) => s.Panel.KcLighting = Math.Min(1, v));
+        Add("Tủ điện – Kc ổ cắm", pn.KcSocket, (s, _, v) => s.Panel.KcSocket = Math.Min(1, v));
+        Add("Tủ điện – Kc điều hoà", pn.KcAc, (s, _, v) => s.Panel.KcAc = Math.Min(1, v));
+        Add("Tủ điện – Kc bình nóng lạnh", pn.KcHeater, (s, _, v) => s.Panel.KcHeater = Math.Min(1, v));
+        Add("Tủ điện – tự chuyển 3 pha khi Ptt vượt (kW)", pn.ThreePhaseAboveKw, (s, _, v) => s.Panel.ThreePhaseAboveKw = v);
+        Add("Cấp nước – số người dùng (0 = không lập bảng bể / bơm)", wt.Occupants, (s, _, v) => s.Water.Occupants = (int)Math.Round(v));
+        Add("Cấp nước – tiêu chuẩn (l/người·ngày)", wt.LitersPerPerson, (s, _, v) => s.Water.LitersPerPerson = v);
+        Add("Cấp nước – bể mái dự trữ (ngày)", wt.RoofDays, (s, _, v) => s.Water.RoofDays = v);
+        Add("Cấp nước – bể ngầm dự trữ (ngày)", wt.GroundDays, (s, _, v) => s.Water.GroundDays = v);
+        Add("Cấp nước – dự trữ chữa cháy bể ngầm (m³)", wt.FireReserve, (s, _, v) => s.Water.FireReserve = v);
+        Add("Cấp nước – số giờ bơm / ngày", wt.PumpHours, (s, _, v) => s.Water.PumpHours = Math.Max(0.5, v));
+        Add("Cấp nước – mực nước thấp bể ngầm dưới ±0,00 (m, nhập dương)", -wt.GroundTankLevel, (s, _, v) => s.Water.GroundTankLevel = -v);
+        Add("Cấp nước – chiều dài ống ngang thêm (m)", wt.HorizontalLength, (s, _, v) => s.Water.HorizontalLength = v);
+        ComboBox Combo(string label, string[] items, string value)
+        {
+            int row = grid.RowDefinitions.Count;
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var tl = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 2, 6, 2) };
+            var cb = new ComboBox { ItemsSource = items, SelectedItem = items.Contains(value) ? value : items[0], Margin = new Thickness(0, 2, 0, 2), MinWidth = 150 };
+            Grid.SetRow(tl, row); Grid.SetRow(cb, row); Grid.SetColumn(cb, 1);
+            grid.Children.Add(tl); grid.Children.Add(cb);
+            return cb;
+        }
+        var cbMount = Combo("ĐHKK – cách lắp dàn nóng mặc định", new[] { HvacMount.Floor, HvacMount.Bracket }, hv.OutdoorMount);
+        var cbCool = Combo("ĐHKK – phương pháp tải lạnh", new[] { HvacMount.QuickMethod, HvacMount.DetailMethod }, hv.CoolingMethod);
+        var cbPhase = Combo("Tủ điện – số pha", new[] { PanelOptions.Auto, PanelOptions.One, PanelOptions.Three }, pn.Phases);
         var below = new CheckBox { Content = "Ống thoát đi DƯỚI sàn (treo dưới đáy sàn) tới ống đứng", IsChecked = cur.DrainBelowSlab, Margin = new Thickness(6, 4, 6, 4) };
 
         var rules = new ObservableCollection<SlopeRuleRow>((cur.SlopeRules ?? new()).Where(r => r != null).Select(r => new SlopeRuleRow
@@ -117,6 +151,9 @@ public sealed partial class MepWindow
             var s = _p.Mep.Settings; var h = _p.Mep.Hvac.Settings;
             foreach (var (label, box, set) in fields) set(s, h, P(box.Text, 0));
             s.DrainBelowSlab = below.IsChecked == true;
+            h.OutdoorMount = cbMount.SelectedItem as string ?? HvacMount.Floor;
+            h.CoolingMethod = cbCool.SelectedItem as string ?? HvacMount.QuickMethod;
+            s.Panel.Phases = cbPhase.SelectedItem as string ?? PanelOptions.Auto;
             s.SlopeRules = RulesFrom(rules);
             s.CategoryHeights = heights.Where(c => c != null && c.Height >= 0).GroupBy(c => c.Category).Select(g => new MepCategoryHeight { Category = g.Key, Height = g.Last().Height }).ToList();
             foreach (var r in _p.Mep.Runs) MepRouting.Route(_p, r);

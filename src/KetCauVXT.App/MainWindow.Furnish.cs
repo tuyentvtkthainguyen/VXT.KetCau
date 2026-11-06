@@ -532,11 +532,14 @@ public partial class MainWindow
             if (dev == null) { _v3Drag = false; return false; }
             var qd = Pick3DMath.Drag(_v3DragRay, CameraRayAt(e.GetPosition(viewport3D)), _v3Z, _v3X0, _v3Y0);
             if (qd == null) return true;
-            if (!KetCauVXT.Mep.MepDeviceDragMath.Apply(_p, dev, qd.Value.X, qd.Value.Y, 0.05)) return true;
+            double dox = dev.X, doy = dev.Y, dof = dev.Offset;
+            // gắn tường: trượt dọc tường chủ; tự do (không trên trần): bám mặt tường gần nhất, bước 5 cm – Mep/MepRound4.cs
+            var dsr = KetCauVXT.Mep.MepWallFaceSnap.MoveDevice(_p, dev, qd.Value.X, qd.Value.Y);
+            if (Math.Abs(dev.X - dox) + Math.Abs(dev.Y - doy) + Math.Abs(dev.Offset - dof) < 1e-9) return true;
             foreach (var run in _p.Mep.Runs.Where(x => x.FromId == dev.Id || x.ToId == dev.Id)) KetCauVXT.Mep.MepRouting.Route(_p, run);
             _v3Moved = true;
             Build3D();
-            SetStatus(dev.WallId > 0 ? $"Kéo {dev.Family} dọc tường {dev.WallId}: cách đầu tường {dev.Offset:0.00} m" : $"Kéo {dev.Family}: ({dev.X:0.00}; {dev.Y:0.00})");
+            SetStatus(dev.WallId > 0 ? $"Kéo {dev.Family} dọc tường {dev.WallId}: cách đầu tường {dev.Offset:0.00} m" : $"Kéo {dev.Family}: ({dev.X:0.00}; {dev.Y:0.00}) · {(dsr.Snapped ? "✓ " : "")}{dsr.Text}");
             return true;
         }
         var f = Sel3DFurniture();

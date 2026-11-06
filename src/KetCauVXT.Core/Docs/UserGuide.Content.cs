@@ -1052,6 +1052,35 @@ public static partial class UserGuide
                 "Khung **3D**: chọn dàn lạnh / dàn nóng, miệng gió, ống gió hoặc ống đồng rồi **kéo** trên mặt phẳng ngang (bắt 5 cm); cả tuyến ống gió được tô sáng; Delete xoá. Phụ kiện ống gió hiện thành khối nhỏ tại điểm nối.",
                 "Xuất **IFC2X3**: ống gió → IfcFlowSegment + **IfcDuctSegmentType**; cút / tê / côn → IfcFlowFitting + **IfcDuctFittingType** (BEND / JUNCTION / TRANSITION); miệng gió → IfcFlowTerminal + **IfcAirTerminalType**; dàn lạnh / nóng → **IfcEnergyConversionDevice** + **IfcUnitaryEquipmentType** (SPLITSYSTEM); ống đồng / ống ngưng → **IfcPipeSegmentType**; gắn kiểu bằng **IfcRelDefinesByType** (mỗi kích thước / tên một kiểu).");
 
+        c.Sec("mo-hinh.dien-nuoc-dot4", "Điện nước – ĐHKK: bám tường khi kéo, dò tuyến tránh cột, tải lạnh chi tiết, tủ điện, bể nước – bơm, sơ đồ đứng")
+            .Bullets("**Kéo trong 3D có bám mặt tường**:",
+                "Kéo **dàn lạnh / dàn nóng**: thiết bị tự bám **mặt tường gần nhất** (trong vùng 0,3 m) – tâm cách mặt tường đúng nửa chiều sâu thiết bị, trục song song tường, vị trí dọc tường bắt bước **5 cm** và không vượt khỏi đầu tường; ống đồng, ống nước ngưng đi lại theo. Ra xa tường thì bắt lưới 5 cm theo X, Y.",
+                "Kéo **thiết bị điện nước tự do** (đặt trên sàn, không gắn trần): bám mặt tường như trên; thiết bị **gắn tường** giữ tường chủ, chỉ trượt dọc tường. Đồ đạc nội thất vẫn bám tường / góc phòng như trước.",
+                "Thanh trạng thái hiện **✓ Bám mặt tường …** khi đã bám, cùng toạ độ đang kéo.")
+            .Bullets("**Dò tuyến ống gió tránh cột** (nút **Dò tuyến tránh cột**, hàng Sửa của tab Điều hoà – thông gió):",
+                "Áp dụng cho ống gió đang chọn, hoặc mọi ống gió của tầng nếu chưa chọn. Giữ hai đầu ống và cao độ sát trần, tìm tuyến **trực giao** trên lưới mặt bằng (bước mặc định 0,1 m) bằng thuật toán A*.",
+                "**Cột** là vật cản (nở thêm nửa bề rộng ống + khe 50 mm); mỗi lần **cắt dầm** phạt 2 m (phải hạ ống), mỗi lần **xuyên tường** phạt 3 m, mỗi lần **đổi hướng** phạt 1 m – chọn tuyến có tổng chiều dài + phạt nhỏ nhất, nên ít cút. Sau đó ống tự hạ qua dầm (nếu bật) và sinh lại phụ kiện.",
+                "Bước lưới và các mức phạt sửa trong **Cài đặt điện nước**.")
+            .Bullets("**Dàn nóng và tải lạnh**:",
+                "**Cài đặt điện nước → ĐHKK – cách lắp dàn nóng mặc định**: **Đặt sàn / ban công** (cao độ tâm 0,4 m, mặc định) hoặc **Giá treo tường** (mặc định 2,2 m so với sàn, sửa được). Áp dụng cho dàn nóng đặt mới (kể cả **Đặt máy cho phòng**).",
+                "**ĐHKK – phương pháp tải lạnh**: **Ước lượng nhanh** (phương pháp diện tích, mặc định) hoặc **Chi tiết (CLTD)**. Khi chọn Chi tiết, **Đặt máy cho phòng** và **Tải lạnh các phòng** dùng tải chi tiết.",
+                "Tải chi tiết (CLTD rút gọn, nút **Tải lạnh chi tiết**): tường ngoài Q = U·A·CLTD theo hướng (U = 2,0 W/m²K; CLTD Bắc 6, Đông Bắc 10, Đông 14, Đông Nam 12, Nam 9, Tây Nam 14, Tây 16, Tây Bắc 11 °C); kính Q = A·(U·Δt + SHGF·SC·CLF) (U = 5,8; Δt = 9 °C; SHGF Bắc 120, Nam 200, Đông / Tây 500, các hướng chéo 400 W/m²; SC = 0,6; CLF = 0,7); mái (tầng cao nhất) U = 1,8 × CLTD 22 °C; người 75 W hiện + 55 W ẩn; đèn 10 W/m²; thiết bị 15 W/m²; gió lọt 0,5 lần/h: hiện 1,23·Q(l/s)·Δt, ẩn 3010·Q(l/s)·Δw (Δw = 0,008 kg/kg); tổng × 1,1. Hướng tính theo pháp tuyến ra ngoài của tường, trục +Y mặt bằng là hướng Bắc.",
+                "Bảng tải chi tiết từng phòng (kèm cột ước lượng nhanh để so sánh) có trong sheet Excel **Vật tư điện nước** khi chọn phương pháp Chi tiết.")
+            .Bullets("**Tủ điện** (tab Điện: **Bảng tủ điện**, **Gán mạch theo tủ**):",
+                "Chia mạch theo tầng: **chiếu sáng** (đèn, quạt) ≤ 10 điểm / mạch, **ổ cắm** ≤ 8 điểm / mạch, mỗi **máy lạnh** và mỗi **bình nóng lạnh** một mạch riêng.",
+                "Mỗi mạch: P = tổng công suất thiết bị, I = P / (220 · cosφ) (cosφ 0,85) → aptomat chuẩn ≥ I (chiếu sáng tối thiểu 10 A, ổ cắm / bình nóng lạnh tối thiểu 16 A, kèm chống dòng rò RCD 30 mA), dây Cu/PVC có dòng cho phép ≥ aptomat (chiếu sáng ≥ 1,5 mm², ổ cắm ≥ 2,5 mm²); máy lạnh theo dòng thiết kế 1,25·I.",
+                "Công suất tính toán Ptt = Σ Kc·P (Kc mặc định: chiếu sáng 0,9; ổ cắm 0,5; điều hoà 0,8; bình nóng lạnh 0,7). Tủ **1 pha** khi Ptt ≤ 12 kW, lớn hơn chuyển **3 pha** (hoặc chọn cố định 1 pha / 3 pha trong Cài đặt).",
+                "Tủ 3 pha **cân pha**: mạch lớn xếp trước, lần lượt đưa vào pha đang nhẹ nhất; báo tải từng pha và độ lệch pha = max |Pi − P trung bình| / P trung bình.",
+                "**Aptomat tổng** ≥ max(dòng tính toán, aptomat nhánh lớn nhất) (1 pha: MCB 2P; 3 pha: MCCB 4P), **cáp tổng** Cu/XLPE có dòng cho phép ≥ aptomat tổng.",
+                "**Sơ đồ nguyên lý tủ điện** (nguồn vào – aptomat tổng – thanh cái – các nhánh ghi aptomat, dây, tên mạch, công suất, tầng, pha) có trong bộ bản vẽ điện nước; **bảng tủ điện** có trong sheet Excel. **Gán mạch theo tủ** ghi tên mạch C1, C2… vào thiết bị.")
+            .Bullets("**Bể nước – bơm** (tab Cấp thoát nước: **Bể nước – bơm**; khai báo **số người** trong Cài đặt điện nước):",
+                "Dung tích V = N · q · số ngày dự trữ / 1000 (m³), q mặc định 150 l/người·ngày; bể mái 1 ngày, bể ngầm 2 ngày + dự trữ chữa cháy; chọn bồn chuẩn 500 … 6000 l (lớn hơn: bội số 1000 l).",
+                "Bơm: Q = Q ngày · Kngày (1,3) / số giờ bơm (4 h); ống đẩy PPR chọn theo v ≤ 1,5 m/s; cột áp H = H tĩnh (miệng bể mái − mực nước thấp bể ngầm) + 1,3 × tổn thất Hazen-Williams (C = 140, chiều dài = chiều cao đẩy + 10 m ngang) + 2 m tự do; công suất N = ρ·g·Q·H / η (η = 0,6).",
+                "Bảng bể nước và bơm có trong sheet Excel khi đã khai báo số người.")
+            .Bullets("**Sơ đồ đứng** (tự thêm vào bộ bản vẽ điện nước, vẽ tỷ lệ 1 như bảng thống kê):",
+                "**Sơ đồ không gian cấp nước**: bể ngầm – bơm – ống đẩy lên **bể nước mái** – trục cấp xuống từng tầng; nhánh tầng vẽ xiên 45° với tên thiết bị; Ø trục và Ø nhánh theo tổng đương lượng; ghi dung tích bể, Q, H bơm khi đã khai báo số người.",
+                "**Sơ đồ ống đứng thoát nước**: ống đứng thoát xí (vào bể tự hoại) và ống đứng thoát rửa (vào hố ga), ống thông hơi trên mái; nhánh tầng xiên 45°; Ø ống đứng theo tổng đương lượng thoát luỹ kế (ống thoát xí tối thiểu Ø110).");
+
         c.Sec("mo-hinh.choc-thung-nho-coc", "Chọc thủng đài cọc, cắt mép móng, cọc chịu nhổ, phản lực dầm móng")
             .P("Các kiểm tra móng theo **TCVN 5574:2018** (chọc thủng mục 8.1.6, cắt tiết diện nghiêng mục 8.1.3.3, neo thép mục 10.3.5) và **TCVN 10304:2014** (cọc), dùng chung cho chế độ Thiết kế và Triển khai hồ sơ.")
             .Bullets("**Đài cọc**:",

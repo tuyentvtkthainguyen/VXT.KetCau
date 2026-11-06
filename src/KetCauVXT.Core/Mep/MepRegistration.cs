@@ -175,7 +175,7 @@ public static class MepRegistration
         var items = MepDrawings.Figures(p).Select(f => new DrawingItem
         {
             Key = "DN:" + f.Name, FileName = Slug(f.Name) + ".dxf", Title = f.Name,
-            Scale = f.Name == MepQuantities.Title ? 1 : MepDrawings.Scale, W = f.W
+            Scale = f.Name == MepQuantities.Title || MepRound4.IsSchematic(f.Name) ? 1 : MepDrawings.Scale, W = f.W
         }).ToList();
         // chi tiết gia cường kết cấu tại vị trí xuyên dầm / lỗ sàn
         foreach (var f in StructuralImpact.Figures(StructuralImpact.Scan(p)))
