@@ -73,6 +73,7 @@ public partial class MainWindow : Window
         InitRevitUi();       // [Kiểu Revit] ribbon Kiến trúc/Kết cấu/…, Thuộc tính, Trình duyệt dự án, thanh tuỳ chọn – MainWindow.RevitUi.cs
         InitDisciplines();   // [Bộ môn] công tắc Kiến trúc | Kết cấu | Điện nước, tab + menu BIM – MainWindow.Disciplines.cs
         InitFurnish();       // [Đặt & xem] đặt đồ đạc bắt điểm, kích thước tạm, 3D, mặt cắt – MainWindow.Furnish.cs
+        InitSelectGridLevel();   // [Trục & tầng] quét chọn mọi đối tượng, sửa lưới trục, thêm / kéo tầng, mặt đứng – MainWindow.SelectGridLevel.cs
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)

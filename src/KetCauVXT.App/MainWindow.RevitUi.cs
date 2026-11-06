@@ -347,6 +347,7 @@ public partial class MainWindow
             }
             _rvBrowser.Items.Add(views);
             AddLevelViewsToBrowser();   // mặt cắt ngang tầng theo bộ môn + mặt cắt đứng – MainWindow.Furnish.cs
+            AddElevationViewsToBrowser();   // mặt đứng 4 hướng – MainWindow.SelectGridLevel.cs
             _rvBrowser.Items.Add(TI("Khung nhìn 3D", () => RvViewTab("3D")));
             _rvBrowser.Items.Add(TI("Biểu đồ nội lực", () => RvViewTab("Biểu đồ nội lực")));
             var sch = TI("Bảng thống kê");

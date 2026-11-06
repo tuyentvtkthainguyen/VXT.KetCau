@@ -49,6 +49,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         r1.Children.Add(Lbl("Bước trục X (1, 2, 3…) m:")); r1.Children.Add(_sx);
         r1.Children.Add(Lbl("Bước trục Y (A, B, C…) m:")); r1.Children.Add(_sy);
         r1.Children.Add(Btn("Áp dụng lưới", ApplyGrid, "Cập nhật lưới trục theo bước trục (vd. 3.6 4.2 hoặc 3*3.3)"));
+        r1.Children.Add(Btn("Thêm trục…", AddGridLine, "Thêm một trục X hoặc Y tại toạ độ nhập (bước trục tự cập nhật); chuột phải lên trục: dời / xoá trục"));
         r1.Children.Add(Btn("Tải mặt bằng…", LoadPlanGrid, "Lấy bước trục từ bản vẽ CAD (DWG/DXF) hoặc ảnh mặt bằng"));
         top.Children.Add(r1);
         var r2 = new WrapPanel { Margin = new Thickness(0, 0, 0, 3) };
@@ -88,10 +89,11 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         _cv.MouseWheel += OnWheel;
         _cv.MouseDown += OnDown;
         _cv.MouseMove += OnMove;
-        _cv.MouseUp += (s, e) => { if (_panFrom != null) { _panFrom = null; _cv.ReleaseMouseCapture(); } };
+        _cv.MouseUp += (s, e) => { if (_panFrom != null) { _panFrom = null; _cv.ReleaseMouseCapture(); } else WinUp(e); };
         _cv.KeyDown += (s, e) =>
         {
-            if (e.Key == Key.Escape) { _first = null; _sel = null; _moveItem = null; Redraw(); UpdateHint(); }
+            if (e.Key == Key.Escape) { _first = null; _sel = null; _moveItem = null; _multi.Clear(); _winFrom = null; Redraw(); UpdateHint(); }
+            else if (e.Key == Key.Delete && _multi.Count > 0) DeleteMulti();
             else if (e.Key == Key.Delete && _sel != null) DeleteItem(_sel);
             else if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control) { Undo(); e.Handled = true; }
         };
@@ -257,6 +259,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             var hit = StructuralPlan.HitTest(lv, w.X, w.Y, tol);
             if (hit != null) { _sel = hit; Redraw(); ContextFor(hit).IsOpen = true; }
             else if (_first != null) { _first = null; Redraw(); UpdateHint(); }
+            else GridMenuAt(w, tol);   // chuột phải lên trục: dời / xoá / thêm trục (DetailingPlanCanvas.GridSel.cs)
             return;
         }
         if (e.ChangedButton != MouseButton.Left) return;
@@ -265,7 +268,9 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         if (HandleExtraTool(lv, w, tol)) return;
         if (_tool == "Chon")
         {
-            _sel = StructuralPlan.HitTest(lv, w.X, w.Y, tol);
+            var hitC = StructuralPlan.HitTest(lv, w.X, w.Y, tol);
+            if (ChonMultiClick(p, hitC)) return;   // quét chọn / Shift + bấm (DetailingPlanCanvas.GridSel.cs)
+            _sel = hitC;
             Redraw();
             if (_sel != null)
             {
@@ -331,6 +336,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         {
             _ox += p.X - _panFrom.Value.X; _oy += p.Y - _panFrom.Value.Y; _panFrom = p; _fitted = true; Redraw(); return;
         }
+        if (WinMove(p)) return;
         var w = ToW(p);
         _mouseW = _tool == ToolSection ? w : SnapW(Level, w, 12 / _k);
         if (_first != null || _moveItem != null || PlanKinds.All.Contains(_tool)) Redraw();
@@ -470,6 +476,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             Text(((a.X + b.X) / 2), ((a.Y + b.Y) / 2), Dim(Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y))), br, 11);
         }
         DrawMovePreview();
+        DrawMulti();
         if (PlanKinds.All.Contains(_tool))
         {
             var c = ToS(_mouseW.X, _mouseW.Y);

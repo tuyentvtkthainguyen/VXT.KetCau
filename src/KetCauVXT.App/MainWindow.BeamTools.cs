@@ -46,7 +46,7 @@ public partial class MainWindow
     private static readonly Brush MultiSelBrush = Frozen(Color.FromArgb(200, 255, 160, 0));
 
     private bool IsBeamToolMode => _mode is PlanEditMode.QuickGridBeam or PlanEditMode.SecondaryBeam or PlanEditMode.CantileverBeam or PlanEditMode.MultiSelect;
-    private bool IsWindowMode => _mode is PlanEditMode.QuickGridBeam or PlanEditMode.MultiSelect;
+    private bool IsWindowMode => _mode is PlanEditMode.QuickGridBeam or PlanEditMode.MultiSelect or PlanEditMode.Select;   // [Quét chọn] chế độ Chọn: kéo = khung chọn (di chuyển khung nhìn: nút giữa chuột)
     private bool UseEtabsSnap => _etabsSnap && (_mode == PlanEditMode.AddBeam || _mode == PlanEditMode.CantileverBeam);
 
     private static string BeamToolHint(PlanEditMode m) => m switch
@@ -520,7 +520,7 @@ public partial class MainWindow
     /// <summary>Gọi cuối PlanHost_MouseLeftButtonDown: bắt đầu khung chọn trong chế độ Vẽ nhanh / Chọn nhiều (Shift = di chuyển).</summary>
     private void BeginBeamWindow()
     {
-        _winDrag = IsWindowMode && (Keyboard.Modifiers & ModifierKeys.Shift) == 0;
+        _winDrag = !_gridTool && IsWindowMode && (_mode == PlanEditMode.Select || (Keyboard.Modifiers & ModifierKeys.Shift) == 0);   // [Quét chọn] Shift + kéo = bỏ chọn
         _winStart = _panStart; _winEnd = _panStart;
     }
 
@@ -558,6 +558,7 @@ public partial class MainWindow
             RunBeamOp(() => BeamTools.ForStories(_p, stories, s2 => BeamTools.QuickBeamsOnGridSegments(_p, s2, segs, sec)));
             return;
         }
+        if (_mode == PlanEditMode.Select) { MixedWindowSelect(xa, ya, xb, yb, crossing); return; }   // [Quét chọn] mọi loại đối tượng – MainWindow.SelectGridLevel.cs
         if (_mode == PlanEditMode.MultiSelect)
         {
             CheckMultiSelOwner();
@@ -603,6 +604,7 @@ public partial class MainWindow
     {
         if (_p == null) return false;
         CheckMultiSelOwner();
+        DrawMixedOverlay();   // [Quét chọn] tường, cửa, đồ đạc, điện nước, trục, mặt cắt đã chọn + công cụ vẽ trục – MainWindow.SelectGridLevel.cs
         DrawMultiSlabOverlay();   // [Thanh lệnh cấu kiện] ô sàn chọn nhiều
         foreach (var f in PlanFrames().Where(q => !q.IsVerticalKind && _multiSel.Contains(q.Id)))
         {

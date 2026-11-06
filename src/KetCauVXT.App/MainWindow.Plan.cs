@@ -544,7 +544,7 @@ public partial class MainWindow
             _lastMouse = e.GetPosition(planHost);
             if (MouseEditMove(_lastMouse.Value)) return;   // [Kiểu Revit] CO / M / MI / AR / O: dây chun + bóng đối tượng
             if (RevitPlanMove(_lastMouse.Value)) return;   // [Kiểu Revit] đặt cửa, kích thước tạm khi vẽ – MainWindow.RevitDraw.cs
-            if (IsLineMode || IsBeamToolMode || IsBeamEditMode || CadAlignActive) { DrawHover(); return; }   // [CadLink] CadAlignActive   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
+            if (IsLineMode || IsBeamToolMode || IsBeamEditMode || CadAlignActive || _gridTool) { DrawHover(); return; }   // [CadLink] CadAlignActive   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
             UpdateHover(_lastMouse.Value);
             return;
         }

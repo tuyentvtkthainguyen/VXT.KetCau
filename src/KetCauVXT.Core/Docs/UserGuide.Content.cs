@@ -747,6 +747,44 @@ public static partial class UserGuide
                 "Với mô hình đã sửa nhiều, thêm dầm theo trục + khoảng cách bằng **Dầm theo toạ độ / trục…** thay vì sinh lại ({s:mo-hinh.dam-etabs}).",
                 "Bắt điểm **Giao trục**, **Trên trục** dùng lưới trục hiện có.");
 
+        c.Sec("mo-hinh.quet-chon", "Quét chọn mọi đối tượng (khung bao / khung cắt)")
+            .P("Ở chế độ **Chọn** của tab Mặt bằng, kéo chuột trái trên vùng trống để quét chọn – áp dụng cho cột, dầm, ô sàn, tường, cửa, đồ đạc, thiết bị và tuyến điện nước, trục, đường mặt cắt của tầng đang xem (mọi tầng khi xem tất cả).")
+            .Table(new[] { "Thao tác", "Kết quả" },
+                new[] { "Kéo trái → phải (khung xanh dương, nét liền)", "Khung bao: chỉ chọn đối tượng nằm trọn trong khung." },
+                new[] { "Kéo phải → trái (khung xanh lá, nét đứt)", "Khung cắt: chọn mọi đối tượng chạm khung." },
+                new[] { "Ctrl + kéo", "Thêm vào nhóm đang chọn." },
+                new[] { "Shift + kéo", "Bỏ bớt khỏi nhóm đang chọn." },
+                new[] { "Delete", "Xoá cả nhóm – một bước hoàn tác (Ctrl + Z)." },
+                new[] { "Esc", "Bỏ chọn." })
+            .Bullets("Thanh trạng thái báo số đối tượng theo loại, vd. \"Đã chọn: 5 dầm, 3 cột, 2 tường\".",
+                "Tab **Trục & tầng** → **Bộ lọc…**: đánh dấu các loại cần giữ (kiểu Revit), bỏ các loại còn lại khỏi nhóm.",
+                "Cột, dầm, ô sàn trong nhóm dùng chung cho các lệnh sửa nhiều cấu kiện (gán tải, tiết diện, sao chép…).",
+                "Dời khung nhìn bằng nút giữa chuột (kéo trái ở chế độ Chọn dành cho quét chọn).")
+            .Tip("Trong cửa sổ Triển khai hồ sơ, tab Mặt bằng kết cấu, công cụ **Chọn** cũng quét chọn được nhiều vị trí cấu kiện; Shift + bấm thêm / bớt từng vị trí, Delete xoá khỏi mặt bằng.");
+
+        c.Sec("mo-hinh.sua-luoi-truc", "Thêm, dời, xoá lưới trục")
+            .Steps("Tab **Trục & tầng** → **Vẽ trục**: bấm điểm đầu rồi điểm cuối trên mặt bằng. Đường gần đứng tạo trục số (1, 2, 3…), đường gần ngang tạo trục chữ (A, B, C…); tên tự đặt tiếp theo trục có sẵn. Bấm tiếp để vẽ trục khác, Esc để dừng.",
+                "**Sửa lưới trục…**: chọn trục trong danh sách để đổi tên, **Dời tới toạ độ** (đánh dấu *Kéo theo cấu kiện* để cột, đầu dầm, góc sàn, đầu tường nằm trên trục dời cùng), **Sao chép lệch** một khoảng, thêm trục X / Y theo toạ độ, **Xoá trục** (có cảnh báo khi còn cấu kiện nằm trên trục – cấu kiện giữ nguyên), **Đánh số lại**.",
+                "Bấm đúp gần đầu trục (bong bóng) trên mặt bằng để đổi tên nhanh.",
+                "Mọi thay đổi trong một lần mở hộp thoại là một bước hoàn tác.")
+            .Bullets("Có thể quét chọn trục rồi nhấn Delete để xoá nhiều trục ({s:mo-hinh.quet-chon}).",
+                "Triển khai hồ sơ: nút **Thêm trục…** trên mặt bằng kết cấu; chuột phải lên đường trục → dời trục (kéo theo / giữ cấu kiện), thêm trục song song, xoá trục. Ô bước trục tự cập nhật.")
+            .Note("Sau khi dời trục có kéo theo cấu kiện, chạy lại phân tích để cập nhật nội lực.");
+
+        c.Sec("mo-hinh.them-tang", "Thêm tầng, sửa cao độ tầng")
+            .Steps("Tab **Trục & tầng** → **Thêm tầng…**: chọn tầng tham chiếu, vị trí (phía trên / phía dưới), chiều cao tầng mới và cách chép cấu kiện: *Không chép*, *Chỉ chép cột* hoặc *Chép toàn bộ* (cột, dầm, sàn). Các tầng phía trên được nâng lên tương ứng; thêm tầng trên cùng sẽ nối cột từ đỉnh cột tầng dưới.",
+                "**Sửa cao độ…**: chọn tầng, nhập cao độ mới rồi **Đặt cao độ** – nút ở cao độ cũ dời theo nên cột, dầm, sàn co giãn, chiều cao các tầng tự tính lại. Cao độ được giới hạn để mỗi tầng cao ít nhất 0,5 m.",
+                "Cũng trong hộp đó: **Đổi tên** tầng, **Xoá tầng**.")
+            .P("Các nút **Thêm tầng…** và **Sửa cao độ…** cũng có trên khung nhìn mặt đứng ({s:mo-hinh.mat-dung}).");
+
+        c.Sec("mo-hinh.mat-dung", "Mặt đứng công trình và vẽ trục trên mặt đứng")
+            .P("Tab **Trục & tầng** → **Mặt đứng** (hoặc cây dự án → Mặt đứng) mở khung nhìn mặt đứng 4 hướng: trước, sau, trái, phải. Mặt đứng thể hiện đường cao độ các tầng kèm ký hiệu cao độ, trục thẳng đứng có bong bóng ở trên và dưới, dãy kích thước trục, hình chiếu tường, cột, dầm, cửa đi, cửa sổ.")
+            .Steps("Chọn hướng nhìn trong danh sách.",
+                "Bật **Thêm trục (bấm lên hình)** rồi bấm vào vị trí cần thêm trục: chương trình đổi vị trí bấm sang toạ độ mặt bằng, hiện để sửa cho chính xác, rồi thêm trục số (mặt đứng trước / sau) hoặc trục chữ (mặt đứng trái / phải).",
+                "**Xuất DXF…** lưu bản vẽ mặt đứng đang xem.")
+            .Bullets("Bộ hồ sơ kiến trúc (KT) có thêm 4 bản vẽ mặt đứng KT_MatDung_1…4.dxf.",
+                "Lưới trục và cao độ dùng chung với mặt bằng ({s:mo-hinh.sua-luoi-truc}, {s:mo-hinh.them-tang}).");
+
         c.Sec("mo-hinh.vat-lieu", "Vật liệu")
             .Bullets("Tab Công trình → nhóm **Vật liệu**: cấp bê tông cột, dầm, sàn, móng; thép dọc (Ø ≥ 10) và thép đai, thép sàn (Ø < 10). Bấm **Áp dụng thông số** sau khi đổi.",
                 "{m:materials}: hộp thoại **Khai báo vật liệu (Material Properties)** – các bảng **Bê tông**, **Cốt thép**, **Thép hình** (E, γ, Rb, Rbt, Rs…); **＋ Thêm**, **Xoá (không dùng)**, **Đặt lại theo thư viện**. Giá trị tính toán theo TCVN 5574:2018 (bê tông Bảng 7, 10; cốt thép Bảng 13) và TCVN 5575:2024 (thép hình f = fy/γM).",

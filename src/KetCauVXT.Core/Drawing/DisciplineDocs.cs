@@ -186,6 +186,8 @@ public static class DisciplineDocs
         }
         // mặt cắt công trình 1-1, 2-2 (+ mặt cắt người dùng vẽ) – tự ghi cao độ, kích thước tầng, trục (Drawing/SectionView.cs)
         try { items.AddRange(SectionView.Sheets(p, o.PlanScale)); } catch (Exception) { /* mô hình chưa đủ dữ liệu cắt */ }
+        // mặt đứng 4 hướng – trục, cao độ, cửa (Drawing/BuildingElevation.cs)
+        try { items.AddRange(BuildingElevation.Sheets(p, o.PlanScale)); } catch (Exception) { /* mô hình chưa đủ dữ liệu */ }
         var sch = WallPlanDrawing.ScheduleFigure(p);
         if (sch != null) items.Add(new DrawingItem { Key = "KT:CUA", FileName = "KT_ThongKeCua.dxf", Title = "THỐNG KÊ CỬA", Scale = 1, W = sch.W });
         var rooms = p.Arch?.Rooms ?? new List<Room>();
