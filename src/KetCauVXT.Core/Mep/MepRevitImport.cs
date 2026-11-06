@@ -34,7 +34,9 @@ public static class MepRevitImport
         foreach (var it in items.Where(i => i != null))
         {
             string cat = (it.Category ?? "").Trim().ToLowerInvariant();
-            bool linear = Math.Abs(it.X2 - it.X1) + Math.Abs(it.Y2 - it.Y1) + Math.Abs(it.Z2 - it.Z1) > 1e-6;
+            // phần tử dạng đoạn: có đường kính và hai đầu khác nhau (thiết bị Revit chỉ có điểm X1,Y1,Z1 – X2..Z2 = 0, Diameter = 0;
+            // cùng quy ước với RevitArchImport.AddMepBoxes)
+            bool linear = it.Diameter > 0 && Math.Abs(it.X2 - it.X1) + Math.Abs(it.Y2 - it.Y1) + Math.Abs(it.Z2 - it.Z1) > 1e-6;
             if (cat.Contains("fitting") || (cat.Contains("accessory") && cat.Contains("pipe"))) { ns++; continue; }
             if ((cat == "pipe" || cat == "pipes" || cat.Contains("pipecurve") || cat.Contains("flexpipe")) && linear)
             {
@@ -44,7 +46,8 @@ public static class MepRevitImport
             {
                 AddRun(p, it, SystemOfConduit(it), MepRunKind.OngGen, ox, oy); nr++; continue;
             }
-            string fam = linear ? null : FamilyFor(m.Library, it);
+            bool noFamily = linear || cat.Contains("duct") || cat.Contains("cabletray") || cat.Contains("cable tray");
+            string fam = noFamily ? null : FamilyFor(m.Library, it);
             if (fam == null) { generic.Add(it); continue; }
             AddDevice(p, it, fam, ox, oy); nd++;
         }
@@ -62,8 +65,8 @@ public static class MepRevitImport
             var s = p.Stories.FirstOrDefault(q => string.Equals(q.Name, level.Trim(), StringComparison.OrdinalIgnoreCase));
             if (s != null) return s.Name;
         }
-        return p.Stories.Where(s => s.Elevation <= z + 0.05).OrderByDescending(s => s.Elevation).FirstOrDefault()?.Name
-               ?? p.Stories.OrderBy(s => s.Elevation).FirstOrDefault()?.Name ?? "NEN";
+        // cùng quy tắc với RevitArchImport.StoryFor (tường / phòng): thấp hơn tầng thấp nhất (Level gốc không thành tầng) → "NEN"
+        return p.Stories.Where(s => s.Elevation <= z + 0.05).OrderByDescending(s => s.Elevation).FirstOrDefault()?.Name ?? "NEN";
     }
 
     private static string Text(RvMep it) => ((it.Name ?? "") + " | " + (it.SystemName ?? "")).ToLowerInvariant();
