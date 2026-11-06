@@ -69,6 +69,7 @@ public partial class MainWindow : Window
         SetStatus("Sẵn sàng – nhập lưới trục, chiều cao tầng rồi bấm 'Tạo mô hình', hoặc mở/nhập mô hình có sẵn.");
         HandleCommandLine();
         InitCompactUi();     // [Giao diện gọn] menu + thanh công cụ 1 hàng, F11, Ctrl+Q – MainWindow.CompactUi.cs
+        InitRevitUi();       // [Kiểu Revit] ribbon Kiến trúc/Kết cấu/…, Thuộc tính, Trình duyệt dự án, thanh tuỳ chọn – MainWindow.RevitUi.cs
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)

@@ -39,11 +39,12 @@ internal sealed class WallTypeRow : RowBase
         }
     }
 
-    public double ThicknessMm { get => T.Thickness * 1000; set { if (value >= 20 && value <= 1000) { T.Thickness = value / 1000; Done(); } } }
-    public double UnitWeight { get => T.UnitWeight; set { if (value > 0 && value <= 30) { T.UnitWeight = value; Done(); } } }
-    public string Finish { get => WallMath.FinishText(T.Finish); set { T.Finish = WallMath.ParseFinish(value); Done(); } }
-    public double PlasterMm { get => T.PlasterThickness * 1000; set { if (value >= 0 && value <= 60) { T.PlasterThickness = value / 1000; Done(); } } }
-    public double PlasterUnitWeight { get => T.PlasterUnitWeight; set { if (value > 0 && value <= 30) { T.PlasterUnitWeight = value; Done(); } } }
+    // [Kiểu Revit] kiểu tường nhiều lớp: sửa lõi giữ lớp hoàn thiện; sửa trát → dựng lại lớp vữa (giữ lớp ốp) – Model/WallAssembly.cs
+    public double ThicknessMm { get => T.Thickness * 1000; set { if (value >= 20 && value <= 1000) { WallAssembly.SetCore(T, value / 1000, null); Done(); } } }
+    public double UnitWeight { get => T.UnitWeight; set { if (value > 0 && value <= 30) { WallAssembly.SetCore(T, null, value); Done(); } } }
+    public string Finish { get => WallMath.FinishText(T.Finish); set { T.Finish = WallMath.ParseFinish(value); WallAssembly.RebuildFromLegacy(T); Done(); } }
+    public double PlasterMm { get => T.PlasterThickness * 1000; set { if (value >= 0 && value <= 60) { T.PlasterThickness = value / 1000; WallAssembly.RebuildFromLegacy(T); Done(); } } }
+    public double PlasterUnitWeight { get => T.PlasterUnitWeight; set { if (value > 0 && value <= 30) { T.PlasterUnitWeight = value; WallAssembly.RebuildFromLegacy(T); Done(); } } }
     public double OpeningPct { get => T.OpeningRatio * 100; set { if (value >= 0 && value <= 90) { T.OpeningRatio = value / 100; Done(); } } }
     public double Load => Math.Round(T.WeightPerM2, 3);
     public int Uses => _p.Walls.Count(w => w.Type == T.Name);

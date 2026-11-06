@@ -54,7 +54,7 @@ public static class WallLoadGenerator
             double H = w.Height > 0 ? w.Height : idx + 1 < stories.Count ? stories[idx + 1].Elevation - st.Elevation - Math.Max(hBeam, 0.35) : 0.9;
             if (H <= 0) continue;
             double area = L * H;
-            double open = w.OpeningArea >= 0 ? w.OpeningArea : wt.OpeningRatio * area;
+            double open = WallAssembly.EffectiveOpenArea(p, w, wt, area, H);   // [Kiểu Revit] cửa gắn tường → diện tích thực
             double ratio = Math.Clamp(open / area, 0, 0.9);
             double q = wt.WeightPerM2 * H * (1 - ratio);
             string note = $"{wt.Name}, H = {H:0.00} m" + (ratio > 0 ? $", trừ cửa {ratio * 100:0}%" : "");

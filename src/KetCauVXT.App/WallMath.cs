@@ -47,7 +47,7 @@ internal static class WallMath
             : idx >= 0 && idx + 1 < stories.Count ? stories[idx + 1].Elevation - st.Elevation - Math.Max(hBeam, 0.35) : 0.9;
         H = Math.Max(0, H);
         double area = L * H;
-        double open = w.OpeningArea >= 0 ? w.OpeningArea : wt.OpeningRatio * area;
+        double open = WallAssembly.EffectiveOpenArea(p, w, wt, area, H);   // [Kiểu Revit] cửa gắn tường → diện tích thực
         double ratio = area > 1e-9 ? Math.Clamp(open / area, 0, 0.9) : 0;
         return new WallCalcResult
         {
@@ -59,6 +59,7 @@ internal static class WallMath
     /// <summary>Đoạn tường có cửa (diện tích cửa riêng &gt; 0 hoặc loại tường có tỷ lệ cửa).</summary>
     public static bool HasDoor(Project p, WallLine w)
     {
+        if (w.Openings is { Count: > 0 }) return false;   // [Kiểu Revit] cửa thật gắn tường – vẽ riêng (MainWindow.RevitDraw.cs)
         if (w.OpeningArea > 0) return true;
         if (w.OpeningArea == 0) return false;
         var wt = p.WallTypes.FirstOrDefault(t => t.Name == w.Type);

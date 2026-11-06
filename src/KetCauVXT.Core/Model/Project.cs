@@ -118,6 +118,9 @@ public partial class Project
     /// <summary>Thư viện loại tường và các đoạn tường khai báo theo vị trí</summary>
     public List<WallType> WallTypes { get; set; } = WallType.Defaults();
     public List<WallLine> Walls { get; set; } = new();
+    /// <summary>[Kiểu Revit – Model/WallAssembly.cs] Thư viện vật liệu tường (γ) và kiểu cửa gắn tường; file cũ không có → mặc định</summary>
+    public List<WallMaterial> WallMaterials { get; set; } = KetCauVXT.Model.WallMaterials.Defaults();
+    public List<OpeningType> OpeningTypes { get; set; } = OpeningType.Defaults();
     /// <summary>Thư viện cấu tạo sàn (lớp hoàn thiện + hoạt tải); Slab.BuildUp tham chiếu theo tên</summary>
     public List<FloorBuildUp> FloorBuildUps { get; set; } = FloorBuildUp.Defaults();
     public FoundationSettings Foundation { get; set; } = new();

@@ -613,6 +613,8 @@ Console.WriteLine("72. Chuẩn hoá layer CAD → VXT-… (tên, nội dung, blo
 LayerConvertTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("73. Thanh lệnh cấu kiện, chọn nhiều, gán tải, tường CAD → dầm, dòng lệnh kiểu AutoCAD");
 PlanLoadCadTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("74. Giao diện / lệnh vẽ kiểu Revit: kiểu tường nhiều lớp, cửa tự cắt tường, kích thước tạm, nối góc, đường định vị");
+RevitDrawTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

@@ -645,7 +645,7 @@ public static class QuantityCalculator
             double cut = UnionLength(cuts);
             double Ln = Math.Max(0, L - cut);
             double gross = Ln * H;
-            double open = w.OpeningArea >= 0 ? w.OpeningArea : wt.OpeningRatio * gross;
+            double open = WallAssembly.EffectiveOpenArea(p, w, wt, gross, H);   // [Kiểu Revit] cửa gắn tường → diện tích thực
             open = Math.Clamp(open, 0, 0.9 * gross);
             double lintelArea = 0;
             if (qs.IncludeLintels && open > 1e-6 && qs.DoorHeight > 0 && qs.LintelHeight > 0)

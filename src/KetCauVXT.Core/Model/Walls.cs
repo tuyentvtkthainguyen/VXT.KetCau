@@ -19,8 +19,38 @@ public class WallType
     public double OpeningRatio { get; set; }
 
     public int PlasterSides => Finish == WallFinish.Plaster2Sides ? 2 : Finish == WallFinish.Plaster1Side ? 1 : 0;
-    /// <summary>Tải tiêu chuẩn 1 m² tường đặc (kN/m²)</summary>
-    public double WeightPerM2 => Thickness * UnitWeight + PlasterSides * PlasterThickness * PlasterUnitWeight;
+    /// <summary>Tải tiêu chuẩn 1 m² tường đặc (kN/m²): kiểu nhiều lớp = Σ γ·t các lớp; kiểu cũ = t·γ + số mặt trát·tp·γtrát.</summary>
+    public double WeightPerM2 => IsLayered ? Layers.Sum(l => l.WeightPerM2) : Thickness * UnitWeight + PlasterSides * PlasterThickness * PlasterUnitWeight;
+
+    // ---- [Kiểu tường nhiều lớp kiểu Revit – Model/WallAssembly.cs] ----
+    /// <summary>Chức năng tường: Tường ngoài / Tường trong / Tường móng / Lan can (WallFunctionName)</summary>
+    public string Function { get; set; } = "";
+    /// <summary>Các lớp tường từ mặt NGOÀI vào mặt TRONG (lõi kết cấu, vữa trát, ốp đá, gạch men…); rỗng = kiểu cũ một lớp</summary>
+    public List<WallLayer> Layers { get; set; } = new();
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsLayered => Layers is { Count: > 0 };
+    /// <summary>Tổng chiều dày tường kể cả lớp hoàn thiện (m)</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public double TotalThickness => IsLayered ? Layers.Sum(l => Math.Max(0, l.Thickness)) : Thickness + PlasterSides * PlasterThickness;
+
+    /// <summary>Đồng bộ thông số cũ (Thickness = chiều dày lõi, UnitWeight = γ lõi bình quân, Finish = số lớp vữa trát)
+    /// từ các lớp – để các phần tính cũ (dầm đỡ tường, khối lượng xây) dùng đúng.</summary>
+    public void SyncFromLayers()
+    {
+        if (!IsLayered) return;
+        var core = Layers.Where(l => l.IsCore && l.Thickness > 0).ToList();
+        if (core.Count == 0) core = Layers.Where(l => l.Thickness > 0).ToList();
+        double t = core.Sum(l => l.Thickness);
+        if (t > 1e-9)
+        {
+            Thickness = Math.Round(t, 4);
+            UnitWeight = Math.Round(core.Sum(l => l.Thickness * l.UnitWeight) / t, 4);
+        }
+        var pl = Layers.Where(l => l.Function == WallLayerFn.Plaster).ToList();
+        Finish = pl.Count >= 2 ? WallFinish.Plaster2Sides : pl.Count == 1 ? WallFinish.Plaster1Side : WallFinish.NoPlaster;
+        if (pl.Count > 0) { PlasterThickness = Math.Round(pl.Average(l => l.Thickness), 4); PlasterUnitWeight = pl[0].UnitWeight; }
+    }
+    // ---- [hết kiểu nhiều lớp] ----
     public override string ToString() => Name;
 
     public static List<WallType> Defaults()
@@ -61,6 +91,8 @@ public class WallLine
     /// (cùng quy ước với <see cref="FrameElement.CurveMidOffset"/>). 0 = tường thẳng (mặc định, tương thích file cũ).
     /// Tải tường cong đặt lên các dầm cong cùng đường tròn nằm dưới tường, theo chiều dài cung.</summary>
     public double Sagitta { get; set; }
+    /// <summary>[Kiểu Revit] Cửa đi / cửa sổ / ô thoáng gắn vào tường – tường tự cắt ô cửa (Model/WallAssembly.cs)</summary>
+    public List<WallOpening> Openings { get; set; } = new();
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsCurved => Math.Abs(Sagitta) > 1e-6;
     /// <summary>Chiều dài dây cung (tường thẳng: chiều dài tường), m</summary>

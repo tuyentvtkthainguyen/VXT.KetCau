@@ -110,6 +110,7 @@ public partial class MainWindow
     {
         if (_p == null) return;
         if (CadLinkAlignClick(s)) return;   // [CadLink] căn bản vẽ liên kết theo 2 điểm – MainWindow.CadLink.cs
+        if (RevitPlanClick(s)) return;   // [Kiểu Revit] đặt cửa, chọn cửa, tường theo đường định vị – MainWindow.RevitDraw.cs
         if (CmdPlanClick(s)) return;   // [Dòng lệnh] cột, đo khoảng cách… – MainWindow.CadCommandLine.cs
         if (_mode == PlanEditMode.Select) { _multiSel.Clear(); _multiSlab.Clear(); SelectAt(s); return; }
         if (_mode == PlanEditMode.MultiSelect) { MultiSelectClick(s); return; }   // [BeamTools]
@@ -316,6 +317,7 @@ public partial class MainWindow
     private bool HandlePlanEditKey(Key key, bool ctrl)
     {
         if (_p == null) return false;
+        if (!ctrl && RevitPlanKey(key)) return true;   // [Kiểu Revit] Esc / Delete khi đặt / chọn cửa – MainWindow.RevitDraw.cs
         if (key == Key.Enter && !ctrl && !IsTextInputFocused() && BeamEditAuto()) return true;   // [Sửa dầm] Extend tự động
         bool del = key == Key.Delete && !ctrl, esc = key == Key.Escape, undo = ctrl && key == Key.Z;
         if (!del && !esc && !undo) return false;

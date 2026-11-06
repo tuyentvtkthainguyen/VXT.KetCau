@@ -812,6 +812,30 @@ public static partial class UserGuide
                 + "Enter / Space lặp lệnh, Esc huỷ, ↑↓ lịch sử lệnh; con lăn chuột phóng to tại con trỏ, chuột giữa để kéo.")
             .Tip("Gán tải nhanh cho cả tầng: tab Sàn → *Chọn nhiều* → kéo khung phải → trái qua toàn mặt bằng → trường hợp HT → *Theo công năng* → làm lại với HTHT.");
 
+        c.Sec("mo-hinh.giao-dien-revit", "Giao diện và lệnh vẽ kiểu Revit: kiểu tường nhiều lớp, cửa tự cắt tường")
+            .P("Chế độ Thiết kế mặc định dùng **giao diện kiểu Revit**: ribbon một hàng **Kiến trúc | Kết cấu | Tải trọng | Phân tích | Xem | Quản lý** (nút lớn, chữ dưới biểu tượng), "
+                + "bên trái **Thuộc tính** (bộ chọn kiểu + xem trước, thông số theo nhóm Ràng buộc / Kích thước / Kết cấu / Tải trọng) và **Trình duyệt dự án** (mặt bằng các tầng, 3D, bảng thống kê, họ & kiểu tường / cửa / tiết diện), "
+                + "giữa là vùng vẽ lớn, dưới mặt bằng là **thanh tuỳ chọn** của công cụ đang dùng. Các ô nhập liệu cũ (công trình, lưới trục, tầng, tải, gió, động đất, vật liệu, địa chất, kết quả) nằm ở **Thông tin dự án** "
+                + "(nút *Thông tin dự án ►* trên khung Thuộc tính hoặc Quản lý → Thông tin dự án). Muốn trở lại bố cục cũ: Quản lý → **Giao diện cổ điển** (menu Xem → *Giao diện kiểu Revit* để bật lại).")
+            .Steps("**Khai báo kiểu tường**: Kiến trúc → **Kiểu tường…** → chọn kiểu ở danh sách trái (Gạch đặc 110/220 trát 2 mặt, Gạch rỗng, Gạch AAC, Tường 220 ốp đá granite mặt ngoài, Tường 110 ốp gạch men WC, Tường BTCT 200…) hoặc *＋ Mới / Nhân bản*. "
+                + "Bảng lớp xếp từ **mặt ngoài** (trên) vào **mặt trong** (dưới): *Lõi kết cấu* (gạch / bê tông), *Lớp vữa trát*, *Ốp đá*, *Ốp gạch men*, *Sơn bả*, *Cách nhiệt* – chọn vật liệu (γ lấy theo thư viện *Vật liệu…*), nhập chiều dày; "
+                + "*＋ Chèn lớp / Xoá lớp / ▲ / ▼*. Ô xem trước vẽ mặt cắt các lớp; dòng tổng cho biết tổng dày, dày lõi và **tải 1 m² = Σ dày × γ**.",
+                "**Vẽ tường**: Kiến trúc → **Tường** → thanh tuỳ chọn: *Kiểu tường*, *Đường định vị* (Tim tường, Tim lõi, Mặt hoàn thiện ngoài / trong, Mặt lõi ngoài / trong), *Cao* (0 = tới tầng trên), *Chuỗi* (vẽ nối tiếp). "
+                + "Bấm điểm đầu – điểm cuối; khi vẽ có **kích thước tạm** (chiều dài + góc) cạnh con trỏ, gõ số + Enter để nhập chiều dài; F8 trực giao, F3 bắt điểm. Tường tự nối góc L / T gọn, tô gạch chéo theo mức chi tiết.",
+                "**Đặt cửa**: Kiến trúc → **Cửa đi / Cửa sổ / Ô thoáng** → chọn kiểu ở thanh tuỳ chọn (D1 900x2200, S1 1200x1400…; *Kiểu cửa…* để thêm / sửa rộng, cao, bậu, cách mở) → rê chuột lên tường: cửa xem trước bắt vào tường kèm "
+                + "kích thước tạm tới đầu tường / cửa bên cạnh; **Space** lật hướng mở, **Shift+Space** đổi bên bản lề; bấm để đặt. Tường **tự cắt ô cửa** (mặt bằng, khối lượng xây trát), tải tường lên dầm trừ đúng diện tích cửa; "
+                + "đặt sát đầu tường hoặc chồng cửa khác thì cửa tự dời vào chỗ hợp lệ gần nhất. Esc để dừng.",
+                "**Sửa cửa**: bấm vào cửa → tab ngữ cảnh **Sửa | Cửa** và kích thước tạm màu xanh: **bấm vào số** để nhập khoảng cách mới (như Revit); đổi kiểu ở bộ chọn kiểu; Space lật; Delete xoá (tường liền lại). "
+                + "Dời / xoá tường thì cửa trên tường đi theo / xoá theo.",
+                "**Chọn đối tượng** (tường, dầm, cột, ô sàn): khung Thuộc tính hiện thông số và tải (tường: chiều cao tính tải, diện tích cửa, q lên dầm); ribbon hiện tab **Sửa | …** với các lệnh hợp ngữ cảnh "
+                + "(Sửa kiểu, Đặt cửa, Di chuyển, Kéo giãn, Cắt, Kéo dài, Gán tải, Xoá). Đổi kiểu tường / tiết diện dầm – cột / sàn ngay ở bộ chọn kiểu.",
+                "**Gán tải**: tab Tải trọng → Tải dầm / sàn / cột / móng / tường mở thanh lệnh cấu kiện (chọn nhiều, Thay thế / Cộng thêm / Xoá); *Gợi ý lanh tô* liệt kê lanh tô đề xuất cho mọi cửa đã đặt.")
+            .Bullets("**Hiển thị / Đồ hoạ** (tab Xem): bật / tắt thẻ dầm (hoặc chỉ tên dầm), thẻ cột, thẻ sàn, công năng, thẻ tường, thẻ cửa; mức chi tiết *Thô* (tường tô đặc) / *Trung bình* / *Chi tiết* (thêm đường ranh lõi); "
+                + "**tự tránh chồng nhãn** – nhãn đụng nhau được dời, không còn chỗ thì ẩn.",
+                "Kiểu tường cũ (dày, γ, trát) tự đổi sang nhiều lớp **giữ nguyên tải 1 m²**; file cũ mở bình thường. Bảng *Loại tường* cũ vẫn dùng được: sửa dày / γ chỉ đổi lớp lõi, giữ lớp ốp.",
+                "Gợi ý lanh tô: gối mỗi bên ≥ 200 mm (≥ 250 mm khi L0 > 1,5 m), h ≥ max(L0/10; 150 mm) (≥ 200 mm với tường 110 khi L0 > 1,5 m), cửa > 1,8 m trên tường 110 cảnh báo bổ trụ BTCT – chi tiết thép ở chế độ Triển khai hồ sơ → Lanh tô.")
+            .Tip("Làm nhanh một tầng: Kiến trúc → Tường (kiểu Gạch đặc 220, đường định vị *Mặt hoàn thiện ngoài*) vẽ vòng tường bao theo chiều kim đồng hồ → Tường kiểu 110 cho tường ngăn → Cửa đi / Cửa sổ đặt lên tường → Tải trọng → Tải tường kiểm tra q → Phân tích (F5).");
+
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")
             .Steps("Thanh sửa mặt bằng: nhập độ hạ ở ô **Hạ cốt (mm)** (vd. −50; gõ 50 cũng hiểu là hạ 50 mm).",

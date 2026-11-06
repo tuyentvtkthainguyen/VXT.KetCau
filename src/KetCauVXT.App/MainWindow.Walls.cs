@@ -65,6 +65,7 @@ public partial class MainWindow
 
     private void DrawWalls(bool labels)
     {
+        if (DrawWallsRevit(labels)) return;   // [Kiểu Revit] tường nhiều lớp, nối góc, cửa gắn tường – MainWindow.RevitDraw.cs
         foreach (var w in PlanWalls())
         {
             var wt = _p.WallTypes.FirstOrDefault(t => t.Name == w.Type);

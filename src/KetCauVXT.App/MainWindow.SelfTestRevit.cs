@@ -1,0 +1,61 @@
+using KetCauVXT.Model;
+
+namespace KetCauVXT.App;
+
+/// <summary>Bước tự kiểm tra (--selftest) giao diện kiểu Revit: bật bố cục Revit, vẽ một tường gạch 220 trát 2 mặt trên trục đầu,
+/// đặt cửa đi + cửa sổ (tường tự cắt ô cửa), chọn cửa (kích thước tạm) và chụp mặt bằng; mở "Sửa kiểu tường" (chụp ảnh);
+/// cuối cùng trả lại mô hình và giao diện cổ điển cho các bước sau.</summary>
+public partial class MainWindow
+{
+    private async Task SelfTestRevit(string tag, Story story)
+    {
+        string snap = Snapshot();
+        var res0 = _res; var des0 = _design;
+        bool dirty0 = _dirty;
+        try
+        {
+            if (_rvRibbon == null) { StLog("giao diện Revit: chưa dựng được ribbon – bỏ qua"); return; }
+            WallAssembly.Upgrade(_p);
+            ApplyRevitLayout(true, false);
+            cbStory.SelectedItem = story.Name;
+            tabView.SelectedItem = ViewTab("Mặt bằng");
+            var gxs = _p.GridsX.ToList(); var gys = _p.GridsY.ToList();
+            if (gxs.Count < 2 || gys.Count < 1) { StLog("giao diện Revit: thiếu lưới trục"); return; }
+            string wt = "Gạch đặc 220 trát 2 mặt";
+            double y0 = gys[0].Coord, x0 = gxs[0].Coord, x1 = gxs[^1].Coord;
+            var r = ModelEdit.AddWall(_p, story.Name, x0, y0, x1, y0, wt, 0, -1);
+            StLog("giao diện Revit – vẽ tường: " + r.Message);
+            var w = _p.Walls.LastOrDefault(q => q.Type == wt && q.Story == story.Name);
+            if (w == null) return;
+            var rd = WallAssembly.PlaceOpening(_p, w, "D1 900x2200", Math.Min(1.2, w.Chord / 3));
+            var rs = WallAssembly.PlaceOpening(_p, w, "S1 1200x1400", w.Chord * 0.7);
+            StLog($"giao diện Revit – cửa: {rd.Message} | {rs.Message}; đoạn tường đặc: {WallAssembly.SolidSegments(_p, w).Count}");
+            _p.InvalidateIndex(); MarkDirty(); RefreshAll(false);
+            if (w.Openings.Count > 0) SelectHostedOpening(w, w.Openings[0]);
+            await Pause(1200);
+            Shot($"{tag}_46c_Revit_CuaCatTuong");
+            var dlg = new WallTypeEditorWindow(_p, "Tường 220 ốp đá granite mặt ngoài") { Owner = this };
+            dlg.Show();
+            await Pause(1000);
+            ShotWindow(dlg, $"{tag}_46d_SuaKieuTuong");
+            dlg.Close();
+        }
+        catch (Exception ex) { StLog("giao diện Revit: lỗi " + ex.Message); }
+        finally
+        {
+            _rvSelOpen = null; _rvSelWall = null;
+            StopPlaceOpening();
+            ApplyRevitLayout(false, false);
+            if (Snapshot() != snap)
+            {
+                RestoreSnapshot(snap);
+                if (_undo.Count > 0 && _undo[^1] == snap) _undo.RemoveAt(_undo.Count - 1);
+                UpdateUndoButton();
+                _res = res0; _design = des0;
+                _dirty = dirty0; UpdateTitle();
+                RefreshResults(); RefreshDesign(); RedrawPlan(); ShowSelection();
+            }
+            StLog("giao diện Revit: đã trả lại mô hình và giao diện cổ điển");
+        }
+    }
+}

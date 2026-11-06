@@ -27,6 +27,11 @@ public sealed class UiLayoutSettings
     /// <summary>Mật độ giao diện: "Gọn" (mặc định – chữ 12, nút biểu tượng) hoặc "Tiêu chuẩn" (biểu tượng + chữ).</summary>
     public string Density { get; set; } = DensityCompact;
     public Dictionary<string, WindowLayout> Windows { get; set; } = new();
+    public const string LayoutRevit = "Revit", LayoutClassic = "Cổ điển";
+    /// <summary>Bố cục chế độ Thiết kế: "Revit" (mặc định – ribbon chữ dưới biểu tượng, Thuộc tính + Trình duyệt dự án, vùng vẽ lớn)
+    /// hoặc "Cổ điển" (khung nhập liệu bên trái như trước).</summary>
+    public string DesignLayout { get; set; } = LayoutRevit;
+    public bool RevitLayout => !string.Equals(DesignLayout, LayoutClassic, StringComparison.OrdinalIgnoreCase);
 
     public bool Compact => !string.Equals(Density, DensityStandard, StringComparison.OrdinalIgnoreCase);
     /// <summary>Cỡ chữ khung bên / thanh trạng thái.</summary>

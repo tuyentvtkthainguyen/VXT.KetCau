@@ -86,6 +86,7 @@ public partial class MainWindow
     private void CmdWindowKeyDown(object sender, KeyEventArgs e)
     {
         if (_busy || _cmdBox == null || !PlanTabActive) return;
+        if (RevitSpaceKey(e)) return;   // [Kiểu Revit] Space lật cửa – MainWindow.RevitDraw.cs
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (key == Key.F3) { _tgOsnap.IsChecked = !_osnapOn; SetStatus("Bắt điểm: " + (_osnapOn ? "BẬT" : "TẮT")); e.Handled = true; return; }
         if (key == Key.F8) { _tgOrtho.IsChecked = !_orthoOn; SetStatus("Trực giao: " + (_orthoOn ? "BẬT" : "TẮT")); e.Handled = true; return; }

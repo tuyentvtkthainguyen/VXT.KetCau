@@ -139,6 +139,7 @@ public partial class MainWindow
         if (_p == null) return;
         if (_fitPending) { FitPlan(); if (_fitPending) return; }
         RefreshEditCombos();
+        BeginLabelLayout();   // [Kiểu Revit] tránh chồng nhãn – MainWindow.RevitDraw.cs
         bool labels = chkLabels.IsChecked == true;
         double w = planHost.ActualWidth, h = planHost.ActualHeight;
 
@@ -153,8 +154,8 @@ public partial class MainWindow
             planCanvas.Children.Add(new Shapes.Polygon { Points = pts, Fill = SlabBrush(use), Stroke = Brushes.Transparent });
             var c = W2S(cx, cy);
             string tag = SlabUseTag(use);
-            if (labels) AddText(s.Label, tag.Length > 0 ? new Point(c.X, c.Y - 7) : c, Brushes.DarkGreen, 10, true);
-            if (tag.Length > 0)
+            if (labels && VgSlabTags) AddText(s.Label, tag.Length > 0 ? new Point(c.X, c.Y - 7) : c, Brushes.DarkGreen, 10, true);
+            if (tag.Length > 0 && VgRoomUse)
                 AddText(tag, labels ? new Point(c.X, c.Y + 7) : c, use == SlabUse.WC ? Brushes.SteelBlue : Brushes.SaddleBrown, 10, true);
             DrawSlabDropPlan(s, pts, c);   // [Sàn hạ cốt] gạch chéo + ▽ cao độ – MainWindow.SlabDrop.cs
         }
@@ -206,11 +207,11 @@ public partial class MainWindow
             var arcB = SafeArc(f);
             if (arcB != null) { DrawCurvedBeamPlan(f, arcB, beamBr, width, labels); continue; } // dầm cong (MainWindow.CurvedBeam.cs)
             AddLine(a, b, beamBr, width, false);
-            if (labels)
+            if (labels && VgBeamTags)
             {
                 var m = new Point((a.X + b.X) / 2, (a.Y + b.Y) / 2);
                 bool vertical = Math.Abs(b.X - a.X) < Math.Abs(b.Y - a.Y);
-                AddText($"{f.Label} {f.Section}", vertical ? new Point(m.X + 6, m.Y) : new Point(m.X, m.Y - 12), LabelBrush, 9, !vertical);
+                AddText(VgBeamSection ? $"{f.Label} {f.Section}" : f.Label, vertical ? new Point(m.X + 6, m.Y) : new Point(m.X, m.Y - 12), LabelBrush, 9, !vertical);
             }
         }
 
@@ -232,7 +233,7 @@ public partial class MainWindow
             };
             Canvas.SetLeft(r, c.X - rw / 2); Canvas.SetTop(r, c.Y - rh / 2);
             planCanvas.Children.Add(r);
-            if (labels) AddText($"{f.Label}", new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 1), Brushes.Black, 9, false);
+            if (labels && VgColumnTags) AddText($"{f.Label}", new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 1), Brushes.Black, 9, false);
         }
 
         // ---- gối ----
@@ -256,6 +257,7 @@ public partial class MainWindow
 
         // tiêu đề
         AddText($"Mặt bằng: {CurrentStory}   –   tỷ lệ {_scale:0.#} px/m", new Point(8, 6), Brushes.Gray, 11, false);
+        EndLabelLayout();
 
         // di chuột: vẽ lại lớp phủ
         DrawHover();
@@ -471,6 +473,13 @@ public partial class MainWindow
         t.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double x = center ? p.X - t.DesiredSize.Width / 2 : p.X;
         double y = vcenter || center ? p.Y - t.DesiredSize.Height / 2 : p.Y;
+        if (_lblBoxes != null && (target == null || target == planCanvas))
+        {
+            // [Kiểu Revit] tránh chồng nhãn: nhãn cấu kiện (≤ 10 pt, không phải trục) dời / ẩn khi đụng nhãn đã đặt
+            var at = PlaceLabel(x, y, t.DesiredSize.Width, t.DesiredSize.Height, size <= 10 && !ReferenceEquals(br, GridBrush));
+            if (at == null) return;
+            x = at.Value.X; y = at.Value.Y;
+        }
         Canvas.SetLeft(t, x); Canvas.SetTop(t, y);
         (target ?? planCanvas).Children.Add(t);
     }
@@ -505,6 +514,7 @@ public partial class MainWindow
         if (!_panning)
         {
             _lastMouse = e.GetPosition(planHost);
+            if (RevitPlanMove(_lastMouse.Value)) return;   // [Kiểu Revit] đặt cửa, kích thước tạm khi vẽ – MainWindow.RevitDraw.cs
             if (IsLineMode || IsBeamToolMode || IsBeamEditMode || CadAlignActive) { DrawHover(); return; }   // [CadLink] CadAlignActive   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
             UpdateHover(_lastMouse.Value);
             return;
