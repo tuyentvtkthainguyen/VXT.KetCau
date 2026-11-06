@@ -48,7 +48,7 @@ public static class MepRound4Tests
         var se = MepWallFaceSnap.Snap(p, s1, 0.1, 0.3, 0.25, 0.9);
         check("Bám tường: kẹp trong [W/2, L − W/2] → 0,45", se.X, 0.45, 1e-9);
         var sf = MepWallFaceSnap.Snap(p, s1, 2.03, 2.02, 0.25, 0.9);
-        check("Ngoài vùng bắt: lưới 5 cm (2,05; 2,00), không bám", B(!sf.Snapped) * 100 + sf.X + sf.Y, 2.05 + 2.0, 1e-9);
+        check("Ngoài vùng bắt: lưới 5 cm (2,05; 2,00), không bám", B(!sf.Snapped) * 100 + sf.X + sf.Y, 100 + 2.05 + 2.0, 1e-9);
         var dl = HvacRouting.AddUnit(p, s1, HvacUnitKind.DanLanh, 3, 3, 12000);
         check("Dàn lạnh mặc định: sâu 0,25, rộng 0,9", dl.D * 10 + dl.W, 2.5 + 0.9, 1e-12);
         MepWallFaceSnap.MoveUnit(p, dl, 2.03, 0.4);
@@ -200,7 +200,12 @@ public static class MepRound4Tests
         check("Tủ 3 pha: pha nặng nhất = mạch ổ cắm 0,5·4800", p3.PhaseW.Max(), 2400, 1e-9);
         check("Tủ 3 pha: lệch pha < 10 %", B(p3.UnbalancePct < 10), 1, 0);
         double avg = dem / 3;
-        check("Tủ 3 pha: lệch pha = max|Pi − TB| / TB", p3.UnbalancePct, (2400 - avg) / avg * 100, 1e-9);
+        // cân pha tham lam (mạch lớn trước, vào pha nhẹ nhất): L1 = ổ cắm C3 2400; L2 = bình 1750 + ổ cắm C4 600 = 2350;
+        // L3 = 2 máy lạnh 0,8·P + đèn C1 216 + C2 43,2 ≈ 2134,8 → lệch lớn nhất là pha nhẹ L3 (TB − L3 ≈ 160 W > L1 − TB ≈ 105 W)
+        double l3 = 0.8 * 2 * acp.PowerW + 0.9 * 10 * 24 + 0.9 * 2 * 24;
+        check("Tủ 3 pha: pha L2 = bình nóng lạnh + mạch ổ cắm 2 điểm", p3.PhaseW[1], 0.7 * 2500 + 0.5 * 2 * 600, 1e-9);
+        check("Tủ 3 pha: pha L3 = 2 máy lạnh + 2 mạch đèn", p3.PhaseW[2], l3, 1e-9);
+        check("Tủ 3 pha: lệch pha = max|Pi − TB| / TB (pha nhẹ L3)", p3.UnbalancePct, (avg - l3) / avg * 100, 1e-9);
         check("Tủ 3 pha: mọi mạch có pha L1–L3", B(p3.Circuits.All(x => x.Phase is "L1" or "L2" or "L3")), 1, 0);
         check("Tủ 3 pha: aptomat tổng ≥ mạch lớn nhất 32 A", p3.MainBreakerA, 32, 0);
         check("Tủ 3 pha: chữ MCCB 4P", B(p3.MainBreakerText.StartsWith("MCCB 4P")), 1, 0);
