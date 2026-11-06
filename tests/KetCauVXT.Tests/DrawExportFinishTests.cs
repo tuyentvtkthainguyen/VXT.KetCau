@@ -100,7 +100,8 @@ public static class DrawExportFinishTests
 
         // ================= 3. Cột lệch tâm: kích thước + điểm chèn ETABS / SAP2000 =================
         var col = p.Frames.First(f => f.IsVerticalKind && Math.Abs(Math.Max(p.Node(f.NodeI).Z, p.Node(f.NodeJ).Z) - st.Elevation) < 1e-3);
-        var si = DrawUtil.SectionOf(p, col.Section);
+        var fsec = p.FrameSections.First(x => x.Name == col.Section);
+        var si = (B: fsec.B, H: fsec.H);
         col.ColOffsetX = si.H / 2;
         check("Điểm chèn: lệch +H/2 theo X → 4 (giữa trái)", ColumnInsertion.Cardinal(p, col).Cardinal, 4, 0);
         col.ColOffsetY = si.B / 2;
