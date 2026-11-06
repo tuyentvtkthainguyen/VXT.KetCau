@@ -467,21 +467,27 @@ internal sealed class VisibilityGraphicsWindow : Window
         SizeToContent = SizeToContent.Height;
         var sp = new StackPanel { Margin = new Thickness(12) };
         sp.Children.Add(DialogUi.Label("Thẻ (nhãn) hiển thị", double.NaN, true));
+        bool bulk = false;
+        var tags = new List<CheckBox>();
         CheckBox C(string t, bool val, Action<bool> set)
         {
             var c = new CheckBox { Content = t, IsChecked = val, Margin = new Thickness(4, 3, 0, 3) };
-            c.Checked += (s, e) => { set(true); apply(); };
-            c.Unchecked += (s, e) => { set(false); apply(); };
+            c.Checked += (s, e) => { set(true); if (!bulk) apply(); };
+            c.Unchecked += (s, e) => { set(false); if (!bulk) apply(); };
             sp.Children.Add(c);
             return c;
         }
-        C("Thẻ dầm (tên + tiết diện)", v.BeamTags, b => v.BeamTags = b);
+        // bật / tắt tất cả loại thẻ – vẽ lại một lần
+        var allBar = CheckAllBar.ForBoxes(() => tags, b => bulk = b, apply, "Tất cả thẻ");
+        sp.Children.Add(allBar);
+        tags.Add(C("Thẻ dầm (tên + tiết diện)", v.BeamTags, b => v.BeamTags = b));
         C("Chỉ tên dầm (bỏ tiết diện)", v.BeamNameOnly, b => v.BeamNameOnly = b);
-        C("Thẻ cột", v.ColumnTags, b => v.ColumnTags = b);
-        C("Thẻ ô sàn", v.SlabTags, b => v.SlabTags = b);
-        C("Công năng phòng (WC, BC…)", v.RoomUse, b => v.RoomUse = b);
-        C("Thẻ tường (T110, T220)", v.WallTags, b => v.WallTags = b);
-        C("Thẻ cửa (D1, S1)", v.DoorTags, b => v.DoorTags = b);
+        tags.Add(C("Thẻ cột", v.ColumnTags, b => v.ColumnTags = b));
+        tags.Add(C("Thẻ ô sàn", v.SlabTags, b => v.SlabTags = b));
+        tags.Add(C("Công năng phòng (WC, BC…)", v.RoomUse, b => v.RoomUse = b));
+        tags.Add(C("Thẻ tường (T110, T220)", v.WallTags, b => v.WallTags = b));
+        tags.Add(C("Thẻ cửa (D1, S1)", v.DoorTags, b => v.DoorTags = b));
+        foreach (var t in tags) { t.Checked += (s, e) => allBar.Refresh(); t.Unchecked += (s, e) => allBar.Refresh(); }
         C("Tự tránh chồng nhãn (ẩn nhãn không còn chỗ)", v.AvoidOverlap, b => v.AvoidOverlap = b);
         sp.Children.Add(DialogUi.Label("Mức chi tiết tường", double.NaN, true));
         var cb = new ComboBox { ItemsSource = PlanVisibility.Details, SelectedItem = v.Detail, Width = 200, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(4, 2, 0, 6) };

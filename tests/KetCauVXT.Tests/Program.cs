@@ -623,6 +623,8 @@ Console.WriteLine("77. Vừa màn hình mặt bằng theo vùng vẽ thật, đ�
 PlanFitLabelTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("78. Bản vẽ kiểu Revit: cỡ chữ in, trình duyệt khung nhìn, tạo / đặt tên / đánh số bản vẽ, đặt khung nhìn, danh mục, kích đúp → cấu kiện");
 RevitSheetsTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("79. Chọn / bỏ chọn tất cả layer: ô Tất cả ba trạng thái, chọn hết / bỏ hết / đảo, chỉ dòng đang hiện");
+CheckAllTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

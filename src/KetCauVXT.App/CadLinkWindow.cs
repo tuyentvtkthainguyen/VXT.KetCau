@@ -27,6 +27,7 @@ internal sealed class CadLinkWindow : Window
     private readonly DataGrid _layers;
     private readonly Panel _props;
     private ObservableCollection<LayerRow> _rows = new();
+    private CheckAllBar _layerAll;
     private string _selId;
     private bool _loading;
 
@@ -143,6 +144,10 @@ internal sealed class CadLinkWindow : Window
         var lt = DialogUi.Label("Layer của bản vẽ (bỏ chọn \"Hiện\" để ẩn trên nền; nhóm cấu kiện dùng khi cập nhật mô hình):", double.NaN, true);
         lt.Margin = new Thickness(0, 8, 0, 0);
         top.Children.Add(lt);
+        // ô "Tất cả" / Chọn hết / Bỏ hết / Đảo cho cột "Hiện" – áp một lần cho cả lô, vẽ lại nền một lần
+        _layerAll = new CheckAllBar(() => _layers.Items.OfType<LayerRow>().Select(r => r.Shown).ToList(), ApplyShownBatch, "Hiện tất cả layer");
+        _layerAll.Watch(_layers, false);
+        top.Children.Add(_layerAll);
         DockPanel.SetDock(top, Dock.Top); props.Children.Add(top);
         var lb = DialogUi.Row(btnShowAll, btnHideSel, btnOnly); DockPanel.SetDock(lb, Dock.Bottom); props.Children.Add(lb);
         props.Children.Add(_layers);
@@ -263,6 +268,23 @@ internal sealed class CadLinkWindow : Window
             }
         }
         _layers.ItemsSource = _rows;
+        _layerAll?.Refresh();
+    }
+
+    /// <summary>Đổi cột "Hiện" cho cả lô các dòng đang hiện trong bảng (một lần cập nhật nền link).</summary>
+    private void ApplyShownBatch(Func<int, bool, bool> f)
+    {
+        var l = Sel();
+        if (l == null) return;
+        var list = _layers.Items.OfType<LayerRow>().ToList();
+        _loading = true;
+        try { for (int i = 0; i < list.Count; i++) list[i].Shown = f(i, list[i].Shown); }
+        finally { _loading = false; }
+        l.HiddenLayers ??= new List<string>();
+        var names = new HashSet<string>(list.Select(r => r.Name), StringComparer.OrdinalIgnoreCase);
+        l.HiddenLayers.RemoveAll(h => names.Contains(h));
+        l.HiddenLayers.AddRange(list.Where(r => !r.Shown).Select(r => r.Name));
+        _main.CadLinkEdited(l);
     }
 
     private void ApplyNumbers()
@@ -317,6 +339,7 @@ internal sealed class CadLinkWindow : Window
         l.HiddenLayers.RemoveAll(h => string.Equals(h, r.Name, StringComparison.OrdinalIgnoreCase));
         if (!r.Shown) l.HiddenLayers.Add(r.Name);
         _main.CadLinkEdited(l);
+        _layerAll?.Refresh();
     }
 
     internal void LayerCategoryChanged(LayerRow r)
@@ -343,6 +366,7 @@ internal sealed class CadLinkWindow : Window
         l.HiddenLayers.Clear();
         if (!shown) l.HiddenLayers.AddRange(_rows.Select(r => r.Name));
         if (apply) _main.CadLinkEdited(l);
+        _layerAll?.Refresh();
     }
 
     private void SetSelectedShown(bool shown)
@@ -361,6 +385,7 @@ internal sealed class CadLinkWindow : Window
             if (!shown) l.HiddenLayers.Add(r.Name);
         }
         _main.CadLinkEdited(l);
+        _layerAll?.Refresh();
     }
 
     /// <summary>Một dòng bảng layer.</summary>

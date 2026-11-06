@@ -235,6 +235,7 @@ internal sealed class CadStandardWindow : Window
     private readonly ObservableCollection<RuleRow> _rules = new();
     private readonly ObservableCollection<MapRow> _maps = new();
     private readonly ObservableCollection<OutputLayerRow> _outs = new();
+    private readonly CheckAllBar _rulesAll, _outAll;
     private readonly DataGrid _gRules, _gMaps, _gOut;
     private readonly ComboBox _cbPreset, _cbFont, _cbReportFont;
     private readonly ComboBox _cbFormat = new() { Width = 200, ToolTip = "Định dạng file khi xuất bản vẽ: DXF R12 (tương thích cũ, hatch mô phỏng bằng nét) | DXF 2018 / DWG 2018 (HATCH thật, LWPOLYLINE, nét in theo layer)" };
@@ -283,6 +284,15 @@ internal sealed class CadStandardWindow : Window
             DialogUi.Btn("↑", (s, e) => MoveRule(-1)), DialogUi.Btn("↓", (s, e) => MoveRule(1)),
             DialogUi.Btn("Quy tắc mặc định", (s, e) => { _std.InputRules = CadStandard.DefaultInputRules(); LoadRules(); }),
             DialogUi.Label("   Thử tên layer:"), _txtTest, _txtTestRes));
+        // ô "Tất cả" cho cột "Dùng" của quy tắc
+        _rulesAll = new CheckAllBar(() => _gRules.Items.OfType<RuleRow>().Select(r => r.Enabled).ToList(), f =>
+        {
+            DialogUi.Commit(_gRules);
+            var list = _gRules.Items.OfType<RuleRow>().ToList();
+            for (int i = 0; i < list.Count; i++) list[i].Enabled = f(i, list[i].Enabled);
+            TestLayer();
+        }, "Dùng tất cả quy tắc").Watch(_gRules, false);
+        t1Top.Children.Add(_rulesAll);
         DockPanel.SetDock(t1Top, Dock.Top); t1.Children.Add(t1Top);
         var mapBox = new DockPanel { Height = 170 };
         var mapTop = DialogUi.Row(DialogUi.Label("Gán trực tiếp theo tên layer", double.NaN, true),
@@ -318,6 +328,15 @@ internal sealed class CadStandardWindow : Window
         t2Top.Children.Add(DialogUi.Row(DialogUi.Btn("＋ Thêm layer", (s, e) => AddOut()), DialogUi.Btn("Xoá layer thêm", (s, e) => DeleteOut()),
             DialogUi.Btn("Gộp layer…", (s, e) => MergeOut()), DialogUi.Btn("Đổi tên hàng loạt…", (s, e) => BatchRename()),
             DialogUi.Btn("Sửa ký tự cấm", (s, e) => { LayerNameCheck.AutoFix(_outs); RefreshOut(); })));
+        // ô "Tất cả" cho cột "In" của layer xuất – đổi cả lô rồi cập nhật kiểm tra một lần
+        _outAll = new CheckAllBar(() => _gOut.Items.OfType<OutputLayerRow>().Select(r => r.Plot).ToList(), f =>
+        {
+            DialogUi.Commit(_gOut);
+            var list = _gOut.Items.OfType<OutputLayerRow>().ToList();
+            for (int i = 0; i < list.Count; i++) list[i].L.Plot = f(i, list[i].L.Plot);
+            OutChanged();
+        }, "In tất cả layer").Watch(_gOut, false);
+        t2Top.Children.Add(_outAll);
         DockPanel.SetDock(t2Top, Dock.Top); t2.Children.Add(t2Top);
         t2.Children.Add(_gOut);
         _tabs.Items.Add(new TabItem { Header = "Layer bản vẽ kết cấu", Content = t2 });
@@ -372,6 +391,7 @@ internal sealed class CadStandardWindow : Window
         _rules.Clear();
         foreach (var r in _std.InputRules) _rules.Add(new RuleRow(r));
         TestLayer();
+        _rulesAll?.Refresh();
     }
 
     private void LoadOut()
@@ -399,6 +419,7 @@ internal sealed class CadStandardWindow : Window
     private void RefreshOut()
     {
         foreach (var r in _outs) r.Refresh();
+        _outAll?.Refresh();
         var err = LayerNameCheck.Errors(_outs);
         SetStatus(err.Count == 0 ? $"{_outs.Count} layer xuất, {_outs.Select(o => o.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count()} tên khác nhau."
                                  : "Lỗi tên layer: " + string.Join("; ", err));

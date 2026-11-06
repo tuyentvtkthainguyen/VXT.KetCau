@@ -69,6 +69,8 @@ public sealed class GridFromPlanDialog : Window
     private readonly TextBox _axisName = new() { Width = 60, Margin = new Thickness(0, 0, 6, 0) };
     private readonly WrapPanel _layerPanel = new() { Margin = new Thickness(0, 2, 0, 2) };
     private readonly WrapPanel _showPanel = new() { Margin = new Thickness(0, 2, 0, 2) };
+    private CheckAllBar _layerAll, _showAll;
+    private bool _bulkShow;
     private readonly TextBlock _summary = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 4) };
     private readonly CheckBox _aSec = new() { Content = "Tiết diện cột theo bản vẽ", IsChecked = true };
     private readonly CheckBox _aOff = new() { Content = "Lệch tâm cột (trục qua mép cột)", IsChecked = true };
@@ -193,6 +195,9 @@ public sealed class GridFromPlanDialog : Window
 
         var lx = new Expander { Header = "Layer trục (chọn layer rồi đọc lại)", Margin = new Thickness(0, 4, 0, 0) };
         var lp = new StackPanel();
+        // tích / bỏ tích tất cả layer trục (Ctrl+A trong danh sách)
+        _layerAll = CheckAllBar.ForBoxes(() => _layerPanel.Children.OfType<CheckBox>(), null, null, "Tất cả layer").Watch(_layerPanel);
+        lp.Children.Add(_layerAll);
         lp.Children.Add(new ScrollViewer { MaxHeight = 120, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _layerPanel });
         lp.Children.Add(DialogUi.Btn("Đọc lại với layer trục đã chọn", (s, e) => Reload()));
         lx.Content = lp;
@@ -202,10 +207,13 @@ public sealed class GridFromPlanDialog : Window
         {
             int kk = k;
             var cb = new CheckBox { Content = KindNames[k], IsChecked = true, Foreground = KindBrush[k], FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 8, 2) };
-            cb.Checked += (s, e) => { _show[kk] = true; Redraw(); };
-            cb.Unchecked += (s, e) => { _show[kk] = false; Redraw(); };
+            cb.Checked += (s, e) => { _show[kk] = true; if (!_bulkShow) Redraw(); };
+            cb.Unchecked += (s, e) => { _show[kk] = false; if (!_bulkShow) Redraw(); };
             _showPanel.Children.Add(cb);
         }
+        // bật / tắt tất cả nhóm nét – vẽ lại một lần
+        _showAll = CheckAllBar.ForBoxes(() => _showPanel.Children.OfType<CheckBox>(), b => _bulkShow = b, Redraw, "Hiện tất cả nhóm nét").Watch(_showPanel);
+        p.Children.Add(_showAll);
         p.Children.Add(_showPanel);
         p.Children.Add(DialogUi.Label("THÔNG SỐ ĐỌC ĐƯỢC", double.NaN, true));
         p.Children.Add(_summary);
@@ -301,6 +309,7 @@ public sealed class GridFromPlanDialog : Window
                 foreach (var kv in _dwg.LayerCategories.OrderBy(k => k.Value == CadCategory.Truc ? 0 : 1).ThenBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
                     _layerPanel.Children.Add(new CheckBox { Content = kv.Key + (string.IsNullOrEmpty(kv.Value) ? "" : " (" + CadCategory.Label(kv.Value) + ")"), Tag = kv.Key, ToolTip = kv.Value,
                                                             IsChecked = kv.Value == CadCategory.Truc, Margin = new Thickness(0, 0, 10, 2) });
+            _layerAll?.Refresh();
             var r = GridFromPlan.FromDrawing(_dwg, -1, RoundM);
             if (r.Heights.Count >= 2 && !_detailing) _th.Text = r.HeightsText;
             _zoom.Value = 1;
