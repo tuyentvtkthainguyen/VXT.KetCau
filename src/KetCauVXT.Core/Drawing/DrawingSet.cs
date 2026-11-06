@@ -93,7 +93,8 @@ public static class DrawingSet
         {
             k++;
             string nm = DrawUtil.SafeFile(g.Key);
-            Write($"KC-04_Dam_{nm}.dxf", () => BeamDrawing.BuildAll(p, g, s), BeamDrawing.CurrentScale,
+            // dầm dài: mặt đứng chia đoạn tại gối cho vừa bề rộng khổ giấy (trừ lề + khung) – BeamDrawing.Catalog.cs
+            Write($"KC-04_Dam_{nm}.dxf", () => BeamDrawing.BuildAllSplit(p, g, s, SheetComposer.Paper(Paper).W - 60), BeamDrawing.CurrentScale,
                 $"CHI TIẾT DẦM TẦNG {g.Key}", $"KC-04.{k}", "BEAM", notes: NotesScope.Beam);
         }
 
@@ -104,6 +105,11 @@ public static class DrawingSet
         // KC-06 thống kê thép (vẽ theo mm giấy, tỷ lệ 1/1)
         if (s.All.Any(m => m.Bars.Count > 0))
             Write("KC-06_ThongKeThep.dxf", () => RebarSchedule.BuildFigures(s, 1), 1, "THỐNG KÊ CỐT THÉP", "KC-06", "BTK", notes: NotesScope.Schedule);
+
+        // KC-09 thống kê cửa (cửa gắn tường – mô hình kiểu Revit; Drawing/WallPlanDrawing.cs)
+        if (WallPlanDrawing.Enabled(p))
+            Write("KC-09_ThongKeCua.dxf", () => { var df = WallPlanDrawing.ScheduleFigure(p); return df == null ? new List<Figure>() : new List<Figure> { df }; }, 1,
+                WallPlanDrawing.ScheduleTitle, "KC-09", "DOOR");
 
         // ---- KC-08 cầu thang: mặt bằng, mặt cắt vế, chi tiết thép, thống kê thép (StairDrawing.cs) ----
         int kst = 0;

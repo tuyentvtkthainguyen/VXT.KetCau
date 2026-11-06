@@ -110,6 +110,26 @@ public sealed partial class DxfWriter
         return res;
     }
 
+    /// <summary>Đổi nội dung chữ (TEXT): map(chữ đã giải mã) → chữ mới (trả về đúng chữ cũ = giữ nguyên). Trả về số chữ đã đổi.
+    /// Dùng ghi tham chiếu tờ "XEM TIẾP ĐOẠN 2/3 – TỜ KC-05" sau khi dàn trang biết số tờ.</summary>
+    public int RewriteTexts(Func<string, string> map)
+    {
+        if (map == null) return 0;
+        int n = 0;
+        foreach (var e in _ents)
+        {
+            if (e.Type != "TEXT") continue;
+            for (int i = 0; i < e.Codes.Count; i++)
+            {
+                if (e.Codes[i].Code != 1 || e.Codes[i].Val is not string raw) continue;
+                string old = Decode(raw), nw = map(old);
+                if (nw != null && nw != old) { e.Codes[i] = (1, Encode(nw)); n++; }
+                break;
+            }
+        }
+        return n;
+    }
+
     /// <summary>Nội dung các chữ (đã giải mã) – kiểm thử, tìm ghi chú trùng.</summary>
     public List<string> Texts()
     {

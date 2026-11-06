@@ -30,6 +30,7 @@ public static class FramingPlan
         double th = w.Th;
         bool ids = w.Style.ShowMemberIds;
         var extent = DrawBase(w, p, st, true);
+        if (WallPlanDrawing.Enabled(p)) WallPlanDrawing.Draw(w, p, st.Name);   // [Kiểu Revit] tường + cửa gắn tường (Drawing/WallPlanDrawing.cs)
 
         // nhãn cột
         var colName = new Dictionary<int, string>();
@@ -44,6 +45,7 @@ public static class FramingPlan
             double half = Math.Max(si.B, si.H) * 500;
             w.Text(Lay.Chu, (n.X + f.ColOffsetX) * 1000 + half + 0.4 * th, (n.Y + f.ColOffsetY) * 1000 + half + 0.4 * th, th, nm, 0, 0, 0);   // [Trục qua mép cột]
         }
+        EccentricDims(w, p, st);   // [Trục qua mép cột] kích thước trục → mép cột lệch tâm (vd. 0 | 220)
 
         // nhãn dầm: mỗi dầm liên tục ghi 1 lần ở phần tử giữa
         var labeled = new HashSet<int>();
@@ -87,6 +89,37 @@ public static class FramingPlan
         string title = $"MẶT BẰNG KẾT CẤU TẦNG {st.Name} ({DxfWriter.ElevText(st.Elevation)})";
         w.Title(extent.Cx, w.Extents.Y2 + 5 * th, title, DrawUtil.ScaleText(S));
         return w;
+    }
+
+    /// <summary>Cột lệch tâm (ColOffsetX/Y ≠ 0): chuỗi kích thước mép cột – trục – mép cột theo phương lệch (vd. "0 | 220" khi trục qua mép,
+    /// "110 | 110" khi đúng tim không vẽ). Một chuỗi mỗi cột, đặt dưới (lệch X) / bên trái (lệch Y) cột. Trả về số chuỗi đã vẽ.</summary>
+    public static int EccentricDims(DxfWriter w, Project p, Story st)
+    {
+        int n = 0;
+        double th = w.Th;
+        foreach (var f in ColumnsBelow(p, st))
+        {
+            if (Math.Abs(f.ColOffsetX) < 1e-4 && Math.Abs(f.ColOffsetY) < 1e-4) continue;
+            var r = ColumnRect(p, f);
+            var node = p.Node(f.NodeJ);
+            double ax = node.X * 1000, ay = node.Y * 1000;
+            double x0 = r.Min(q => q.X), x1 = r.Max(q => q.X), y0 = r.Min(q => q.Y), y1 = r.Max(q => q.Y);
+            if (Math.Abs(f.ColOffsetX) >= 1e-4)
+            {
+                var xs = new List<double> { x0, ax, x1 }.Select(v => Math.Round(v, 1)).Distinct().OrderBy(v => v).ToList();
+                double yd = y0 - 1.6 * th;
+                w.DimChainH(xs, y0, yd);
+                n++;
+            }
+            if (Math.Abs(f.ColOffsetY) >= 1e-4)
+            {
+                var ys = new List<double> { y0, ay, y1 }.Select(v => Math.Round(v, 1)).Distinct().OrderBy(v => v).ToList();
+                double xd = x0 - 1.6 * th;
+                w.DimChainV(ys, x0, xd);
+                n++;
+            }
+        }
+        return n;
     }
 
     internal static bool SameStory(string storyName, Story st, double topElev)

@@ -165,6 +165,14 @@ public static class S2kExporter
             T("FRAME LOCAL AXES ASSIGNMENTS 1 - TYPICAL");
             foreach (var sg in segs.Where(x => Math.Abs(x.f.Angle) > 1e-9)) L($"   Frame={sg.name}   Angle={F(sg.f.Angle)}");
         }
+        // [Trục qua mép cột] cột lệch tâm: độ dời đầu nút toàn cục (biểu diễn được mọi độ lệch) – Export/ColumnInsertion.cs
+        var ecc = segs.Where(x => x.f.IsVerticalKind && (Math.Abs(x.f.ColOffsetX) > 1e-4 || Math.Abs(x.f.ColOffsetY) > 1e-4)).ToList();
+        if (ecc.Count > 0)
+        {
+            T("FRAME INSERTION POINT ASSIGNMENTS");
+            foreach (var sg in ecc)
+                L($"   Frame={sg.name}   CardinalPt=\"10 (Centroid)\"   Mirror2=No   StiffTrans=Yes   CoordSys=GLOBAL   XI={F(sg.f.ColOffsetX)}   YI={F(sg.f.ColOffsetY)}   ZI=0   XJ={F(sg.f.ColOffsetX)}   YJ={F(sg.f.ColOffsetY)}   ZJ=0");
+        }
         var rel = segs.Where(x => (x.k == 0 && x.f.ReleaseI.Any(b => b)) || (x.k == x.n - 1 && x.f.ReleaseJ.Any(b => b))).ToList();
         if (rel.Count > 0)
         {

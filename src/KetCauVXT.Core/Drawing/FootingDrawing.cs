@@ -83,6 +83,12 @@ public static class FootingDrawing
             w.Solid(Lay.BeTong, cx - cb, cy - ch, cx + cb, cy - ch, cx - cb, cy + ch, cx + cb, cy + ch);
             w.Text(Lay.Chu, cx + hl * 0.15, cy + hb - 1.5 * th, th, f.Name, 0, 0, 0);
             box = box.Union(new Rect2(cx - hl, cy - hb, cx + hl, cy + hb));
+            // [Trục qua mép cột] kích thước trục → mép cột (cột lệch tâm), vd. "220" khi trục qua mép
+            double ax = f.X * 1000 * k, ay = f.Y * 1000 * k;
+            if (Math.Abs(cox) > 1e-4)
+                w.DimChainH(new List<double> { cx - cb, ax, cx + cb }.Select(v => Math.Round(v, 2)).Distinct().OrderBy(v => v).ToList(), cy - ch, cy - ch - 1.4 * th, k);
+            if (Math.Abs(coy) > 1e-4)
+                w.DimChainV(new List<double> { cy - ch, ay, cy + ch }.Select(v => Math.Round(v, 2)).Distinct().OrderBy(v => v).ToList(), cx - cb, cx - cb - 1.4 * th, k);
         }
         FoundationDrawing.AddToLayout(w, s, k, ref box);
         EccentricDrawing.AddToLayout(w, p, s, k, ref box);   // [MóngLệchTâm] ranh giới đất + dầm cân bằng

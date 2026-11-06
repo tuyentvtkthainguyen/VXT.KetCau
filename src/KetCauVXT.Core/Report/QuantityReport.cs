@@ -164,6 +164,21 @@ public static class QuantityReport
             wd.AddTotal("TỔNG", null, null, null, null, null, null, R(q.Masonry.Sum(m => m.GrossArea), 2), R(q.Masonry.Sum(m => m.OpeningArea), 2), R(q.Masonry.Sum(m => m.LintelArea), 2), R(q.Masonry.Sum(m => m.NetArea), 2), R(q.MasonryTotal), null, R(q.PlasterTotal, 2), (long)Math.Round(q.Masonry.Sum(m => m.Bricks)), R(q.Masonry.Sum(m => m.Mortar)), R(q.Masonry.Sum(m => m.PlasterMortar)));
         sheets[4].Tables.Add(wd);
         if (q.StairWorks.Count > 0) sheets[4].Tables.Add(StairQuantity.Table(q));   // cầu thang (Report/StairQuantity.cs)
+        var doorRows = KetCauVXT.Drawing.WallPlanDrawing.Schedule(p);   // [Kiểu Revit] thống kê cửa gắn tường (Drawing/WallPlanDrawing.cs)
+        if (doorRows.Count > 0)
+        {
+            var dt = new QtyTable
+            {
+                Title = "Thống kê cửa (cửa gắn tường)",
+                Headers = new[] { "Ký hiệu", "Loại", "Rộng (mm)", "Cao (mm)", "Bậu (mm)", "Cách mở", "Số lượng theo tầng", "Tổng", "Diện tích 1 cửa (m²)", "Tổng diện tích (m²)" },
+                Widths = new double[] { 16, 10, 9, 9, 9, 10, 26, 7, 11, 11 }
+            };
+            foreach (var r in doorRows)
+                dt.Add(r.Type, r.Kind, Math.Round(r.Width * 1000), Math.Round(r.Height * 1000), Math.Round(r.Sill * 1000), r.Operation,
+                    string.Join("; ", r.PerStory.Select(kv => kv.Key + ": " + kv.Value.ToString(Inv))), r.Total, R(r.Width * r.Height, 2), R(r.Width * r.Height * r.Total, 2));
+            dt.AddTotal("TỔNG", null, null, null, null, null, null, doorRows.Sum(r => r.Total), null, R(doorRows.Sum(r => r.Width * r.Height * r.Total), 2));
+            sheets[4].Tables.Add(dt);
+        }
 
         // ---------------- HOÀN THIỆN SÀN ----------------
         sheets[5].Tables.Add(FinishSummary(q));

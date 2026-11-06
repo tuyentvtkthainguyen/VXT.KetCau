@@ -615,6 +615,8 @@ Console.WriteLine("73. Thanh lệnh cấu kiện, chọn nhiều, gán tải, t�
 PlanLoadCadTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("74. Giao diện / lệnh vẽ kiểu Revit: kiểu tường nhiều lớp, cửa tự cắt tường, kích thước tạm, nối góc, đường định vị");
 RevitDrawTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("76. Hoàn thiện bản vẽ / xuất: cửa trên mặt bằng, thống kê cửa, lanh tô từ mô hình, cột lệch tâm (E2K/S2K), tham chiếu tờ, danh mục mặt cắt");
+DrawExportFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

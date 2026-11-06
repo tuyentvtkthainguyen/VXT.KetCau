@@ -73,6 +73,8 @@ public class DetailSheetSet
     public Dictionary<string, string> BeamSplitBy { get; set; } = new();
     /// <summary>Tự động: cho phép thu mặt đứng dầm tới 1/75 trước khi chia đoạn.</summary>
     public bool AllowBeam75 { get; set; }
+    /// <summary>Bảng DANH MỤC MẶT CẮT (số mặt cắt, vị trí gối / nhịp, b×h, thép trên / dưới, đai) dưới các mặt cắt của mỗi dầm.</summary>
+    public bool SectionCatalog { get; set; } = true;
     public string SplitModeOf(string member) =>
         member != null && BeamSplitBy != null && BeamSplitBy.TryGetValue(member, out var m) && !string.IsNullOrWhiteSpace(m) ? m : string.IsNullOrWhiteSpace(BeamSplit) ? SplitAuto : BeamSplit;
     /// <summary>Có tờ danh mục bản vẽ ở đầu bộ.</summary>
@@ -276,18 +278,24 @@ public static class SheetLayoutEngine
                     {
                         var proj = DetailShim.Project(p.Settings);
                         List<Figure> segF = null;
-                        try { segF = BeamDrawing.BuildSegments(proj, bd, brk); } catch (Exception e) { log.Add("Không chia được dầm " + m.Name + ": " + e.Message); }
+                        try { segF = BeamDrawing.BuildSegments(proj, bd, brk); SegmentCutMarks(m as ManualBeam, p.Settings, bd, brk, segF); }
+                        catch (Exception e) { log.Add("Không chia được dầm " + m.Name + ": " + e.Message); }
                         if (segF != null && segF.Count > 1)
                         {
                             double b0s = figs[0].W.Scale;
                             for (int k = 0; k < segF.Count; k++)
                             {
-                                int kk = k; var brk0 = brk; var bd0 = bd;
+                                int kk = k; var brk0 = brk; var bd0 = bd; var mb0 = m as ManualBeam;
                                 Add(new SheetFigure
                                 {
                                     Id = m.GetType().Name + ":" + m.Name + ":" + segF[k].Name, Section = s, Part = 1, Member = m.Name, Kind = r?.Kind ?? "",
                                     Caption = (r?.Kind ?? "") + " " + segF[k].Name, F = segF[k], KeepWithPlan = keepWithPlan, Segment = k + 1, Segments = segF.Count,
-                                    Redraw = sc => Pick(RedrawAt(b0s, sc, () => BeamDrawing.BuildSegments(DetailShim.Project(p.Settings), bd0, brk0)), kk, null)
+                                    Redraw = sc => Pick(RedrawAt(b0s, sc, () =>
+                                    {
+                                        var lst = BeamDrawing.BuildSegments(DetailShim.Project(p.Settings), bd0, brk0);
+                                        SegmentCutMarks(mb0, p.Settings, bd0, brk0, lst);
+                                        return lst;
+                                    }), kk, null)
                                 }, title);
                             }
                             figs = figs.Skip(1).ToList();
@@ -305,6 +313,19 @@ public static class SheetLayoutEngine
                         // vẽ lại cấu kiện với mọi tỷ lệ nhân cùng hệ số (hình chính b0 → sc)
                         Redraw = sc => Pick(RedrawAt(b0, sc, () => mm.Draw(rr0, p.Settings)), idx, fn)
                     }, title);
+                }
+                // danh mục mặt cắt dầm (bảng 1/1, xếp dưới các mặt cắt cùng dầm)
+                if ((set?.SectionCatalog ?? true) && m is ManualBeam && r?.Source is BeamLineDesign bdc && bdc.Spans.Count > 0)
+                {
+                    Figure cf = null;
+                    try { cf = BeamDrawing.CatalogFigure(DetailShim.Project(p.Settings), bdc); }
+                    catch (Exception e) { log.Add("Không lập được danh mục mặt cắt " + m.Name + ": " + e.Message); }
+                    if (cf != null)
+                        Add(new SheetFigure
+                        {
+                            Id = m.GetType().Name + ":" + m.Name + ":" + cf.Name, Section = s, Part = 1, Member = m.Name, Kind = r?.Kind ?? "",
+                            Caption = (r?.Kind ?? "") + " " + m.Name + " – " + BeamDrawing.CatalogTitle, F = cf, KeepWithPlan = keepWithPlan
+                        }, title);
                 }
             }
         }
@@ -874,12 +895,66 @@ public static class SheetLayoutEngine
         {
             if (!map.TryGetValue(pf.Id, out var f)) continue;
             var fw = f.At(pf.Scale).W;
+            if (f.Segment > 0 && f.Segments > 1 && set != null) SegmentSheetRefs(fw, f, set, map);   // "XEM TIẾP ĐOẠN 2/3 – TỜ KC-05"
             double k = S / Math.Max(fw.Scale, 1e-9);   // hình đã vẽ đúng tỷ lệ riêng; k chỉ đổi đơn vị mô hình sang tỷ lệ tờ (cỡ in giữ nguyên)
             var e = fw.Extents;
             double dx = pf.X * S - e.X1 * k, dy = pf.Y * S - e.Y1 * k;
             if (Math.Abs(k - 1) < 1e-9) w.Append(fw, dx, dy); else w.AppendScaled(fw, k, dx, dy);
         }
         return w;
+    }
+
+    /// <summary>Đánh dấu điểm cắt / nối thép sai (BarCutCheck – dấu X đỏ) trên từng đoạn mặt đứng dầm chia đoạn
+    /// (toạ độ đổi về gốc đoạn; điểm tại gối chung hiện ở cả hai đoạn kề). Trả về tổng số dấu.</summary>
+    public static int SegmentCutMarks(ManualBeam mb, DetailSettings st, BeamLineDesign bd, IList<int> breaks, IList<Figure> segF)
+    {
+        if (mb == null || bd?.Spans == null || bd.Spans.Count == 0 || segF == null || segF.Count == 0) return 0;
+        List<CutIssue> iss;
+        try { iss = BarCutCheck.Evaluate(mb, st, null, null); } catch (Exception) { return 0; }
+        if (iss == null || iss.Count == 0) return 0;
+        var ranges = BeamDrawing.SegmentRanges(bd.Spans.Count, breaks);
+        var xs = new List<double> { 0 };
+        foreach (var sp in bd.Spans) xs.Add(xs[^1] + sp.L * 1000);
+        double hMm = (bd.H > 0 ? bd.H : mb.H) * 1000;
+        int n = 0;
+        for (int k = 0; k < Math.Min(ranges.Count, segF.Count); k++)
+        {
+            var (i0, i1) = ranges[k];
+            double lo = xs[i0] - 400, hi = xs[i1] + 400;
+            var sub = iss.Where(q => q.X * 1000 >= lo && q.X * 1000 <= hi)
+                         .Select(q => new CutIssue { X = q.X - xs[i0] / 1000, Top = q.Top, Text = q.Text }).ToList();
+            if (sub.Count > 0 && segF[k]?.W != null) n += BarCutCheck.DrawMarks(segF[k].W, sub, hMm);
+        }
+        return n;
+    }
+
+    /// <summary>Số hiệu tờ chứa đoạn dầm seg của cấu kiện f (null nếu chưa đặt).</summary>
+    public static string SheetOfSegment(DetailSheetSet set, IReadOnlyDictionary<string, SheetFigure> map, SheetFigure f, int seg)
+    {
+        foreach (var sh in set?.Sheets ?? new List<DetailSheet>())
+            foreach (var pf in sh.Figures)
+                if (map.TryGetValue(pf.Id, out var g) && g.Member == f.Member && g.Kind == f.Kind && g.Segment == seg && g.Segments == f.Segments)
+                    return sh.No;
+        return null;
+    }
+
+    public const string SheetRefSep = " – TỜ ";
+
+    /// <summary>Ghi số tờ vào ghi chú nối tiếp của đoạn dầm (chạy lại được: bỏ tham chiếu cũ rồi ghi số tờ hiện tại).</summary>
+    public static int SegmentSheetRefs(DxfWriter fw, SheetFigure f, DetailSheetSet set, IReadOnlyDictionary<string, SheetFigure> map)
+    {
+        if (fw == null || f == null || f.Segment <= 0) return 0;
+        string next = f.Segment < f.Segments ? SheetOfSegment(set, map, f, f.Segment + 1) : null;
+        string prev = f.Segment > 1 ? SheetOfSegment(set, map, f, f.Segment - 1) : null;
+        string pNext = "XEM TIẾP ĐOẠN " + (f.Segment + 1) + "/" + f.Segments, pPrev = "TIẾP THEO ĐOẠN " + (f.Segment - 1) + "/" + f.Segments;
+        return fw.RewriteTexts(t =>
+        {
+            int i = t.IndexOf(SheetRefSep, StringComparison.Ordinal);
+            string b = i >= 0 ? t.Substring(0, i) : t;
+            if (b == pNext) return string.IsNullOrEmpty(next) ? b : b + SheetRefSep + next;
+            if (b == pPrev) return string.IsNullOrEmpty(prev) ? b : b + SheetRefSep + prev;
+            return t;
+        });
     }
 
     /// <summary>Bảng danh mục bản vẽ (toạ độ mô hình tỷ lệ S, đặt góc trái trên vùng vẽ tờ A3).</summary>

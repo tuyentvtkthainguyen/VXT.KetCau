@@ -5,7 +5,7 @@ namespace KetCauVXT.Drawing;
 
 /// <summary>Bản vẽ chi tiết dầm: mặt đứng tl 1/50 + mặt cắt 1-1 (gối), 2-2 (nhịp), 3-3... tl 1/25.
 /// Toạ độ mặt đứng: x = 0 tại tim trục gối đầu tiên, y = 0 tại đỉnh dầm (mm).</summary>
-public static class BeamDrawing
+public static partial class BeamDrawing
 {
     /// <summary>Tỷ lệ mặc định của chương trình (tỷ lệ dùng thật: <see cref="CurrentScale"/> theo Thiết lập bản vẽ).</summary>
     public const double SheetScale = 50;

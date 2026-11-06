@@ -235,7 +235,9 @@ public static class E2kExporter
             for (int i = 0; i < 6; i++) if ((flip ? f.ReleaseJ : f.ReleaseI)[i]) rel.Add(rn[i] + "I");
             for (int i = 0; i < 6; i++) if ((flip ? f.ReleaseI : f.ReleaseJ)[i]) rel.Add(rn[i] + "J");
             if (rel.Count > 0) sb2.Append($"  RELEASE \"{string.Join(" ", rel)}\"");
-            if (f.Kind == FrameKind.Column || f.Kind == FrameKind.Beam) sb2.Append($"  CARDINALPT {(f.Kind == FrameKind.Beam ? BeamTools.EtabsCardinal(f.Insertion) : 10)}");   // [BeamTools] điểm chèn dầm
+            var (colCp, colExact) = f.Kind == FrameKind.Column ? ColumnInsertion.Cardinal(p, f) : (10, true);   // [Trục qua mép cột] Export/ColumnInsertion.cs
+            if (!colExact) L($"$ COLUMN {name} OFFSET X={F(f.ColOffsetX)} Y={F(f.ColOffsetY)} (m) IS NOT HALF THE SECTION SIZE - CARDINALPT 10 KEPT, SET INSERTION POINT MANUALLY IN ETABS");
+            if (f.Kind == FrameKind.Column || f.Kind == FrameKind.Beam) sb2.Append($"  CARDINALPT {(f.Kind == FrameKind.Beam ? BeamTools.EtabsCardinal(f.Insertion) : colCp)}");   // [BeamTools] điểm chèn dầm
             sb2.Append("  MAXSTASPC 0.5  AUTOMESH \"YES\"  MESHATINTERSECTIONS \"YES\"");
             if (curved.TryGetValue(f.Id, out var csegs))
             {

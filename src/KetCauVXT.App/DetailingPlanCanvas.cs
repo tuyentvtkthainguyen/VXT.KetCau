@@ -185,6 +185,8 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                            || MessageBox.Show(_owner, "Mặt bằng " + Level.Name + " đã có cột. Thay vị trí cột cũ bằng cột đọc từ bản vẽ?", "Mở mặt bằng CAD", MessageBoxButton.YesNo) == MessageBoxResult.Yes;
             _undo.Push(Plan);
             var log = KetCauVXT.Import.Arch.PlanAxisPicker.ApplyToDetailing(P, Level, pr, true, replace);
+            // bản vẽ CAD vừa đọc → ánh xạ kiến trúc (xref) của mặt bằng (nếu chưa có), trục đầu tiên trùng trục hồ sơ
+            if (ModelToDetailing.AttachUnderlayFromPick(Level, Plan, d.CadPath, pr.OriginX, pr.OriginY, Dir)) log.Add("Gắn bản vẽ làm ánh xạ kiến trúc của " + Level.Name + ".");
             _changed(); FillMembers(); _fitted = false; Redraw();
             _status.Text = string.Join(" ", log);
         }

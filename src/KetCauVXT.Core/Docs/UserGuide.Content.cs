@@ -448,6 +448,14 @@ public static partial class UserGuide
                 "Cửa sổ **Dàn trang in** → mục **CHIA DẦM NHIỀU ĐOẠN**: Tự động | Không chia | Theo số nhịp/đoạn (vd. 2) | Tại các trục (vd. 3, 5 – số thứ tự gối hoặc tên trục); tuỳ chọn **cho thu tới 1/75 trước khi chia**; **Áp dụng cho dầm đang chọn** hoặc **cho mọi dầm**. Không chia: mặt đứng dài tự hạ tỷ lệ (khổ chốt) hoặc nâng khổ (khổ tự động).",
                 "**Xuất tất cả…** dùng chung bộ dàn trang: nếu đã dàn trang tay thì xuất đúng bộ tờ đó (hình mới được xếp thêm vào cuối), chưa dàn thì tự dàn – khổ, tỷ lệ tự động, cấu kiện cùng nhóm mặt bằng gộp tờ, tờ danh mục ở đầu. File tách rời đặt tên theo số hiệu + nội dung (KC-02_MB_KetCauMong, KC-05_Dầm_D1-D3…).");
 
+        c.Sec("che-do-ho-so.hoan-thien-xuat", "Hoàn thiện bản vẽ: cửa trên mặt bằng, lanh tô từ mô hình, cột lệch tâm, tham chiếu tờ")
+            .Bullets("Mô hình có **cửa gắn tường** (giao diện kiểu Revit): mặt bằng kết cấu các tầng vẽ thêm tường (cắt tại ô cửa ở cao 1,2 m), cánh và cung mở cửa đi, 3 nét cửa sổ, ô thoáng nét đứt, thẻ D1 / S1; bộ bản vẽ có tờ **KC-09 BẢNG THỐNG KÊ CỬA** (kiểu, kích thước, số lượng theo tầng) và bảng khối lượng (Excel / Word) có bảng **Thống kê cửa**. Diện tích tường xây đã trừ diện tích cửa thật.",
+                "Triển khai hồ sơ → tab **Mặt bằng kết cấu** → nút **Lanh tô từ cửa mô hình**: mọi cửa gắn tường của mô hình đang mở (cửa sổ chế độ Thiết kế) thành lanh tô trên **Mặt bằng lanh tô tầng X** (mặt bằng cùng tên / cùng cao độ, chưa có thì tạo); cửa giống nhau (bề rộng, tường 110 / 220, loại cửa) gộp LT1, LT2…, số lượng = số ô cửa; chạy lại không nhân đôi. Lanh tô tường 110 được kiểm tra / gợi ý tiết diện, gối như lanh tô nhập tay.",
+                "**Mở mặt bằng CAD** trong Triển khai hồ sơ: bản vẽ vừa đọc được gắn làm **ánh xạ kiến trúc (xref)** của mặt bằng đang xem (nếu chưa có), dời để trục đầu tiên trùng trục hồ sơ.",
+                "Cột **lệch tâm** (trục qua mép cột): mặt bằng kết cấu và mặt bằng móng ghi kích thước trục → mép cột; xuất **ETABS (.e2k)** dùng điểm chèn CARDINALPT (trục qua mép trái → 4, mép phải → 6, dưới → 2, trên → 8, góc → 1/3/7/9); độ lệch không bằng nửa cạnh ghi dòng chú thích \"$ COLUMN … OFFSET\" để chỉnh tay. **SAP2000 (.s2k)**: bảng FRAME INSERTION POINT ASSIGNMENTS với độ dời đầu nút XI, YI, XJ, YJ đúng độ lệch.",
+                "Dầm chia đoạn: ghi chú nối tiếp có **số tờ** – \"XEM TIẾP ĐOẠN 2/3 – TỜ KC-05\", \"TIẾP THEO ĐOẠN 1/3 – TỜ KC-04\" (tự cập nhật khi dàn / đánh số lại); điểm cắt / nối thép sai (dấu X đỏ) hiện cả trên các đoạn. Bản vẽ dầm chế độ Thiết kế (KC-04) cũng tự chia đoạn khi mặt đứng dài hơn bề rộng khổ giấy.",
+                "**DANH MỤC MẶT CẮT** dưới các mặt cắt mỗi dầm: số mặt cắt, các vị trí dùng chung (gối / giữa nhịp), b×h, thép trên, thép dưới, đai. Tắt trong bộ tờ (SectionCatalog).");
+
         c.Sec("che-do-ho-so.kho-giay", "Khổ giấy và tỷ lệ tự động")
             .Bullets("Cửa sổ **Dàn trang in** → mục **BỘ TỜ**: **Khổ** (Tự động, A4, A3, A2, A1, A0), **hướng** (Ngang, Đứng, Tự động), **Tỷ lệ mặt bằng** (Tự động hoặc 1/50, 1/75, 1/100…), **Khổ lớn nhất** khi tự chọn khổ → **Áp dụng cho toàn bộ (tự dàn trang)**.",
                 "Khổ chốt (vd. A3): mặt bằng lấy **tỷ lệ lớn nhất** (trong dãy chuẩn 1/50 … 1/500) mà hình – kể cả kích thước, đầu trục, tiêu đề – vừa vùng vẽ trừ khung tên và lề; chi tiết giữ tỷ lệ chuẩn (1/20 – 1/50), mặt cắt 1/10 – 1/25, thu nhỏ nếu không vừa.",
@@ -835,6 +843,23 @@ public static partial class UserGuide
                 "Kiểu tường cũ (dày, γ, trát) tự đổi sang nhiều lớp **giữ nguyên tải 1 m²**; file cũ mở bình thường. Bảng *Loại tường* cũ vẫn dùng được: sửa dày / γ chỉ đổi lớp lõi, giữ lớp ốp.",
                 "Gợi ý lanh tô: gối mỗi bên ≥ 200 mm (≥ 250 mm khi L0 > 1,5 m), h ≥ max(L0/10; 150 mm) (≥ 200 mm với tường 110 khi L0 > 1,5 m), cửa > 1,8 m trên tường 110 cảnh báo bổ trụ BTCT – chi tiết thép ở chế độ Triển khai hồ sơ → Lanh tô.")
             .Tip("Làm nhanh một tầng: Kiến trúc → Tường (kiểu Gạch đặc 220, đường định vị *Mặt hoàn thiện ngoài*) vẽ vòng tường bao theo chiều kim đồng hồ → Tường kiểu 110 cho tường ngăn → Cửa đi / Cửa sổ đặt lên tường → Tải trọng → Tải tường kiểm tra q → Phân tích (F5).");
+
+        c.Sec("mo-hinh.revit-hoan-thien", "Kiểu Revit – tay nắm, Tab, làm lại, lệnh sửa bằng chuột, 3D có ô cửa")
+            .Steps("**Tay nắm (grip)**: chọn một tường hoặc dầm → hai đầu hiện ô vuông xanh, giữa hiện ô thoi trắng. **Kéo ô đầu** để kéo dài / rút ngắn (bắt điểm trục, nút, nét CAD; F8 trực giao), "
+                + "**kéo ô giữa** để dời cả đối tượng. Cửa trên tường giữ nguyên vị trí và tự nằm gọn trong tường; rút tường ngắn hơn cửa thì báo lỗi, tường giữ nguyên. Mỗi lần kéo là một bước hoàn tác.",
+                "**Tab**: đưa chuột vào chỗ nhiều đối tượng chồng nhau (cột – dầm – tường – ô sàn) rồi nhấn **Tab** để chọn lần lượt từng đối tượng (thanh trạng thái ghi đối tượng đang chọn, ví dụ 2/4).",
+                "**Hoàn tác / Làm lại**: **Ctrl+Z** hoàn tác, **Ctrl+Y** (menu Sửa → Làm lại, hoặc gõ lệnh REDO) làm lại; sửa mô hình mới thì danh sách làm lại được xoá (tối đa 30 bước).",
+                "**Lệnh sửa bằng chuột** (gõ ở dòng lệnh dưới mặt bằng, áp cho dầm đang chọn và tường đang chọn): "
+                + "**CO** sao chép – bấm điểm gốc rồi điểm đích (bấm tiếp để sao nhiều bản, Esc kết thúc); **M** dời – điểm gốc → điểm đích; "
+                + "**MI** đối xứng – bấm 2 điểm của trục đối xứng bất kỳ (hoặc gõ tên trục, vd 2 / B); **AR** mảng – gõ số phần tử (tính cả bản gốc) rồi bấm điểm gốc và điểm thứ hai (khoảng cách giữa 2 phần tử liền nhau); "
+                + "**O** offset – gõ khoảng cách rồi bấm phía cần offset. Trong lúc chờ điểm đích có **bóng đối tượng** và dây chun ghi chiều dài + góc; có thể gõ chiều dài theo hướng chuột hoặc @dx,dy. "
+                + "Cách gõ số cũ vẫn dùng được (CO: dx,dy số bản; AR: số cột số hàng dx dy).",
+                "**3D**: tường xây hiện trong khung 3D với **ô cửa khoét thật** (giữ phần dưới bậu cửa sổ và phần trên đầu cửa); ô tích *Tường (có ô cửa)* ở góc trên để ẩn / hiện tường.")
+            .Bullets("Tab **Xem → Hiện nhanh**: bật / tắt ngay thẻ dầm, thẻ cột, thẻ sàn, thẻ cửa, kích thước bước trục, tải đã gán (không cần mở hộp Hiển thị / Đồ hoạ).",
+                "Chữ nhãn luôn giữ cùng cỡ trên màn hình khi phóng to / thu nhỏ; thu nhỏ quá mức thì nhãn cấu kiện tự ẩn (tên trục, kích thước vẫn hiện); nhãn đụng nhau được dời hoặc ẩn – cả ở giao diện cổ điển.",
+                "Ribbon và thanh lệnh cấu kiện luôn giữ **một hàng tab**: khung hẹp thì lăn chuột trên hàng tab để cuộn, hoặc bấm **»** để chọn tab bị khuất.",
+                "Giao diện kiểu Revit ẩn bảng thông tin dưới mặt bằng để vùng vẽ rộng tối đa (thông tin đối tượng xem ở khung Thuộc tính); đổi tầng thì mặt bằng tự **vừa màn hình**.",
+                "Link CAD: **khoá** bản vẽ nền (tab Link CAD → 🔒 Khoá) được lưu trong dự án cùng độ mờ, ẩn / hiện và vị trí căn – mở lại dự án vẫn giữ; bản vẽ đang khoá không căn 2 điểm được.");
 
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")
