@@ -23,7 +23,7 @@ public sealed class ElevationItem
     public double Depth { get; init; }
 }
 
-public sealed class ElevationDrawing
+public sealed class BuildingElevationView
 {
     public ElevationSide Side { get; init; }
     public string Name { get; init; } = "";
@@ -116,7 +116,7 @@ public static class BuildingElevation
     }
 
     /// <summary>Dựng mặt đứng (DXF, mm).</summary>
-    public static ElevationDrawing Draw(Project p, ElevationSide side, double scale = 100)
+    public static BuildingElevationView Draw(Project p, ElevationSide side, double scale = 100)
     {
         var s = ViewLine(p, side);
         var items = ProjectSolids(p, s);
@@ -183,7 +183,7 @@ public static class BuildingElevation
         }
         string title = Title(p, side);
         w.Title((uMin + uMax) / 2 * 1000, yBubB - w.BubbleR - 600, title, $"tl: 1/{scale:0}", true);
-        return new ElevationDrawing { Side = side, Name = title, Line = s, Items = items, Axes = axes, Levels = levels, Figure = new Figure(w, title) };
+        return new BuildingElevationView { Side = side, Name = title, Line = s, Items = items, Axes = axes, Levels = levels, Figure = new Figure(w, title) };
     }
 
     /// <summary>Toạ độ mặt bằng (m) của vị trí u trên mặt đứng và phương trục thẳng đứng tương ứng.</summary>

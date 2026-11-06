@@ -577,7 +577,7 @@ public partial class MainWindow
         var host = new Border { Background = Brushes.White, Child = img };
         dock.Children.Add(bar); dock.Children.Add(host);
         w.Content = dock;
-        ElevationDrawing cur = null;
+        BuildingElevationView cur = null;
         double curK = 1, curX1 = 0;
         Rect curBounds = Rect.Empty;
         void Titles()
