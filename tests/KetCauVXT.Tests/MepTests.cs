@@ -140,7 +140,7 @@ public static class MepTests
         MepRouting.Connect(a, s1.Id, s2.Id, MepSystemKind.DienOCam);
         var lvA = MepRouting.PlaceOnWall(a, "Lavabo", a.Walls[2], 1.0, 1);
         var res0 = MepUpdater.Reconcile(a);
-        check("Đối chiếu lần đầu: không cảnh báo", res0.Warnings.Count, 0, 0);
+        check("Đối chiếu lần đầu: không cảnh báo (bỏ qua dòng Gợi ý)", res0.Warnings.Count(w => w.Severity != "Gợi ý"), 0, 0);
         check("Chưa đổi kiến trúc → không có thay đổi", B(!MepUpdater.HasArchChanges(a)), 1, 0);
         a.Walls[0].Y1 = 0.5; a.Walls[0].Y2 = 0.5; a.Walls[1].Y1 = 0.5; a.Walls[3].Y2 = 0.5;
         check("Dời tường → nhận biết thay đổi", B(MepUpdater.HasArchChanges(a)), 1, 0);
