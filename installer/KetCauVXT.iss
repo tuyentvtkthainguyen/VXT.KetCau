@@ -139,3 +139,38 @@ function GuideDocxExists: Boolean;
 begin
   Result := FileExists(ExpandConstant('{app}\HuongDanSuDung.docx'));
 end;
+
+// AutoCAD đang chạy giữ file add-in KetCauVXT.AcadLink.dll → không thay được (lỗi DeleteFile mã 5).
+// Trước khi cài: nếu chọn cài add-in AutoCAD mà acad.exe đang chạy, nhắc người dùng lưu bản vẽ và đóng AutoCAD.
+// Bộ cài KHÔNG tự đóng AutoCAD (tránh mất bản vẽ chưa lưu).
+function IsProcessRunning(const ExeName: String): Boolean;
+var
+  Locator, Svc, Items: Variant;
+begin
+  Result := False;
+  try
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    Svc := Locator.ConnectServer('.', 'root\CIMV2');
+    Items := Svc.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name = ''' + ExeName + '''');
+    Result := Items.Count > 0;
+  except
+    Result := False;
+  end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if WizardIsTaskSelected('acad') then
+    while IsProcessRunning('acad.exe') do
+    begin
+      if MsgBox('AutoCAD đang mở và đang dùng add-in Việt Const nên bộ cài không thay được file add-in.' + #13#10 + #13#10 +
+                'Hãy LƯU bản vẽ và ĐÓNG AutoCAD, rồi bấm Retry (Thử lại).' + #13#10 +
+                'Bấm Cancel để dừng cài đặt (bộ cài không tự đóng AutoCAD).',
+                mbError, MB_RETRYCANCEL) = IDCANCEL then
+      begin
+        Result := 'Đã dừng cài đặt vì AutoCAD đang mở. Đóng AutoCAD rồi chạy lại bộ cài.';
+        Exit;
+      end;
+    end;
+end;
