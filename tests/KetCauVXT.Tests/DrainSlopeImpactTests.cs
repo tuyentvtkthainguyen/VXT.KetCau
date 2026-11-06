@@ -182,24 +182,24 @@ public static class DrainSlopeImpactTests
         check("Lỗ 600×400 > 300 → cảnh báo + thép gia cường", B(big.Severity == ImpactSeverity.CanhBao && big.Strengthening != null && big.Strengthening.Bars.Count == 3), 1, 0);
 
         // ================= 5. Quét mô hình: dầm, cột, sàn, tường =================
-        var q = new Project();
-        q.Stories = new List<Story> { new() { Name = "T1", Elevation = 0, Height = 3.3 }, new() { Name = "T2", Elevation = 3.3, Height = 3.3 } };
-        EnsureSlabSection(q);
-        q.FrameSections.Add(new FrameSection { Name = "C22", B = 0.22, H = 0.22 });
-        q.FrameSections.Add(new FrameSection { Name = "D22x45", B = 0.22, H = 0.45 });
-        q.Nodes.Add(new Node { Id = 1, X = 0, Y = 1.5, Z = 0, Story = "T1" });
-        q.Nodes.Add(new Node { Id = 2, X = 0, Y = 1.5, Z = 3.3, Story = "T2" });
-        q.Nodes.Add(new Node { Id = 3, X = 6, Y = 1.5, Z = 0, Story = "T1" });
-        q.Nodes.Add(new Node { Id = 4, X = 6, Y = 1.5, Z = 3.3, Story = "T2" });
-        q.Frames.Add(new FrameElement { Id = 1, Label = "C1", NodeI = 1, NodeJ = 2, Section = "C22", Kind = FrameKind.Column, Story = "T2" });
-        q.Frames.Add(new FrameElement { Id = 2, Label = "C2", NodeI = 3, NodeJ = 4, Section = "C22", Kind = FrameKind.Column, Story = "T2" });
-        q.Frames.Add(new FrameElement { Id = 3, Label = "D1", NodeI = 2, NodeJ = 4, Section = "D22x45", Kind = FrameKind.Beam, Story = "T2" });
-        q.Nodes.Add(new Node { Id = 5, X = 0, Y = 0, Z = 3.3, Story = "T2" });
-        q.Nodes.Add(new Node { Id = 6, X = 6, Y = 0, Z = 3.3, Story = "T2" });
-        q.Nodes.Add(new Node { Id = 7, X = 6, Y = 3, Z = 3.3, Story = "T2" });
-        q.Nodes.Add(new Node { Id = 8, X = 0, Y = 3, Z = 3.3, Story = "T2" });
-        q.Slabs.Add(new Slab { Id = 1, Label = "S1", Nodes = new() { 5, 6, 7, 8 }, Section = "S120", Story = "T2" });
-        q.Walls = new List<WallLine>
+        var pq = new Project();
+        pq.Stories = new List<Story> { new() { Name = "T1", Elevation = 0, Height = 3.3 }, new() { Name = "T2", Elevation = 3.3, Height = 3.3 } };
+        EnsureSlabSection(pq);
+        pq.FrameSections.Add(new FrameSection { Name = "C22", B = 0.22, H = 0.22 });
+        pq.FrameSections.Add(new FrameSection { Name = "D22x45", B = 0.22, H = 0.45 });
+        pq.Nodes.Add(new Node { Id = 1, X = 0, Y = 1.5, Z = 0, Story = "T1" });
+        pq.Nodes.Add(new Node { Id = 2, X = 0, Y = 1.5, Z = 3.3, Story = "T2" });
+        pq.Nodes.Add(new Node { Id = 3, X = 6, Y = 1.5, Z = 0, Story = "T1" });
+        pq.Nodes.Add(new Node { Id = 4, X = 6, Y = 1.5, Z = 3.3, Story = "T2" });
+        pq.Frames.Add(new FrameElement { Id = 1, Label = "C1", NodeI = 1, NodeJ = 2, Section = "C22", Kind = FrameKind.Column, Story = "T2" });
+        pq.Frames.Add(new FrameElement { Id = 2, Label = "C2", NodeI = 3, NodeJ = 4, Section = "C22", Kind = FrameKind.Column, Story = "T2" });
+        pq.Frames.Add(new FrameElement { Id = 3, Label = "D1", NodeI = 2, NodeJ = 4, Section = "D22x45", Kind = FrameKind.Beam, Story = "T2" });
+        pq.Nodes.Add(new Node { Id = 5, X = 0, Y = 0, Z = 3.3, Story = "T2" });
+        pq.Nodes.Add(new Node { Id = 6, X = 6, Y = 0, Z = 3.3, Story = "T2" });
+        pq.Nodes.Add(new Node { Id = 7, X = 6, Y = 3, Z = 3.3, Story = "T2" });
+        pq.Nodes.Add(new Node { Id = 8, X = 0, Y = 3, Z = 3.3, Story = "T2" });
+        pq.Slabs.Add(new Slab { Id = 1, Label = "S1", Nodes = new() { 5, 6, 7, 8 }, Section = "S120", Story = "T2" });
+        pq.Walls = new List<WallLine>
         {
             new() { Id = 1, Story = "T2", X1 = 0, Y1 = 4, X2 = 3, Y2 = 4, Type = "Tường 110 trát 2 mặt" },
             new() { Id = 2, Story = "T2", X1 = 0, Y1 = 5, X2 = 3, Y2 = 5, Type = "Tường BTCT 200" },
@@ -207,7 +207,7 @@ public static class DrainSlopeImpactTests
         MepRun R(int id, double size, MepRunKind kind, params MepPt[] pts)
         {
             var r = new MepRun { Id = id, System = MepSystemKind.ThoatNuocThai, Kind = kind, Story = "T2", Size = size, Path = pts.ToList() };
-            q.Mep.Runs.Add(r);
+            pq.Mep.Runs.Add(r);
             return r;
         }
         double zc = 2.85 + 0.225;
@@ -222,7 +222,7 @@ public static class DrainSlopeImpactTests
         R(9, 20, MepRunKind.Ong, new MepPt(3, 2.5, 3.5), new MepPt(3, 2.5, 2.9));
         R(10, 25, MepRunKind.Ong, new MepPt(0.5, 4, 3.6, 1), new MepPt(2.0, 4, 3.6, 1));     // rãnh ngang 1,5 m trong tường 110
         R(11, 25, MepRunKind.Ong, new MepPt(0.5, 5, 3.6, 2), new MepPt(1.0, 5, 3.6, 2));     // rãnh trong tường BTCT
-        var items = StructuralImpact.Scan(q);
+        var items = StructuralImpact.Scan(pq);
         ImpactSeverity? Sev(int run, string code) => items.FirstOrDefault(i => i.RunId == run && i.Code == code)?.Severity;
         check("Quét: xuyên dầm giữa nhịp → cho phép (ống lồng)", (int)(Sev(1, "XUYEN_DAM") ?? (ImpactSeverity)(-1)), (int)ImpactSeverity.ChoPhep, 0);
         check("Quét: xuyên dầm sát gối → nguy hiểm", (int)(Sev(2, "XUYEN_DAM") ?? (ImpactSeverity)(-1)), (int)ImpactSeverity.NguyHiem, 0);
@@ -256,7 +256,7 @@ public static class DrainSlopeImpactTests
         // ================= 6. Va chạm: ống lồng hợp lệ / không hợp lệ =================
         try
         {
-            var cl = ClashDetector.Run(q);
+            var cl = ClashDetector.Run(pq);
             ClashType? T(int run) => cl.FirstOrDefault(c => (c.A.Id.StartsWith($"DN-ONG-{run}-") && c.B.Id == "DAM-3") || (c.B.Id.StartsWith($"DN-ONG-{run}-") && c.A.Id == "DAM-3"))?.Type;
             check("Va chạm: ống qua dầm giữa nhịp → ống lồng", B(T(1) == ClashType.OngLong), 1, 0);
             check("Va chạm: ống qua dầm sát gối → va chạm cứng", B(T(2) == ClashType.Cung), 1, 0);
@@ -268,7 +268,7 @@ public static class DrainSlopeImpactTests
         }
 
         // ================= 7. Tích hợp cảnh báo điện nước =================
-        var cs = MepUpdater.CheckStructure(q);
+        var cs = MepUpdater.CheckStructure(pq);
         check("Cảnh báo kết cấu: XUYEN_COT mang mức Cấm", cs.Count(x => x.Code == "XUYEN_COT" && x.Severity == "Cấm"), 1, 0);
         check("Cảnh báo kết cấu: XUYEN_DAM có đề xuất xử lý", B(cs.Where(x => x.Code == "XUYEN_DAM").All(x => !string.IsNullOrEmpty(x.Fix))), 1, 0);
     }

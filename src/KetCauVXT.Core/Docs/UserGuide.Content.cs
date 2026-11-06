@@ -923,6 +923,26 @@ public static partial class UserGuide
                 "Chọn thiết bị để sửa ký hiệu, cao độ, vị trí dọc tường, mạch điện, đổi mặt tường chôn; chọn tuyến để sửa cỡ hoặc bật / tắt *Tự chọn cỡ*. Delete xoá; mọi thao tác hoàn tác được (Ctrl+Z ở cửa sổ chính).",
                 "Thiết bị và tuyến điện nước có khối 3D (dùng cho khung nhìn 3D, IFC / OBJ và kiểm tra va chạm giữa các bộ môn).");
 
+        c.Sec("mo-hinh.thoat-nuoc-ket-cau", "Thoát nước đi dưới sàn có độ dốc; cảnh báo điểm nguy hiểm cho kết cấu và chi tiết gia cường")
+            .P("Ống **thoát nước** (thải, xám, mưa) **không đi trong tường**: từ thiết bị chỉ có đoạn đứng ngắn xuyên sàn ngay trước mặt tường, đoạn ngang **treo dưới đáy sàn** "
+                + "(trong không gian trần tầng dưới; ô sàn **hạ cốt** đủ sâu thì đi trong lớp hạ cốt) và **dốc về ống đứng** (hộp gen kỹ thuật). Tầng thấp nhất: ống chôn trong lớp đất đắp dưới sàn nền.")
+            .Steps("Tab *Cấp thoát nước* → **Nối thoát về ống đứng**: chương trình đề xuất **ống đứng** tại góc tường gần nhóm thiết bị vệ sinh (đã có thì dùng lại) và nối mọi thiết bị thoát chưa nối.",
+                "**Độ dốc**: mặc định theo Ø (TCVN 4474 – thực hành): Ø ≤ 50: **3 %**; Ø60…Ø90: **2 %**; Ø ≥ 110: **2 %** (tối thiểu 1 %). Chọn tuyến → ô *Độ dốc (%)* để nhập riêng (0 = mặc định); "
+                + "ngoài khoảng tối thiểu…8 % có cảnh báo. Cao độ tim ống giảm dần từ thiết bị: z = z₀ − i·s; khung thuộc tính ghi cao độ **đáy ống đầu / cuối tuyến**.",
+                "**Phụ kiện thoát**: đổi hướng dùng **2 chếch 45°** (không cút 90°), nhánh vào ống đứng / điểm nối dùng **tê xiên 45° (chữ Y)**, **ống kiểm tra (nắp thăm)** ở chân ống đứng và mỗi 12 m tuyến ngang; "
+                + "thống kê có **quang treo + ty ren** (≤ 0,8 / 1,0 / 1,2 m theo Ø) và gợi ý **ống thông hơi** vượt mái ≥ 0,7 m.",
+                "Cảnh báo thoát nước: **ép đi trong tường** (ô *Ép đi trong tường* – không khuyến khích), ống tụt thấp hơn **trần giả** (đáy sàn − 0,6 m mặc định), vượt khỏi lớp hạ cốt, độ dốc ngoài khoảng.")
+            .Bullets("**Ảnh hưởng tới kết cấu** (danh sách cảnh báo, có mức **Cho phép / Gợi ý / Cảnh báo / Nguy hiểm / Cấm** và đề xuất xử lý):",
+                "**Xuyên dầm**: cho phép khi Ø lỗ (Ø ống + 20 mm ống lồng) ≤ h/3, mép lỗ trong **1/3 giữa chiều cao**, tâm lỗ trong **1/3 giữa nhịp**, cách mép gối ≥ h (≥ 2h vùng tới hạn kháng chấn), hai lỗ cách ≥ 3Ø; "
+                + "Ø > h/4 hoặc ngoài 1/3 giữa nhịp → gia cường; vi phạm → **Nguy hiểm** (dời lỗ / đi dưới đáy dầm / tăng chiều cao dầm). Ống **đứng** xuyên dầm: không cho phép.",
+                "**Gia cường lỗ xuyên dầm**: ống lồng thép chờ sẵn; 2 đai (3 đai khi Ø > h/4) Ø8a50 mỗi bên lỗ; 2Ø12 trên + 2Ø12 dưới lỗ dài Ø + 2·max(40d; 500 mm).",
+                "**Xuyên cột**: **Cấm** (ống gen ≤ Ø25 trong cột cạnh ≥ 400: cảnh báo, chỉ đặt ống chờ khi đổ).",
+                "**Lỗ sàn**: cách mép cột < 2,5·hs → **Nguy hiểm** (vùng chọc thủng); < 6·hs → cảnh báo kiểm tra lại chọc thủng; lỗ > 300 mm → **thép gia cường mép lỗ** bù phần thép bị cắt "
+                + "(As cắt chia đều 2 bên, tối thiểu 2Ø12 mỗi bên, dài cạnh lỗ + 2·40d) + 1Ø12 xiên mỗi góc; ≥ 3 lỗ thẳng hàng cách nhau < 1 m → đường yếu.",
+                "**Rãnh đục tường**: tường BTCT không đục (đặt ống chờ); rãnh ngang sâu > 1/3 lõi hoặc dài > 1 m trong tường 110 → cảnh báo.",
+                "**Va chạm giữa bộ môn**: ống xuyên dầm ở vị trí không cho phép được tính là **va chạm cứng** thay vì *ống lồng*.",
+                "Hồ sơ điện nước (DN-) kèm **CHI TIẾT GIA CƯỜNG LỖ XUYÊN DẦM** và **CHI TIẾT GIA CƯỜNG MÉP LỖ SÀN** (tỷ lệ 1/20); mặt bằng thoát nước ghi mũi tên dốc, **i=2%**, cao độ đáy ống.");
+
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")
             .Steps("Thanh sửa mặt bằng: nhập độ hạ ở ô **Hạ cốt (mm)** (vd. −50; gõ 50 cũng hiểu là hạ 50 mm).",
