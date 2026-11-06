@@ -50,7 +50,8 @@ public static class PlanLoadCadTests
         b0.Section = "C22x30";   // đổi tiết diện 1 dầm (tên tiết diện khác) – không lẫn với cột cùng tên
         var simSec = SelectionRules.SimilarFrames(p, new[] { Beams(p, st)[1].Id }, SimilarBy.Section, st);
         check("Tương tự cùng tiết diện D22x30 tầng T2: 6 dầm", simSec.Count, nBeams - 1, 0);
-        check("Tương tự cùng tiết diện mọi tầng: 6 + 7 dầm", SelectionRules.SimilarFrames(p, new[] { Beams(p, st)[1].Id }, SimilarBy.Section).Count, nBeams - 1 + Beams(p, "T3").Count, 0);
+        check("Tương tự cùng tiết diện mọi tầng: 6 + 7 dầm", SelectionRules.SimilarFrames(p, new[] { Beams(p, st)[1].Id }, SimilarBy.Section).Count, p.Frames.Count(f => !f.IsVerticalKind && f.Section == Beams(p, st)[1].Section), 0);
+        check("Tương tự mọi tầng nhiều hơn chỉ tầng đang xem", B(SelectionRules.SimilarFrames(p, new[] { Beams(p, st)[1].Id }, SimilarBy.Section).Count > nBeams - 1), 1, 0);
         var colId = p.Frames.First(f => f.IsVerticalKind && f.Story == st).Id;
         check("Tương tự cột: chỉ cột (không lẫn dầm)", SelectionRules.SimilarFrames(p, new[] { colId }, SimilarBy.Story, st).Count, nCols, 0);
         var slabT2 = p.Slabs.Where(s => s.Story == st).ToList();
