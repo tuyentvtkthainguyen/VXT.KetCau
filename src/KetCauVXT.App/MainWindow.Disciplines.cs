@@ -426,7 +426,7 @@ public partial class MainWindow
         Reload();
         var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
         var bImp = new Button { Content = "Nhập OBJ / DAE / Revit…", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 6, 0) };
-        var bPlace = new Button { Content = "Đặt vào tầng đang xem", Padding = new Thickness(8, 2, 8, 2) };
+        var bPlace = new Button { Content = "Đặt vào mặt bằng (bắt điểm)", Padding = new Thickness(8, 2, 8, 2) };
         bar.Children.Add(bImp); bar.Children.Add(bPlace);
         DockPanel.SetDock(bar, Dock.Bottom);
         dock.Children.Add(bar); dock.Children.Add(list);
@@ -455,18 +455,10 @@ public partial class MainWindow
         bPlace.Click += (s, e) =>
         {
             if (list.SelectedItem is not LibRow sel) return;
+            // [Kiểu Revit] không nhập toạ độ: đóng thư viện → rê chuột trên mặt bằng, tự bắt mặt tường / góc phòng / giao trục (MainWindow.Furnish.cs)
             LibraryItem it = sel.I;
-            string st = StoryForEdit() ?? "NEN";
-            double cx = _p.GridsX.Any() ? (_p.GridsX.First().Coord + _p.GridsX.Last().Coord) / 2 : 0;
-            double cy = _p.GridsY.Any() ? (_p.GridsY.First().Coord + _p.GridsY.Last().Coord) / 2 : 0;
-            string pos = DialogUi.InputBox(w, "Vị trí đặt", "Toạ độ X; Y (m) và góc xoay (độ), vd. 2.5; 3.0; 90:", $"{cx:0.00}; {cy:0.00}; 0");
-            if (pos == null) return;
-            var parts = pos.Split(';').Select(x => double.TryParse(x.Trim().Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v) ? v : 0).ToList();
-            var placed = Library3D.Place(_p, it, st, parts.ElementAtOrDefault(0), parts.ElementAtOrDefault(1), parts.ElementAtOrDefault(2));
-            placed.Discipline = it.Discipline;
-            MarkDirty(false);
-            RedrawPlan();
-            SetStatus($"Đã đặt {it.Name} tại tầng {st}.");
+            w.Close();
+            StartPlaceFurniture(it);
         };
         w.ShowDialog();
     }

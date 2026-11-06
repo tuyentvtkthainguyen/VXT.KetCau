@@ -313,6 +313,7 @@ public partial class MainWindow
         var layer = DimLayer();
         layer?.Children.Clear();
         if (layer == null || _p == null) return;
+        if (DrawFurnitureSelection(layer)) return;   // đồ đạc đang chọn + kích thước tạm – MainWindow.Furnish.cs
         if (_rvSelOpen != null && _rvSelWall != null && _p.Walls.Contains(_rvSelWall) && _rvSelWall.Openings.Contains(_rvSelOpen))
         {
             var t = WallAssembly.TypeOf(_p, _rvSelOpen);
@@ -448,6 +449,7 @@ public partial class MainWindow
     private bool RevitPlanMove(Point s)
     {
         if (_p == null) return false;
+        if (FurnishPlanMove(s)) return true;   // [Đặt đồ đạc / mặt cắt] MainWindow.Furnish.cs
         if (_rvPlaceType != null)
         {
             if (_mode != PlanEditMode.Select) { StopPlaceOpening(); return false; }
@@ -484,6 +486,7 @@ public partial class MainWindow
     private bool RevitPlanClick(Point s)
     {
         if (_p == null) return false;
+        if (FurnishPlanClick(s)) return true;   // [Đặt đồ đạc / chọn đồ đạc / mặt cắt] MainWindow.Furnish.cs
         if (_rvPlaceType != null)
         {
             if (_mode != PlanEditMode.Select) { StopPlaceOpening(); return false; }
@@ -535,6 +538,7 @@ public partial class MainWindow
     private bool RevitPlanKey(Key key)
     {
         if (IsTextInputFocused()) return false;
+        if (FurnishPlanKey(key)) return true;   // MainWindow.Furnish.cs
         if (key == Key.Escape && _rvPlaceType != null) { StopPlaceOpening(); return true; }
         if (key == Key.Escape && _rvSelOpen != null) { ClearHostedSelection(); SetStatus(ModeHint(_mode)); return true; }
         if (key == Key.Delete && _rvSelOpen != null && _rvSelWall != null)
@@ -563,6 +567,7 @@ public partial class MainWindow
     /// <summary>Lật hướng mở (hand = đổi bên bản lề) của cửa đang đặt / đang chọn. false = không có cửa.</summary>
     private bool RevitFlip(bool shift)
     {
+        if (!shift && FurnishSpace()) return true;   // xoay đồ đạc 90° – MainWindow.Furnish.cs
         if (_rvPlaceType != null)
         {
             if (shift) _rvPlaceHand = !_rvPlaceHand; else _rvPlaceFlip = !_rvPlaceFlip;

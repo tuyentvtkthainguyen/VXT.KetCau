@@ -169,6 +169,8 @@ public static class MepTests
         var wc = MepRouting.PlaceOnWall(t, "Bồn cầu", t.Walls[1], 1.5, 1);
         var fd = MepRouting.PlaceFree(t, "Thoát sàn (phễu thu)", "T1", 2.0, 1.5);
         var dr = MepRouting.Connect(t, wc.Id, fd.Id, MepSystemKind.ThoatNuocThai, 110); dr.AutoSize = false;
+        // thoát nước mặc định đi dưới sàn (không trong tường) – ép đi trong tường để kiểm tra cảnh báo tường mỏng
+        dr.DrainInWall = true; MepRouting.Route(t, dr);
         var x1 = MepRouting.PlaceOnWall(t, "Ổ cắm đơn", t.Walls[1], 0.5, 1);
         var x2 = MepRouting.PlaceOnWall(t, "Ổ cắm đơn", t.Walls[1], 2.6, 1);
         MepRouting.Connect(t, x1.Id, x2.Id, MepSystemKind.DienOCam);

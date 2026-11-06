@@ -97,6 +97,8 @@ public class ArchModel
     public List<Ceiling> Ceilings { get; set; } = new();
     public List<RoofElement> Roofs { get; set; } = new();
     public List<FurnitureItem> Furniture { get; set; } = new();
+    /// <summary>Mặt cắt đứng do người dùng vẽ (ngoài 1-1, 2-2 tự sinh) – Drawing/SectionView.cs</summary>
+    public List<SectionLine> Sections { get; set; } = new();
 }
 
 /// <summary>Hình học phẳng nhỏ dùng chung.</summary>

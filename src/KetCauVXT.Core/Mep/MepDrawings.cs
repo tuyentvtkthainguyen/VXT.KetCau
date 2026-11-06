@@ -9,7 +9,7 @@ public static class MepSymbols
     public static readonly string[] All =
     {
         "ocam1", "ocam2", "congtac1", "congtac2", "congtac3", "den", "dentuyp", "downlight", "denhat", "quattran", "quattuong",
-        "hopchia", "aptomat", "tudien", "boncau", "lavabo", "sen", "voi", "thoatsan", "binhnong", "van", "diemnoi"
+        "hopchia", "aptomat", "tudien", "boncau", "lavabo", "sen", "voi", "thoatsan", "binhnong", "van", "diemnoi", "ongdung"
     };
 
     /// <summary>Vẽ ký hiệu tại (x, y) mm, cỡ r (mm), hướng dọc tường (ux, uy), pháp tuyến vào phòng (nx, ny). Trả số thực thể vẽ.</summary>
@@ -114,6 +114,9 @@ public static class MepSymbols
                 Poly(new[] { (-1.2 * r, 0.0), (1.2 * r, 0.0), (1.2 * r, 1.4 * r), (-1.2 * r, 1.4 * r) }, true);
                 { var c = P(0, 0.7 * r); w.Text(Lay.Chu, c.Item1, c.Item2, 0.5 * r, "BNL", 0, 1, 2); }
                 break;
+            case "ongdung":
+                w.Circle(Lay.KyHieu, x, y, 0.7 * r); w.Circle(Lay.KyHieu, x, y, 0.45 * r); w.Dot(Lay.KyHieu, x, y, 0.2 * r);
+                break;
             case "van":
                 Poly(new[] { (-0.6 * r, 0.2 * r), (0.6 * r, 1.0 * r), (0.6 * r, 0.2 * r), (-0.6 * r, 1.0 * r) }, true);
                 break;
@@ -168,7 +171,8 @@ public static class MepDrawings
     public static string Prefix(MepFamily f) => f?.Category switch
     {
         MepCategory.OCam => "OC", MepCategory.CongTac => "CT", MepCategory.Den => "Đ", MepCategory.Quat => "Q", MepCategory.HopChia => "HC",
-        MepCategory.Aptomat => "AT", MepCategory.TuDien => "TĐ", MepCategory.BinhNong => "BNL", MepCategory.Van => "V", MepCategory.DiemNoiOng => "N",
+        MepCategory.Aptomat => "AT", MepCategory.TuDien => "TĐ", MepCategory.BinhNong => "BNL", MepCategory.Van => "V",
+        MepCategory.DiemNoiOng => f.Symbol == "ongdung" ? "OĐ" : "N",
         MepCategory.VeSinh => f.Symbol switch { "boncau" => "BC", "lavabo" => "LV", "sen" => "S", "thoatsan" => "TS", _ => "VN" },
         _ => "TB"
     };
@@ -266,6 +270,7 @@ public static class MepDrawings
                 var a = r.Path[i - 1]; var b = r.Path[i];
                 if (MepGeom.Dist2D(a.X, a.Y, b.X, b.Y) < 1e-6 && Math.Abs(a.Z - b.Z) > 1e-6) w.Dot(Lay.Thep, a.X * 1000, a.Y * 1000, 0.15 * th);
             }
+            if (MepSystems.IsDrain(r.System)) SlopeMarks(p, w, r, th);
             // nhãn cỡ ở giữa đoạn dài nhất
             int best = -1; double bl = 0;
             for (int i = 1; i < r.Path.Count; i++)
@@ -309,6 +314,39 @@ public static class MepDrawings
         return new Figure(w, title);
     }
 
+    /// <summary>Chuỗi độ dốc "i=2%" (dấu phẩy thập phân).</summary>
+    public static string SlopeText(double i) => "i=" + (i * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',') + "%";
+
+    /// <summary>Cao độ dạng ±0,000.</summary>
+    public static string LevelText(double z) => (z >= 0 ? "+" : "-") + Math.Abs(z).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+
+    /// <summary>Tuyến thoát: mũi tên chiều dốc + "i=…%" giữa mỗi đoạn ngang ≥ 0,5 m; cao độ đáy ống đầu / cuối tuyến.</summary>
+    public static void SlopeMarks(Project p, DxfWriter w, MepRun r, double th)
+    {
+        double i = MepDrainage.SlopeOf(p, r);
+        var prof = MepDrainage.Profile(r);
+        for (int k = 1; k < prof.Count; k++)
+        {
+            var a = prof[k - 1]; var b = prof[k];
+            double L = MepGeom.Dist2D(a.X, a.Y, b.X, b.Y);
+            if (L < 0.5) continue;
+            double ux = (b.X - a.X) / L, uy = (b.Y - a.Y) / L, mx = (a.X + b.X) / 2 * 1000, my = (a.Y + b.Y) / 2 * 1000;
+            double al = 2.0 * th, ah = 0.6 * th;
+            double tx = mx + ux * al / 2, ty = my + uy * al / 2;
+            w.Line(Lay.KyHieu, mx - ux * al / 2 - uy * 0.9 * th, my - uy * al / 2 + ux * 0.9 * th, tx - uy * 0.9 * th, ty + ux * 0.9 * th);
+            w.Line(Lay.KyHieu, tx - uy * 0.9 * th, ty + ux * 0.9 * th, tx - ux * ah - uy * (0.9 * th + 0.4 * ah), ty - uy * ah + ux * (0.9 * th + 0.4 * ah));
+            w.Line(Lay.KyHieu, tx - uy * 0.9 * th, ty + ux * 0.9 * th, tx - ux * ah - uy * (0.9 * th - 0.4 * ah), ty - uy * ah + ux * (0.9 * th - 0.4 * ah));
+            double ang = Math.Atan2(uy, ux) * 180 / Math.PI;
+            if (ang > 90) ang -= 180; if (ang < -90) ang += 180;
+            w.Text(Lay.Chu, mx - uy * 1.6 * th, my + ux * 1.6 * th, 0.8 * th, SlopeText(i), ang, 1, 0);
+        }
+        if (prof.Count >= 2)
+        {
+            w.Text(Lay.Chu, prof[0].X * 1000 + 0.6 * th, prof[0].Y * 1000 - 1.6 * th, 0.7 * th, "Đáy ống " + LevelText(prof[0].Invert), 0, 0, 0);
+            w.Text(Lay.Chu, prof[^1].X * 1000 + 0.6 * th, prof[^1].Y * 1000 - 1.6 * th, 0.7 * th, "Đáy ống " + LevelText(prof[^1].Invert), 0, 0, 0);
+        }
+    }
+
     public static string RunLabel(MepRun r) => r.Kind switch
     {
         MepRunKind.Ong => $"{(MepSystems.IsDrain(r.System) ? "uPVC" : "PPR")} Ø{r.Size:0}",
@@ -338,7 +376,7 @@ public static class MepDrawings
         {
             double cy = y - rh / 2;
             w.Line(Lay.Thep, x + 0.15 * c1, cy, x + 0.85 * c1, cy, MepSystems.IsDrain(s) ? "DASHED" : null);
-            w.Text(Lay.Chu, x + c1 + 0.8 * th, cy, 0.9 * th, "Tuyến " + MepSystems.Name(s).ToLowerInvariant() + " (chôn ngầm)", 0, 0, 2);
+            w.Text(Lay.Chu, x + c1 + 0.8 * th, cy, 0.9 * th, "Tuyến " + MepSystems.Name(s).ToLowerInvariant() + (MepSystems.IsDrain(s) ? " (đi dưới sàn, có độ dốc i)" : " (chôn ngầm)"), 0, 0, 2);
             y -= rh; w.Line(Lay.KhungTen, x, y, x + c1 + c2, y);
         }
         if (rows > 0)

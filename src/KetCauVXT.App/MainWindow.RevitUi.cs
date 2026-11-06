@@ -346,6 +346,7 @@ public partial class MainWindow
                 views.Items.Add(TI($"{name} (+{st.Elevation:0.000})", () => { ShowPlanTab(); if (cbStory.Items.Contains(name)) cbStory.SelectedItem = name; }));
             }
             _rvBrowser.Items.Add(views);
+            AddLevelViewsToBrowser();   // mặt cắt ngang tầng theo bộ môn + mặt cắt đứng – MainWindow.Furnish.cs
             _rvBrowser.Items.Add(TI("Khung nhìn 3D", () => RvViewTab("3D")));
             _rvBrowser.Items.Add(TI("Biểu đồ nội lực", () => RvViewTab("Biểu đồ nội lực")));
             var sch = TI("Bảng thống kê");
@@ -446,7 +447,7 @@ public partial class MainWindow
         if (!_revitOn || !IsLoaded) return;
         EnforceLeftPanel();
         if (_p == null) return;
-        string bsig = $"{_p.GetHashCode()}|{_p.Stories.Count}|{_p.WallTypes.Count}|{_p.OpeningTypes?.Count}|{string.Join(",", _p.Stories.Select(s => s.Name))}";
+        string bsig = $"{_p.GetHashCode()}|{_p.Stories.Count}|{_p.WallTypes.Count}|{_p.OpeningTypes?.Count}|{string.Join(",", _p.Stories.Select(s => s.Name + "@" + s.Elevation))}|{_p.Arch?.Sections?.Count}";
         if (bsig != _rvBrowserSig) { _rvBrowserSig = bsig; WallAssembly.Upgrade(_p); RefreshBrowser(); }
         string sig = $"{_mode}|{_rvPlaceType?.Name}|{_sel?.Id}|{_selWall?.Id}|{_selSlab?.Id}|{_selOpening?.Id}|{_rvSelOpen?.Id}|{_rvSelOpen?.Type}|{_p.GetHashCode()}|{CurrentStory}|{_selWall?.Type}|{_sel?.Section}";
         if (sig != _rvSig) { _rvSig = sig; RevitSelectionChanged(); }

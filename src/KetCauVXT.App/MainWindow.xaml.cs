@@ -72,6 +72,7 @@ public partial class MainWindow : Window
         InitCompactUi();     // [Giao diện gọn] menu + thanh công cụ 1 hàng, F11, Ctrl+Q – MainWindow.CompactUi.cs
         InitRevitUi();       // [Kiểu Revit] ribbon Kiến trúc/Kết cấu/…, Thuộc tính, Trình duyệt dự án, thanh tuỳ chọn – MainWindow.RevitUi.cs
         InitDisciplines();   // [Bộ môn] công tắc Kiến trúc | Kết cấu | Điện nước, tab + menu BIM – MainWindow.Disciplines.cs
+        InitFurnish();       // [Đặt & xem] đặt đồ đạc bắt điểm, kích thước tạm, 3D, mặt cắt – MainWindow.Furnish.cs
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)

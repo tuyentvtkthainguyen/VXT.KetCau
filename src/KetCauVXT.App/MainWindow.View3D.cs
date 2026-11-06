@@ -173,6 +173,7 @@ public partial class MainWindow
         foreach (var f in _p.Frames)
         {
             if (!nodes.TryGetValue(f.NodeI, out var ni) || !nodes.TryGetValue(f.NodeJ, out var nj)) continue;
+            if (!Show3D((f.IsVerticalKind ? "COT-" : "DAM-") + f.Id, Discipline.KetCau)) continue;   // ẩn / cô lập / bộ môn – MainWindow.Furnish.cs
             double b = 0.2, h = 0.3;
             if (secs.TryGetValue(f.Section ?? "", out var sec)) { var sp = sec.Props(0.5); b = Math.Max(sp.Width, 0.05); h = Math.Max(sp.Depth, 0.05); }
             var pm = _sel != null && _sel.Id == f.Id ? selMesh : f.IsVerticalKind ? (f.IsConcrete ? colMesh : steelMesh) : (f.IsConcrete ? beamMesh : steelMesh);
@@ -187,6 +188,7 @@ public partial class MainWindow
         {
             var pts = s.Nodes.Where(id => nodes.ContainsKey(id)).Select(id => nodes[id].P).ToList();
             if (pts.Count < 3) continue;
+            if (!Show3D("SAN-" + s.Id, Discipline.KetCau)) continue;
             double t = _p.SlabSections.FirstOrDefault(q => q.Name == s.Section)?.Thickness ?? 0.1;
             var pm = _selSlab != null && ReferenceEquals(_selSlab, s) ? selMesh : slabMesh;
             pm.Begin(s);
@@ -224,6 +226,7 @@ public partial class MainWindow
             AddWalls3D(wallMesh);
             AddModel(group, wallMesh, Color.FromArgb((byte)(dim ? 40 : 150), 214, 168, 130), true);
         }
+        AddExtras3D(group, pick, dim);   // đồ đạc + thiết bị điện nước (chọn, kéo) – MainWindow.Furnish.cs
         if (overlay != null) group.Children.Add(overlay);
         return group;
     }
@@ -236,6 +239,7 @@ public partial class MainWindow
         {
             var st = _p.Stories.FirstOrDefault(q => q.Name == w.Story);
             if (st == null || w.Chord < 0.05) continue;
+            if (!Show3D("TUONG-" + w.Id, Discipline.KienTruc)) continue;
             var wt = _p.WallTypes?.FirstOrDefault(q => q.Name == w.Type);
             double t = wt == null ? 0.22 : Math.Max(0.05, wt.TotalThickness);
             double H = WallSolid3D.DefaultHeight(_p, w);
@@ -457,17 +461,20 @@ public partial class MainWindow
     /// <summary>Chọn đối tượng trả về từ bảng tra (thanh / ô sàn / móng); null = bỏ chọn.</summary>
     private void SelectObject(object o)
     {
+        if (o is not Solid) _v3SelId = null;   // bỏ chọn đồ đạc 3D khi chọn cấu kiện khác
         switch (o)
         {
             case FrameElement f: Select(frame: f); break;
             case Slab s: Select(slab: s); break;
             case FootingDesign fd: Select(footingNode: fd.NodeId); break;
+            case Solid so: Select3DSolid(so); return;
             default: if (HasSelection) ClearSelection(); break;
         }
     }
 
     private void View3D_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (View3DDragStart(sender, e)) return;   // kéo đồ đạc đang chọn trên mặt sàn – MainWindow.Furnish.cs
         _rotHost = sender as FrameworkElement ?? view3DHost;
         _rotating = true; _rotMoved = false;
         _rotStart = e.GetPosition(_rotHost);
@@ -477,6 +484,7 @@ public partial class MainWindow
 
     private void View3D_MouseMove(object sender, MouseEventArgs e)
     {
+        if (View3DDragMove(e)) return;
         if (!_rotating || _rotHost == null) return;
         var p = e.GetPosition(_rotHost);
         if (!_rotMoved && Math.Abs(p.X - _rotStart.X) + Math.Abs(p.Y - _rotStart.Y) < 4) return;
@@ -488,6 +496,7 @@ public partial class MainWindow
 
     private void View3D_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (View3DDragEnd()) return;
         if (!_rotating) return;
         _rotating = false;
         var host = _rotHost ?? view3DHost;

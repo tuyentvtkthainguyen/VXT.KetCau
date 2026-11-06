@@ -12,7 +12,7 @@ namespace KetCauVXT.App;
 /// <summary>Môi trường ĐIỆN NƯỚC: kiến trúc hiện mờ như xref (không sửa được); đặt thiết bị (mặc định gắn tường, chôn ngầm),
 /// nối tuyến tự đi trong tường (sinh cút / chếch / tê / côn / măng sông / hộp nối), tự chọn cỡ, cảnh báo khi kiến trúc thay đổi,
 /// thư viện điện nước, bảng thống kê vật tư, xuất mặt bằng DXF (DN-).</summary>
-public sealed class MepWindow : Window
+public sealed partial class MepWindow : Window
 {
     private readonly Project _p;
     private readonly Func<string> _snapshot;
@@ -129,6 +129,13 @@ public sealed class MepWindow : Window
         wrow.Children.Add(_sysWater);
         wrow.Children.Add(Btn("Nối tuyến ống", () => StartConnect((MepSystemKind)((ComboBoxItem)_sysWater.SelectedItem).Tag), "Bấm thiết bị nguồn rồi thiết bị đích – ống tự đi trong tường, sinh cút / tê / côn / măng sông"));
         wrow.Children.Add(Btn("Tự chọn cỡ ống", AutoSize, "Cấp nước theo đương lượng (TCVN 4513), thoát nước theo DFU"));
+        wrow.Children.Add(Btn("Nối thoát về ống đứng", () => Edit(() =>
+        {
+            int n = 0;
+            foreach (var st in _p.Mep.Devices.Select(d => d.Story).Distinct().ToList()) n += MepDrainage.ConnectToStack(_p, st).Count;
+            MepRouting.RebuildAll(_p);
+            SetStatus($"Đã nối {n} thiết bị thoát về ống đứng (đi dưới sàn, có độ dốc).");
+        }), "Đề xuất ống đứng (hộp gen) tại góc tường gần nhóm thiết bị vệ sinh, nối các thiết bị thoát đi dưới sàn có độ dốc"));
         wrow.Children.Add(Btn("Chọn / sửa", () => SetTool("select")));
         water.Children.Add(wrow);
         tabs.Items.Add(new TabItem { Header = "Cấp thoát nước", Content = new ScrollViewer { Content = water, VerticalScrollBarVisibility = ScrollBarVisibility.Auto } });
@@ -259,7 +266,9 @@ public sealed class MepWindow : Window
         {
             var b = e.GetPosition(_cv);
             _ox += b.X - a.X; _oy += b.Y - a.Y; _panFrom = b; Redraw();
+            return;
         }
+        SnapPreview(e.GetPosition(_cv));   // [Kiểu Revit] bóng thiết bị + kích thước tạm khi đặt – MepWindow.Snap.cs
     }
 
     private void OnDown(object sender, MouseButtonEventArgs e)
@@ -411,6 +420,7 @@ public sealed class MepWindow : Window
             var tb = new TextBlock { Text = "⚠", Foreground = Brushes.OrangeRed, FontSize = 14, ToolTip = w.Message };
             Canvas.SetLeft(tb, s.X - 16); Canvas.SetTop(tb, s.Y + 2); _cv.Children.Add(tb);
         }
+        DrawDeviceDims();   // [Kiểu Revit] kích thước tạm thiết bị gắn tường – MepWindow.Snap.cs
     }
 
     // ------------------------------------------------------------------
@@ -445,6 +455,25 @@ public sealed class MepWindow : Window
             var auto = new CheckBox { Content = "Tự chọn cỡ", IsChecked = r.AutoSize, Margin = new Thickness(0, 4, 0, 4) };
             auto.Click += (_, _) => Edit(() => r.AutoSize = auto.IsChecked == true);
             _props.Children.Add(auto);
+            if (MepSystems.IsDrain(r.System))
+            {
+                // thoát nước: độ dốc (%), mặc định theo Ø; đi dưới sàn (không khuyến khích đi trong tường)
+                double iUse = MepDrainage.SlopeOf(_p, r);
+                var prof = MepDrainage.Profile(r);
+                _props.Children.Add(new TextBlock
+                {
+                    Text = $"Đi {(r.DrainInWall ? "TRONG TƯỜNG (không khuyến khích)" : "dưới sàn")} – dốc {iUse * 100:0.#} %" +
+                           (prof.Count > 0 ? $"\nĐáy ống đầu {prof[0].Invert:0.000} → cuối {prof[^1].Invert:0.000} m" : ""),
+                    TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 2)
+                });
+                Field($"Độ dốc (%) – 0 = mặc định {MepDrainage.DefaultSlope(_p.Mep.Settings, r.Size) * 100:0.#} %", (r.Slope * 100).ToString("0.##"), v =>
+                {
+                    if (double.TryParse(v.Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var sl) && sl >= 0) r.Slope = sl / 100;
+                });
+                var inWall = new CheckBox { Content = "Ép đi trong tường (không khuyến khích)", IsChecked = r.DrainInWall, Margin = new Thickness(0, 4, 0, 4) };
+                inWall.Click += (_, _) => Edit(() => { r.DrainInWall = inWall.IsChecked == true; MepRouting.RebuildAll(_p); });
+                _props.Children.Add(inWall);
+            }
             _props.Children.Add(Btn("Xoá tuyến", DeleteSelected));
             return;
         }

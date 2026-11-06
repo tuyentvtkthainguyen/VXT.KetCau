@@ -174,6 +174,8 @@ public static class MepRouting
         var m = p.Mep; var a = m.Device(r.FromId); var b = m.Device(r.ToId);
         r.Path = new List<MepPt>();
         if (a == null || b == null) return false;
+        // thoát nước: đi dưới sàn có độ dốc tới ống đứng (MepDrainage) – không đi trong tường trừ khi ép (DrainInWall)
+        if (MepSystems.IsDrain(r.System)) return MepDrainage.Route(p, r, a, b);
         var pa = DevicePos(p, a); var pb = DevicePos(p, b);
         double zr = RunLevel(p, r.System, a.Story);
         var ca = DeviceChase(p, a); var cb = DeviceChase(p, b);
@@ -364,6 +366,7 @@ public static class MepRouting
     /// Dây đơn / cáp: tính cho ống gen luồn dây (cỡ ConduitSize).</summary>
     public static List<MepFitting> RunFittings(Project p, MepRun r)
     {
+        if (r.Kind == MepRunKind.Ong && MepSystems.IsDrain(r.System)) return MepDrainage.RunFittings(p, r);
         var res = new List<MepFitting>();
         var path = r.Path;
         if (path == null || path.Count < 2) return res;
@@ -414,6 +417,7 @@ public static class MepRouting
             foreach (var g in m.Runs.Where(r => r.FromId == d.Id || r.ToId == d.Id).GroupBy(r => r.System))
             {
                 var runs = g.ToList();
+                if (MepSystems.IsDrain(g.Key)) { res.AddRange(MepDrainage.NodeFittings(p, d, runs, g.Key)); continue; }
                 bool elec = MepSystems.IsElectric(g.Key);
                 var pos = DevicePos(p, d); var c = DeviceChase(p, d);
                 if (runs.Count >= 3)
@@ -441,6 +445,7 @@ public static class MepRouting
                 }
             }
         }
+        res.AddRange(MepDrainage.StackBaseCleanouts(p));
         return res;
     }
 

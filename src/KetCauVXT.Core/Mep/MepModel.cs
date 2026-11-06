@@ -30,7 +30,7 @@ public enum MepCategory
 public enum MepRunKind { Ong, OngGen, Day, Cap }
 
 /// <summary>Loại phụ kiện sinh tự động khi đi tuyến.</summary>
-public enum MepFittingKind { Cut90, Chech45, Te, TeGiam, Con, MangSong, HopNoi }
+public enum MepFittingKind { Cut90, Chech45, Te, TeGiam, Con, MangSong, HopNoi, TeXien, KiemTra }
 
 /// <summary>Thông tin hệ thống: tên, nhóm, layer bản vẽ, màu.</summary>
 public static class MepSystems
@@ -195,6 +195,9 @@ public class MepLibrary
             Connectors = { C(MepSystemKind.CapNuocLanh, 20) } });
         L.Add(new MepFamily { Name = "Điểm nối ống", Category = MepCategory.DiemNoiOng, Symbol = "diemnoi", W = 0.06, D = 0.05, H = 0.06, MountHeight = 0.3,
             Note = "Điểm chia nhánh ống (sinh tê)" });
+        L.Add(new MepFamily { Name = "Ống đứng thoát nước", Category = MepCategory.DiemNoiOng, Symbol = "ongdung", W = 0.16, D = 0.16, H = 0.1, MountHeight = 0,
+            WallHosted = false, Size = 110, Material = "uPVC", Note = "Ống đứng (hộp gen kỹ thuật) – điểm thu các tuyến thoát ngang dưới sàn",
+            Connectors = { C(MepSystemKind.ThoatNuocThai, 110) } });
         // ---- điện ----
         L.Add(new MepFamily { Name = "Ổ cắm đơn", Category = MepCategory.OCam, Symbol = "ocam1", W = 0.086, D = 0.04, H = 0.086, MountHeight = 0.4, Power = 300,
             Connectors = { C(MepSystemKind.DienOCam, 2.5) } });
@@ -303,6 +306,10 @@ public class MepRun
     public List<double[]> ManualPoints { get; set; } = new();
     /// <summary>Đường đi đã tính (cập nhật bởi MepRouting / Reconcile)</summary>
     public List<MepPt> Path { get; set; } = new();
+    /// <summary>Độ dốc ống thoát (vd. 0,02 = 2 %); 0 = mặc định theo Ø (MepDrainage.DefaultSlope)</summary>
+    public double Slope { get; set; }
+    /// <summary>Ép đi ống thoát trong tường (không khuyến khích – có cảnh báo); mặc định đi dưới sàn</summary>
+    public bool DrainInWall { get; set; }
     [JsonIgnore] public double Length => MepGeom.Length(Path);
 }
 
@@ -332,6 +339,8 @@ public static class MepFittings
         MepFittingKind.TeGiam => "Tê giảm",
         MepFittingKind.Con => "Côn thu",
         MepFittingKind.MangSong => MepSystems.IsElectric(s) ? "Khớp nối ống gen" : "Măng sông",
+        MepFittingKind.TeXien => "Tê xiên 45° (chữ Y)",
+        MepFittingKind.KiemTra => "Ống kiểm tra (nắp thăm)",
         _ => "Hộp nối (điểm chia)"
     };
     public static string Name(MepFittingKind k, MepSystemKind s, double size, double size2)
@@ -357,6 +366,11 @@ public class MepWarning
     public double Y { get; set; }
     /// <summary>Gợi ý xử lý nhanh</summary>
     public string Fix { get; set; } = "";
+    /// <summary>Mức độ (kết cấu): "Cho phép", "Gợi ý", "Cảnh báo", "Nguy hiểm", "Cấm"; rỗng = cảnh báo thường</summary>
+    public string Severity { get; set; } = "";
+    /// <summary>Cấu kiện kết cấu liên quan (Id thanh / ô sàn), 0 = không</summary>
+    public int FrameId { get; set; }
+    public int SlabId { get; set; }
     public override string ToString() => $"[{Code}] {Message}";
 }
 
@@ -398,6 +412,24 @@ public class MepSettings
     public double StockConduit { get; set; } = 2.9;
     /// <summary>Chiều cao tầng mặc định khi tầng không khai báo (m)</summary>
     public double DefaultStoryHeight { get; set; } = 3.3;
+
+    // ---- thoát nước đi dưới sàn, có độ dốc (MepDrainage) ----
+    /// <summary>Ống thoát đi DƯỚI sàn (treo dưới đáy sàn / trong lớp hạ cốt) tới ống đứng – mặc định true. false = đi trong lớp sàn (DrainLevel).</summary>
+    public bool DrainBelowSlab { get; set; } = true;
+    /// <summary>Độ dốc mặc định Ø ≤ 50 (TCVN 4474 – thực hành): 3 %</summary>
+    public double DrainSlopeSmall { get; set; } = 0.03;
+    /// <summary>Độ dốc mặc định 50 &lt; Ø &lt; 110 (Ø60…Ø90): 2 %</summary>
+    public double DrainSlopeMedium { get; set; } = 0.02;
+    /// <summary>Độ dốc mặc định Ø ≥ 110: 2 % (tối thiểu 1 %)</summary>
+    public double DrainSlopeLarge { get; set; } = 0.02;
+    /// <summary>Độ dốc lớn nhất khuyến nghị</summary>
+    public double DrainSlopeMax { get; set; } = 0.08;
+    /// <summary>Khe từ đáy sàn tới đỉnh ống treo (m)</summary>
+    public double DrainHangerGap { get; set; } = 0.05;
+    /// <summary>Chiều sâu không gian trần (từ đáy sàn xuống trần giả) cho phép ống thoát (m)</summary>
+    public double CeilingVoid { get; set; } = 0.6;
+    /// <summary>Khoảng cách ống kiểm tra (nắp thăm) trên tuyến ngang dài (m)</summary>
+    public double CleanoutSpacing { get; set; } = 12;
 }
 
 /// <summary>Toàn bộ dữ liệu điện nước của dự án (Project.Mep).</summary>

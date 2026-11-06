@@ -109,6 +109,7 @@ public static class MepUpdater
         res.Warnings.AddRange(CheckThinWalls(p));
         res.Warnings.AddRange(CheckOverlaps(p));
         res.Warnings.AddRange(CheckStructure(p));
+        res.Warnings.AddRange(MepDrainage.Check(p));
 
         // 4. ảnh chụp mới
         var used = m.Devices.Where(d => d.WallId > 0).Select(d => d.WallId).Concat(m.Runs.SelectMany(r => r.Path.Select(q => q.WallId))).Where(id => id > 0).ToHashSet();
@@ -198,64 +199,9 @@ public static class MepUpdater
         return list;
     }
 
-    /// <summary>Tuyến xuyên cột / dầm (cần ống lồng hoặc đổi tuyến).</summary>
-    public static List<MepWarning> CheckStructure(Project p)
-    {
-        var m = p.Mep; var list = new List<MepWarning>();
-        foreach (var r in m.Runs)
-        {
-            var path = r.Path; if (path.Count < 2) continue;
-            foreach (var f in p.Frames)
-            {
-                Node ni, nj;
-                try { ni = p.Node(f.NodeI); nj = p.Node(f.NodeJ); } catch { continue; }
-                var sec = p.FrameSections.FirstOrDefault(s => s.Name == f.Section);
-                double b = sec?.B > 0 ? sec.B : 0.22, h = sec?.H > 0 ? sec.H : 0.3;
-                if (f.IsVerticalKind)
-                {
-                    double z0 = Math.Min(ni.Z, nj.Z), z1 = Math.Max(ni.Z, nj.Z);
-                    double cx = ni.X + f.ColOffsetX, cy = ni.Y + f.ColOffsetY;
-                    double rx1 = cx - b / 2, rx2 = cx + b / 2, ry1 = cy - h / 2, ry2 = cy + h / 2;
-                    for (int i = 1; i < path.Count; i++)
-                    {
-                        var a = path[i - 1]; var c = path[i];
-                        double za = Math.Min(a.Z, c.Z), zc = Math.Max(a.Z, c.Z);
-                        if (zc < z0 || za > z1) continue;
-                        bool hit = MepGeom.SegmentHitsRect(a.X, a.Y, c.X, c.Y, rx1, ry1, rx2, ry2)
-                            || (MepGeom.Dist2D(a.X, a.Y, c.X, c.Y) < 1e-9 && a.X > rx1 && a.X < rx2 && a.Y > ry1 && a.Y < ry2);
-                        if (!hit) continue;
-                        list.Add(new MepWarning
-                        {
-                            Code = "XUYEN_COT", RunId = r.Id, Story = r.Story, X = cx, Y = cy,
-                            Message = $"Tuyến {r.Id} ({MepSystems.Name(r.System)}) đi qua cột {(string.IsNullOrEmpty(f.Label) ? f.Id.ToString() : f.Label)} – không đục cột, đổi tuyến vòng qua",
-                            Fix = "Đổi mặt chôn / vẽ tay tuyến vòng qua cột"
-                        });
-                        break;
-                    }
-                }
-                else
-                {
-                    // dầm: đáy dầm z = cao độ nút − h; tuyến nằm ngang trong khoảng [z−h, z] cắt trục dầm trên mặt bằng → xuyên dầm
-                    double zt = Math.Max(ni.Z, nj.Z), zb = zt - h;
-                    for (int i = 1; i < path.Count; i++)
-                    {
-                        var a = path[i - 1]; var c = path[i];
-                        if (Math.Abs(a.Z - c.Z) > 1e-6) continue;
-                        if (a.Z <= zb + 1e-6 || a.Z >= zt - 1e-6) continue;
-                        if (!MepGeom.SegmentsIntersect(a.X, a.Y, c.X, c.Y, ni.X, ni.Y, nj.X, nj.Y)) continue;
-                        list.Add(new MepWarning
-                        {
-                            Code = "XUYEN_DAM", RunId = r.Id, Story = r.Story, X = (a.X + c.X) / 2, Y = (a.Y + c.Y) / 2,
-                            Message = $"Tuyến {r.Id} ({MepSystems.Name(r.System)}) xuyên dầm {(string.IsNullOrEmpty(f.Label) ? f.Id.ToString() : f.Label)} – cần ống lồng chờ sẵn khi đổ bê tông",
-                            Fix = "Đặt ống lồng (sleeve) hoặc hạ tuyến dưới đáy dầm"
-                        });
-                        break;
-                    }
-                }
-            }
-        }
-        return list;
-    }
+    /// <summary>Ảnh hưởng tới kết cấu (StructuralImpact): xuyên dầm (đánh giá vị trí / Ø lỗ, đề xuất gia cường), xuyên cột (cấm),
+    /// lỗ sàn gần cột / lỗ lớn / thẳng hàng, rãnh đục tường, quang treo ống thoát. Mã giữ nguyên XUYEN_DAM / XUYEN_COT.</summary>
+    public static List<MepWarning> CheckStructure(Project p) => StructuralImpact.ToWarnings(StructuralImpact.Scan(p));
 
     // ------------------------------------------------------------------
     // Sửa nhanh

@@ -55,6 +55,25 @@ public partial class MainWindow
             BuildMain3D(true);
             await Pause(1200);
             Shot($"{tag}_46f_Revit_3D_TuongCoCua");
+            // [Đặt & xem] đồ đạc đặt bằng bắt điểm (lưng tựa mặt tường) → chọn trong 3D; mặt cắt 1-1 tự sinh
+            var bed = new LibraryItem { Id = "selftest-giuong", Name = "Giường đôi 1,8 m", Category = "Nội thất", Width = 1.8, Depth = 2.0, Height = 0.5 };
+            var sn = FurnitureSnap.Snap(_p, story.Name, (x0 + x1) / 2, y0 + 1.2, bed.Width, bed.Depth, 0);
+            var placed = FurnitureSnap.Place(_p, bed, story.Name, sn);
+            var dims = TempDimensions.ForRect(_p, story.Name, placed.X, placed.Y, placed.Width, placed.Depth, placed.Rotation, true, placed.Id);
+            StLog($"đặt đồ đạc bắt điểm: {sn.Kind}, góc {sn.Rotation:0}°, {dims.Count} kích thước tạm ({string.Join("; ", dims.Select(d => d.Dir + "=" + (d.Value * 1000).ToString("0")))})");
+            _v3SelId = "DD-" + placed.Id;
+            BuildMain3D(true);
+            await Pause(1000);
+            Shot($"{tag}_46g_Revit_3D_DoDacChon");
+            var secWin = OpenSectionView(KetCauVXT.Drawing.SectionView.Defaults(_p).FirstOrDefault());
+            if (secWin != null)
+            {
+                await Pause(1200);
+                ShotWindow(secWin, $"{tag}_46h_MatCat_1_1");
+                secWin.Close();
+            }
+            StLog($"khung nhìn mặt cắt ngang tầng: {LevelViews.Build(_p).Count}; mặt cắt đứng: {KetCauVXT.Drawing.SectionView.All(_p).Count}");
+            _v3SelId = null;
             tabView.SelectedItem = ViewTab("Mặt bằng");
         }
         catch (Exception ex) { StLog("giao diện Revit: lỗi " + ex.Message); }

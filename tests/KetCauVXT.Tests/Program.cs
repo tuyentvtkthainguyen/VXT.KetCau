@@ -629,6 +629,8 @@ Console.WriteLine("80. Cao độ móng → mái, bộ môn, va chạm, IFC / OBJ
 LevelsDisciplineIfcTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("81. Bộ môn điện nước: thư viện, thiết bị chôn tường, tuyến + phụ kiện, chọn cỡ, đối chiếu kiến trúc, thống kê, bản vẽ DN");
 MepTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("82. Đặt đồ đạc bắt điểm, kích thước tạm, chọn / kéo 3D, mặt cắt ngang tầng, mặt cắt 1-1 / 2-2 tự sinh");
+PlaceSnap3DSectionTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

@@ -19,6 +19,24 @@ public static class MepRegistration
         _done = true;
         ModelSolids.Providers.Add(Solids);
         DisciplineDocs.MepSheets = Sheets;
+        ClashDetector.SleeveRule = SleeveAllowed;
+    }
+
+    /// <summary>Ống lồng qua dầm có hợp lệ? (quy tắc lỗ xuyên dầm – StructuralImpact). Ống đứng xuyên dầm: không.</summary>
+    public static bool SleeveAllowed(Project p, Solid a, Solid b, Vec3 at)
+    {
+        var pipe = a.Id.StartsWith("DN-ONG-") ? a : b.Id.StartsWith("DN-ONG-") ? b : null;
+        var beam = a.Id.StartsWith("DAM-") ? a : b.Id.StartsWith("DAM-") ? b : null;
+        if (pipe == null || beam == null) return true;
+        if (!int.TryParse(beam.Id.Substring(4), out int fid)) return true;
+        var parts = pipe.Id.Split('-');
+        if (parts.Length < 3 || !int.TryParse(parts[2], out int rid)) return true;
+        var f = p.Frames.FirstOrDefault(x => x.Id == fid);
+        var r = p.Mep?.Run(rid);
+        if (f == null || r == null) return true;
+        if (Math.Abs(pipe.ZDir.Z) > 0.9) return false;   // ống đứng xuyên dầm
+        var ev = StructuralImpact.EvaluateBeamCrossing(p, f, at.X, at.Y, at.Z, StructuralImpact.RunDia(r));
+        return ev == null || ev.Severity < ImpactSeverity.NguyHiem;
     }
 
     private static double[] Rgb(string hex)
@@ -84,10 +102,14 @@ public static class MepRegistration
     {
         if (p.Mep == null || p.Mep.IsEmpty) return DisciplineDocs.MepPlaceholder(p, o);
         MepRouting.RebuildAll(p);
-        return MepDrawings.Figures(p).Select(f => new DrawingItem
+        var items = MepDrawings.Figures(p).Select(f => new DrawingItem
         {
             Key = "DN:" + f.Name, FileName = Slug(f.Name) + ".dxf", Title = f.Name,
             Scale = f.Name == MepQuantities.Title ? 1 : MepDrawings.Scale, W = f.W
         }).ToList();
+        // chi tiết gia cường kết cấu tại vị trí xuyên dầm / lỗ sàn
+        foreach (var f in StructuralImpact.Figures(StructuralImpact.Scan(p)))
+            items.Add(new DrawingItem { Key = "DN:" + f.Name, FileName = Slug(f.Name) + ".dxf", Title = f.Name, Scale = 20, W = f.W });
+        return items;
     }
 }

@@ -35,11 +35,15 @@ public class ClashOptions
 
 public static class ClashDetector
 {
-    /// <summary>Kiểm tra va chạm trên toàn mô hình.</summary>
-    public static List<ClashResult> Run(Project p, ClashOptions o = null) => Detect(ModelSolids.Build(p, includeVoids: false), o);
+    /// <summary>Quy tắc ống lồng (đăng ký bởi bộ môn điện nước – StructuralImpact): trả false nếu vị trí xuyên KHÔNG cho phép
+    /// (gần gối, ngoài 1/3 giữa chiều cao, Ø &gt; h/3, ống đứng xuyên dầm…) → tính là va chạm cứng. null = mọi ống lồng đều cho phép.</summary>
+    public static Func<Project, Solid, Solid, Vec3, bool> SleeveRule { get; set; }
 
-    /// <summary>Kiểm tra va chạm giữa các khối (hộp bao trục toạ độ, khối nghiêng lấy hộp bao).</summary>
-    public static List<ClashResult> Detect(IReadOnlyList<Solid> solids, ClashOptions o = null)
+    /// <summary>Kiểm tra va chạm trên toàn mô hình.</summary>
+    public static List<ClashResult> Run(Project p, ClashOptions o = null) => Detect(ModelSolids.Build(p, includeVoids: false), o, p);
+
+    /// <summary>Kiểm tra va chạm giữa các khối (hộp bao trục toạ độ, khối nghiêng lấy hộp bao). p ≠ null: áp quy tắc ống lồng (SleeveRule).</summary>
+    public static List<ClashResult> Detect(IReadOnlyList<Solid> solids, ClashOptions o = null, Project p = null)
     {
         o ??= new ClashOptions();
         var res = new List<ClashResult>();
@@ -60,6 +64,10 @@ public static class ClashDetector
                 if (overlap > o.Tolerance)
                 {
                     bool sleeve = (a.AllowSleeve && IsHostable(b)) || (b.AllowSleeve && IsHostable(a));
+                    if (sleeve && p != null && SleeveRule != null)
+                    {
+                        try { sleeve = SleeveRule(p, a, b, loc); } catch { }
+                    }
                     res.Add(new ClashResult { A = a, B = b, Type = sleeve ? ClashType.OngLong : ClashType.Cung, Amount = overlap, Location = loc });
                 }
                 else if (o.Clearance > 0)

@@ -21,7 +21,12 @@ public static class MepQuantities
         foreach (var g in m.Devices.GroupBy(d => d.Family).OrderBy(g => g.Key))
             rows.Add(new MepQtyRow("Thiết bị", g.Key, "cái", g.Count()));
         foreach (var g in m.Runs.Where(r => r.Kind == MepRunKind.Ong).GroupBy(r => (Mat: MepSystems.IsDrain(r.System) ? "uPVC" : "PPR PN20", r.Size)).OrderBy(g => g.Key.Mat).ThenBy(g => g.Key.Size))
-            rows.Add(new MepQtyRow("Ống nước", $"Ống {g.Key.Mat} Ø{g.Key.Size:0}", "m", Math.Round(g.Sum(r => r.Length), 2), "chôn ngầm tường / sàn"));
+            rows.Add(new MepQtyRow("Ống nước", $"Ống {g.Key.Mat} Ø{g.Key.Size:0}", "m", Math.Round(g.Sum(r => r.Length), 2), g.Key.Mat == "uPVC" ? "đi dưới sàn, có độ dốc" : "chôn ngầm tường / sàn"));
+        foreach (var g in m.Runs.Where(r => r.Kind == MepRunKind.Ong && MepSystems.IsDrain(r.System)).GroupBy(r => r.Size).OrderBy(g => g.Key))
+        {
+            int nh = g.Sum(r => MepDrainage.Hangers(p, r));
+            if (nh > 0) rows.Add(new MepQtyRow("Phụ kiện treo", $"Quang treo + ty ren ống uPVC Ø{g.Key:0}", "bộ", nh, $"khoảng cách ≤ {MepDrainage.HangerSpacing(g.Key):0.#} m"));
+        }
         var elec = m.Runs.Where(r => r.Kind != MepRunKind.Ong).ToList();
         foreach (var g in elec.GroupBy(r => r.ConduitSize > 0 ? r.ConduitSize : MepSizing.ConduitFor(r.Size, Math.Max(1, r.Conductors))).OrderBy(g => g.Key))
             rows.Add(new MepQtyRow("Ống gen", $"Ống gen PVC Ø{g.Key:0}", "m", Math.Round(g.Sum(r => r.Length), 2), "luồn dây âm tường"));
