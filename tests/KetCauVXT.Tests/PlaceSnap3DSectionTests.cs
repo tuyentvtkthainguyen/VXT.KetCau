@@ -76,7 +76,7 @@ public static class PlaceSnap3DSectionTests
         // cạnh đồ đạc
         var snNext = FurnitureSnap.Snap(p, "T3", 0, 0, 1, 1, 0);
         _ = snNext;
-        var tb = FurnitureSnap.Place(p, new LibraryItem { Id = "ban", Name = "Bàn", Width = 1.2, Depth = 0.6, Height = 0.75 }, "T3", new SnapResult(2, 2.5, 0, "Tự do", 0));
+        var tb = FurnitureSnap.Place(p, new LibraryItem { Id = "ban", Name = "Bàn", Width = 1.2, Depth = 0.6, Height = 0.75 }, "T3", new FurnitureSnapResult(2, 2.5, 0, "Tự do", 0));
         var snEdge = FurnitureSnap.Snap(p, "T3", 2.0 + 0.6 + 0.25 + 0.1, 2.5, 0.5, 0.5, 0);
         check("Cạnh đồ đạc: đặt sát cạnh phải bàn (X = 2 + 0,6 + 0,25)", snEdge.X, 2.85, 1e-9);
         check("Cạnh đồ đạc: kiểu 'Cạnh đồ đạc'", B(snEdge.Kind == "Cạnh đồ đạc"), 1, 0);

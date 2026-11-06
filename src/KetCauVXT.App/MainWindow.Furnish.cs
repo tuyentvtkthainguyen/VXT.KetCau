@@ -59,7 +59,7 @@ public partial class MainWindow
 
     private string FurnishStory() => CurrentStory == AllStories ? null : CurrentStory;
 
-    private SnapResult FurnishSnapAt(Point s)
+    private FurnitureSnapResult FurnishSnapAt(Point s)
     {
         var (x, y) = S2W(s);
         return FurnitureSnap.Snap(_p, FurnishStory(), x, y, _fnPlace.Width, _fnPlace.Depth, _fnRot);

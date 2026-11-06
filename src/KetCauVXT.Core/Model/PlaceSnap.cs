@@ -7,7 +7,7 @@ namespace KetCauVXT.Model;
 // =====================================================================
 
 /// <summary>Kết quả bắt điểm khi đặt đồ đạc: tâm, góc xoay (độ), kiểu bắt, tường tựa (0 = không).</summary>
-public readonly record struct SnapResult(double X, double Y, double Rotation, string Kind, int WallId);
+public readonly record struct FurnitureSnapResult(double X, double Y, double Rotation, string Kind, int WallId);
 
 /// <summary>Bắt điểm đặt đồ đạc: mặt tường (lưng tựa tường, cách mặt hoàn thiện một khe), góc phòng (đầu tường / tường vuông góc),
 /// giao trục, cạnh đồ đạc khác. Tự xoay theo phương tường gần nhất.</summary>
@@ -37,7 +37,7 @@ public static class FurnitureSnap
     }
 
     /// <summary>Bắt điểm tại con trỏ (x, y). tol = khoảng hút vào mặt tường tính từ mép đồ đạc (m).</summary>
-    public static SnapResult Snap(Project p, string story, double x, double y, double width, double depth, double rotDeg,
+    public static FurnitureSnapResult Snap(Project p, string story, double x, double y, double width, double depth, double rotDeg,
         bool autoAlign = true, int ignoreFurnId = -1, double tol = 0.6)
     {
         // 1) mặt tường gần nhất
@@ -74,13 +74,13 @@ public static class FurnitureSnap
             }
             else t = L / 2;
             double off = side * (h + Gap + depth / 2);
-            return new SnapResult(w.X1 + ux * t + nx * off, w.Y1 + uy * t + ny * off, ang, kind, w.Id);
+            return new FurnitureSnapResult(w.X1 + ux * t + nx * off, w.Y1 + uy * t + ny * off, ang, kind, w.Id);
         }
         // 2) giao trục
         foreach (var gx in p.GridsX)
             foreach (var gy in p.GridsY)
                 if (Math.Abs(gx.Coord - x) <= PointTol && Math.Abs(gy.Coord - y) <= PointTol)
-                    return new SnapResult(gx.Coord, gy.Coord, Norm(rotDeg), "Giao trục", 0);
+                    return new FurnitureSnapResult(gx.Coord, gy.Coord, Norm(rotDeg), "Giao trục", 0);
         // 3) cạnh đồ đạc khác (đặt sát cạnh)
         var (hx, hy) = HalfExtents(width, depth, rotDeg);
         foreach (var f in StoryFurniture(p, story).Where(q => q.Id != ignoreFurnId))
@@ -89,16 +89,16 @@ public static class FurnitureSnap
             bool yOver = Math.Abs(y - f.Y) < hy + fy, xOver = Math.Abs(x - f.X) < hx + fx;
             if (yOver)
             {
-                if (Math.Abs((x - hx) - (f.X + fx)) <= PointTol) return new SnapResult(f.X + fx + hx, y, Norm(rotDeg), "Cạnh đồ đạc", 0);
-                if (Math.Abs((x + hx) - (f.X - fx)) <= PointTol) return new SnapResult(f.X - fx - hx, y, Norm(rotDeg), "Cạnh đồ đạc", 0);
+                if (Math.Abs((x - hx) - (f.X + fx)) <= PointTol) return new FurnitureSnapResult(f.X + fx + hx, y, Norm(rotDeg), "Cạnh đồ đạc", 0);
+                if (Math.Abs((x + hx) - (f.X - fx)) <= PointTol) return new FurnitureSnapResult(f.X - fx - hx, y, Norm(rotDeg), "Cạnh đồ đạc", 0);
             }
             if (xOver)
             {
-                if (Math.Abs((y - hy) - (f.Y + fy)) <= PointTol) return new SnapResult(x, f.Y + fy + hy, Norm(rotDeg), "Cạnh đồ đạc", 0);
-                if (Math.Abs((y + hy) - (f.Y - fy)) <= PointTol) return new SnapResult(x, f.Y - fy - hy, Norm(rotDeg), "Cạnh đồ đạc", 0);
+                if (Math.Abs((y - hy) - (f.Y + fy)) <= PointTol) return new FurnitureSnapResult(x, f.Y + fy + hy, Norm(rotDeg), "Cạnh đồ đạc", 0);
+                if (Math.Abs((y + hy) - (f.Y - fy)) <= PointTol) return new FurnitureSnapResult(x, f.Y - fy - hy, Norm(rotDeg), "Cạnh đồ đạc", 0);
             }
         }
-        return new SnapResult(x, y, Norm(rotDeg), "Tự do", 0);
+        return new FurnitureSnapResult(x, y, Norm(rotDeg), "Tự do", 0);
     }
 
     /// <summary>Lùi khỏi đầu tường: nửa chiều dày tường vuông góc nối ở đầu đó (mặt trong phòng) + khe.</summary>
@@ -131,7 +131,7 @@ public static class FurnitureSnap
     }
 
     /// <summary>Đặt đồ đạc (đã bắt điểm) vào mô hình: Id mới, trả về đối tượng.</summary>
-    public static FurnitureItem Place(Project p, LibraryItem it, string story, SnapResult s)
+    public static FurnitureItem Place(Project p, LibraryItem it, string story, FurnitureSnapResult s)
     {
         p.Arch ??= new ArchModel();
         var f = Library3D.Place(p, it, story, s.X, s.Y, s.Rotation);
