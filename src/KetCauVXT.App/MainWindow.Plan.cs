@@ -484,7 +484,8 @@ public partial class MainWindow
         bool axis = ReferenceEquals(br, GridBrush);
         bool member = size <= 10 && !axis;
         // [Nhãn] cỡ chữ cố định trên màn hình, nhãn cấu kiện tối thiểu 11 px cho dễ đọc
-        var t = new TextBlock { Text = s, Foreground = br, FontSize = member ? Math.Max(11, PlanLabelRules.ScreenFont(size, _scale)) : PlanLabelRules.ScreenFont(size, _scale), IsHitTestVisible = false };
+        double lk = PlanLabelPx / 11.0;   // [Cỡ chữ] cỡ nhãn mặt bằng người dùng chọn (Hiển thị → Cỡ chữ nhãn mặt bằng…)
+        var t = new TextBlock { Text = s, Foreground = br, FontSize = member ? Math.Max(PlanLabelPx, PlanLabelRules.ScreenFont(size, _scale) * lk) : PlanLabelRules.ScreenFont(size, _scale) * lk, IsHitTestVisible = false };
         if (rotate) t.LayoutTransform = new RotateTransform(-90);
         t.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double x = center ? p.X - t.DesiredSize.Width / 2 : p.X;

@@ -31,6 +31,8 @@ public sealed class UiLayoutSettings
     /// <summary>Bố cục chế độ Thiết kế: "Revit" (mặc định – ribbon chữ dưới biểu tượng, Thuộc tính + Trình duyệt dự án, vùng vẽ lớn)
     /// hoặc "Cổ điển" (khung nhập liệu bên trái như trước).</summary>
     public string DesignLayout { get; set; } = LayoutRevit;
+    /// <summary>Cỡ chữ nhãn cấu kiện trên mặt bằng (px màn hình, 7…30; mặc định 11).</summary>
+    public double PlanLabelPx { get; set; } = 11;
     public bool RevitLayout => !string.Equals(DesignLayout, LayoutClassic, StringComparison.OrdinalIgnoreCase);
 
     public bool Compact => !string.Equals(Density, DensityStandard, StringComparison.OrdinalIgnoreCase);

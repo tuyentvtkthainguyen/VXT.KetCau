@@ -20,6 +20,12 @@ public class PlacedFigure
     public double Y { get; set; }
     /// <summary>Mẫu số tỷ lệ in của hình trên tờ (0 = tỷ lệ gốc của hàm vẽ). Hình được VẼ LẠI ở tỷ lệ này ⇒ chữ, vòng số hiệu, đầu trục đúng cỡ in.</summary>
     public double Scale { get; set; }
+    /// <summary>Hệ số cỡ chữ riêng của khung nhìn (0 hoặc 1 = theo hồ sơ) – hình được vẽ lại với chữ to / nhỏ hơn.</summary>
+    public double TextFactor { get; set; }
+    /// <summary>Hiện tiêu đề khung nhìn (tên + tỷ lệ) dưới hình như Revit.</summary>
+    public bool ShowTitle { get; set; }
+    /// <summary>Tên khung nhìn người dùng đặt ("" = theo tên hình).</summary>
+    public string ViewTitle { get; set; } = "";
 }
 
 /// <summary>Một tờ in.</summary>
@@ -140,7 +146,7 @@ public sealed class SheetFigure
     public int Segment, Segments;
     /// <summary>Vẽ lại hình ở mẫu số tỷ lệ s (null = không vẽ lại được – giữ tỷ lệ gốc).</summary>
     public Func<double, Figure> Redraw;
-    private readonly Dictionary<double, Figure> _at = new();
+    private readonly Dictionary<(double, double), Figure> _at = new();
     /// <summary>Mẫu số tỷ lệ gốc của hàm vẽ.</summary>
     public double BaseScale => F?.W == null ? 1 : F.W.Scale;
     public bool CanRescale => Redraw != null && BaseScale > 1.0001;
@@ -148,17 +154,25 @@ public sealed class SheetFigure
     public int ScaleClass => BaseScale >= 99 ? 0 : BaseScale >= 40 ? 1 : 2;
 
     /// <summary>Hình ở mẫu số tỷ lệ s (s ≤ 0 hoặc không vẽ lại được → hình gốc). Có bộ đệm.</summary>
-    public Figure At(double s)
+    public Figure At(double s) => At(s, 1);
+
+    /// <summary>Hình ở mẫu số tỷ lệ s với hệ số cỡ chữ riêng tf (khung nhìn – Revit). tf ≤ 0 hoặc 1 = theo hồ sơ.</summary>
+    public Figure At(double s, double tf)
     {
-        if (s <= 0 || !CanRescale || Math.Abs(s - BaseScale) < 1e-9) return F;
-        if (!_at.TryGetValue(s, out var f))
+        bool txt = tf > 0 && Math.Abs(tf - 1) > 1e-9 && Redraw != null;
+        if (!txt && (s <= 0 || !CanRescale || Math.Abs(s - BaseScale) < 1e-9)) return F;
+        double sc = s > 0 && CanRescale ? s : BaseScale;
+        double k = txt ? Math.Round(tf, 3) : 1;
+        if (!_at.TryGetValue((sc, k), out var f))
         {
-            try { f = Redraw(s); } catch (Exception) { f = null; }
+            try { using (DetailTextSizes.AmbientFactor(k)) f = Redraw(sc); } catch (Exception) { f = null; }
             if (f?.W == null || f.W.EntityCount == 0 || f.W.Extents.IsEmpty) f = null;
-            _at[s] = f;
+            _at[(sc, k)] = f;
         }
         return f ?? F;
     }
+    public double WAt(double s, double tf) { var f = At(s, tf); return f?.W == null ? 0 : f.W.Extents.W / Math.Max(f.W.Scale, 1e-9); }
+    public double HAt(double s, double tf) { var f = At(s, tf); return f?.W == null ? 0 : f.W.Extents.H / Math.Max(f.W.Scale, 1e-9); }
     /// <summary>Mẫu số tỷ lệ thực của hình ở yêu cầu s.</summary>
     public double ScaleAt(double s) => At(s)?.W?.Scale ?? BaseScale;
     public double WAt(double s) { var f = At(s); return f?.W == null ? 0 : f.W.Extents.W / Math.Max(f.W.Scale, 1e-9); }
@@ -266,7 +280,7 @@ public static class SheetLayoutEngine
             {
                 if (m == null || !done.Add(m) || !resOf.TryGetValue(m, out var r)) continue;
                 List<Figure> figs;
-                try { figs = m.Draw(r, p.Settings) ?? new List<Figure>(); }
+                try { using (DetailTextSizes.Scope(p.Settings?.Text)) figs = m.Draw(r, p.Settings) ?? new List<Figure>(); }
                 catch (Exception e) { log.Add("Không vẽ được " + m.Name + ": " + e.Message); continue; }
                 // DẦM DÀI: mặt đứng chia đoạn tại gối cho vừa khổ giấy (mặt cắt giữ hình riêng, vẽ một lần)
                 if (m is ManualBeam && r?.Source is BeamLineDesign bd && bd.Spans.Count >= 2 && figs.Count > 0 && figs[0].Name == bd.Name)
@@ -278,7 +292,7 @@ public static class SheetLayoutEngine
                     {
                         var proj = DetailShim.Project(p.Settings);
                         List<Figure> segF = null;
-                        try { segF = BeamDrawing.BuildSegments(proj, bd, brk); SegmentCutMarks(m as ManualBeam, p.Settings, bd, brk, segF); }
+                        try { using (DetailTextSizes.Scope(p.Settings?.Text)) segF = BeamDrawing.BuildSegments(proj, bd, brk); SegmentCutMarks(m as ManualBeam, p.Settings, bd, brk, segF); }
                         catch (Exception e) { log.Add("Không chia được dầm " + m.Name + ": " + e.Message); }
                         if (segF != null && segF.Count > 1)
                         {
@@ -338,7 +352,7 @@ public static class SheetLayoutEngine
             string title = (g.Title ?? "").ToUpperInvariant();
             if (g.Kind == "Tang" && g.Level != null && g.Level.Items.Count == 0 && g.Members.Count == 0) continue;
             List<Figure> plans;
-            try { plans = StructuralPlanDrawing.ForGroup(p, results, g) ?? new List<Figure>(); }
+            try { using (DetailTextSizes.Scope(p.Settings?.Text)) plans = StructuralPlanDrawing.ForGroup(p, results, g) ?? new List<Figure>(); }
             catch (Exception e) { log.Add("Không vẽ được " + g.Title + ": " + e.Message); plans = new List<Figure>(); }
             foreach (var f in plans)
             {
@@ -373,6 +387,14 @@ public static class SheetLayoutEngine
             for (int i = 0; i < mat.Count; i++) Add(new SheetFigure { Id = "TKVL:" + i, Section = sT, Part = 2, Caption = "Thống kê vật liệu (" + (i + 1) + ")", F = mat[i] }, "THỐNG KÊ VẬT LIỆU");
         }
         catch (Exception e) { log.Add("Không lập được thống kê vật liệu: " + e.Message); }
+        // cỡ chữ in của hồ sơ (× hệ số khung nhìn khi vẽ lại) áp cho mọi lần vẽ lại
+        var txt = p?.Settings?.Text;
+        foreach (var f in list)
+        {
+            if (f.Redraw == null) continue;
+            var raw = f.Redraw;
+            f.Redraw = sc => { using (DetailTextSizes.Scope(txt)) return raw(sc); };
+        }
         return list;
     }
 
@@ -544,7 +566,7 @@ public static class SheetLayoutEngine
     {
         var res = new List<Rect2>();
         foreach (var pf in sh.Figures)
-            if (map.TryGetValue(pf.Id, out var f)) res.Add(new Rect2(pf.X, pf.Y, pf.X + f.WAt(pf.Scale), pf.Y + f.HAt(pf.Scale)));
+            if (map.TryGetValue(pf.Id, out var f)) res.Add(new Rect2(pf.X, pf.Y, pf.X + f.WAt(pf.Scale, pf.TextFactor), pf.Y + f.HAt(pf.Scale, pf.TextFactor)));
         return res;
     }
 
@@ -860,7 +882,7 @@ public static class SheetLayoutEngine
     public static int Prune(DetailSheetSet set, IList<SheetFigure> catalog)
     {
         var ids = new HashSet<string>(catalog.Select(f => f.Id));
-        return set.Sheets.Sum(s => s.Figures.RemoveAll(pf => !ids.Contains(pf.Id)));
+        return set.Sheets.Sum(s => s.Figures.RemoveAll(pf => !ids.Contains(pf.Id) && pf.Id != SheetViews.IndexViewId));
     }
 
     // ------------------------------------------------------------------
@@ -893,13 +915,29 @@ public static class SheetLayoutEngine
         if (sh.IsIndex) w.Append(IndexFigure(set, map, S), 0, 0);
         foreach (var pf in sh.Figures)
         {
+            if (pf.Id == SheetViews.IndexViewId)
+            {
+                // bảng danh mục bản vẽ: sinh lại theo danh sách tờ hiện tại (tỷ lệ 1/1 → phóng S)
+                var iw = SheetViews.IndexTable(set, map);
+                var ie = iw.Extents;
+                if (!ie.IsEmpty) w.AppendScaled(iw, S, pf.X * S - ie.X1 * S, pf.Y * S - ie.Y1 * S);
+                continue;
+            }
             if (!map.TryGetValue(pf.Id, out var f)) continue;
-            var fw = f.At(pf.Scale).W;
+            var fw = f.At(pf.Scale, pf.TextFactor).W;
             if (f.Segment > 0 && f.Segments > 1 && set != null) SegmentSheetRefs(fw, f, set, map);   // "XEM TIẾP ĐOẠN 2/3 – TỜ KC-05"
             double k = S / Math.Max(fw.Scale, 1e-9);   // hình đã vẽ đúng tỷ lệ riêng; k chỉ đổi đơn vị mô hình sang tỷ lệ tờ (cỡ in giữ nguyên)
             var e = fw.Extents;
             double dx = pf.X * S - e.X1 * k, dy = pf.Y * S - e.Y1 * k;
             if (Math.Abs(k - 1) < 1e-9) w.Append(fw, dx, dy); else w.AppendScaled(fw, k, dx, dy);
+            if (pf.ShowTitle)
+            {
+                // tiêu đề khung nhìn kiểu Revit: gạch chân + tên – tỷ lệ, dưới hình
+                double tth = KetCauVXT.Model.DrawingStyle.Current.Height(KetCauVXT.Model.TextRole.SectionTitle) * S, ty = pf.Y * S - 1.6 * tth;
+                string tt = SheetViews.ViewportTitle(pf, f);
+                w.Text(Lay.Chu, pf.X * S, ty, tth, tt, 0, 0, 0);
+                w.Line(Lay.Chu, pf.X * S, ty - 0.4 * tth, pf.X * S + Math.Max(40 * S, tt.Length * 0.75 * tth), ty - 0.4 * tth);
+            }
         }
         return w;
     }

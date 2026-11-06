@@ -159,6 +159,7 @@
                 <MenuItem Header="_Bảng kết quả…" Click="MnuTables_Click" InputGestureText="Ctrl+T" ToolTip="Display → Show Tables: chuyển vị nút, phản lực, nội lực dầm/cột, lệch tầng, dao động, phản lực đáy – lọc, xuất Excel/CSV"/>
                 <Separator/>
                 <MenuItem x:Name="mnuShowLoads" Header="Hiển thị tải _gán" IsCheckable="True" Click="MnuShowAssignedLoads_Click" ToolTip="Vẽ tải gán trên mặt bằng: mũi tên + giá trị (tải thanh, tải sàn, tải nút) theo trường hợp tải"/>
+                <MenuItem Header="Cỡ chữ nhãn mặt bằng…" Click="MnuPlanLabelSize_Click" ToolTip="Cỡ chữ (px màn hình) của tên cột, dầm, sàn… trên mặt bằng"/>
             </MenuItem>
             <MenuItem Header="T_hiết kế">
                 <MenuItem Header="Thiết kế BTCT" Click="MnuDesignConcrete_Click"/>

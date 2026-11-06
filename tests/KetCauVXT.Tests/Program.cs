@@ -621,6 +621,8 @@ Console.WriteLine("76. Hoàn thiện bản vẽ / xuất: cửa trên mặt bằ
 DrawExportFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("77. Vừa màn hình mặt bằng theo vùng vẽ thật, đặt nhãn theo ưu tiên không chồng");
 PlanFitLabelTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("78. Bản vẽ kiểu Revit: cỡ chữ in, trình duyệt khung nhìn, tạo / đặt tên / đánh số bản vẽ, đặt khung nhìn, danh mục, kích đúp → cấu kiện");
+RevitSheetsTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

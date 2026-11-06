@@ -177,7 +177,8 @@ public sealed partial class DetailingWindow : Window
             }
             else if (ti.Tag is PlanTreeGroup pg) ShowPlanGroup(pg);
         };
-        grid.Children.Add(left);
+        var leftHost = WrapLeftWithBrowser(left);   // [Bản vẽ kiểu Revit] thẻ dọc Cấu kiện | Trình duyệt – DetailingWindow.Sheets.cs
+        grid.Children.Add(leftHost);
         var sp1 = new GridSplitter { Width = 4, HorizontalAlignment = HorizontalAlignment.Stretch, Background = Brushes.Gainsboro };
         Grid.SetColumn(sp1, 1); grid.Children.Add(sp1);
         var formScroll = new ScrollViewer { Content = _form, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
@@ -222,11 +223,12 @@ public sealed partial class DetailingWindow : Window
         _plan = new DetailingPlanCanvas(this, () => _prj, PlanChanged, m => { RefreshTree(m); ShowMember(m); _tabs.SelectedIndex = 0; });
         _tabs.Items.Add(new TabItem { Header = "Mặt bằng kết cấu", Content = _plan });
         InitPlanLink();
+        InitSheetsTab();   // [Bản vẽ kiểu Revit] thẻ "Bản vẽ (sheet)"
         _tabs.SelectionChanged += (s, e) => { if (e.Source == _tabs) { if (_tabs.SelectedIndex == 2) { FillPreviewSources(); RefreshPreview(); } if (_tabs.SelectedIndex == 3) RefreshQuantities(); if (_tabs.SelectedIndex == 4) _plan.Redraw(); } };
         Grid.SetColumn(_tabs, 4); grid.Children.Add(_tabs);
         dock.Children.Add(grid);
         Content = dock;
-        InstallCompactUi(menu, bar, sb, left, sp1, formScroll, sp2);   // [Giao diện gọn] – DetailingWindow.Compact.cs
+        InstallCompactUi(menu, bar, sb, leftHost, sp1, formScroll, sp2);   // [Giao diện gọn] – DetailingWindow.Compact.cs
     }
 
     private void OnKey(object sender, KeyEventArgs e)
@@ -793,7 +795,8 @@ public sealed partial class DetailingWindow : Window
             try
             {
                 // mặt bằng + các mặt cắt thép sàn đi kèm ngay sau nó
-                var all = PlanFigures();
+                List<Figure> all;
+                using (DetailTextSizes.Scope(_prj.Settings?.Text)) all = PlanFigures();
                 int i0 = all.FindIndex(f => f.Name == src);
                 if (i0 < 0) return new List<Figure>();
                 var pick = new List<Figure> { all[i0] };
@@ -815,7 +818,7 @@ public sealed partial class DetailingWindow : Window
     private List<Figure> CurrentFigures()
     {
         if (_cur == null || !_res.TryGetValue(_cur, out var r)) return new List<Figure>();
-        try { return _cur.Draw(r, _prj.Settings) ?? new List<Figure>(); }
+        try { using (DetailTextSizes.Scope(_prj.Settings?.Text)) return _cur.Draw(r, _prj.Settings) ?? new List<Figure>(); }
         catch (Exception ex) { SetStatus("Không vẽ được: " + ex.Message); return new List<Figure>(); }
     }
 
@@ -1184,6 +1187,16 @@ public sealed partial class DetailingWindow : Window
             var (files, elog) = ExportAllTo(Path.Combine(outDir, "TrienKhai"));
             log.Add("triển khai: xuất " + files.Count + " file" + (elog.Count > 0 ? " – LỖI " + string.Join("; ", elog) : ""));
             _prj.Save(Path.Combine(outDir, "TrienKhai", "HoSoMau" + DetailingProject.Extension));
+            // [Bản vẽ kiểu Revit] trình duyệt dự án + bản vẽ có 2 khung nhìn + bảng thuộc tính (làm sau khi xuất để không đổi bộ tờ xuất)
+            var sheetsBefore = _prj.Sheets?.Sheets.ToList();
+            log.Add(SelfTestSheets());
+            await Task.Delay(300);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            RenderSheet();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            Shot(Path.Combine(outDir, $"{tag}_TrienKhai_BanVeRevit.png"));
+            if (sheetsBefore != null) { _prj.Sheets.Sheets.Clear(); _prj.Sheets.Sheets.AddRange(sheetsBefore); } else _prj.Sheets = null;
+            _leftTabs.SelectedIndex = 0;
         }
         catch (Exception ex) { log.Add("LỖI triển khai: " + ex); }
         _dirty = false;

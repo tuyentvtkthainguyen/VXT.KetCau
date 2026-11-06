@@ -165,7 +165,7 @@ public static class DetailingExport
 
     private static List<Figure> FiguresOf(IDetailMember m, DetailResult r, DetailSettings s, List<string> log)
     {
-        try { return m.Draw(r, s) ?? new List<Figure>(); }
+        try { using (DetailTextSizes.Scope(s?.Text)) return m.Draw(r, s) ?? new List<Figure>(); }
         catch (Exception e) { log.Add("Không vẽ được " + m.Name + ": " + e.Message); return new List<Figure>(); }
     }
 
