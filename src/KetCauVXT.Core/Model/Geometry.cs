@@ -114,6 +114,13 @@ public class FrameElement
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public double PlanOffset { get; set; }
     // ---- [hết BeamTools] ----
+    // ---- [Trục qua mép cột – Model/ColumnOffsets.cs, Import/Arch/PlanAxisPicker.cs] ----
+    /// <summary>Cột: lệch tâm tiết diện so với nút (giao trục) trên mặt bằng, m, theo phương X / Y (vd. trục qua mép cột → ±b/2).
+    /// Dùng cho bản vẽ mặt bằng (cột, móng); phân tích giữ nút tại giao trục.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public double ColOffsetX { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public double ColOffsetY { get; set; }
     // ---- [Workflow ETABS: hệ số độ cứng gán cho thanh – Model/ModelAssign.cs] ----
     /// <summary>Hệ số độ cứng gán riêng cho thanh {A, As2, As3, J, I22, I33} (Assign → Frame Property Modifiers của ETABS), nhân thêm
     /// với hệ số của tiết diện (FrameSection.ModA, ModI33…). null = không gán (mặc định, file cũ).</summary>

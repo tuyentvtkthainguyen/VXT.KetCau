@@ -74,7 +74,8 @@ public static class FootingDrawing
         foreach (var f in s.Footings)
         {
             if (f.Eccentric != null) { EccentricDrawing.FootingPlan(w, f, k, ref box); continue; }   // [MóngLệchTâm] móng lệch tâm / kết hợp
-            double cx = f.X * 1000 * k, cy = f.Y * 1000 * k;
+            var (cox, coy) = ColumnOffsets.AtNode(p, f.NodeId);   // [Trục qua mép cột] móng đặt theo tâm cột thật
+            double cx = (f.X + cox) * 1000 * k, cy = (f.Y + coy) * 1000 * k;
             double hl = f.L * 500 * k, hb = f.B * 500 * k;
             w.Rect(Lay.BeTong, cx - hl, cy - hb, cx + hl, cy + hb);
             double cb = (f.ColumnH > 0 ? f.ColumnH : 0.22) * 500 * k, ch = (f.ColumnB > 0 ? f.ColumnB : 0.22) * 500 * k;

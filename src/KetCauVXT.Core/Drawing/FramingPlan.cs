@@ -142,7 +142,7 @@ public static class FramingPlan
         var si = DrawUtil.SectionOf(p, f.Section);
         double hx = si.H * 500 + grow, hy = si.B * 500 + grow;
         double a = f.Angle * Math.PI / 180, c = Math.Cos(a), s = Math.Sin(a);
-        double cx = top.X * 1000, cy = top.Y * 1000;
+        double cx = (top.X + f.ColOffsetX) * 1000, cy = (top.Y + f.ColOffsetY) * 1000;   // [Trục qua mép cột] lệch tâm cột so với giao trục
         var r = new List<(double X, double Y)>();
         foreach (var (u, v) in new[] { (-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy) })
             r.Add((cx + u * c - v * s, cy + u * s + v * c));
