@@ -281,6 +281,7 @@ public static class SectionView
         foreach (var f in found)
         {
             var pts = f.Points.Select(q => (q.U * 1000, q.Z * 1000)).ToList();
+            if (f.Beyond) { w.Polyline(Lay.KichThuoc, pts, true); continue; }   // móng phía sau: hình chiếu nét mảnh
             w.Polyline(Lay.BeTong, pts, true);
             if (opt.Materials && SectionMaterials.Hatch(w, f.Material, pts) > 0) used.Add(f.Material);
             if (!opt.Materials && f.Material == SectionMaterial.BTCT) w.Hatch(new List<IList<(double X, double Y)>> { pts }, HatchPatterns.Solid, 1, 0, Lay.BeTong);
@@ -529,6 +530,7 @@ public static class SectionView
         // chân cột: nút thấp nhất của mỗi cột đứng tại cao độ thấp nhất của mô hình
         var cols = p.Frames.Where(f => f.Kind == FrameKind.Column).ToList();
         if (cols.Count == 0) return res;
+        double viewDepth = ViewDepth(p, s);
         var baseNodes = new Dictionary<int, (Node N, FrameElement F)>();
         foreach (var f in cols)
         {
@@ -559,9 +561,16 @@ public static class SectionView
             }
             double sd = (n.X - s.X1) * nx + (n.Y - s.Y1) * ny;
             double halfN = Lf / 2 * Math.Abs(nx) + Bf / 2 * Math.Abs(ny), halfU = Lf / 2 * Math.Abs(tx) + Bf / 2 * Math.Abs(ty);
-            if (Math.Abs(sd) > halfN + 1e-6) continue;
+            // không bị cắt: nếu nằm phía sau mặt cắt trong chiều sâu nhìn → vẽ hình chiếu (nét mảnh)
+            bool beyond = false;
+            if (Math.Abs(sd) > halfN + 1e-6)
+            {
+                if (sd - halfN > 1e-6 && sd - halfN <= viewDepth + 1e-6) beyond = true;
+                else continue;
+            }
             double uc = (n.X - s.X1) * tx + (n.Y - s.Y1) * ty;
             if (uc + halfU < 0 || uc - halfU > L) continue;
+            int firstIdx = res.Count;
             double cu = (cb * Math.Abs(tx) + ch * Math.Abs(ty)) / 2;   // nửa cạnh cột theo u
             double top = zBot + H;
             var body = new FoundationShape { Kind = type == FoundationType.Pile ? "Đài cọc" : type == FoundationType.Strip ? "Móng băng" : "Móng đơn", Material = SectionMaterial.BTCT,
@@ -594,6 +603,8 @@ public static class SectionView
                     res.Add(new FoundationShape { Kind = "Cọc", Material = SectionMaterial.BTCT, NodeId = n.Id, BreakAtBottom = true,
                         Points = new() { (uc + off - ps / 2, zBot - 1.5), (uc + off + ps / 2, zBot - 1.5), (uc + off + ps / 2, zBot + emb), (uc + off - ps / 2, zBot + emb) } });
             }
+            if (beyond)
+                for (int k = firstIdx; k < res.Count; k++) { res[k].Beyond = true; res[k].Label = ""; }
         }
         return res;
     }
@@ -641,4 +652,6 @@ public sealed class FoundationShape
     public string Label { get; set; } = "";
     public int NodeId { get; set; }
     public bool BreakAtBottom { get; set; }
+    /// <summary>Móng nằm phía sau mặt phẳng cắt (không bị cắt) – vẽ hình chiếu nét mảnh, không tô vật liệu.</summary>
+    public bool Beyond { get; set; }
 }
