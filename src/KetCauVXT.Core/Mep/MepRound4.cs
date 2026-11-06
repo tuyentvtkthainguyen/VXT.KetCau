@@ -505,7 +505,7 @@ public sealed class PanelCircuit
     public string Phase { get; set; } = "L";
     public string BreakerText => $"MCB 1P {BreakerA:0}A" + (Rcd ? " + RCD 30mA" : "");
     public string WireText => $"Cu/PVC 2x{N(WireMm2)}+E{N(WireMm2)}";
-    internal static string N(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+    internal static string N(double v) => v.ToString("0.#", global::System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
 }
 
 /// <summary>Kết quả tủ điện: các mạch, P đặt, P tính toán, dòng tính toán, aptomat / cáp tổng, số pha, tải từng pha, độ lệch pha (%).</summary>
