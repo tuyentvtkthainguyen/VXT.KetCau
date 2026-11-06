@@ -692,7 +692,7 @@ public static class DwgReader
                     r.Text = CleanText(raw);
                     return r.Text.Length > 0 ? One(r) : null;
                 }
-                case Solid so:
+                case ACadSharp.Entities.Solid so:
                 {
                     // SOLID: 4 đỉnh theo thứ tự 1-2-3-4, chu vi là 1→2→4→3
                     var r = new Raw { Type = DxfEntityType.Polyline, Source = "SOLID", IsFill = true, Closed = true };

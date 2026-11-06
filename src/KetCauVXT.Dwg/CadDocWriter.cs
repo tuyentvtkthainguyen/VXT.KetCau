@@ -177,7 +177,7 @@ public static class CadDocWriter
             case PrimKind.Solid:
                 if (a.Length < 8) return null;
                 // DrawPrim: 4 đỉnh theo chu vi (1, 2, 4, 3) → SOLID mã 10, 11, 12, 13 = đỉnh 1, 2, 3, 4
-                return new Solid { FirstCorner = P3(a[0], a[1]), SecondCorner = P3(a[2], a[3]), ThirdCorner = P3(a[6], a[7]), FourthCorner = P3(a[4], a[5]) };
+                return new ACadSharp.Entities.Solid { FirstCorner = P3(a[0], a[1]), SecondCorner = P3(a[2], a[3]), ThirdCorner = P3(a[6], a[7]), FourthCorner = P3(a[4], a[5]) };
             case PrimKind.Text:
             {
                 if (a.Length < 2 || string.IsNullOrEmpty(pr.Text) || !(pr.H > 0)) return null;
