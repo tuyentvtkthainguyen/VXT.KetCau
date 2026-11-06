@@ -112,6 +112,7 @@ public sealed class GridFromPlanDialog : Window
         var bar = new WrapPanel { Margin = new Thickness(6) };
         bar.Children.Add(DialogUi.Btn("Mở bản vẽ CAD (DWG / DXF)…", (s, e) => OpenCad(), true));
         bar.Children.Add(DialogUi.Btn("Mở ảnh mặt bằng (JPG / PNG)…", (s, e) => OpenImage()));
+        bar.Children.Add(DialogUi.Btn("Chuẩn hoá layer…", (s, e) => StandardizeLayers()));
         bar.Children.Add(new TextBlock { Text = "  Mặt bằng:", VerticalAlignment = VerticalAlignment.Center }); bar.Children.Add(_floor);
         bar.Children.Add(new TextBlock { Text = "Làm tròn:", VerticalAlignment = VerticalAlignment.Center }); bar.Children.Add(_round);
         bar.Children.Add(new TextBlock { Text = "Thu phóng:", VerticalAlignment = VerticalAlignment.Center }); bar.Children.Add(_zoom);
@@ -253,8 +254,24 @@ public sealed class GridFromPlanDialog : Window
         var dlg = new OpenFileDialog { Filter = "Bản vẽ AutoCAD (*.dwg;*.dxf)|*.dwg;*.dxf|Tất cả (*.*)|*.*", Title = "Chọn bản vẽ mặt bằng" };
         if (dlg.ShowDialog(this) != true) return;
         CadPath = dlg.FileName;
+        _stdMap = new(); _stdProfile = null;
         _userAxes.Clear();
         _layerPanel.Children.Clear();
+        Reload();
+    }
+
+    // ---- chuẩn hoá layer (không sửa file gốc): layer → nhóm cấu kiện đưa vào khi đọc ----
+    private List<LayerMapEntry> _stdMap = new();
+    private LayerProfile _stdProfile;
+
+    private void StandardizeLayers()
+    {
+        if (CadPath == null) { MessageBox.Show(this, "Mở bản vẽ CAD (DWG / DXF) trước.", Title); return; }
+        var dlg = new LayerStdDialog(CadPath, _unit.SelectedIndex switch { 1 => 0.001, 2 => 0.01, 3 => 1, _ => 0 }, _stdProfile) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+        _stdMap = dlg.Map;
+        _stdProfile = dlg.Profile;
+        _layerPanel.Children.Clear();   // dựng lại danh sách layer trục theo nhóm mới
         Reload();
     }
 
@@ -270,6 +287,8 @@ public sealed class GridFromPlanDialog : Window
             if (chosen.Count > 0)
                 foreach (var cb in chosen)
                     o.LayerMap.Add(new LayerMapEntry((string)cb.Tag, cb.IsChecked == true ? CadCategory.Truc : (cb.ToolTip as string == CadCategory.Truc ? CadCategory.BoQua : "")));
+            // layer đã chuẩn hoá ("Chuẩn hoá layer…") – sau lựa chọn layer trục ở trên
+            foreach (var m in _stdMap) if (!o.LayerMap.Any(q => string.Equals(q.Layer, m.Layer, StringComparison.OrdinalIgnoreCase))) o.LayerMap.Add(new LayerMapEntry(m.Layer, m.Category));
             o.LayerMap.RemoveAll(m => string.IsNullOrEmpty(m.Category));
             _dwg = ArchPlanReader.Read(CadPath, o);
             _bmp = null; _img.Source = null; _imgTools.Visibility = Visibility.Collapsed; _cadPanel.Visibility = Visibility.Visible;

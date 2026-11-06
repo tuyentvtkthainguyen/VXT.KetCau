@@ -637,9 +637,29 @@ public static partial class UserGuide
                 new[] { "VXT_TANG", "Khai báo tầng [Them/Danhsach/Xoa]: tên, cao độ mặt sàn, chiều cao tầng, điểm gốc (cùng một giao trục ở mọi tầng), vùng mặt bằng (2 góc)." },
                 new[] { "VXT_XEM / VXT_XOA", "Xem số đối tượng theo nhóm, tô sáng / bỏ gán nhóm." },
                 new[] { "VXT_LAYER", "Tạo layer kết cấu KC-…, chuyển đối tượng đã gán sang layer kết cấu, tạo kiểu chữ VXT_ARIAL / VXT_TIMES." },
+                new[] { "VXT_CHUANLAYER (VXT_CL)", "Chuẩn hoá layer bản vẽ bất kỳ về layer chuẩn Việt Const VXT-… để chương trình đọc chắc chắn (xem {s:khoi-tao.chuan-layer})." },
                 new[] { "VXT_GUI", "Ghi %AppData%\\KetCauVXT\\Link\\acad_<ngày>_<giờ>.json và báo chương trình (đang mở thì hỏi \"Có dữ liệu mới từ AutoCAD… Mở hộp thoại nhập?\"; chưa mở thì tự chạy)." })
             .P("Trong chương trình: {m:acad} chọn file acad_*.json; hộp thoại **Nhập bản vẽ kiến trúc** mở với các tầng đã khai báo và phương án kết cấu đề xuất – tiếp tục như {s:khoi-tao.kien-truc}.")
             .Tip("Tường vẽ 2 nét song song (tường 1 nét lấy dày 110 mm); cột là đa tuyến kín, miền tô hoặc 4 nét rời 0,12–1,0 m; tên trục ≤ 4 ký tự gần đầu trục; cửa giữ dạng block. Elip, spline chưa hỗ trợ (bị bỏ qua, có báo số lượng).");
+
+        c.Sec("khoi-tao.chuan-layer", "Chuẩn hoá layer bản vẽ về layer chuẩn Việt Const (VXT-…)")
+            .P("Bản vẽ kiến trúc / kết cấu của mỗi văn phòng đặt tên layer khác nhau (A-WALL, KT_TUONG 220, Tường, LAYER1…). Chuẩn hoá layer chuyển chúng về bộ layer chuẩn để Việt Const đọc chắc chắn: "
+               + "**VXT-TRUC** (đường trục), **VXT-TRUC-KH** (vòng ký hiệu, tên trục), **VXT-COT**, **VXT-TUONG-110**, **VXT-TUONG-220**, **VXT-TUONG**, **VXT-CUA-DI**, **VXT-CUA-SO**, **VXT-THANG**, "
+               + "**VXT-LO-SAN**, **VXT-TEN-PHONG**, **VXT-DAM**, **VXT-SAN**, **VXT-KICH-THUOC**, **VXT-BO-QUA**. Mọi bộ đọc của chương trình nhận layer VXT-… trước mọi quy tắc khác.")
+            .Bullets("**Tự nhận**: theo TÊN layer (tiếng Việt / Anh, có hoặc không dấu, tiền tố A-…, S-…, xref NHA|…) và theo NỘI DUNG: cặp nét song song cách 110 / 220 → tường 110 / 220; "
+                + "nhiều chữ nhật kín 0,1–1,2 m → cột; nét gạch chấm dài + vòng tròn + chữ 1–2 ký tự → trục; block CUA*, DOOR*, D1… → cửa đi, WINDOW*, S1… → cửa sổ; chữ \"Phòng ngủ\", \"WC\", \"Bếp\"… → tên phòng; "
+                + "chữ toàn số, đường kích thước → kích thước; nét bậc cách đều 0,24–0,34 m → cầu thang. Mỗi dòng có độ tin cậy và căn cứ; ô vàng = tin cậy thấp, nên xem lại.",
+                "**Trong AutoCAD – lệnh VXT_CHUANLAYER (VXT_CL)** hoặc nút **Chuẩn hoá layer bản vẽ → VXT-…** trên bảng lệnh VXT: bảng layer gốc → layer chuẩn (sửa cột **Layer chuẩn**), **Lọc**, "
+                + "**Chỉ hiện layer chưa nhận**, **Tô sáng layer đang chọn**, **Chọn đối tượng trên bản vẽ…** (layer của các đối tượng chọn được gán vào layer chuẩn đang chọn ở ô **Gán vào**), **Tự nhận lại**.",
+                "**Cách áp dụng** (AutoCAD): ① **Tạo bản sao chuẩn hoá <tên>_VXT.dwg** cạnh file – bản vẽ gốc giữ nguyên (mặc định, khuyên dùng; có thể bind xref đã nạp trong bản sao); "
+                + "② **Chuyển đối tượng sang layer chuẩn** ngay trong bản vẽ đang mở; ③ **Đổi tên layer** khi một layer gốc ứng với một layer chuẩn, phần còn lại chuyển đối tượng. "
+                + "② và ③ là một lệnh – gõ **U** để hoàn tác. Tuỳ chọn: sửa cả đối tượng trong định nghĩa block, block cửa → layer cửa, lưu thêm DXF (<tên>_VXT.dxf) để mở trong Việt Const, gửi sang Việt Const (VXT_GUI) sau khi chuẩn hoá. "
+                + "Xref chưa nạp được cảnh báo (nạp lại rồi chạy lệnh).",
+                "**Trong Việt Const (không cần AutoCAD)**: hộp **Tải mặt bằng để lấy kích thước…** → mở bản vẽ → nút **Chuẩn hoá layer…**: cùng bảng đề xuất; **Đồng ý** đọc lại bản vẽ theo bảng (file gốc không bị sửa); "
+                + "**Xuất DXF đã chuẩn hoá…** ghi bản sao DXF với layer VXT-….",
+                "**Bộ ánh xạ** (layer gốc → layer chuẩn): **Lưu bộ ánh xạ…** / **Mở bộ ánh xạ…** để dùng lại cho các bản vẽ cùng văn phòng kiến trúc; lưu trong %AppData%\\VietConst\\layer-profiles (chỉ trên máy, không gửi đi đâu). "
+                + "Gán trong bộ ánh xạ được ưu tiên trước tự nhận; xref NHA|A-WALL dùng lại gán của A-WALL.")
+            .Tip("Kiểm tra lại các dòng tin cậy thấp và các layer \"(giữ nguyên)\" trước khi áp dụng; layer 0, DEFPOINTS và layer của xref không bị đổi tên.");
 
         c.Sec("khoi-tao.lien-ket-autocad", "Liên kết bản vẽ AutoCAD (DWG/DXF) làm nền mặt bằng")
             .P("Như Xref / \"Import DXF as background\" của ETABS: bản vẽ kiến trúc được gắn vào dự án làm **nền mờ** cho mặt bằng từng tầng, bắt điểm vào nét bản vẽ, tự cập nhật khi bản vẽ được lưu trong AutoCAD.")

@@ -240,6 +240,9 @@ namespace KetCauVXT.AcadLink
                 string c;
                 if (LayerMap.TryGetValue(v, out c)) return c;
             }
+            // layer chuẩn Việt Const VXT-… (lệnh VXT_CHUANLAYER) ưu tiên trên mọi quy tắc
+            string stdCat = KetCauVXT.Import.Arch.StdLayers.CategoryOf(layer);
+            if (!string.IsNullOrEmpty(stdCat)) return stdCat;
             LayerRuleDef best = null;
             foreach (var r in Rules)
             {

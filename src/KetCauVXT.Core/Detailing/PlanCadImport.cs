@@ -150,11 +150,13 @@ public sealed class ArchLayerKeys
         string n = ArchPlanReader.Norm(layer);
         return keys.Any(k => n.Contains(k));
     }
-    public bool IsWall(string l) => Has(l, Wall) && !Has(l, Door);
-    public bool IsDoor(string l) => Has(l, Door);
-    public bool IsBeam(string l) => Has(l, Beam);
-    public bool IsColumn(string l) => Has(l, Column) && !Has(l, Beam);
-    public bool IsSlab(string l) => Has(l, Slab);
+    // layer chuẩn VXT-… (lệnh VXT_CHUANLAYER / "Chuẩn hoá layer") quyết định trước từ khoá
+    private static string Std(string l) => KetCauVXT.Import.Arch.StdLayers.CategoryOf(l);
+    public bool IsWall(string l) { string c = Std(l); return c.Length > 0 ? c == "Tuong" : Has(l, Wall) && !Has(l, Door); }
+    public bool IsDoor(string l) { string c = Std(l); return c.Length > 0 ? c == "Cua" : Has(l, Door); }
+    public bool IsBeam(string l) { string c = Std(l); return c.Length > 0 ? c == "Dam" : Has(l, Beam); }
+    public bool IsColumn(string l) { string c = Std(l); return c.Length > 0 ? c == "Cot" : Has(l, Column) && !Has(l, Beam); }
+    public bool IsSlab(string l) { string c = Std(l); return c.Length > 0 ? c == "San" : Has(l, Slab); }
     public static bool DoorBlock(string block)
     {
         string n = ArchPlanReader.Norm(block);

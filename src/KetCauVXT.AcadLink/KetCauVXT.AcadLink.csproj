@@ -70,6 +70,11 @@
     </Reference>
   </ItemGroup>
 
+  <!-- Bộ phân loại / layer chuẩn VXT-… dùng chung với chương trình (file viết tương thích .NET Framework 4.8) -->
+  <ItemGroup>
+    <Compile Include="..\KetCauVXT.Core\Import\Arch\LayerConvert.cs" Link="Shared\LayerConvert.cs" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Drawing" />

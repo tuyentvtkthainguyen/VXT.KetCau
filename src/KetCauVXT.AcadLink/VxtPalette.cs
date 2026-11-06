@@ -30,7 +30,7 @@ namespace KetCauVXT.AcadLink
             catch (System.Exception ex)
             {
                 AcApp.DocumentManager.MdiActiveDocument?.Editor.WriteMessage("\nKhông mở được bảng lệnh: " + ex.Message +
-                    "\nDùng trực tiếp các lệnh VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI, VXT_KT (lấy kích thước → Triển khai hồ sơ), VXT_MB_KC (gửi mặt bằng kết cấu → Triển khai hồ sơ).");
+                    "\nDùng trực tiếp các lệnh VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI, VXT_KT (lấy kích thước → Triển khai hồ sơ), VXT_MB_KC (gửi mặt bằng kết cấu → Triển khai hồ sơ), VXT_CHUANLAYER / VXT_CL (chuẩn hoá layer bản vẽ về layer VXT-…).");
             }
         }
 
@@ -63,6 +63,7 @@ namespace KetCauVXT.AcadLink
             flow.Controls.Add(Btn("Xem theo nhóm (tô sáng)", "VXT_XEM", false));
             flow.Controls.Add(Btn("Xoá gán nhóm", "VXT_XOA", false));
             flow.Controls.Add(Btn("Tạo / chuyển đổi layer kết cấu", "VXT_LAYER", false));
+            flow.Controls.Add(Btn("Chuẩn hoá layer bản vẽ → VXT-… (đọc trong Việt Const)", "VXT_CHUANLAYER", false));
             flow.Controls.Add(Btn("GỬI SANG VIỆT CONST", "VXT_GUI", true));
             flow.Controls.Add(Btn("Lấy kích thước → Triển khai hồ sơ", "VXT_KT", false));
             flow.Controls.Add(Btn("Gửi mặt bằng kết cấu → Triển khai hồ sơ", "VXT_MB_KC", false));

@@ -336,6 +336,9 @@ public class CadStandard
                 if (e != null) { reason = "gán trực tiếp"; return CadCategory.Normalize(e.Category); }
             }
         }
+        // layer chuẩn Việt Const (VXT-TUONG-220, VXT-COT… – do lệnh VXT_CHUANLAYER / "Chuẩn hoá layer" tạo) ưu tiên trên mọi quy tắc
+        string stdCat = KetCauVXT.Import.Arch.StdLayers.CategoryOf(layer);
+        if (stdCat.Length > 0) { reason = "layer chuẩn Việt Const"; return stdCat; }
         LayerRule best = null;
         if (rules != null)
             foreach (var r in rules)

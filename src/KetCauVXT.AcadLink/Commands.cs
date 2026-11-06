@@ -25,7 +25,7 @@ namespace KetCauVXT.AcadLink
             try
             {
                 var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
-                ed?.WriteMessage("\nViệt Const: đã nạp liên kết AutoCAD – gõ VXT để mở bảng lệnh (VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI; VXT_KT = lấy kích thước cho chế độ Triển khai hồ sơ).\n");
+                ed?.WriteMessage("\nViệt Const: đã nạp liên kết AutoCAD – gõ VXT để mở bảng lệnh (VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI; VXT_KT = lấy kích thước cho chế độ Triển khai hồ sơ; VXT_CHUANLAYER / VXT_CL = chuẩn hoá layer bản vẽ về layer VXT-… để Việt Const đọc).\n");
             }
             catch (Exception) { }
         }
