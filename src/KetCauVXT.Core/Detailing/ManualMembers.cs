@@ -186,6 +186,19 @@ public class ManualBeam : IDetailMember
     [Field("M âm gối lớn nhất (trị tuyệt đối)", Unit = "kN.m", Group = "Nội lực (tuỳ chọn)")] public double MSupport { get; set; }
     [Field("Q lớn nhất", Unit = "kN", Group = "Nội lực (tuỳ chọn)")] public double Q { get; set; }
 
+    // ---- dầm móng / giằng móng: tự tính nội lực và phản lực lên móng ----
+    public const string GroundNone = "Không (nhập nội lực tay)", GroundTie = "Giằng tựa lên móng (dầm liên tục)", GroundWinkler = "Dầm móng trên nền đàn hồi (Winkler)";
+    [Field("Tính dầm móng", Group = "Dầm móng: tải trọng & phản lực", Choices = GroundNone + "|" + GroundTie + "|" + GroundWinkler,
+        Hint = "chỉ áp dụng khi Vị trí = Dầm móng; nội lực tự tính thay cho ô nhập tay khi ô nhập tay = 0")] public string GroundCalc { get; set; } = GroundNone;
+    [Field("Tường xây trên dầm móng – dày", Unit = "mm", Scale = 1000, Group = "Dầm móng: tải trọng & phản lực")] public double WallT { get; set; } = 0.22;
+    [Field("Tường xây trên dầm móng – cao (0 = không có tường)", Unit = "m", Group = "Dầm móng: tải trọng & phản lực")] public double WallH { get; set; }
+    [Field("Tải phân bố khác (tính toán)", Unit = "kN/m", Group = "Dầm móng: tải trọng & phản lực", Hint = "sàn nền truyền lên, đất đắp…")] public double ExtraQ { get; set; }
+    [Field("Lực tập trung tại các gối (Winkler)", Unit = "kN", Group = "Dầm móng: tải trọng & phản lực", Hint = "vd. 300; 450; 300 – lực cột truyền xuống dầm móng đặt trên nền")] public string SupportLoads { get; set; } = "";
+    [Field("Hệ số nền k (0 = 120·R)", Unit = "kN/m³", Group = "Dầm móng: tải trọng & phản lực")] public double SoilK { get; set; }
+    [Field("Sức chịu tải nền R dưới dầm móng", Unit = "kN/m²", Group = "Dầm móng: tải trọng & phản lực")] public double SoilR { get; set; } = 150;
+    /// <summary>Kết quả tính dầm móng gần nhất (phản lực gối) – dùng chuyển sang móng.</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public KetCauVXT.Design.Foundation.GroundBeamResult GroundResult { get; private set; }
+
     /// <summary>Lỗ xuyên dầm (ống lồng điện nước) – nhập tay hoặc từ mô hình (ModelToDetailing / cảnh báo điện nước).</summary>
     public List<BeamPenetration> Penetrations { get; set; } = new();
 
@@ -213,6 +226,42 @@ public class ManualBeam : IDetailMember
         if (BotN < 2 || TopN < 2) d.Messages.Add("LỖI thép chạy suốt tối thiểu 2 thanh (ở 2 góc đai) cho cả lớp trên và lớp dưới");
         int ns = spans.Count;
         bool isFound = (Position ?? "").StartsWith("Dầm móng"), isRoof = (Position ?? "").StartsWith("Dầm mái");
+        // nội lực dùng kiểm tra (che thuộc tính): nhập tay, hoặc tự tính khi là dầm móng
+        double MSpan = this.MSpan, MSupport = this.MSupport, Q = this.Q;
+        GroundResult = null;
+        if (isFound && GroundCalc != null && GroundCalc != GroundNone)
+        {
+            double qSelf = 1.1 * 25 * B * H, qWall = WallH > 0 ? KetCauVXT.Design.Foundation.GroundBeam.WallLoad(WallT, WallH) : 0, qTot = qSelf + qWall + Math.Max(ExtraQ, 0);
+            r.Calc.Add("## Dầm móng " + Name + ": q = bản thân 1,1·25·b·h + tường 1,1·18·t·h + tải khác = " + Dt.F(qSelf, "0.00") + " + " + Dt.F(qWall, "0.00") + " + "
+                       + Dt.F(Math.Max(ExtraQ, 0), "0.00") + " = " + Dt.F(qTot, "0.00") + " kN/m");
+            KetCauVXT.Design.Foundation.GroundBeamResult gres;
+            if (GroundCalc == GroundWinkler)
+            {
+                var pts = new List<(double X, double P)>();
+                var pl = DetailShim.ParseList(SupportLoads ?? "");
+                double xx = 0;
+                for (int k = 0; k <= spans.Count; k++)
+                {
+                    if (k < pl.Count && pl[k] > 0) pts.Add((xx, pl[k]));
+                    if (k < spans.Count) xx += spans[k];
+                }
+                double kS = SoilK > 0 ? SoilK : 120 * Math.Max(SoilR, 1);
+                double EI = conc.E * B * H * H * H / 12;
+                gres = KetCauVXT.Design.Foundation.GroundBeam.OnWinkler(spans.Sum(), B, EI, kS, qTot, pts);
+                d.Checks.Add(Dt.Check("Áp lực nền dưới dầm móng pmax ≤ 1,2R", gres.PressureMax, 1.2 * Math.Max(SoilR, 1), "kN/m²", "TCVN 9362:2012"));
+            }
+            else
+            {
+                gres = KetCauVXT.Design.Foundation.GroundBeam.Continuous(spans, qTot);
+                d.Messages.Add("Phản lực giằng " + Name + " truyền xuống móng (cộng vào ô \"Phản lực dầm móng / giằng\" của móng tại gối): "
+                               + string.Join("; ", gres.Reactions.Select((v, i) => "gối " + (i + 1) + ": " + Dt.F(v, "0.0") + " kN")));
+            }
+            r.Calc.AddRange(gres.Calc);
+            GroundResult = gres;
+            if (MSpan <= 0) MSpan = gres.MPosMax;
+            if (MSupport <= 0) MSupport = gres.MNegMax;
+            if (Q <= 0) Q = gres.VMax;
+        }
         double c = isFound ? Math.Max(s.CoverBeam, 0.035) : s.CoverBeam, w = Math.Max(SupportWidth, 0);
         var nodeX = new double[ns + 1];
         for (int k = 0; k < ns; k++) nodeX[k + 1] = nodeX[k] + spans[k];

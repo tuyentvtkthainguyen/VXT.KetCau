@@ -22,6 +22,8 @@ public class ManualFooting : IDetailMember
     [Field("M theo phương L", Unit = "kN.m", Group = "Tải chân cột")] public double ML { get; set; } = 20;
     [Field("M theo phương B", Unit = "kN.m", Group = "Tải chân cột")] public double MB { get; set; } = 10;
     [Field("N tiêu chuẩn (0 = N/1,15)", Unit = "kN", Group = "Tải chân cột")] public double Ntc { get; set; }
+    [Field("Phản lực dầm móng / giằng cộng thêm vào N", Unit = "kN", Group = "Tải chân cột",
+        Hint = "ΣR các giằng móng tựa lên móng (dầm móng: chọn \"Giằng tựa lên móng\" để tính R) – cộng vào lực dọc chân cột")] public double BeamReaction { get; set; }
     [Field("Sức chịu tải nền R (tiêu chuẩn)", Unit = "kN/m²", Group = "Nền")] public double R { get; set; } = 150;
     [Field("Độ sâu chôn móng Df", Unit = "m", Group = "Nền")] public double Df { get; set; } = 1.5;
     [Field("γtb đất + móng", Unit = "kN/m³", Group = "Nền")] public double GammaTb { get; set; } = 20;
@@ -55,6 +57,9 @@ public class ManualFooting : IDetailMember
     {
         var f = new FootingDesign { Name = Name, Quantity = Math.Max(1, Quantity), ColumnB = ColB, ColumnH = ColL, Depth = Df, R = R };
         var r = new DetailResult { Kind = "Móng đơn", Name = Name, Quantity = f.Quantity, Source = f };
+        // lực dọc kể phản lực giằng / dầm móng tựa lên móng (che thuộc tính N trong phạm vi hàm)
+        double N = this.N + Math.Max(BeamReaction, 0);
+        if (BeamReaction > 1e-9) r.Calc.Add("Lực dọc chân cột kể phản lực dầm móng / giằng: N = " + Dt.F(this.N, "0.0") + " + " + Dt.F(BeamReaction, "0.0") + " = " + Dt.F(N, "0.0") + " kN");
         r.Messages = f.Messages; r.Checks = f.Checks; r.Bars = f.Bars;
         var conc = DetailShim.TryConcrete(s.Concrete, r.Messages);
         var main = DetailShim.TryRebar(s.RebarMain, r.Messages);
@@ -130,6 +135,32 @@ public class ManualFooting : IDetailMember
             double u = (bB ? 1 : 2) * lenL + (bL ? 1 : 2) * lenB;
             return (N - pnet * ap, conc.Rbt * u * h0);
         }
+        // chọc thủng có kể mô men + cắt theo mép móng cho một chiều cao (dùng cả khi tự chọn H)
+        (PunchingResult Pr, bool Cut, List<(string Dir, double Q, double Qb, double C, double L1, double H0)> Shear) ExtraChecks(double h0e0, double hbEff)
+        {
+            double sbk = Math.Max(Setback, 0);
+            bool leftL = (BoundaryL ?? "").Contains("trái"), lowB = (BoundaryB ?? "").Contains("dưới");
+            bool cutL = bL && sbk < h0e0 / 2, cutB = bB && sbk < h0e0 / 2;
+            var ct = PunchingContour.Rect(ColL, ColB, h0e0,
+                cutXNeg: cutL && leftL, cutXPos: cutL && !leftL, cutYNeg: cutB && lowB, cutYPos: cutB && !lowB,
+                extXNeg: ColL / 2 + sbk, extXPos: ColL / 2 + sbk, extYNeg: ColB / 2 + sbk, extYPos: ColB / 2 + sbk);
+            double mAboutY = ML + (BalanceBeam ? 0 : N * EL(l)), mAboutX = MB + (BalanceBeam ? 0 : N * EB(b));
+            var pf = Punch(h0e0);
+            var pr = Punching.Check(ct, pf.F, mAboutY, mAboutX, h0e0, conc.Rbt, 0.5, pf.Fu);
+            var list = new List<(string, double, double, double, double, double)>();
+            double hEdge0 = Math.Max(hbEff - c - 0.012, 0.05);
+            foreach (bool alongL in new[] { true, false })
+            {
+                double cant = alongL ? (bL ? l - ColL - sbk : (l - ColL) / 2) : (bB ? b - ColB - sbk : (b - ColB) / 2);
+                if (cant <= 1e-6) continue;
+                double wid = alongL ? b : l;
+                double pEdge = N / (l * b) + 6 * Math.Abs(alongL ? ML : MB) / (wid * Math.Pow(alongL ? l : b, 2));
+                double h0s = hEdge0 < h0e0 - 1e-6 ? (h0e0 + hEdge0) / 2 : h0e0;   // móng vát: h0 trung bình trên đoạn công xôn (gần đúng)
+                var es = Punching.EdgeShear(pEdge, wid, cant, h0s, conc.Rbt);
+                list.Add((alongL ? "L" : "B", es.Q, es.Qb, es.C, cant, h0s));
+            }
+            return (pr, cutL || cutB, list);
+        }
         double hh = H;
         if (hh <= 0)
         {
@@ -137,6 +168,14 @@ public class ManualFooting : IDetailMember
             while (hh < 2.0 && Punch(hh - c - 0.012).F > Punch(hh - c - 0.012).Fu) hh = Math.Round(hh + 0.05, 2);
             // móng cứng: h ≥ (L − bc)/6 để áp lực phân bố gần tuyến tính
             hh = Math.Max(hh, RcSection.CeilTo(Math.Max(l - ColL, b - ColB) / 6, 0.05));
+            // tăng H tới khi đạt chọc thủng có kể mô men và cắt theo mép móng
+            for (int it = 0; it < 40 && hh < 2.0; it++)
+            {
+                double hbT = Hb > 0 && Hb < hh ? Hb : hh;
+                var exT = ExtraChecks(hh - c - 0.012, hbT);
+                if (exT.Pr.Ok && exT.Shear.All(z => z.Q <= z.Qb + 1e-9)) break;
+                hh = Math.Round(hh + 0.05, 2);
+            }
         }
         f.H = hh; f.Hb = Hb > 0 && Hb < hh ? Hb : hh;
         double h0 = hh - c - 0.012;
@@ -144,6 +183,17 @@ public class ManualFooting : IDetailMember
         r.Calc.Add("Chọc thủng: h0 = " + Dt.Mm(h0) + " mm, u = " + (bL || bB ? "chu vi tháp chọc thủng bị cắt ở cạnh sát ranh" : "2(bc + hc + 2h0)") + "; F = N − pnet·Atháp = "
                    + Dt.F(fP, "0.0") + " kN ≤ Rbt·u·h0 = " + Dt.F(fuP, "0.0") + " kN");
         r.Checks.Add(Dt.Check("Chọc thủng cột – móng F ≤ Rbt·u·h0", fP, fuP, "kN", "TCVN 5574:2018 mục 8.1.6.3"));
+        // ---- chọc thủng có kể mô men (8.1.6.2) + cắt theo mép móng (8.1.3.3) ----
+        var ex = ExtraChecks(h0, f.Hb);
+        r.Calc.Add("Chọc thủng có kể mô men (TCVN 5574:2018 mục 8.1.6.2): " + ex.Pr.Text + (ex.Cut ? " – đường bao bị cắt ở cạnh sát ranh (3 cạnh / 2 cạnh khi cột góc)" : "")
+                   + "; M lấy bằng 0,5·M chân cột (phần còn lại truyền qua áp lực đáy móng)");
+        r.Checks.Add(Dt.Check("Chọc thủng có kể mô men F/Fb,u + ΣM/Mb,u ≤ 1", ex.Pr.Ratio, 1, "", "TCVN 5574:2018 mục 8.1.6.2"));
+        foreach (var sh in ex.Shear)
+        {
+            r.Calc.Add("Cắt theo mép móng phương " + sh.Dir + ": Q = p·b·(l1 − c) = " + Dt.F(sh.Q, "0.0") + " kN ≤ Qb = 1,5·Rbt·b·h0²/c = " + Dt.F(sh.Qb, "0.0")
+                       + " kN (c = " + Dt.Mm(sh.C) + " mm, l1 = " + Dt.Mm(sh.L1) + " mm, h0 = " + Dt.Mm(sh.H0) + " mm; 0,5 ≤ Qb/(Rbt·b·h0) ≤ 2,5)");
+            r.Checks.Add(Dt.Check("Cắt theo mép móng phương " + sh.Dir + " Q ≤ Qb", sh.Q, sh.Qb, "kN", "TCVN 5574:2018 mục 8.1.3.3"));
+        }
         // ---- thép: mô men tại mép cột với áp lực hình thang ----
         double l1 = bL ? l - ColL - Math.Max(Setback, 0) : (l - ColL) / 2, b1 = bB ? b - ColB - Math.Max(Setback, 0) : (b - ColB) / 2;
         double pL1 = pnetMax - (pnetMax - (2 * pnet - pnetMax)) * l1 / l;
@@ -518,6 +568,11 @@ public class ManualPileCap : IDetailMember
     [Field("Cọc tròn (không = cọc vuông)", Group = "Cọc")] public bool Round { get; set; }
     [Field("Sức chịu tải thiết kế cọc chịu nén [P]", Unit = "kN", Group = "Cọc")] public double Pa { get; set; } = 400;
     [Field("Sức chịu tải nhổ [Pk] (0 = không cho nhổ)", Unit = "kN", Group = "Cọc")] public double Pt { get; set; }
+    [Field("Ma sát thành Σ(fi·li) để tính [Pk] (0 = dùng [Pk] nhập)", Unit = "kN/m", Group = "Cọc chịu nhổ (TCVN 10304:2014)",
+        Hint = "tổng fi·li các lớp đất dọc thân cọc; [Pk] = 0,8·u·Σfi·li/1,4 + 0,9·Gcọc")] public double SkinFriction { get; set; }
+    [Field("Chiều dài cọc (trọng lượng cọc chống nhổ)", Unit = "m", Group = "Cọc chịu nhổ (TCVN 10304:2014)")] public double PileLength { get; set; } = 15;
+    [Field("Phản lực dầm móng / giằng cộng thêm vào N", Unit = "kN", Group = "Tải chân cột",
+        Hint = "ΣR các giằng móng tựa lên đài – cộng vào lực dọc chân cột")] public double BeamReaction { get; set; }
     [Field("Số cọc (0 = tự chọn)", Group = "Cọc")] public int NumPiles { get; set; }
     [Field("Khoảng cách tim cọc (0 = 3D)", Unit = "m", Group = "Cọc")] public double Spacing { get; set; }
     [Field("Tim cọc tới mép đài (0 = max(D; 0,7D + 0,15))", Unit = "m", Group = "Cọc")] public double Edge { get; set; }
@@ -610,6 +665,12 @@ public class ManualPileCap : IDetailMember
         var conc = DetailShim.TryConcrete(s.Concrete, r.Messages);
         var main = DetailShim.TryRebar(s.RebarMain, r.Messages);
         r.ConcreteClass = conc.Name;
+        // lực dọc kể phản lực giằng / dầm móng tựa lên đài (che thuộc tính N trong phạm vi hàm)
+        double N = this.N + Math.Max(BeamReaction, 0);
+        if (BeamReaction > 1e-9) r.Calc.Add("Lực dọc chân cột kể phản lực dầm móng / giằng: N = " + Dt.F(this.N, "0.0") + " + " + Dt.F(BeamReaction, "0.0") + " = " + Dt.F(N, "0.0") + " kN");
+        // sức kháng nhổ cho phép: theo ma sát thành (TCVN 10304:2014) nếu nhập Σfi·li, ngược lại [Pk] người dùng
+        double perim = Round ? Math.PI * PileD : 4 * PileD, areaP = Round ? Math.PI * PileD * PileD / 4 : PileD * PileD;
+        double Pt = SkinFriction > 0 ? PileGroup.TensionCapacity(perim, SkinFriction, areaP, PileLength).Pk : this.Pt;
         if (N <= 0 || Pa <= 0 || PileD <= 0.1)
         {
             r.Messages.Add("LỖI cần N > 0, [P] > 0, D cọc ≥ 100 mm");
@@ -648,6 +709,19 @@ public class ManualPileCap : IDetailMember
         r.Calc.Add("Pmax = " + Dt.F(P.Max(), "0.0") + " kN; Pmin = " + Dt.F(P.Min(), "0.0") + " kN; [P] = " + Dt.F(Pa, "0") + " kN");
         r.Checks.Add(Dt.Check("Lực lớn nhất lên cọc Pmax ≤ [P]", P.Max(), Pa, "kN"));
         r.Checks.Add(Dt.Check("Cọc chịu nhổ: lực nhổ max(−Pmin; 0) ≤ [Pk]", Math.Max(-P.Min(), 0), Pt, "kN"));
+        if (P.Min() < -1e-9)
+        {
+            // cọc chịu nhổ: sức kháng đất, thép cọc chịu kéo, neo râu thép vào đài (TCVN 10304:2014; TCVN 5574:2018 mục 10.3.5)
+            var up = PileGroup.Uplift(P.Min(), this.Pt, perim, SkinFriction, areaP, PileLength, Math.Max(PileBarN, 0), Math.Max(PileBarD, 10), main.Rs, conc.Rbt, AnchorUsed);
+            r.Calc.Add("## Cọc chịu nhổ: Nt = " + Dt.F(up.Nt, "0.0") + " kN");
+            r.Calc.AddRange(up.Calc);
+            if (PileBarN > 0)
+            {
+                r.Checks.Add(Dt.Check("Cọc chịu nhổ: thép cọc chịu kéo Nt ≤ Rs·As", up.Nt, up.SteelCap, "kN", "TCVN 5574:2018"));
+                r.Checks.Add(Dt.Check("Cọc chịu nhổ: neo râu thép vào đài La ≥ lan (chịu kéo)", up.Lan, AnchorUsed, "m", "TCVN 5574:2018 mục 10.3.5"));
+            }
+            r.Messages.AddRange(up.Notes);
+        }
         r.Checks.Add(Dt.Check("Khoảng cách tim cọc ≥ 3D (TCVN 10304:2014 mục 8.13)", 3 * PileD, sp, "m"));
 
         // ---- chiều cao đài: chọc thủng cột ----
@@ -660,11 +734,20 @@ public class ManualPileCap : IDetailMember
             double u = 2 * (ColX + ColY + 2 * h0);
             return (N - inside * N / Math.Max(N + G, 1e-9), conc.Rbt * u * h0);
         }
+        // chọc thủng có kể mô men: mô men không cân bằng của phản lực các cọc ngoài tháp 45° (TCVN 5574:2018 mục 8.1.6.2)
+        PunchingResult PunchM(double h0m)
+        {
+            double axP = ColX / 2 + h0m, ayP = ColY / 2 + h0m, kN = N / Math.Max(N + G, 1e-9), mOutY = 0, mOutX = 0;
+            for (int i = 0; i < piles.Count; i++)
+                if (!(Math.Abs(piles[i].X) <= axP && Math.Abs(piles[i].Y) <= ayP)) { mOutY += P[i] * kN * piles[i].X; mOutX += P[i] * kN * piles[i].Y; }
+            var pm = Punch(h0m);
+            return Punching.Check(PunchingContour.Rect(ColX, ColY, h0m), pm.F, mOutY, mOutX, h0m, conc.Rbt, 0.5, pm.Fu);
+        }
         double hh = H;
         if (hh <= 0)
         {
             hh = Math.Max(0.5, 2 * PileD);
-            while (hh < 2.5 && Punch(hh - c).F > Punch(hh - c).Fu) hh = Math.Round(hh + 0.05, 2);
+            while (hh < 2.5 && (Punch(hh - c).F > Punch(hh - c).Fu || (!HasCage && !PunchM(hh - c).Ok))) hh = Math.Round(hh + 0.05, 2);
         }
         CapH = hh;
         double h0x = hh - c;
@@ -682,6 +765,12 @@ public class ManualPileCap : IDetailMember
             r.Checks.Add(Dt.Check("Chọc thủng cột – đài có lồng thép F ≤ Fb + Fsw", fP, fult, "kN", "TCVN 5574:2018 mục 8.1.6.3.3"));
         }
         else r.Checks.Add(Dt.Check("Chọc thủng cột – đài F ≤ Rbt·u·h0", fP, fuP, "kN", "TCVN 5574:2018 mục 8.1.6"));
+        if (!HasCage)
+        {
+            var prc = PunchM(h0x);
+            r.Calc.Add("Chọc thủng cột – đài có kể mô men (M = Σ Pi·xi các cọc ngoài tháp 45°, lấy 0,5M): " + prc.Text);
+            if (prc.F > 1e-6) r.Checks.Add(Dt.Check("Chọc thủng cột – đài có kể mô men F/Fb,u + ΣM/Mb,u ≤ 1", prc.Ratio, 1, "", "TCVN 5574:2018 mục 8.1.6.2"));
+        }
         double dAnc = Math.Max(PileBarD, 10) / 1000.0;
         r.Calc.Add("Đầu cọc ngàm vào đài " + Dt.Mm(Embed) + " mm; đập bỏ bê tông đầu cọc, chừa râu thép " + Math.Max(PileBarN, 0) + "Ø" + PileBarD + " neo vào đài La = " + Dt.Mm(AnchorUsed) + " mm (≥ 30d = " + Dt.Mm(30 * dAnc) + " mm)");
         if (PileBarN > 0) r.Checks.Add(Dt.Check("Râu thép đầu cọc neo vào đài La ≥ 30d", 30 * dAnc, AnchorUsed, "m"));
@@ -901,6 +990,17 @@ public class ManualPileCap : IDetailMember
                     x2.LeaderTag(px + d / 2 - 50, em + upL * 0.5, px - L / 2 - 1.0 * x2.Th, em + upL * 0.5 + 1.0 * x2.Th, an.Count / Math.Max(Piles.Count, 1) + "Ø" + an.Dia + " râu cọc", an.Mark, -1);
                     firstTag = false;
                 }
+            }
+        }
+        // tháp chọc thủng 45° từ mép cột tới đầu cọc (nét đứt) – cọc có tim trong đáy tháp không gây chọc thủng
+        {
+            double yTop = H, yBot = em, dz = yTop - yBot;
+            if (dz > 0)
+            {
+                double xr = Math.Min(ColX * 500 + dz, ox + L / 2), xl = Math.Max(-ColX * 500 - dz, ox - L / 2);
+                x2.Line(Lay.KyHieu, ColX * 500, yTop, xr, yTop - (xr - ColX * 500), "DASHED");
+                x2.Line(Lay.KyHieu, -ColX * 500, yTop, xl, yTop - (-ColX * 500 - xl), "DASHED");
+                x2.Text(Lay.KyHieu, xr + 0.3 * x2.Th, (yTop + yBot) / 2, 0.6 * x2.Th, "THÁP CHỌC THỦNG 45°", 0, 0, 2);
             }
         }
         x2.Dim(ox + L / 2, 0, ox + L / 2, H, 2.0 * x2.Th);

@@ -300,6 +300,18 @@ public static class FootingDrawing
         double zBot = p.BaseElevation - (f.H > 0 ? f.H : 0.4);
         w.ElevMark(L + 3 * th, 0, DxfWriter.ElevText(zBot), 1);
         w.ElevMark(L + 3 * th, H, DxfWriter.ElevText(p.BaseElevation), 1);
+        // tháp chọc thủng 45° (nét đứt): từ mép cột tại mặt móng xuống tới trọng tâm thép đáy (h0) – TCVN 5574:2018 mục 8.1.6
+        {
+            double h0d = H - c;
+            if (h0d > 0)
+            {
+                double xa = Math.Max(0, xc1 - h0d), xb = Math.Min(L, xc2 + h0d);
+                double ya = H - (xc1 - xa), yb = H - (xb - xc2);
+                w.Line(Lay.KyHieu, xc1, H, xa, ya, "DASHED");
+                w.Line(Lay.KyHieu, xc2, H, xb, yb, "DASHED");
+                w.Text(Lay.KyHieu, xb + 0.3 * th, (H + yb) / 2, 0.6 * th, "THÁP CHỌC THỦNG 45°", 0, 0, 2);
+            }
+        }
         w.Title(L / 2, w.Extents.Y1 - 1.2 * th, $"MẶT CẮT {f.Name}", DrawUtil.ScaleText(det), true);
         return w;
     }

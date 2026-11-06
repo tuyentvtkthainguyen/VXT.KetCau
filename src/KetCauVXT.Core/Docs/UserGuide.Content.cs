@@ -962,6 +962,30 @@ public static partial class UserGuide
                 "Mặt cắt 1-1 / 2-2 tự chọn nhịp **cắt được nhiều sàn nhất** (tránh ô cầu thang); mức sàn không có sàn trên đường cắt ghi chú \"ô cầu thang / lỗ sàn\"; phần tử **nhìn thấy phía sau** mặt cắt (tới trục kế tiếp, ≤ 6 m) vẽ nét mảnh.",
                 "Giao diện kiểu Revit: chọn **tường** → kích thước tạm tới tường / trục song song hai bên (bấm số → dời tường song song); chọn **cột** → khoảng cách tâm cột tới trục gần nhất (bấm số → đổi lệch tâm cột).");
 
+        c.Sec("mo-hinh.choc-thung-nho-coc", "Chọc thủng đài cọc, cắt mép móng, cọc chịu nhổ, phản lực dầm móng")
+            .P("Các kiểm tra móng theo **TCVN 5574:2018** (chọc thủng mục 8.1.6, cắt tiết diện nghiêng mục 8.1.3.3, neo thép mục 10.3.5) và **TCVN 10304:2014** (cọc), dùng chung cho chế độ Thiết kế và Triển khai hồ sơ.")
+            .Bullets("**Đài cọc**:",
+                "Phản lực cọc Pi = (N + G)/n ± Mx·yi/Σy² ± My·xi/Σx² (đài cứng).",
+                "Chọc thủng do cột: tháp 45° từ mép cột tới đầu cọc; cọc có tim nằm trong đáy tháp không gây chọc thủng → F = N − Σ phản lực cọc trong tháp; Fb,u = Rbt·u·h0 (thiết kế: kể hệ số h0/c, chặn 1…2,5).",
+                "Chọc thủng **có kể mô men**: F/Fb,u + ΣM/Mb,u ≤ 1, Mb,u = Rbt·Wb·h0 (Wb của đường bao cách mép cột h0/2); M lấy bằng 0,5 mô men không cân bằng của phản lực các cọc ngoài tháp; phần mô men không lớn hơn F/Fb,u.",
+                "Chọc thủng do **cọc góc / cọc biên**: đường bao cách mép cọc h0/2, bỏ các cạnh ra ngoài mép đài.",
+                "Cắt trên tiết diện nghiêng giữa mép cột và hàng cọc: Q = Σ phản lực cọc ngoài tiết diện ≤ Qb = 1,5·Rbt·b·h0²/c (0,5 ≤ Qb/Rbt·b·h0 ≤ 2,5).",
+                "Bản vẽ mặt cắt đài có **tháp chọc thủng 45°** nét đứt.")
+            .Bullets("**Cọc chịu nhổ** (khi Pmin < 0):",
+                "[Pk] nhập tay, hoặc nhập **Σ(fi·li)** (ma sát thành theo các lớp đất) → [Pk] = 0,8·u·Σfi·li/1,4 + 0,9·Gcọc (TCVN 10304:2014).",
+                "Thép cọc / râu thép chịu kéo: Nt ≤ Rs·As.",
+                "Neo râu thép vào đài chịu kéo: l0,an = Rs·d/(4·2,5·Rbt), lan = l0,an·As,cal/As,ef ≥ max(0,3l0,an; 15d; 200 mm) – so với chiều dài neo bố trí.",
+                "Ghi chú mối nối cọc (bản mã hàn) phải chịu được lực kéo Nt.")
+            .Bullets("**Móng đơn** (Triển khai hồ sơ):",
+                "Chọc thủng có kể mô men; móng **sát ranh** (lệch tâm): đường bao 3 cạnh (2 cạnh khi cột ở góc), trọng tâm đường bao lệch e0 → kể thêm F·e0.",
+                "**Cắt theo mép móng** hai phương: Q = p·b·(l1 − c) ≤ Qb(c), xét c tới min(l1; 3h0); móng vát dùng h0 trung bình đoạn công xôn.",
+                "Chiều cao tự chọn tăng tới khi đạt cả chọc thủng có mô men và cắt mép móng; mặt cắt móng vẽ tháp chọc thủng 45°.")
+            .Bullets("**Dầm móng / giằng móng** (dầm Vị trí = Dầm móng → mục *Dầm móng: tải trọng & phản lực*):",
+                "**Giằng tựa lên móng**: dầm liên tục gối tại tim móng, q = bản thân + tường xây (1,1·18·t·h) + tải khác; phương trình ba mô men → M, Q dùng kiểm tra dầm khi ô nội lực nhập tay = 0, và **phản lực từng gối** ghi trong thông báo.",
+                "**Dầm móng trên nền đàn hồi (Winkler)**: k = 120·R nếu không nhập; lực cột tại gối nhập ở *Lực tập trung tại các gối*; kiểm tra áp lực nền pmax ≤ 1,2R; tổng phản lực nền bằng tổng tải.",
+                "Móng đơn / đài cọc có ô **Phản lực dầm móng / giằng cộng thêm vào N**: nhập ΣR các giằng tựa lên móng đó.",
+                "Chế độ Thiết kế: dầm móng có trong mô hình phân tích thì phản lực chân cột (tải móng) đã gồm tải dầm móng.");
+
         c.Sec("mo-hinh.san-ha-cot", "Sàn hạ cốt (hạ cos)")
             .P("Ô sàn có mặt trên thấp hơn cao độ sàn tầng một khoảng Δ (âm = hạ; trong khoảng −500 … 0 mm): sàn vệ sinh (chống thấm + vữa tạo dốc; WC hạ sâu đặt xí bệt âm −100 … −300 mm), ban công, lô gia, sân thượng, bếp…")
             .Steps("Thanh sửa mặt bằng: nhập độ hạ ở ô **Hạ cốt (mm)** (vd. −50; gõ 50 cũng hiểu là hạ 50 mm).",

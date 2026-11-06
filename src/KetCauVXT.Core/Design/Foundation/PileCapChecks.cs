@@ -50,6 +50,11 @@ public sealed class PileCapInput
     public double OffsetY { get; set; }
     /// <summary>true = lệch tâm nhóm cọc là chủ ý do ranh giới đất (không cảnh báo, ghi "Lệch tâm do ranh giới")</summary>
     public bool BoundaryEccentric { get; set; }
+    /// <summary>Râu thép đầu cọc neo vào đài (kiểm tra cọc chịu nhổ): số thanh, Ø, cường độ Rs (kN/m²), chiều dài neo bố trí (0 = max(30d; 400 mm)).</summary>
+    public int PileBarN { get; set; } = 4;
+    public int PileBarD { get; set; } = 16;
+    public double PileBarRs { get; set; } = 350000;
+    public double PileAnchor { get; set; }
     // ---- hết [MóngLệchTâm] ----
 }
 
@@ -210,6 +215,19 @@ public static class PileCapChecks
                            : "Cọc chịu nhổ trong khi [Pk] = 0 (không cho phép kéo) – tăng khoảng cách cọc / số cọc, hoặc khai báo [Pk] và cấu tạo cọc chịu nhổ.");
             if (it.Status == CheckStatus.Ok) it.Status = CheckStatus.Warning;
             rep.Items.Add(it);
+            // thép cọc chịu kéo + neo râu thép vào đài chịu kéo (TCVN 5574:2018 mục 10.3.5) – cảnh báo, không chặn thiết kế
+            double anc = inp.PileAnchor > 0 ? inp.PileAnchor : Math.Max(30 * Math.Max(inp.PileBarD, 10) / 1000.0, 0.40);
+            var up = PileGroup.Uplift(pmin, inp.Pt, 0, 0, 0, 0, Math.Max(inp.PileBarN, 0), Math.Max(inp.PileBarD, 10), inp.PileBarRs, rbt, anc);
+            if (inp.PileBarN > 0)
+            {
+                rep.Items.Add(SafetyItem.Make("Phản lực cọc", "Cọc chịu nhổ: thép cọc chịu kéo Nt ≤ Rs·As", up.Nt, up.SteelCap, "kN",
+                    $"Nt = |Pmin| = {up.Nt:0.0} kN ≤ Rs·As = {up.SteelCap:0.0} kN ({inp.PileBarN}Ø{inp.PileBarD})",
+                    "Thép dọc cọc / râu thép đủ chịu lực nhổ.", "Thép cọc không đủ chịu kéo – tăng thép dọc cọc hoặc giảm lực nhổ.", false, CheckStatus.Warning));
+                rep.Items.Add(SafetyItem.Make("Phản lực cọc", "Cọc chịu nhổ: neo râu thép vào đài La ≥ lan", up.Lan * 1000, anc * 1000, "mm",
+                    $"l0,an = Rs·d/(4·2,5·Rbt) = {up.L0an * 1000:0} mm; lan = l0,an·As,cal/As,ef ≥ max(0,3l0,an; 15d; 200) = {up.Lan * 1000:0} mm",
+                    "Râu thép đầu cọc đủ chiều dài neo chịu kéo vào đài.", "Chiều dài neo râu thép không đủ – bẻ móc / hàn bản neo hoặc tăng chiều cao đài.", false, CheckStatus.Warning));
+                foreach (var nt in up.Notes) rep.Warnings.Add(nt);
+            }
         }
         if (inp.Pvl > 0)
             rep.Items.Add(SafetyItem.Make("Phản lực cọc", "Sức chịu tải vật liệu cọc Pmax ≤ Pvl", pmax, inp.Pvl, "kN", "Pvl = φ·(Rb·Ab + Rsc·As), φ = 1",
@@ -324,6 +342,24 @@ public static class PileCapChecks
                 }
                 rep.Items.Add(it);
             }
+        }
+
+        // ---- chọc thủng có kể mô men (TCVN 5574:2018 mục 8.1.6.2): mô men không cân bằng của phản lực cọc ngoài tháp (tổ hợp Pmax) ----
+        if (np > 1 && gov != null && !(pd.AllInside))
+        {
+            double fG = 0, mY = 0, mX = 0;
+            for (int i = 0; i < np; i++)
+            {
+                if (rows[i].InsidePyramid) continue;
+                double pn = gov[i] - g1;
+                fG += pn; mY += pn * piles[i].X; mX += pn * piles[i].Y;
+            }
+            var prm = Punching.Check(PunchingContour.Rect(hc, bc, h0), Math.Max(fG, 0), mY, mX, h0, rbt, 0.5, pd.Fbu);
+            if (prm.F > 1e-6)
+                rep.Items.Add(SafetyItem.Make("Chọc thủng", "Chọc thủng đài có kể mô men F/Fb,u + ΣM/Mb,u ≤ 1", prm.Ratio, 1, "",
+                    prm.Text + $" (tổ hợp {govCombo}; M = 0,5·Σ(Pi − G/n)·xi cọc ngoài tháp)",
+                    "Đài đủ chống chọc thủng kể cả phân bố không đều phản lực cọc do mô men.",
+                    "Chọc thủng có kể mô men vượt khả năng – tăng chiều cao đài.", false, CheckStatus.Warning));
         }
 
         // ---- chọc thủng cọc (cọc góc / cọc biên) ----

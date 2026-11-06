@@ -637,6 +637,8 @@ Console.WriteLine("84. Lỗ xuyên điện nước → hồ sơ kết cấu (KC-
 MepStructureFinishTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("85. Mặt cắt: kiến trúc không móng / kết cấu có móng, vật liệu đúng loại + chú thích, rãnh điện nước mặt bằng / 3D, lỗ sàn × cột, cắt tại lỗ nội suy");
 SectionMaterialTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("86. Chọc thủng đài cọc / móng có kể mô men, cắt mép móng, cọc chịu nhổ, phản lực dầm móng");
+PunchingUpliftTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
