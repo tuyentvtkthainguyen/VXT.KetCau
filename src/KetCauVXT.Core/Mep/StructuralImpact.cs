@@ -402,7 +402,8 @@ public static class StructuralImpact
                 ImpactSeverity sev; string why;
                 if (rc) { sev = ImpactSeverity.NguyHiem; why = "tường BTCT – không đục rãnh sau khi đổ"; }
                 else if (depth > info.Core / 3 + 1e-9) { sev = ImpactSeverity.CanhBao; why = $"rãnh ngang sâu {depth * 1000:0} mm > 1/3 lõi tường ({info.Core / 3 * 1000:0} mm)"; }
-                else if (info.Core <= 0.11 + 1e-9 && planL > 1.0 + 1e-9) { sev = ImpactSeverity.CanhBao; why = $"rãnh ngang dài {planL:0.##} m > 1 m trong tường {info.Core * 1000:0}"; }
+                else if (info.Core <= 0.11 + 1e-9 && planL > 1.0 + 1e-9 && dia > 25 + 1e-9) { sev = ImpactSeverity.CanhBao;   // ống gen Ø ≤ 25 đi ngang trong tường 110 là cấu tạo thông thường → không cảnh báo
+                    why = $"rãnh ngang dài {planL:0.##} m > 1 m trong tường {info.Core * 1000:0}"; }
                 else continue;
                 list.Add(new StructuralImpactItem
                 {

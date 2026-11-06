@@ -220,7 +220,7 @@ public static class DrainSlopeImpactTests
         R(7, 20, MepRunKind.Ong, new MepPt(2, 2.5, 3.5), new MepPt(2, 2.5, 2.9));
         R(8, 20, MepRunKind.Ong, new MepPt(2.5, 2.5, 3.5), new MepPt(2.5, 2.5, 2.9));
         R(9, 20, MepRunKind.Ong, new MepPt(3, 2.5, 3.5), new MepPt(3, 2.5, 2.9));
-        R(10, 25, MepRunKind.Ong, new MepPt(0.5, 4, 3.6, 1), new MepPt(2.0, 4, 3.6, 1));     // rãnh ngang 1,5 m trong tường 110
+        R(10, 32, MepRunKind.Ong, new MepPt(0.5, 4, 3.6, 1), new MepPt(2.0, 4, 3.6, 1));     // rãnh ngang 1,5 m trong tường 110 (ống Ø32 > Ø25)
         R(11, 25, MepRunKind.Ong, new MepPt(0.5, 5, 3.6, 2), new MepPt(1.0, 5, 3.6, 2));     // rãnh trong tường BTCT
         var items = StructuralImpact.Scan(pq);
         ImpactSeverity? Sev(int run, string code) => items.FirstOrDefault(i => i.RunId == run && i.Code == code)?.Severity;
