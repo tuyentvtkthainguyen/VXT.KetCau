@@ -150,8 +150,11 @@ public static class ArchDetailTests
         var back = System.Text.Json.JsonSerializer.Deserialize<Project>(json, Project.JsonOptions);
         check("KT lưu/đọc: lan can, phào, ốp, mái dốc", back.Arch.Railings.Count + back.Arch.Sweeps.Count + back.Arch.Claddings.Count + B(back.Arch.Roofs.Any(r => r.Shape == RoofShape.BonMai)),
             p.Arch.Railings.Count + p.Arch.Sweeps.Count + p.Arch.Claddings.Count + 1, 0);
+        var pg = House();
+        ArchDetail.AddRoof(pg, "MAI", 0, 0, 8, 5, RoofShape.HaiMai, 40, 0, "Mái ngói");
+        var elg = KetCauVXT.Drawing.BuildingElevation.ProjectSolids(pg, KetCauVXT.Drawing.BuildingElevation.ViewLine(pg, KetCauVXT.Drawing.ElevationSide.Left));
+        check("KT mặt đứng: tường thu hồi hiện hình tam giác", B(elg.Any(i => i.Id.StartsWith("THUHOI-") && i.Outline?.Count == 3)), 1, 0);
         var elv = KetCauVXT.Drawing.BuildingElevation.ProjectSolids(p, KetCauVXT.Drawing.BuildingElevation.ViewLine(p, KetCauVXT.Drawing.ElevationSide.Left));
-        check("KT mặt đứng: tường thu hồi hiện hình tam giác", B(elv.Any(i => i.Id.StartsWith("THUHOI-") && i.Outline?.Count == 3)), 1, 0);
         check("KT mặt đứng: có phào chỉ / ốp / lan can", B(elv.Any(i => i.Category is "Phào chỉ" or "Ốp / sơn" or "Lan can")), 1, 0);
         Levels.RenameStory(p, "T2", "T2A");
         check("KT đổi tên tầng: lan can theo", p.Arch.Railings.Count(r => r.Story == "T2A"), 2, 0);
