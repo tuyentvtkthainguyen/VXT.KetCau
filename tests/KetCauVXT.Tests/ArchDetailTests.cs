@@ -153,6 +153,32 @@ public static class ArchDetailTests
         Levels.RenameStory(p, "T2", "T2A");
         check("KT đổi tên tầng: lan can theo", p.Arch.Railings.Count(r => r.Story == "T2A"), 2, 0);
 
+        // ================= 6a. Họ đồ đạc tham số =================
+        var lib = Library3D.LoadAll();
+        check("KT thư viện có họ tham số", B(lib.Any(i => i.Id == "HO/Bàn ăn") && lib.Count(i => i.Source == "Họ tham số") == FurnitureFamilies.All.Count), 1, 0);
+        var tbl = Library3D.Place(p, lib.First(i => i.Id == "HO/Bàn ăn"), "T2A", 2, 2);
+        check("KT đặt bàn ăn: họ tham số", B(tbl.Family == "Bàn ăn"), 1, 0);
+        var ts = FurnitureFamilies.Solids(p, tbl);
+        check("KT bàn ăn: 4 chân + mặt bàn", ts.Count, 5, 0);
+        check("KT mã chi tiết DD-n / DD-n.k", B(ts[0].Id == $"DD-{tbl.Id}" && ts[1].Id == $"DD-{tbl.Id}.1" && FurnitureFamilies.BaseId(ts[3].Id) == $"DD-{tbl.Id}"), 1, 0);
+        tbl.Width = 2.0;
+        var top = FurnitureFamilies.Solids(p, tbl).First(x => x.Name.EndsWith("Mặt bàn"));
+        check("KT đổi rộng 2,0 m → mặt bàn dựng lại 2,0 m", top.Profile.Max(q => q[0]) - top.Profile.Min(q => q[0]), 2.0, 1e-9);
+        check("KT mặt bàn cao 0,75", top.Origin.Z + top.Depth - ModelSolids.StoryZ(p, "T2A"), 0.75, 1e-9);
+        var up = Library3D.Place(p, lib.First(i => i.Id == "HO/Tủ bếp trên"), "T2A", 4, 1);
+        check("KT tủ bếp trên treo cao 1,5 m", FurnitureFamilies.Solids(p, up).Min(x => x.Origin.Z) - ModelSolids.StoryZ(p, "T2A"), 1.5, 1e-9);
+        var bed = Library3D.Place(p, lib.First(i => i.Id == "HO/Giường đôi"), "T2A", 3, 3, 90);
+        var head = FurnitureFamilies.Solids(p, bed).First(x => x.Name.EndsWith("Đầu giường"));
+        // xoay 90°: lưng (−y địa phương) quay về +x thế giới → đầu giường ở phía x lớn
+        double hx = head.Origin.X + head.XDir.X * head.Profile.Average(q => q[0]) + head.YDir.X * head.Profile.Average(q => q[1]);
+        check("KT giường xoay 90°: đầu giường ở phía +x", B(hx > 3 + 0.9), 1, 0);
+        var wc = Library3D.Place(p, lib.First(i => i.Id == "HO/Bồn cầu"), "T2A", 1, 1);
+        check("KT bồn cầu thuộc bộ môn điện nước", B(wc.Discipline == Discipline.DienNuoc), 1, 0);
+        var all3 = ModelSolids.Build(p);
+        check("KT khối 3D có chi tiết họ tham số", all3.Count(x => FurnitureFamilies.BaseId(x.Id) == $"DD-{bed.Id}"), 4, 0);
+        var dd = all3.Where(x => x.Id.StartsWith("DD-")).ToList();
+        check("KT mã khối đồ đạc không trùng", dd.Select(x => x.Id).Distinct().Count(), dd.Count, 0);
+
         // ================= 6. Mô hình SketchUp → mặt bằng =================
         var m = HouseMesh();
         check("KT lưới: trục đứng Z", MeshToPlan.GuessUpAxis(m), 2, 0);
@@ -178,6 +204,44 @@ public static class ArchDetailTests
         check("KT mặt bằng tầng 1 có cột", B(d.Floors.Count > 0 && d.Floors[0].Columns.Count >= 1), 1, 0);
         check("KT mặt bằng có cửa đi + cửa sổ", d.Floors.Sum(f => f.Openings.Count), 2, 0);
         check("KT tường dày 0,22", B(d.Floors.Count > 0 && d.Floors[0].Walls.Any(x => Math.Abs(x.Thickness - 0.22) < 0.02)), 1, 0);
+        check("KT lưới: vùng sàn tầng 1 + tầng 2 (có lỗ thang) ≥ 3 vòng", B(mp.FloorRegions >= 3), 1, 0);
+        check("KT lưới: 1 cầu thang", mp.Stairs, 1, 0);
+        check("KT bậc thang không thành tường giả", B(d.Floors.Count > 0 && !d.Floors[0].Walls.Any(x => x.Ax > 6.05 + 0 && x.Ax < 6.95 && x.Bx > 6.05 && x.Bx < 6.95 && x.Ay > 1.05 && x.By < 3.45)), 1, 0);
+        check("KT mặt bằng tầng 1 có vùng cầu thang", B(d.Floors.Count > 0 && d.Floors[0].Zones.Any(zn => zn.Kind == RoomKind.Stair)), 1, 0);
+        check("KT mặt bằng tầng 2 có vùng sàn ban công / lỗ thang", B(d.Floors.Count > 1 && d.Floors[1].SlabRegions.Count >= 2 && d.Floors[1].SlabRegions.Any(r => r.IsOpening)), 1, 0);
+        check("KT nhà mái bằng: không có mái dốc", B(mp.Roof == null), 1, 0);
+        // nhà 1 tầng mái 2 dốc (không có sàn mái): diềm +3,0 thành đỉnh tầng, mái i = 1,2/3 = 40 %
+        var g1 = GableHouseMesh();
+        var gp = MeshToPlan.Build(g1, new MeshPlanOptions());
+        check("KT mái dốc: nhận mái 2 dốc", B(gp.Roof is { Shape: RoofShape.HaiMai }), 1, 0);
+        check("KT mái dốc: độ dốc 40 %", gp.Roof?.SlopePercent ?? 0, 40, 0.5);
+        check("KT mái dốc: diềm làm đỉnh tầng 1 → 2 cao độ", gp.Levels.Count, 2, 0);
+        check("KT mái dốc: chiều cao tầng 3,0", gp.Heights.FirstOrDefault(), 3.0, 1e-6);
+    }
+
+    // ---- nhà 1 tầng 8 × 6 m, tường 220 cao 3,0, mái 2 dốc nóc dọc X ở y = 3, cao nóc +4,2 (không có sàn mái) ----
+    private static RawMesh GableHouseMesh()
+    {
+        var m = new RawMesh();
+        void Box(double x0, double y0, double z0, double x1, double y1, double z1)
+        {
+            int b = m.V.Count;
+            foreach (var (x, y, z) in new[] { (x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0), (x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1) })
+                m.V.Add(new[] { x, y, z });
+            int[][] q = { new[] { 0, 2, 1 }, new[] { 0, 3, 2 }, new[] { 4, 5, 6 }, new[] { 4, 6, 7 }, new[] { 0, 1, 5 }, new[] { 0, 5, 4 },
+                          new[] { 1, 2, 6 }, new[] { 1, 6, 5 }, new[] { 2, 3, 7 }, new[] { 2, 7, 6 }, new[] { 3, 0, 4 }, new[] { 3, 4, 7 } };
+            foreach (var t in q) m.F.Add(new[] { b + t[0], b + t[1], b + t[2] });
+        }
+        void Quad(double[] a, double[] b, double[] c, double[] d)
+        {
+            int i = m.V.Count; m.V.Add(a); m.V.Add(b); m.V.Add(c); m.V.Add(d);
+            m.F.Add(new[] { i, i + 1, i + 2 }); m.F.Add(new[] { i, i + 2, i + 3 });
+        }
+        Box(0, 0, -0.1, 8, 6, 0);
+        Box(0, 0, 0, 8, 0.22, 3); Box(0, 5.78, 0, 8, 6, 3); Box(0, 0.22, 0, 0.22, 5.78, 3); Box(7.78, 0.22, 0, 8, 5.78, 3);
+        Quad(new[] { 0.0, 0, 3 }, new[] { 8.0, 0, 3 }, new[] { 8.0, 3, 4.2 }, new[] { 0.0, 3, 4.2 });   // mái trước (pháp tuyến −Y, +Z)
+        Quad(new[] { 8.0, 6, 3 }, new[] { 0.0, 6, 3 }, new[] { 0.0, 3, 4.2 }, new[] { 8.0, 3, 4.2 });   // mái sau
+        return m;
     }
 
     // ---- nhà 2 tầng 8 × 6 m dựng bằng khối hộp như SketchUp: sàn 0 / 3,6 / 6,9 (dày 0,1, mặt trên đúng cao độ),
@@ -194,7 +258,13 @@ public static class ArchDetailTests
                           new[] { 1, 2, 6 }, new[] { 1, 6, 5 }, new[] { 2, 3, 7 }, new[] { 2, 7, 6 }, new[] { 3, 0, 4 }, new[] { 3, 4, 7 } };
             foreach (var t in q) m.F.Add(new[] { b + t[0], b + t[1], b + t[2] });
         }
-        foreach (double z in new[] { 0.0, 3.6, 6.9 }) Box(0, 0, z - 0.1, 8, 6, z);
+        Box(0, 0, -0.1, 8, 6, 0);
+        // sàn tầng 2 có lỗ thang x 6…7, y 1…3,5 + ban công nhô ra y −1,2…0, x 2…6
+        Box(0, 0, 3.5, 6, 6, 3.6); Box(7, 0, 3.5, 8, 6, 3.6); Box(6, 0, 3.5, 7, 1, 3.6); Box(6, 3.5, 3.5, 7, 6, 3.6);
+        Box(2, -1.2, 3.5, 6, 0, 3.6);
+        Box(0, 0, 6.8, 8, 6, 6.9);
+        // cầu thang 1 vế: 19 bậc (mặt bậc mỏng 4 cm) cao 0,18 m, sâu 0,13 m trong ô x 6…7, y 1…3,5
+        for (int k = 1; k <= 19; k++) { double zt = 0.18 * k * 3.6 / 3.42; Box(6, 1 + (k - 1) * 0.13, zt - 0.04, 7, 1 + k * 0.13, zt); }
         const double t = 0.22;
         foreach (var (z0, z1, front) in new[] { (0.0, 3.5, 1), (3.6, 6.8, 2) })
         {

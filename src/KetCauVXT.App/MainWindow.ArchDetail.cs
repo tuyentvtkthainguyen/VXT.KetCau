@@ -403,6 +403,27 @@ public partial class MainWindow
         planCanvas.Children.Add(new Shapes.Line { X1 = a.X, Y1 = a.Y, X2 = b.X, Y2 = b.Y, Stroke = new SolidColorBrush(col), StrokeThickness = 2.5, ToolTip = tip });
     }
 
+    /// <summary>Sửa kích thước / cao độ / góc xoay đồ đạc (họ tham số dựng lại hình theo kích thước mới).</summary>
+    private void EditFurnitureSize(FurnitureItem fi)
+    {
+        if (fi == null) return;
+        var f = new MiniForm(this, "Thuộc tính đồ đạc – " + fi.Name);
+        f.Text("name", "Tên", fi.Name);
+        f.Num("w", "Rộng (m)", fi.Width); f.Num("d", "Sâu (m)", fi.Depth); f.Num("h", "Cao (m)", fi.Height);
+        f.Num("el", "Cao độ đáy so với sàn (m)", fi.Elevation);
+        f.Num("rot", "Góc xoay (độ)", fi.Rotation);
+        f.Hint(fi.Family != null ? $"Họ tham số \"{fi.Family}\": chân, mặt, đầu giường, tay sofa… tự dựng lại theo kích thước mới." : "Khối thư viện nhập từ SketchUp / Revit: hiển thị theo khối bao.");
+        if (!f.Run("Áp dụng")) return;
+        string snap = Snapshot();
+        fi.Name = string.IsNullOrWhiteSpace(f.S("name")) ? fi.Name : f.S("name").Trim();
+        fi.Width = Math.Clamp(f.D("w", fi.Width), 0.05, 20); fi.Depth = Math.Clamp(f.D("d", fi.Depth), 0.05, 20); fi.Height = Math.Clamp(f.D("h", fi.Height), 0.02, 10);
+        fi.Elevation = f.D("el", fi.Elevation);
+        fi.Rotation = FurnitureSnap.Norm(f.D("rot", fi.Rotation));
+        PushUndo(snap);
+        FurnishChanged();
+        SetStatus($"{fi.Name}: {fi.Width:0.00} × {fi.Depth:0.00} × {fi.Height:0.00} m.");
+    }
+
     // ==================================================================
     // Chép kiến trúc sang tầng, khối lượng
     // ==================================================================
@@ -502,7 +523,20 @@ public partial class MainWindow
             string msg = $"Đọc được {res.Levels.Count - 1} tầng + mái, chiều cao {string.Join(" / ", hs.Select(h => h.ToString("0.00", Inv)))} m.\n"
                          + string.Join("\n", res.Info) + $"\n\nĐã ghi mặt bằng cắt: {dxf}\n\nMở bảng nhận diện kiến trúc để triển khai kết cấu?";
             if (MessageBox.Show(this, msg, AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes) return;
-            ImportArchWith(d => d.Preload(new[] { dxf }, hs[0], typical, null));
+            var hint = res.Roof;
+            ImportArchWith(d => d.Preload(new[] { dxf }, hs[0], typical, null), hint == null ? null : () =>
+            {
+                // mái dốc đọc từ mô hình → mái theo đường bao sàn tầng trên cùng
+                var top = _p.Stories.OrderBy(s => s.Elevation).LastOrDefault();
+                if (top == null) return;
+                string snap = Snapshot();
+                var outline = ArchDetail.FootprintOutline(_p, top.Name);
+                var r = outline != null && outline.Count >= 4
+                    ? ArchDetail.AddRoof(_p, top.Name, outline, hint.Shape, hint.SlopePercent, 0.5, "Mái (từ mô hình 3D)")
+                    : ArchDetail.AddRoof(_p, top.Name, hint.X0, hint.Y0, hint.X1, hint.Y1, hint.Shape, hint.SlopePercent, 0, "Mái (từ mô hình 3D)");
+                r.SlabLoad = ArchDetailLoads.DefaultRoofLoad(r.Type);
+                ArchDetailChanged($"Đã thêm mái dốc từ mô hình: i = {r.SlopePercent:0}%, {RoofGeometry.SlopedArea(r):0} m² trên sàn {top.Name} (sửa loại mái / tải ở BIM → Mái…).", snap);
+            });
         }
         catch (Exception ex) { Mouse.OverrideCursor = null; ShowError("Không đọc được mô hình 3D", ex); }
         finally { Mouse.OverrideCursor = null; }

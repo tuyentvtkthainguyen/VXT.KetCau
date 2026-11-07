@@ -229,6 +229,8 @@ public static class ModelSolids
         }
         foreach (var f in arch.Furniture)
         {
+            var famSolids = FurnitureFamilies.Solids(p, f);   // họ tham số: dựng từng chi tiết
+            if (famSolids != null) { foreach (var fs in famSolids) yield return fs; continue; }
             double ang = f.Rotation * Math.PI / 180;
             var x = new Vec3(Math.Cos(ang), Math.Sin(ang), 0);
             yield return new Solid

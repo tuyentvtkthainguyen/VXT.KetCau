@@ -92,6 +92,9 @@ public class FurnitureItem
     public double Height { get; set; } = 0.8;
     /// <summary>Độ cao đáy so với sàn (m)</summary>
     public double Elevation { get; set; }
+    /// <summary>Họ tham số (Model/FurnitureFamilies.cs) – hình 3D dựng lại theo Rộng × Sâu × Cao; null = khối bao thư viện</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string Family { get; set; }
     /// <summary>Bộ môn sở hữu: Kiến trúc (nội thất) hoặc Điện nước (thiết bị nhập từ Revit khi chưa có thư viện điện nước)</summary>
     public Discipline Discipline { get; set; } = Discipline.KienTruc;
     /// <summary>Mã ở phần mềm nguồn (Revit UniqueId)</summary>

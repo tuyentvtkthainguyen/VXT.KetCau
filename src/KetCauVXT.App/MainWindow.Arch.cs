@@ -11,7 +11,7 @@ public partial class MainWindow
     private void MnuImportArch_Click(object sender, RoutedEventArgs e) => ImportArchWith(null);
 
     /// <summary>Hộp thoại nhập bản vẽ kiến trúc → triển khai kết cấu. preload: nạp sẵn file / chiều cao tầng (vd. mặt bằng cắt từ mô hình SketchUp).</summary>
-    private async void ImportArchWith(Action<ArchImportDialog> preload)
+    private async void ImportArchWith(Action<ArchImportDialog> preload, Action after = null)
     {
         if (_busy) return;
         ApplyUiToProject(false);
@@ -31,6 +31,7 @@ public partial class MainWindow
             SetStatus($"Đã triển khai kết cấu từ bản vẽ kiến trúc: {rep.Columns} cột, {rep.Beams} dầm, {rep.Slabs} ô sàn – cần chạy lại phân tích.");
             MessageBox.Show(this, rep.ToString(), "Kết quả triển khai kết cấu từ bản vẽ kiến trúc", MessageBoxButton.OK,
                 rep.Warnings.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            try { after?.Invoke(); } catch (Exception ex2) { ShowError("Bước bổ sung sau khi triển khai", ex2); }
             if (MessageBox.Show(this, "Tiết diện hiện là kích thước sơ bộ.\n\nChạy phân tích + thiết kế và TỰ TĂNG tiết diện các dầm, cột, sàn không đạt (lặp tới khi đạt)?",
                     AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 await RunAutoResize();

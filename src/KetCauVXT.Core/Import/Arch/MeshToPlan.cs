@@ -39,10 +39,15 @@ public sealed class MeshPlanResult
     public List<double> Levels { get; } = new();
     public List<DxfEntity> Entities { get; } = new();
     public List<string> Info { get; } = new();
-    public int Walls, Columns, Doors, Windows;
+    public int Walls, Columns, Doors, Windows, FloorRegions, Stairs;
+    /// <summary>Mái dốc nhận từ các mặt nghiêng phía trên (null = không có)</summary>
+    public RoofHint Roof { get; set; }
     /// <summary>Chiều cao các tầng (m)</summary>
     public List<double> Heights => Levels.Zip(Levels.Skip(1), (a, b) => Math.Round(b - a, 3)).ToList();
 }
+
+/// <summary>Mái dốc đọc từ mô hình: hộp bao (m, toạ độ mô hình), độ dốc (%), hình mái theo số hướng mặt nghiêng, cao độ diềm.</summary>
+public sealed record RoofHint(double X0, double Y0, double X1, double Y1, double SlopePercent, RoofShape Shape, double EaveZ, double Area);
 
 public static class MeshToPlan
 {
@@ -203,8 +208,11 @@ public static class MeshToPlan
         o ??= new MeshPlanOptions();
         var res = new MeshPlanResult();
         var levels = DetectLevels(m, o);
-        res.Levels.AddRange(levels);
         if (m.V.Count == 0) { res.Info.Add("Mô hình rỗng."); return res; }
+        res.Roof = DetectRoof(m, levels);
+        // nhà mái dốc không có sàn mái: lấy cao độ diềm mái làm đỉnh tầng trên cùng
+        if (res.Roof != null && (levels.Count == 0 || res.Roof.EaveZ > levels[^1] + 2.0)) levels.Add(Math.Round(res.Roof.EaveZ, 3));
+        res.Levels.AddRange(levels);
         if (levels.Count < 2)
         {
             res.Info.Add($"Chỉ tìm được {levels.Count} mặt sàn – cần ít nhất sàn tầng 1 và sàn mái (mặt ngang hướng lên ≥ {o.MinFloorArea:0.#} m²).");
@@ -216,7 +224,22 @@ public static class MeshToPlan
         {
             double z = levels[k], h = levels[k + 1] - z, dx = k * (W + gap);
             double zc = z + Math.Min(o.CutHeight, h * 0.45);
-            var cut = Merge(Slice(m, zc));
+            // ---- sàn (kể ban công), lỗ sàn ở cao độ z ----
+            foreach (var loop in FloorLoops(m, z))
+            {
+                res.Entities.Add(new DxfEntity { Type = DxfEntityType.Polyline, Layer = "SAN", Closed = true, Points = loop.Select(q => (q.X + dx, q.Y)).ToList(), SourceType = "LWPOLYLINE" });
+                res.FloorRegions++;
+            }
+            // ---- cầu thang: nhiều mặt bậc nằm ngang nhỏ giữa hai sàn ----
+            var stairs = StairBoxes(m, z, levels[k + 1]);
+            foreach (var b in stairs)
+            {
+                res.Entities.Add(new DxfEntity { Type = DxfEntityType.Polyline, Layer = "THANG", Closed = true,
+                    Points = new() { (b.X0 + dx, b.Y0), (b.X1 + dx, b.Y0), (b.X1 + dx, b.Y1), (b.X0 + dx, b.Y1) }, SourceType = "LWPOLYLINE" });
+                res.Stairs++;
+            }
+            bool InStair(double x, double y) => stairs.Any(b => x > b.X0 - 0.05 && x < b.X1 + 0.05 && y > b.Y0 - 0.05 && y < b.Y1 + 0.05);
+            var cut = Merge(Slice(m, zc).Where(q => !InStair((q.X1 + q.X2) / 2, (q.Y1 + q.Y2) / 2)));
             var low = Merge(Slice(m, z + Math.Min(0.3, h * 0.1)));
             var high = h >= 2.9 ? Merge(Slice(m, z + Math.Min(2.6, h - 0.25))) : new List<LineGroup>();
             // ---- cột: vòng kín 4 đoạn ngắn ----
@@ -292,8 +315,116 @@ public static class MeshToPlan
             });
             res.Info.Add($"Tầng {k + 1}: sàn +{z:0.000}, cao {h:0.00} m, cắt ở +{zc - z:0.00} m.");
         }
-        res.Info.Add($"Mái +{levels[^1]:0.000}. Tổng: {res.Walls} nét tường, {res.Columns} cột, {res.Doors} cửa đi, {res.Windows} cửa sổ.");
+        res.Info.Add($"Mái +{levels[^1]:0.000}. Tổng: {res.Walls} nét tường, {res.Columns} cột, {res.Doors} cửa đi, {res.Windows} cửa sổ, {res.FloorRegions} vùng sàn / lỗ sàn, {res.Stairs} cầu thang.");
+        if (res.Roof is { } rf) res.Info.Add($"Mái dốc: {(rf.Shape == RoofShape.HaiMai ? "2 dốc" : rf.Shape == RoofShape.MotMai ? "1 dốc" : "4 dốc")}, i = {rf.SlopePercent:0}%, diềm +{rf.EaveZ:0.00}, {rf.Area:0} m² nghiêng.");
         return res;
+    }
+
+    private static bool InTri(double px, double py, Vec3 a, Vec3 b, Vec3 c)
+    {
+        double d1 = (px - b.X) * (a.Y - b.Y) - (a.X - b.X) * (py - b.Y);
+        double d2 = (px - c.X) * (b.Y - c.Y) - (b.X - c.X) * (py - c.Y);
+        double d3 = (px - a.X) * (c.Y - a.Y) - (c.X - a.X) * (py - a.Y);
+        bool neg = d1 < 0 || d2 < 0 || d3 < 0, pos = d1 > 0 || d2 > 0 || d3 > 0;
+        return !(neg && pos);
+    }
+
+    /// <summary>Đường bao vùng sàn ở cao độ z (mặt ngang hướng lên trong ±6 cm), lưới 0,1 m: vòng ngoài (sàn, ban công) + lỗ (thang, giếng trời).</summary>
+    public static List<List<(double X, double Y)>> FloorLoops(RawMesh m, double z, double h = 0.1)
+    {
+        var tris = new List<(Vec3 a, Vec3 b, Vec3 c)>();
+        foreach (var f in m.F)
+        {
+            var a = P(m, f[0]); var b = P(m, f[1]); var c = P(m, f[2]);
+            var n = (b - a).Cross(c - a);
+            if (n.Length < 1e-9 || n.Z / n.Length < 0.95) continue;
+            if (Math.Abs((a.Z + b.Z + c.Z) / 3 - z) > 0.06) continue;
+            tris.Add((a, b, c));
+        }
+        if (tris.Count == 0) return new();
+        double x0 = tris.Min(t => Math.Min(t.a.X, Math.Min(t.b.X, t.c.X))) - h, y0 = tris.Min(t => Math.Min(t.a.Y, Math.Min(t.b.Y, t.c.Y))) - h;
+        double x1 = tris.Max(t => Math.Max(t.a.X, Math.Max(t.b.X, t.c.X))) + h, y1 = tris.Max(t => Math.Max(t.a.Y, Math.Max(t.b.Y, t.c.Y))) + h;
+        int nx = (int)Math.Ceiling((x1 - x0) / h), ny = (int)Math.Ceiling((y1 - y0) / h);
+        if ((long)nx * ny > 6_000_000) return new();
+        var cells = new bool[nx, ny];
+        foreach (var (a, b, c) in tris)
+        {
+            int i0 = Math.Max(0, (int)((Math.Min(a.X, Math.Min(b.X, c.X)) - x0) / h)), i1 = Math.Min(nx - 1, (int)((Math.Max(a.X, Math.Max(b.X, c.X)) - x0) / h));
+            int j0 = Math.Max(0, (int)((Math.Min(a.Y, Math.Min(b.Y, c.Y)) - y0) / h)), j1 = Math.Min(ny - 1, (int)((Math.Max(a.Y, Math.Max(b.Y, c.Y)) - y0) / h));
+            for (int i = i0; i <= i1; i++)
+                for (int j = j0; j <= j1; j++)
+                    if (!cells[i, j] && InTri(x0 + (i + 0.5) * h, y0 + (j + 0.5) * h, a, b, c)) cells[i, j] = true;
+        }
+        return RasterOutline.Loops(cells, x0, y0, h).Where(l => Math.Abs(RasterOutline.SignedArea(l)) >= 0.5).ToList();
+    }
+
+    /// <summary>Cầu thang giữa hai sàn: cụm ≥ 5 mặt bậc (mặt ngang hướng lên 0,1…3 m²) ở ≥ 5 cao độ khác nhau. Trả hộp bao từng cụm.</summary>
+    public static List<(double X0, double Y0, double X1, double Y1)> StairBoxes(RawMesh m, double z0, double z1)
+    {
+        var steps = new List<(double X0, double Y0, double X1, double Y1, double Z)>();
+        var byKey = new Dictionary<long, List<int>>();
+        foreach (var f in m.F)
+        {
+            var a = P(m, f[0]); var b = P(m, f[1]); var c = P(m, f[2]);
+            var n = (b - a).Cross(c - a);
+            if (n.Length < 1e-9 || n.Z / n.Length < 0.95) continue;
+            double z = (a.Z + b.Z + c.Z) / 3;
+            if (z < z0 + 0.1 || z > z1 - 0.1) continue;
+            steps.Add((Math.Min(a.X, Math.Min(b.X, c.X)), Math.Min(a.Y, Math.Min(b.Y, c.Y)), Math.Max(a.X, Math.Max(b.X, c.X)), Math.Max(a.Y, Math.Max(b.Y, c.Y)), z));
+        }
+        int N = steps.Count;
+        if (N < 5 || N > 6000) return new();
+        var parent = Enumerable.Range(0, N).ToArray();
+        int Find(int x) { while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+        for (int i = 0; i < N; i++)
+            for (int j = i + 1; j < N; j++)
+            {
+                var A = steps[i]; var Bq = steps[j];
+                if (A.X0 - 0.3 <= Bq.X1 && Bq.X0 - 0.3 <= A.X1 && A.Y0 - 0.3 <= Bq.Y1 && Bq.Y0 - 0.3 <= A.Y1 && Math.Abs(A.Z - Bq.Z) < 0.45)
+                    parent[Find(i)] = Find(j);
+            }
+        var res = new List<(double, double, double, double)>();
+        foreach (var g in Enumerable.Range(0, N).GroupBy(Find))
+        {
+            var st = g.Select(i => steps[i]).ToList();
+            int levels = st.Select(q => Math.Round(q.Z / 0.05)).Distinct().Count();
+            if (levels < 5) continue;
+            double bx0 = st.Min(q => q.X0), by0 = st.Min(q => q.Y0), bx1 = st.Max(q => q.X1), by1 = st.Max(q => q.Y1);
+            double area = (bx1 - bx0) * (by1 - by0);
+            if (area < 1.5 || area > 40) continue;
+            res.Add((bx0, by0, bx1, by1));
+        }
+        return res;
+    }
+
+    /// <summary>Mái dốc: mặt nghiêng hướng lên (dốc 15…70 %… góc 8°…72°) có tâm cao hơn sàn cao nhất − 0,5 m, tổng ≥ 5 m².</summary>
+    public static RoofHint DetectRoof(RawMesh m, List<double> levels)
+    {
+        double zTop = levels.Count > 0 ? levels[^1] - 0.5 : double.NegativeInfinity;
+        var faces = new List<(double area, double nz, double az, Vec3 a, Vec3 b, Vec3 c)>();
+        foreach (var f in m.F)
+        {
+            var a = P(m, f[0]); var b = P(m, f[1]); var c = P(m, f[2]);
+            var n = (b - a).Cross(c - a);
+            double L = n.Length;
+            if (L < 1e-9) continue;
+            double nz = n.Z / L;
+            if (nz < 0.3 || nz > 0.99) continue;
+            if ((a.Z + b.Z + c.Z) / 3 < zTop) continue;
+            faces.Add((L / 2, nz, Math.Atan2(n.Y, n.X), a, b, c));
+        }
+        double tot = faces.Sum(q => q.area);
+        if (tot < 5) return null;
+        var pts = faces.SelectMany(q => new[] { q.a, q.b, q.c }).ToList();
+        // độ dốc theo diện tích (trung vị)
+        var bySlope = faces.OrderBy(q => q.nz).ToList();
+        double acc = 0, nzMed = bySlope[0].nz;
+        foreach (var q in bySlope) { acc += q.area; if (acc >= tot / 2) { nzMed = q.nz; break; } }
+        double slope = Math.Tan(Math.Acos(Math.Clamp(nzMed, -1, 1))) * 100;
+        var dirs = faces.GroupBy(q => (int)Math.Round(q.az / (Math.PI / 4)) & 7).Where(g => g.Sum(q => q.area) >= 0.1 * tot).Count();
+        var shape = dirs <= 1 ? RoofShape.MotMai : dirs == 2 ? RoofShape.HaiMai : RoofShape.BonMai;
+        double eave = pts.Min(q => q.Z);
+        return new RoofHint(pts.Min(q => q.X), pts.Min(q => q.Y), pts.Max(q => q.X), pts.Max(q => q.Y), Math.Round(slope, 1), shape, eave, tot);
     }
 
     /// <summary>Ghi DXF tối giản (R2000, đơn vị mm, $INSUNITS = 4): LINE, LWPOLYLINE, TEXT. Chữ tiếng Việt mã hoá \U+XXXX.</summary>

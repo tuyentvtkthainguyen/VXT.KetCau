@@ -176,7 +176,7 @@ public partial class MainWindow
         if (hit == null) { if (_fnSel != null) { _fnSel = null; RedrawPlan(); } return false; }
         _fnSel = hit;
         RedrawPlan();
-        SetStatus($"Đã chọn {hit.Name}: bấm số kích thước tạm để sửa khoảng cách · R / Space xoay 90° · Delete xoá · Esc bỏ chọn.");
+        SetStatus($"Đã chọn {hit.Name}: bấm số kích thước tạm để sửa khoảng cách · E sửa kích thước · R / Space xoay 90° · Delete xoá · Esc bỏ chọn.");
         return true;
     }
 
@@ -195,6 +195,7 @@ public partial class MainWindow
         if (key == Key.Escape) { _fnSel = null; RedrawPlan(); SetStatus(ModeHint(_mode)); return true; }
         if (key == Key.Delete) { DeleteFurniture(_fnSel); _fnSel = null; return true; }
         if (key == Key.R) { RotateFurniture(_fnSel); return true; }
+        if (key == Key.E || key == Key.Enter) { EditFurnitureSize(_fnSel); return true; }
         return false;
     }
 
@@ -425,8 +426,9 @@ public partial class MainWindow
         {
             bool isFurn = so.Id.StartsWith("DD-"), isMep = so.Discipline == Discipline.DienNuoc && !isFurn;
             if (!isFurn && !isMep) continue;
-            if (!Show3D(so.Id, so.Discipline)) continue;
-            var pm = so.Id == _v3SelId || HvacSame3D(so.Id) ? sel : isMep ? mep : furn;
+            string baseId = FurnitureFamilies.BaseId(so.Id);   // họ tham số: nhiều chi tiết cùng một đồ đạc
+            if (!Show3D(baseId, so.Discipline)) continue;
+            var pm = baseId == _v3SelId || HvacSame3D(so.Id) ? sel : isMep ? mep : furn;
             pm.Begin(so);
             AddPrism(pm.Mesh, so);
         }
@@ -465,7 +467,7 @@ public partial class MainWindow
     private void Select3DSolid(Solid so)
     {
         if (HasSelection) ClearSelection();
-        _v3SelId = so?.Id;
+        _v3SelId = FurnitureFamilies.BaseId(so?.Id);
         Build3D();
         Update3DBar();
         if (so != null) SetStatus($"3D: đã chọn {so.Name} ({so.Category}) – kéo để dời trên mặt sàn · Xoay 90° · Cao độ… · Ẩn / Cô lập · Delete xoá.");

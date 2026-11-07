@@ -149,8 +149,10 @@ public static class Library3D
     /// <summary>Mọi mục trong thư viện (lỗi đọc file nào thì bỏ qua file đó).</summary>
     public static List<LibraryItem> LoadAll(string folder = null)
     {
+        bool builtIn = folder == null;
         folder ??= DefaultFolder;
         var res = new List<LibraryItem>();
+        if (builtIn) res.AddRange(FurnitureFamilies.AsLibraryItems());   // họ tham số có sẵn
         if (!Directory.Exists(folder)) return res;
         foreach (var f in Directory.GetFiles(folder, "*.vxtlib.json", SearchOption.AllDirectories))
         {
@@ -199,6 +201,10 @@ public static class Library3D
             Story = story, LibraryId = it.Id, Name = it.Name, Category = it.Category, X = x, Y = y, Rotation = rotationDeg,
             Width = Math.Max(0.05, it.Width), Depth = Math.Max(0.05, it.Depth), Height = Math.Max(0.05, it.Height)
         };
+        if (it.Id != null && it.Id.StartsWith(FurnitureFamilies.IdPrefix) && FurnitureFamilies.Find(it.Id[FurnitureFamilies.IdPrefix.Length..]) is { } fam)
+        {
+            f.Family = fam.Name; f.Elevation = fam.Elevation; f.Discipline = fam.Discipline;
+        }
         p.Arch.Furniture.Add(f);
         return f;
     }
