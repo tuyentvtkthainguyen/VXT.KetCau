@@ -659,6 +659,8 @@ Console.WriteLine("95. Điện nước theo bảng TCVN (9206/9207, IEC 60364-5-
 TcvnMepTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("96. Điện nước đợt 5: khoảng hở ống gen, Δt theo tỉnh, LPD, ống đứng, bể tự hoại");
 MepRound5Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("97. Lưới trục + lưới cột + chiều cao tầng trên một hộp thoại");
+GridColumnTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

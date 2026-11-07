@@ -416,6 +416,17 @@ public partial class MainWindow : Window
     private void BtnBuild_Click(object sender, RoutedEventArgs e) => BuildFromGridUi(true);
     private void MnuBuildGrid_Click(object sender, RoutedEventArgs e) => BuildFromGridUi(true);
 
+    /// <summary>Tiết diện, tải mặc định từ tab Công trình cho việc sinh khung theo lưới.</summary>
+    private ModelBuilder.GridFrameOptions GridOptionsFromUi() => new()
+    {
+        ColumnSection = cbColSec.SelectedItem as string ?? "C22x22",
+        BeamSectionX = cbBeamXSec.SelectedItem as string ?? "D22x30",
+        BeamSectionY = cbBeamYSec.SelectedItem as string ?? "D22x30",
+        SlabSection = cbSlabSec.SelectedItem as string ?? "S100",
+        FinishLoad = Num(txtFinish, 1.2), LiveLoad = Num(txtLive, 1.5), RoofLiveLoad = Num(txtRoofLive, 0.75),
+        PerimeterWallLoad = Num(txtWall, 0), FixedBase = chkFixedBase.IsChecked == true
+    };
+
     private void BuildFromGridUi(bool confirm)
     {
         if (_busy) return;
@@ -433,15 +444,7 @@ public partial class MainWindow : Window
             ImportGeometry.ClearModel(_p);
             ModelBuilder.SetGrid(_p, sx, sy);
             ModelBuilder.SetStories(_p, hs, Num(txtBaseElev, 0));
-            var o = new ModelBuilder.GridFrameOptions
-            {
-                ColumnSection = cbColSec.SelectedItem as string ?? "C22x22",
-                BeamSectionX = cbBeamXSec.SelectedItem as string ?? "D22x30",
-                BeamSectionY = cbBeamYSec.SelectedItem as string ?? "D22x30",
-                SlabSection = cbSlabSec.SelectedItem as string ?? "S100",
-                FinishLoad = Num(txtFinish, 1.2), LiveLoad = Num(txtLive, 1.5), RoofLiveLoad = Num(txtRoofLive, 0.75),
-                PerimeterWallLoad = Num(txtWall, 0), FixedBase = chkFixedBase.IsChecked == true
-            };
+            var o = GridOptionsFromUi();
             ImportGeometry.EnsurePatterns(_p);
             ModelBuilder.BuildFromGrid(_p, o);
             _res = null; _design = null; _sel = null;

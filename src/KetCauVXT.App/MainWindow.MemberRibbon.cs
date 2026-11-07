@@ -215,7 +215,9 @@ public partial class MainWindow
     {
         w.Children.Insert(0, SmallBtn("Lấy lưới từ mặt bằng CAD…", () => { try { BtnGridFromPlan_Click(this, new RoutedEventArgs()); } catch (Exception ex) { ShowError("Lấy lưới", ex); } },
             "Mở mặt bằng DWG/DXF/ảnh để lấy trục, bước cột, cột, tường (như nút 'Tải mặt bằng để lấy kích thước…')", out _));
-        w.Children.Insert(1, RSep());
+        w.Children.Insert(1, SmallBtn("Lưới trục + cột + tầng…", OpenGridColumnDialog,
+            "Một bảng: bước trục X/Y, tên trục, đặt / bỏ cột tại từng giao điểm, chiều cao từng tầng (đổi chiều cao giữ nguyên mô hình)", out _));
+        w.Children.Insert(2, RSep());
     }
 
     private void BuildColumnTab(WrapPanel w)

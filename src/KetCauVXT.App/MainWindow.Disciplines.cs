@@ -183,6 +183,7 @@ public partial class MainWindow
     {
         RvTab("BIM",
             RvGroup("Cao độ",
+                RvBtn("Lưới trục + cột + tầng…", "", "Một bảng: lưới trục mặt bằng, lưới cột (giao điểm có / không cột), chiều cao từng tầng – đổi chiều cao tầng giữ nguyên mô hình", OpenGridColumnDialog),
                 RvBtn("Tạo cao độ tầng…", "", "Móng → nền tầng 1 → sàn tầng 2, 3… → mái (tum): số tầng, chiều cao, chiều sâu móng, sinh khung + sàn", OpenLevelWizard),
                 RvBtn("Chèn tầng…", "", "Chèn một tầng phía trên tầng đang xem (sao dầm, sàn, nối cột), nâng các tầng trên", InsertStoryUi),
                 RvBtn("Xoá tầng", "", "Xoá tầng đang xem (dầm, sàn, tường), nối cột, hạ các tầng trên", DeleteStoryUi),
