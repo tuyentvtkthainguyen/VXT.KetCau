@@ -242,7 +242,8 @@ public partial class MainWindow
         Add("Ốp / sơn mặt tường…", CladdingUi);
         Add("Chép kiến trúc sang tầng khác…", CopyArchUi);
         Add("Khối lượng hoàn thiện kiến trúc…", ArchQtyUi);
-        Add("Nhập mô hình SketchUp / Revit (OBJ, DAE) → mặt bằng…", ImportMeshModelUi);
+        Add("Nhập mô hình SketchUp / Revit (OBJ, DAE, vxtmesh) → mặt bằng…", ImportMeshModelUi);
+        Add("Plugin SketchUp xuất sang Việt Const…", SketchUpPluginUi);
         m.Items.Add(new Separator());
         Add("Kiểm tra _va chạm", RunClashUi);
         m.Items.Add(new Separator());

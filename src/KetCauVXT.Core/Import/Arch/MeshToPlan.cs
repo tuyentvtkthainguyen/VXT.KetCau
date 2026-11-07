@@ -67,6 +67,8 @@ public static class MeshToPlan
         var m = new RawMesh();
         m.V.AddRange(it.Vertices.Select(v => new[] { v[0], v[1], v[2] }));
         m.F.AddRange(it.Faces);
+        // DAE (SketchUp: Z_UP), *.vxtmesh.json (plugin SketchUp / add-in Revit, m, Z lên): không tự đổi trục / đơn vị
+        if (ext != ".obj" && (o == null || o.UpAxis == 0)) o = new MeshPlanOptions { UpAxis = 2, Scale = 1, CutHeight = o?.CutHeight ?? 1.2, MinFloorArea = o?.MinFloorArea ?? 6 };
         return Prepare(m, o, ext == ".obj");
     }
 

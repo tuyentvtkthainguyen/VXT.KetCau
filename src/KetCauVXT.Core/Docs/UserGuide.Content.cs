@@ -710,6 +710,11 @@ public static partial class UserGuide
                 "**KL hoàn thiện KT…**: bảng khối lượng mái (m² nghiêng, tường thu hồi), trần (m²), lan can (md), phào chỉ (md), ốp / sơn (m²) theo tầng – xuất CSV.",
                 "**Nhập mô hình SketchUp / Revit…**: mô hình 3D OBJ / DAE / *.vxtmesh.json → chương trình tự tìm cao độ sàn, cắt ngang mỗi tầng ở +1,2 m lấy tường, cột (vòng kín ≤ 0,8 m), cửa đi / cửa sổ (khe hở trên tường), "
                 + "ghi bản vẽ DXF rồi mở bảng **Nhập bản vẽ kiến trúc** để nhận diện và triển khai kết cấu (cột, dầm, sàn, tải) như với bản vẽ CAD. SketchUp xuất OBJ thường \"Y lên\" – để **Tự nhận** hoặc chọn trục đứng.")
+            .Bullets("**Mái nhà chữ L, T, U**: chọn đường bao \"Theo đường bao ô sàn\" – mái chia theo khối, mái cánh chạy vào mái chính tới đường nóc (giao nóc như mái thật); tải mái chỉ dồn lên ô sàn nằm trong đường bao.",
+                "**Lan can – tải ngang** tay vịn theo TCVN 2737: nhà ở 0,3; công trình công cộng 0,8; khán đài 1,5 kN/m (hoạt tải HT, hướng ra ngoài) dồn lên dầm đỡ cùng tải đứng.",
+                "**Họ đồ đạc tham số** (Thư viện 3D, nguồn \"Họ tham số\"): bàn ăn, bàn trà, bàn làm việc, ghế, giường đôi / đơn, tủ quần áo, sofa, kệ tivi, tủ bếp dưới / trên, bàn thờ, bồn cầu, lavabo, bồn tắm – chọn đồ đạc trên mặt bằng, bấm **E** (hoặc Enter) sửa Rộng × Sâu × Cao, cao độ, góc xoay: chân bàn, đầu giường, tay sofa… tự dựng lại.",
+                "**Nhập mô hình**: nhận thêm vùng sàn, ban công, lỗ sàn (layer SAN), cầu thang (cụm mặt bậc, layer THANG) và mái dốc từ các mặt nghiêng (độ dốc, 1 / 2 / 4 dốc) – sau khi triển khai kết cấu, mái được thêm theo đường bao sàn tầng trên cùng.",
+                "**Plugin SketchUp…**: cài VietConst_SketchUp.rbz (thư mục SketchUp trong thư mục cài) bằng Window → Extension Manager → Install Extension; Extensions → Việt Const → Xuất… ghi *.vxtmesh.json (m, Z lên, theo tag) để nhập trực tiếp, không phải chọn đơn vị / trục.")
             .Tip("Dựng nhanh mô hình khối trong SketchUp (sàn, tường, cột, ô cửa) → Export OBJ → Nhập mô hình → kiểm tra mặt bằng nhận diện → triển khai kết cấu → chạy phân tích, thiết kế BTCT.");
 
         c.Sec("khoi-tao.dat-va-xem", "Đặt đồ đạc bằng bắt điểm, kích thước tạm, thao tác 3D, mặt cắt tầng và mặt cắt công trình")

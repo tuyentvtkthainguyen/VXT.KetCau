@@ -210,6 +210,13 @@ public static class ArchDetailTests
         check("KT mặt bằng tầng 1 có vùng cầu thang", B(d.Floors.Count > 0 && d.Floors[0].Zones.Any(zn => zn.Kind == RoomKind.Stair)), 1, 0);
         check("KT mặt bằng tầng 2 có vùng sàn ban công / lỗ thang", B(d.Floors.Count > 1 && d.Floors[1].SlabRegions.Count >= 2 && d.Floors[1].SlabRegions.Any(r => r.IsOpening)), 1, 0);
         check("KT nhà mái bằng: không có mái dốc", B(mp.Roof == null), 1, 0);
+        // file *.vxtmesh.json như plugin SketchUp xuất (m, Z lên, kèm Tags) → đọc lại không đổi trục
+        var hm = HouseMesh();
+        string js = Path.Combine(dir, "MoHinhSketchUp.vxtmesh.json");
+        File.WriteAllText(js, System.Text.Json.JsonSerializer.Serialize(new { Name = "Nha", Category = "Mô hình", Source = "SketchUp", Vertices = hm.V, Faces = hm.F, Tags = hm.F.Select(_ => "Tuong").ToList() }));
+        var rd = MeshToPlan.Read(js, new MeshPlanOptions());
+        check("KT plugin SketchUp: đọc json giữ Z lên (cao 7,0)", rd.V.Max(v => v[2]), 7.0, 1e-6);
+        check("KT plugin SketchUp: 3 cao độ sàn", MeshToPlan.DetectLevels(rd, new MeshPlanOptions()).Count, 3, 0);
         // nhà 1 tầng mái 2 dốc (không có sàn mái): diềm +3,0 thành đỉnh tầng, mái i = 1,2/3 = 40 %
         var g1 = GableHouseMesh();
         var gp = MeshToPlan.Build(g1, new MeshPlanOptions());

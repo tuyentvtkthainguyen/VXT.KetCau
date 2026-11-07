@@ -38,6 +38,7 @@ public partial class MainWindow
             RvBtn("Ốp / sơn tường…", "", "Vùng ốp đá, gạch thẻ, gạch men, gỗ, sơn màu nhấn trên mặt tường (trừ ô cửa)", CladdingUi),
             RvBtn("Chép KT sang tầng…", "", "Sao chép tường (kèm cửa, phào, ốp), phòng, trần, lan can, đồ đạc của tầng đang xem sang các tầng khác", CopyArchUi),
             RvBtn("KL hoàn thiện KT…", "", "Bảng khối lượng mái, trần, lan can, phào chỉ, ốp / sơn theo tầng – xuất CSV", ArchQtyUi),
+            RvBtn("Plugin SketchUp…", "", "Cài plugin SketchUp xuất mô hình sang Việt Const (*.vxtmesh.json, m, Z lên) – kèm trong bộ cài", SketchUpPluginUi),
             RvBtn("Nhập mô hình SketchUp / Revit…", "", "Mô hình 3D (OBJ, DAE, *.vxtmesh.json) → tự tìm cao độ sàn, cắt mặt bằng từng tầng (tường, cột, cửa) → triển khai kết cấu", ImportMeshModelUi));
 
     // ==================================================================
@@ -475,6 +476,20 @@ public partial class MainWindow
         dock.Children.Add(bar); dock.Children.Add(g);
         w.Content = dock;
         w.ShowDialog();
+    }
+
+    /// <summary>Hướng dẫn cài plugin SketchUp kèm theo (VietConst_SketchUp.rbz trong thư mục cài) và mở thư mục chứa.</summary>
+    private void SketchUpPluginUi()
+    {
+        string dir = Path.Combine(AppContext.BaseDirectory, "SketchUp");
+        string rbz = Path.Combine(dir, "VietConst_SketchUp.rbz");
+        string msg = "Plugin SketchUp \"Việt Const – Xuất mô hình\" xuất mô hình (m, trục Z lên) ra *.vxtmesh.json để nhập vào Việt Const.\n\n"
+                     + "Cài: SketchUp → Window → Extension Manager → Install Extension → chọn VietConst_SketchUp.rbz.\n"
+                     + "Dùng: Extensions → Việt Const → Xuất cả mô hình / phần đang chọn → lưu file → Việt Const: BIM → Nhập mô hình SketchUp / Revit….\n\n"
+                     + "Plugin chỉ ghi file trên máy, không kết nối mạng, không thu thập dữ liệu.\n\n"
+                     + (File.Exists(rbz) ? "File plugin: " + rbz + "\n\nMở thư mục chứa plugin?" : "Không thấy file plugin trong thư mục cài (" + dir + ") – cài lại Việt Const bản mới.");
+        if (MessageBox.Show(this, msg, "Plugin SketchUp", File.Exists(rbz) ? MessageBoxButton.YesNo : MessageBoxButton.OK, MessageBoxImage.Information) == MessageBoxResult.Yes)
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "/select,\"" + rbz + "\"") { UseShellExecute = true }); } catch (Exception ex) { ShowError("Mở thư mục", ex); }
     }
 
     // ==================================================================
