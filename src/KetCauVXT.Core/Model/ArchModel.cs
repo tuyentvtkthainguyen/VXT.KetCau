@@ -63,6 +63,14 @@ public class RoofElement
     public double SlopePercent { get; set; } = 15;
     /// <summary>Chiều cao đỉnh mái trên cao độ tầng (m)</summary>
     public double RidgeHeight { get; set; } = 1.2;
+    /// <summary>Hình mái (Model/ArchDetail.cs → RoofGeometry). Mặc định Bằng = cách vẽ cũ (tấm phẳng).</summary>
+    public RoofShape Shape { get; set; } = RoofShape.Bang;
+    /// <summary>Độ vươn diềm mái ra ngoài đường bao (m)</summary>
+    public double Overhang { get; set; }
+    /// <summary>Cao độ chân mái (diềm) trên cao độ tầng (m)</summary>
+    public double EaveHeight { get; set; }
+    /// <summary>Chiều dày lớp mái (m)</summary>
+    public double Thickness { get; set; } = 0.05;
 }
 
 /// <summary>Đồ đạc / thiết bị đặt từ thư viện 3D (khối bao + mã thư viện).</summary>
@@ -97,6 +105,12 @@ public class ArchModel
     public List<Ceiling> Ceilings { get; set; } = new();
     public List<RoofElement> Roofs { get; set; } = new();
     public List<FurnitureItem> Furniture { get; set; } = new();
+    /// <summary>Lan can (Model/ArchDetail.cs)</summary>
+    public List<Railing> Railings { get; set; } = new();
+    /// <summary>Phào chỉ, gờ trang trí chạy theo mặt tường</summary>
+    public List<WallSweep> Sweeps { get; set; } = new();
+    /// <summary>Vùng ốp / sơn hoàn thiện trên mặt tường</summary>
+    public List<WallCladding> Claddings { get; set; } = new();
     /// <summary>Mặt cắt đứng do người dùng vẽ (ngoài 1-1, 2-2 tự sinh) – Drawing/SectionView.cs</summary>
     public List<SectionLine> Sections { get; set; } = new();
 }

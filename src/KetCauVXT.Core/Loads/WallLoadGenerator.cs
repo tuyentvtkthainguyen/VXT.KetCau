@@ -86,6 +86,7 @@ public static class WallLoadGenerator
                 else warn.Add($"Tường #{w.Id} ({wt.Name}) tầng {w.Story}: {rest:0.00} m không có dầm hoặc sàn đỡ – bỏ qua tải phần này.");
             }
         }
+        ArchDetailLoads.Apply(p, warn);   // lan can (Model/ArchDetail.cs)
         return warn;
     }
 

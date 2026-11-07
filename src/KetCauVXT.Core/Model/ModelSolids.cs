@@ -207,7 +207,7 @@ public static class ModelSolids
         }
         foreach (var r in arch.Roofs)
         {
-            if (r.Outline.Count < 3) continue;
+            if (r.Outline.Count < 3 || r.Shape != RoofShape.Bang) continue;   // mái dốc: Model/ArchDetail.cs
             var prof = r.Outline.Select(q => new[] { q[0], q[1] }).ToList();
             if (Geo2.SignedArea(prof) < 0) prof.Reverse();
             yield return new Solid

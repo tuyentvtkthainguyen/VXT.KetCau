@@ -214,6 +214,7 @@ public static class Levels
             foreach (var c in p.Arch.Ceilings.Where(x => x.Story == oldName)) c.Story = newName;
             foreach (var r in p.Arch.Roofs.Where(x => x.Story == oldName)) r.Story = newName;
             foreach (var f in p.Arch.Furniture.Where(x => x.Story == oldName)) f.Story = newName;
+            foreach (var r in p.Arch.Railings.Where(x => x.Story == oldName)) r.Story = newName;
         }
     }
 

@@ -661,6 +661,8 @@ Console.WriteLine("96. Điện nước đợt 5: khoảng hở ống gen, Δt th
 MepRound5Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("97. Lưới trục + lưới cột + chiều cao tầng trên một hộp thoại");
 GridColumnTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("98. Kiến trúc kiểu Revit: mái dốc, trần, lan can, phào chỉ, ốp, sao chép tầng; mô hình SketchUp → mặt bằng");
+ArchDetailTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;
