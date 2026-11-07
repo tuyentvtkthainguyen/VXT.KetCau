@@ -71,6 +71,8 @@ public class RoofElement
     public double EaveHeight { get; set; }
     /// <summary>Chiều dày lớp mái (m)</summary>
     public double Thickness { get; set; } = 0.05;
+    /// <summary>Tải mái (tôn / ngói + xà gồ, kN/m² mặt bằng) dồn lên các ô sàn của tầng nằm trong đường bao; 0 = không dồn</summary>
+    public double SlabLoad { get; set; }
 }
 
 /// <summary>Đồ đạc / thiết bị đặt từ thư viện 3D (khối bao + mã thư viện).</summary>

@@ -630,9 +630,33 @@ public static class ArchDetailSolids
 /// <summary>Tải lan can lên dầm đỡ (gọi trong WallLoadGenerator.Apply, nguồn "WALL" nên tự sinh lại mỗi lần phân tích).</summary>
 public static class ArchDetailLoads
 {
+    /// <summary>Tải mặc định của lớp mái (kN/m² mặt bằng, kể xà gồ / li tô) theo tên kiểu mái.</summary>
+    public static double DefaultRoofLoad(string type)
+    {
+        string t = KetCauVXT.Ui.CommandSearch.Fold(type ?? "").ToLowerInvariant();
+        return t.Contains("ngoi") ? 0.9 : t.Contains("ton") ? 0.3 : t.Contains("kinh") ? 0.6 : 0.5;
+    }
+
     public static void Apply(Project p, List<string> warn)
     {
-        if (p.Arch?.Railings == null || p.Arch.Railings.Count == 0) return;
+        if (p.Arch == null) return;
+        // ---- tải lớp mái (tôn / ngói trên tường thu hồi, xà gồ) dồn lên sàn mái ----
+        foreach (var r in p.Arch.Roofs.Where(r => r.SlabLoad > 0 && r.Outline.Count >= 3))
+        {
+            double x0 = r.Outline.Min(q => q[0]), x1 = r.Outline.Max(q => q[0]), y0 = r.Outline.Min(q => q[1]), y1 = r.Outline.Max(q => q[1]);
+            int n = 0;
+            foreach (var sl in p.Slabs.Where(s => s.Story == r.Story))
+            {
+                var pts = sl.Nodes.Select(id => p.Node(id)).Where(nd => nd != null).ToList();
+                if (pts.Count < 3) continue;
+                double cx = pts.Average(q => q.X), cy = pts.Average(q => q.Y);
+                if (cx < x0 - 1e-6 || cx > x1 + 1e-6 || cy < y0 - 1e-6 || cy > y1 + 1e-6) continue;
+                p.AreaLoads.Add(new AreaLoad { Slab = sl.Id, Pattern = "HTHT", Q = Math.Round(r.SlabLoad, 4), Note = $"{r.Type} (mái #{r.Id}) dồn lên sàn", Source = WallLoadGenerator.WallSource });
+                n++;
+            }
+            if (n == 0) warn.Add($"Mái #{r.Id} ({r.Type}) tầng {r.Story}: không có ô sàn nào trong đường bao để dồn tải {r.SlabLoad:0.##} kN/m².");
+        }
+        if (p.Arch.Railings == null || p.Arch.Railings.Count == 0) return;
         var stories = p.Stories.ToDictionary(s => s.Name, s => s.Elevation);
         foreach (var r in p.Arch.Railings)
         {

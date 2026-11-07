@@ -82,6 +82,20 @@ public partial class ArchImportDialog : Window
         InitLayerTab();   // tab "Layer trong file" (ArchImportDialog.Layers.cs)
     }
 
+    /// <summary>Nạp sẵn file bản vẽ (thay danh sách cũ) và chiều cao tầng – dùng khi mặt bằng sinh từ mô hình 3D SketchUp / Revit.</summary>
+    public void Preload(IEnumerable<string> files, double? groundHeight = null, double? typicalHeight = null, double? baseElevation = null)
+    {
+        _files.Clear();
+        foreach (var f in files) if (System.IO.File.Exists(f)) _files.Add(f);
+        if (groundHeight is double g && g > 0) txtGroundHeight.Text = F(g);
+        if (typicalHeight is double t && t > 0) txtTypicalHeight.Text = F(t);
+        if (baseElevation is double b) txtBaseElevation.Text = F(b);
+        cbUnit.SelectedIndex = 0;   // theo $INSUNITS của file (mm)
+        RefreshFiles();
+        MarkLayersStale();
+        SetStatus("Đã nạp mặt bằng cắt từ mô hình 3D – bấm “Nhận diện” để đọc tường, cột, cửa từng tầng.");
+    }
+
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
         try { TryUiToOptions(out _); } catch (Exception) { /* nhớ thông số kể cả khi đóng – bỏ qua lỗi */ }

@@ -143,6 +143,7 @@ public partial class MainWindow
     private void DrawArchExtras(bool labels)
     {
         if (_p?.Arch == null) return;
+        DrawArchDetails(labels);   // mái, lan can, phào chỉ, ốp – MainWindow.ArchDetail.cs
         foreach (var r in _p.Arch.Rooms.Where(r => OnStory(r.Story) && r.Outline.Count >= 3))
         {
             var pts = new PointCollection(r.Outline.Select(q => W2S(q[0], q[1])));
@@ -194,6 +195,7 @@ public partial class MainWindow
                 RvBtn("Đặt tên phòng…", "", "Đổi tên các phòng tầng đang xem (tên quyết định công năng sàn)", RenameRoomsUi),
                 RvBtn("Kiến trúc → kết cấu", "", "Tường → tải dầm / sàn, phòng → công năng sàn, cửa → lanh tô, giao tường → đề xuất cột", ArchToStructureUi),
                 RvBtn("Thư viện 3D…", "", "Thư viện đồ đạc / thiết bị: nhập từ SketchUp (OBJ, DAE) hoặc Revit, đặt vào mô hình", OpenLibrary3D)),
+            ArchDetailGroup(),
             RvGroup("Phối hợp",
                 RvBtn("Bộ môn hiển thị…", "", "Bật / tắt, vẽ mờ bộ môn tham chiếu", OpenDisciplineDisplay),
                 RvBtn("Kiểm tra va chạm", "", "Va chạm giữa kiến trúc, kết cấu, điện nước (cứng, khe hở, ống lồng)", RunClashUi)),
@@ -233,6 +235,14 @@ public partial class MainWindow
         Add("Đặt tên phòng…", RenameRoomsUi);
         Add("Kiến trúc → _kết cấu", ArchToStructureUi);
         Add("Thư viện _3D…", OpenLibrary3D);
+        Add("Mái theo đường bao…", RoofUi);
+        Add("Trần theo phòng…", CeilingsUi);
+        Add("Vẽ lan can", RailingUi);
+        Add("Phào chỉ / gờ trang trí…", SweepUi);
+        Add("Ốp / sơn mặt tường…", CladdingUi);
+        Add("Chép kiến trúc sang tầng khác…", CopyArchUi);
+        Add("Khối lượng hoàn thiện kiến trúc…", ArchQtyUi);
+        Add("Nhập mô hình SketchUp / Revit (OBJ, DAE) → mặt bằng…", ImportMeshModelUi);
         m.Items.Add(new Separator());
         Add("Kiểm tra _va chạm", RunClashUi);
         m.Items.Add(new Separator());

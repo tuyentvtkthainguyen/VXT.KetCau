@@ -697,6 +697,21 @@ public static partial class UserGuide
                 "**Hồ sơ theo bộ môn…**: chọn bộ môn – Kiến trúc (KT-01…: mặt bằng các tầng có tường, cửa, tên + diện tích phòng, đồ đạc; thống kê cửa; thống kê phòng), Kết cấu (KC-…: bộ bản vẽ kết cấu), Điện nước (DN-…); trên mặt bằng, bộ môn khác hiện nét xám làm nền đối chiếu.")
             .Tip("Ở bộ môn Điện nước, phần kiến trúc là nền tham chiếu: sửa tường / cửa ở bộ môn Kiến trúc rồi chạy **Kiểm tra va chạm** để thấy thiết bị, ống bị ảnh hưởng.");
 
+        c.Sec("khoi-tao.hoan-thien-kt", "Chi tiết kiến trúc kiểu Revit: mái, trần, lan can, phào chỉ, ốp – sơn, chép tầng, nhập mô hình SketchUp")
+            .P("Nhóm **BIM → Hoàn thiện KT** (cũng có ở menu BIM). Mọi phần tử hiện trên mặt bằng, 3D, IFC / SketchUp / OBJ, bảng khối lượng; có hoàn tác Ctrl+Z.")
+            .Bullets("**Mái…**: mái bằng, 1 dốc, 2 dốc (tự có 2 tường thu hồi 220), 4 dốc (mặt bằng vuông → mái chóp); độ dốc %, đua mái, chân mái, đường bao (mặc định = hộp bao ô sàn tầng). "
+                + "Tuỳ chọn **dồn tải lớp mái** lên các ô sàn trong đường bao khi phân tích (tôn ~0,3, ngói ~0,9 kN/m² mặt bằng).",
+                "**Trần theo phòng…**: một trần cho mỗi phòng của tầng (cao độ, loại trần) – cần **Tìm phòng** trước.",
+                "**Lan can**: chọn loại (inox tay vịn gỗ, kính cường lực, sắt hoa văn, xây 110) và chiều cao, bấm các điểm trên mặt bằng, **Enter** kết thúc, **Backspace** bỏ điểm cuối, **Esc** dừng. "
+                + "Khi phân tích, tải lan can (0,3 / 0,5 / 0,4 kN/m; xây ≈ 2,52·H kN/m) tự dồn lên dầm đỡ bên dưới, phần không có dầm → tải phân bố lên ô sàn.",
+                "**Phào chỉ…**: mẫu phào chân tường, gờ chỉ ngang tầng, gờ bậu cửa sổ, gờ chắn nước, phào trần, chỉ đỉnh tường chắn mái; bấm sát **mặt tường** cần đặt (phía bấm = mặt tường) hoặc đặt cho mọi tường biên (mặt ngoài) / mọi tường (mặt trong). Phào tự cắt qua ô cửa.",
+                "**Ốp / sơn tường…**: ốp đá granite, gạch thẻ, gạch men WC, gỗ, sơn màu nhấn trong khoảng cao độ chọn; diện tích tự trừ ô cửa.",
+                "**Chép KT sang tầng…**: tường (kèm cửa, phào, ốp), phòng, trần, lan can, đồ đạc của tầng đang xem sang các tầng khác (Revit: Copy to Levels); tường trùng vị trí được bỏ qua.",
+                "**KL hoàn thiện KT…**: bảng khối lượng mái (m² nghiêng, tường thu hồi), trần (m²), lan can (md), phào chỉ (md), ốp / sơn (m²) theo tầng – xuất CSV.",
+                "**Nhập mô hình SketchUp / Revit…**: mô hình 3D OBJ / DAE / *.vxtmesh.json → chương trình tự tìm cao độ sàn, cắt ngang mỗi tầng ở +1,2 m lấy tường, cột (vòng kín ≤ 0,8 m), cửa đi / cửa sổ (khe hở trên tường), "
+                + "ghi bản vẽ DXF rồi mở bảng **Nhập bản vẽ kiến trúc** để nhận diện và triển khai kết cấu (cột, dầm, sàn, tải) như với bản vẽ CAD. SketchUp xuất OBJ thường \"Y lên\" – để **Tự nhận** hoặc chọn trục đứng.")
+            .Tip("Dựng nhanh mô hình khối trong SketchUp (sàn, tường, cột, ô cửa) → Export OBJ → Nhập mô hình → kiểm tra mặt bằng nhận diện → triển khai kết cấu → chạy phân tích, thiết kế BTCT.");
+
         c.Sec("khoi-tao.dat-va-xem", "Đặt đồ đạc bằng bắt điểm, kích thước tạm, thao tác 3D, mặt cắt tầng và mặt cắt công trình")
             .P("Như Revit: **không nhập toạ độ X, Y**. Chọn đồ đạc / thiết bị rồi rê chuột trên mặt bằng – chương trình tự nhận diện vị trí và hiện **kích thước tạm** màu xanh; bấm vào con số để nhập khoảng cách chính xác.")
             .Steps("Tab **Đặt & xem → Đặt đồ đạc…** (hoặc BIM → Thư viện 3D… → **Đặt vào mặt bằng (bắt điểm)**): chọn mục thư viện.",

@@ -381,6 +381,7 @@ public partial class MainWindow
     private void DrawHover()
     {
         planOverlay.Children.Clear();
+        if (DrawArchDetailOverlay()) return;   // dây chun vẽ lan can – MainWindow.ArchDetail.cs
         if (DrawGripOrEditOverlay()) return;   // [Kiểu Revit] kéo tay nắm, bóng đối tượng khi CO / M / MI / AR / O – MainWindow.RevitGrips.cs
         if (DrawCadAlignOverlay()) return;   // [CadLink] căn bản vẽ theo 2 điểm – MainWindow.CadLink.cs
         if (DrawBeamToolOverlay()) return;   // [BeamTools] chọn nhiều, khung chọn, công cụ dầm – MainWindow.BeamTools.cs

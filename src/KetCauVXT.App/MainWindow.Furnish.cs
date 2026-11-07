@@ -143,6 +143,7 @@ public partial class MainWindow
     private bool FurnishPlanClick(Point s)
     {
         if (_p == null) return false;
+        if (ArchDetailClick(s)) return true;   // lan can, phào chỉ, ốp – MainWindow.ArchDetail.cs
         if (_secTool)
         {
             var (x, y) = S2W(s);
@@ -187,6 +188,7 @@ public partial class MainWindow
     private bool FurnishPlanKey(Key key)
     {
         if (IsTextInputFocused()) return false;
+        if (ArchDetailKey(key)) return true;   // MainWindow.ArchDetail.cs
         if (key == Key.Escape && _secTool) { StopSectionTool(); return true; }
         if (key == Key.Escape && _fnPlace != null) { StopPlaceFurniture(); return true; }
         if (_fnSel == null) return false;

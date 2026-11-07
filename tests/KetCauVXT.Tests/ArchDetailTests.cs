@@ -86,6 +86,13 @@ public static class ArchDetailTests
         check("KT giá trị tải lan can", railLoads.Sum(l => l.Points[0][1]) / Math.Max(1, railLoads.Count), 2.52, 1e-9);
         WallLoadGenerator.Apply(p);
         check("KT tải lan can không nhân đôi khi phân tích lại", p.FrameLoads.Count(l => l.Note.Contains("Lan can xây")), 2, 0);
+        r2.SlabLoad = ArchDetailLoads.DefaultRoofLoad(r2.Type);
+        check("KT tải mái ngói mặc định 0,9 kN/m²", r2.SlabLoad, 0.9, 1e-9);
+        WallLoadGenerator.Apply(p);
+        var roofLoads = p.AreaLoads.Where(l => l.Note.Contains($"mái #{r2.Id}")).ToList();
+        check("KT tải mái dồn lên 2 ô sàn tầng MAI", roofLoads.Count, p.Slabs.Count(sl => sl.Story == "MAI"), 0);
+        WallLoadGenerator.Apply(p);
+        check("KT tải mái không nhân đôi", p.AreaLoads.Count(l => l.Note.Contains($"mái #{r2.Id}")), roofLoads.Count, 0);
         var ri = ArchDetail.AddRailing(p, "T2", new[] { (0.0, 2.0), (3.0, 2.0), (3.0, 4.0) }, RailKind.Inox, 0.9);
         solids = ModelSolids.Build(p, new[] { Discipline.KienTruc });
         check("KT khối lan can inox có trụ", B(solids.Count(s => s.Id.StartsWith($"LC-{ri.Id}-") && s.Name.EndsWith("trụ")) >= 4), 1, 0);

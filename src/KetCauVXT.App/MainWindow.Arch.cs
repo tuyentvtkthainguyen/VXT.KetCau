@@ -8,11 +8,15 @@ namespace KetCauVXT.App;
 /// <summary>Nhập bản vẽ kiến trúc sơ bộ → triển khai kết cấu (lưới cột, dầm, sàn, tải) → thay thế mô hình hiện tại.</summary>
 public partial class MainWindow
 {
-    private async void MnuImportArch_Click(object sender, RoutedEventArgs e)
+    private void MnuImportArch_Click(object sender, RoutedEventArgs e) => ImportArchWith(null);
+
+    /// <summary>Hộp thoại nhập bản vẽ kiến trúc → triển khai kết cấu. preload: nạp sẵn file / chiều cao tầng (vd. mặt bằng cắt từ mô hình SketchUp).</summary>
+    private async void ImportArchWith(Action<ArchImportDialog> preload)
     {
         if (_busy) return;
         ApplyUiToProject(false);
         var dlg = new ArchImportDialog { Owner = this, InitialLayerMap = _p.ArchLayerMap };
+        preload?.Invoke(dlg);
         if (dlg.ShowDialog() != true || dlg.Proposal == null || dlg.Drawing == null) return;
         try
         {
