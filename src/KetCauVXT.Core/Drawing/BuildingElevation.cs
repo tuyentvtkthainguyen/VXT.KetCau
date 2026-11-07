@@ -21,6 +21,8 @@ public sealed class ElevationItem
     public double Z1 { get; init; }
     /// <summary>Khoảng cách tới người nhìn (nhỏ = ở trước)</summary>
     public double Depth { get; init; }
+    /// <summary>Đường bao hình chiếu (u, z) khi khối không phải hộp đứng (mặt mái nghiêng, tường thu hồi tam giác); null = chữ nhật U0…U1 × Z0…Z1</summary>
+    public List<(double U, double Z)> Outline { get; init; }
 }
 
 public sealed class BuildingElevationView
@@ -102,7 +104,10 @@ public static class BuildingElevation
             double z0 = all.Min(v => v.Z), z1 = all.Max(v => v.Z);
             if (u1 - u0 < 1e-6 || z1 - z0 < 1e-6) continue;
             double d = all.Min(v => (v.X - s.X1) * nx + (v.Y - s.Y1) * ny);
-            raw.Add(new ElevationItem { Id = so.Id, Category = so.Category, U0 = Math.Round(u0, 6), U1 = Math.Round(u1, 6), Z0 = Math.Round(z0, 6), Z1 = Math.Round(z1, 6), Depth = d });
+            List<(double U, double Z)> hull = null;
+            if (so.Id.StartsWith("MAID-") || so.Id.StartsWith("THUHOI-"))
+                hull = Hull(all.Select(v => (Math.Round((v.X - s.X1) * tx + (v.Y - s.Y1) * ty, 6), Math.Round(v.Z, 6))).ToList());
+            raw.Add(new ElevationItem { Id = so.Id, Category = so.Category, U0 = Math.Round(u0, 6), U1 = Math.Round(u1, 6), Z0 = Math.Round(z0, 6), Z1 = Math.Round(z1, 6), Depth = d, Outline = hull });
         }
         static bool IsOpening(string c) => c is "Cửa đi" or "Cửa sổ" or "Lỗ cửa";
         var opaque = raw.Where(r => !IsOpening(r.Category) && r.Category is "Tường" or "Cột" or "Dầm" or "Sàn" or "Mái").ToList();
@@ -113,6 +118,21 @@ public static class BuildingElevation
             res.Add(it);
         }
         return res;
+    }
+
+    /// <summary>Bao lồi (Andrew monotone chain) các điểm (u, z).</summary>
+    public static List<(double U, double Z)> Hull(List<(double U, double Z)> pts)
+    {
+        var p = pts.Distinct().OrderBy(q => q.U).ThenBy(q => q.Z).ToList();
+        if (p.Count < 3) return p;
+        double Cross((double U, double Z) o, (double U, double Z) a, (double U, double Z) b) => (a.U - o.U) * (b.Z - o.Z) - (a.Z - o.Z) * (b.U - o.U);
+        var lo = new List<(double U, double Z)>();
+        foreach (var q in p) { while (lo.Count >= 2 && Cross(lo[^2], lo[^1], q) <= 1e-12) lo.RemoveAt(lo.Count - 1); lo.Add(q); }
+        var up = new List<(double U, double Z)>();
+        for (int i = p.Count - 1; i >= 0; i--) { var q = p[i]; while (up.Count >= 2 && Cross(up[^2], up[^1], q) <= 1e-12) up.RemoveAt(up.Count - 1); up.Add(q); }
+        lo.RemoveAt(lo.Count - 1); up.RemoveAt(up.Count - 1);
+        lo.AddRange(up);
+        return lo;
     }
 
     /// <summary>Dựng mặt đứng (DXF, mm).</summary>
@@ -127,7 +147,8 @@ public static class BuildingElevation
         foreach (var it in items.OrderByDescending(i => i.Depth))
         {
             bool open = it.Category is "Cửa đi" or "Cửa sổ" or "Lỗ cửa";
-            var pts = new List<(double X, double Y)> { (it.U0 * 1000, it.Z0 * 1000), (it.U1 * 1000, it.Z0 * 1000), (it.U1 * 1000, it.Z1 * 1000), (it.U0 * 1000, it.Z1 * 1000) };
+            var pts = it.Outline is { Count: >= 3 } ol ? ol.Select(q => (q.U * 1000, q.Z * 1000)).ToList()
+                : new List<(double X, double Y)> { (it.U0 * 1000, it.Z0 * 1000), (it.U1 * 1000, it.Z0 * 1000), (it.U1 * 1000, it.Z1 * 1000), (it.U0 * 1000, it.Z1 * 1000) };
             w.Polyline(open ? Lay.KyHieu : Lay.BeTong, pts, true);
             if (it.Category == "Cửa sổ")
             {
