@@ -1,0 +1,472 @@
+16:34:35 mở D:\a\VXT.KetCau\VXT.KetCau\KetQuaMau\NhaPho\NhaPho.kcvxt
+16:34:38 phân tích + thiết kế: 72 thanh, 26 cấu kiện
+16:34:42 ảnh NhaPho_1_MatBang
+16:34:42 vừa màn hình: 9.2 px/m, vùng vẽ 457×307 px, công trình phủ 40 % chiều hạn chế, nhãn ẩn vì hết chỗ: 6  – CẢNH BÁO: mặt bằng còn nhỏ
+16:34:43 ảnh NhaPho_2_MatBang_ChonDam
+16:34:44 ảnh NhaPho_3_MatBang_ChonSan
+16:34:47 ảnh NhaPho_4_3D_ChonDam
+16:34:49 ảnh NhaPho_5_BieuDo_0
+16:34:51 ảnh NhaPho_5_BieuDo_1
+16:34:53 ảnh NhaPho_5_BieuDo_2
+16:34:54 ảnh NhaPho_6_BieuDo_LucCat
+16:34:56 ảnh NhaPho_7_Mong
+16:34:56 ban công: Đã thêm ban công vươn 1.20 m dài 5.00 m: 2 dầm công xôn D22x30, dầm biên D22x30, 1 ô sàn, lan can 1 kN/m.
+16:34:56 cầu thang: Cầu thang 5.00×4.50 m – tải truyền vào 4 dầm viền.
+16:34:56 WC: ST3-1: Sàn vệ sinh (hạ cốt, chống thấm) – hoàn thiện 2 kN/m², hoạt tải 1.5 kN/m². Hạ cốt mặc định Δ = -50 mm (sửa ở 'Hạ cốt sàn…').
+16:34:57 ảnh NhaPho_8_SauKhiSua
+16:34:59 ảnh NhaPho_9_3D_SauKhiSua
+16:34:59 dầm: Đã thêm dầm D22x30 dài 5.00 m tại tầng T3 (đã chia tại các nút giao).
+16:34:59 tường: Đã khai báo Tường 110 trát 2 mặt dài 5.00 m tại tầng T3 – nằm trên dầm.
+16:34:59 gán tường lên dầm: Đã khai báo Tường 110 trát 2 mặt dài 2.25 m tại tầng T3 – nằm trên dầm.
+16:34:59 cấu tạo sàn: ST3-4: cấu tạo "Sàn vệ sinh" – hoàn thiện 2.01 kN/m², hoạt tải 1.5 kN/m².
+16:35:01 móng cọc: 3 đài, 0 không đạt
+16:35:03 ảnh NhaPho_10_MongCoc
+16:35:03 móng băng: 2 dải, 0 không đạt
+16:35:05 ảnh NhaPho_11_MongBang
+16:35:05 bố trí cọc: đài ĐC1 (nút 1) tự chọn 2 cọc, 1.30×0.55×0.60 m, Pmax = 382.8 kN
+16:35:09 ảnh NhaPho_31_BoTriCoc
+16:35:09 bố trí cọc (thử 5 cọc): 5 cọc 250×250 – đài 1650×1650×600 mm; Pmax = 161.9 / [P] = 450 kN (36%), Pmin = 31.7 kN; thép đáy Ø12a200 / Ø12a200 → ĐẠT
+16:35:09 bố trí cọc: 16 hạng mục kiểm tra, 0 không đạt, 2 cảnh báo; η nhóm = 0.77
+16:35:10 bố trí cọc: sau áp dụng ĐC1 5 cọc, 1.65×1.65×0.60 m, Pmax = 161.9 kN – đạt; bố trí riêng: 2 nút
+16:35:12 ảnh NhaPho_32_MongCocSauBoTri
+16:35:12 bố trí cọc: đã trả lại thông số móng ban đầu (Móng đơn)
+16:35:13 móng lệch tâm: 2 cạnh ranh giới, 8 móng đơn (8 lệch tâm), 3 dầm cân bằng, 0 móng kết hợp, 0 móng không đạt
+16:35:13    M1: (a) Có dầm móng cân bằng, 1.30×2.00×0.35 m, ex = 500, ey = 0 mm, pmax = 215.6 / 1,2R = 262.9 kN/m² – đạt
+16:35:13    M2: (a) Có dầm móng cân bằng, 1.30×2.00×0.35 m, ex = -500, ey = 0 mm, pmax = 210.7 / 1,2R = 262.9 kN/m² – đạt
+16:35:13    M3: (a) Có dầm móng cân bằng, 1.40×2.10×0.40 m, ex = 550, ey = 0 mm, pmax = 217.4 / 1,2R = 263.8 kN/m² – đạt
+16:35:13    M4: (a) Có dầm móng cân bằng, 1.40×2.10×0.40 m, ex = -550, ey = 0 mm, pmax = 215.8 / 1,2R = 263.8 kN/m² – đạt
+16:35:13    DM1 ×1: 250×750, L = 5.00 m, M = 333.1 kN.m, Q = 21.5 kN, 4Ø22 / 3Ø14, Ø8a300 – đạt
+16:35:13    DM2 ×2: 250×750, L = 5.00 m, M = 414.2 kN.m, Q = 22.1 kN, 4Ø25 / 3Ø16, Ø8a300 – đạt
+16:35:13    DM3 ×1: 250×750, L = 5.00 m, M = 273.2 kN.m, Q = 16.6 kN, 4Ø20 / 2Ø16, Ø8a300 – đạt
+16:35:15 ảnh NhaPho_36_MongLechTam
+16:35:18 ảnh NhaPho_37_MongLechTamChiTiet
+16:35:18 móng lệch tâm (hộp thoại): Móng 1.30×2.00×0.35 m; e = (500; 0) mm; ptb = 197.9, pmax = 215.6, pmin = 114.8 kN/m², R = 219.1 → ĐẠT
+16:35:18 móng lệch tâm: đã trả lại thông số móng ban đầu (Móng đơn, 0 ranh giới)
+16:35:19 lùi cọc: 2 cạnh có khoảng lùi, 7 đài (7 đài lùi cọc), 3 dầm cân bằng, 0 đài không đạt
+16:35:19    ĐC1: 2 cọc, đài 0.82×1.30×0.60 m, khoảng lùi nhỏ nhất 500 mm, e = 390/0 mm, Pmax = 271.0 (không DM 270.4) / [P] = 450 kN, công xôn M = 125.5 kN.m – đề xuất (a) Dầm cân bằng chung hai đài biên – đạt
+16:35:19    ĐC2: 2 cọc, đài 0.82×1.30×0.60 m, khoảng lùi nhỏ nhất 500 mm, e = -390/0 mm, Pmax = 264.0 (không DM 264.6) / [P] = 450 kN, công xôn M = 122.3 kN.m – đề xuất (a) Dầm cân bằng chung hai đài biên – đạt
+16:35:19    ĐC3: 2 cọc, đài 0.82×1.30×0.60 m, khoảng lùi nhỏ nhất 500 mm, e = 390/0 mm, Pmax = 314.0 (không DM 313.7) / [P] = 450 kN, công xôn M = 152.3 kN.m – đề xuất (a) Dầm cân bằng chung hai đài biên – đạt
+16:35:19    ĐC4: 2 cọc, đài 0.82×1.30×0.60 m, khoảng lùi nhỏ nhất 500 mm, e = -390/0 mm, Pmax = 311.4 (không DM 311.5) / [P] = 450 kN, công xôn M = 151.1 kN.m – đề xuất (a) Dầm cân bằng chung hai đài biên – đạt
+16:35:21 ảnh NhaPho_38_LuiCocRanh
+16:35:22 cừ tràm: thiết kế xong, 8 móng đơn (8 gia cố cừ tràm), 8 không đạt
+16:35:22    M1 ×1: 3.60×5.40×0.40 m, ptb = 61.2 kN/m², [p]1 = 67.9, [p]2 = 56.3 → [p] = 56.3; 486 cây, lún 5.08 cm, đầu cừ 1.60 m / MNN 0.50 m – KHÔNG ĐẠT
+16:35:22    M2 ×1: 3.50×5.30×0.40 m, ptb = 59.9 kN/m², [p]1 = 67.9, [p]2 = 56.3 → [p] = 56.3; 464 cây, lún 4.88 cm, đầu cừ 1.60 m / MNN 0.50 m – KHÔNG ĐẠT
+16:35:22    M3 ×1: 4.00×6.00×0.45 m, ptb = 61.4 kN/m², [p]1 = 67.9, [p]2 = 56.5 → [p] = 56.5; 600 cây, lún 5.32 cm, đầu cừ 1.60 m / MNN 0.50 m – KHÔNG ĐẠT
+16:35:22    M4 ×1: 3.90×5.90×0.45 m, ptb = 60.6 kN/m², [p]1 = 67.9, [p]2 = 56.5 → [p] = 56.5; 576 cây, lún 5.18 cm, đầu cừ 1.60 m / MNN 0.50 m – KHÔNG ĐẠT
+16:35:26 ảnh NhaPho_39_CuTram
+16:35:26 cừ tràm (hộp thoại): móng M1 3.60×5.40 m (ptb = 61.2 kN/m²), hố khoan HK-CT (tự kiểm tra): 486 cây; PP(1) [p]1 = 67.9 kN/m², PP(2) [p]2 = 56.3 kN/m² → [p] = 56.3 kN/m²; lún khối quy ước 5.08 cm; đầu cừ 1.60 m / MNN 0.50 m → KHÔNG KHẢ THI – dùng móng cọc BTCT: móng cần lớn hơn 0,5·bước cột (giới hạn 2.25 m) mà vẫn chưa thoả [p] – dừng ở 3.60×5.40 m
+16:35:26 lùi cọc / cừ tràm: đã trả lại thông số móng, hố khoan, nền đất ban đầu (Móng đơn, 0 ranh giới, 0 hố khoan)
+16:35:27 ảnh NhaPho_45_KhaiBaoTietDien
+16:35:27 khai báo tiết diện: 8 tiết diện
+16:35:27 dầm phụ: Đã thêm 2 dầm phụ D22x30 song song trục Y trong ô 5.00×4.50 m tầng T3: cách mép ô 1667; 3333 mm, chia lại 1 ô sàn.
+16:35:27 vẽ nhanh theo lưới: mọi đoạn trục tầng T3 đã có dầm
+16:35:29 ảnh NhaPho_46_DamPhuTheoKhoangCach
+16:35:30 ảnh NhaPho_46b_ThanhLenh_San_GanTai
+16:35:30 công cụ dầm: đã hoàn tác về mô hình trước khi thử
+16:35:30 giao diện Revit – vẽ tường: Đã khai báo Gạch đặc 220 trát 2 mặt dài 5.00 m tại tầng T3 – nằm trên dầm.
+16:35:30 giao diện Revit – cửa: Đã đặt cửa đi D1 900x2200 lên tường #3 (tâm cách đầu tường 1.20 m) – tường tự cắt ô cửa, tải tường trừ diện tích cửa. | Đã đặt cửa sổ S1 1200x1400 lên tường #3 (tâm cách đầu tường 3.50 m) – tường tự cắt ô cửa, tải tường trừ diện tích cửa.; đoạn tường đặc: 3
+16:35:32 ảnh NhaPho_46c_Revit_CuaCatTuong
+16:35:33 ảnh NhaPho_46d_SuaKieuTuong
+16:35:33 giao diện Revit – tay nắm tường đang chọn: 0
+16:35:34 ảnh NhaPho_46e_Revit_TayNam
+16:35:34 giao diện Revit – 3D tường quanh 2 ô cửa: 6 khối
+16:35:35 ảnh NhaPho_46f_Revit_3D_TuongCoCua
+16:35:35 đặt đồ đạc bắt điểm: Mặt tường, góc 0°, 4 kích thước tạm (+X=1600; -X=1530; +Y=2365; -Y=10)
+16:35:36 ảnh NhaPho_46g_Revit_3D_DoDacChon
+16:35:38 ảnh NhaPho_46h_MatCat_1_1
+16:35:39 ảnh NhaPho_46i_MatCat_1_1_CoMong
+16:35:39 khung nhìn mặt cắt ngang tầng: 15; mặt cắt đứng: 2
+16:35:39 giao diện Revit: đã trả lại mô hình và giao diện cổ điển
+16:35:39 sàn hạ cốt: ST3-1: Sàn vệ sinh (hạ cốt, chống thấm) – hoàn thiện 2 kN/m², hoạt tải 1.5 kN/m².
+16:35:39 sàn hạ cốt: ô ST3-1 Δ = -50 mm, liên kết 1 cạnh ngàm, 3 cạnh khớp, 0 thanh mũ cấu tạo cạnh bậc
+16:35:39 sàn hạ cốt: 5 dầm đỡ ô hạ cốt, 0 không đủ chiều cao
+16:35:39    D3-1: Dầm biên ô sàn hạ cốt (ô ST3-4 (dầm biên), nhịp 1): h ≥ hs1 + Δ + hs2 = 100 + 50 + 100 = 250 mm ≤ h = 300 mm – đạt
+16:35:39    D3-2: Dầm biên ô sàn hạ cốt (ô ST3-1 / ô ST3-4, nhịp 1): h ≥ hs1 + Δ + hs2 = 100 + 50 + 100 = 250 mm ≤ h = 300 mm – đạt
+16:35:39    D3-3: Dầm biên ô sàn hạ cốt (ô ST3-1 (dầm biên), nhịp 1): h ≥ hs1 + Δ + hs2 = 100 + 50 + 100 = 250 mm ≤ h = 300 mm – đạt
+16:35:39    D3-6: Dầm biên ô sàn hạ cốt (ô ST3-4 (dầm biên), nhịp 1): h ≥ hs1 + Δ + hs2 = 100 + 50 + 100 = 250 mm ≤ h = 300 mm – đạt
+16:35:41 ảnh NhaPho_55_SanHaCot
+16:35:41 sàn hạ cốt: đã trả lại mô hình ban đầu (2 ô hạ cốt)
+16:35:41 dầm cong: Dầm D1: dầm cong R = 3.63 m, chiều dài cung 5.52 m, độ vồng 1.00 m.
+16:35:41 dầm cong D1: L cung = 5.517 m, |T| max (TT) = 2.60 kN.m
+16:35:43 ảnh NhaPho_16_DamCong
+16:35:45 ảnh NhaPho_17_DamCong3D
+16:35:47 ảnh NhaPho_18_DamCongBieuDo
+16:35:49 địa danh: Thái Nguyên /  → vùng , W0 = 0.95 kN/m²
+16:35:49 ảnh NhaPho_12_DiaDanhGio
+16:35:50 hố khoan: 1 hố, 5 lớp, sâu 30.0 m
+16:35:50 ảnh NhaPho_13_DiaChat
+16:35:50 gợi ý móng: 5 phương án, chọn: Móng băng
+16:35:52 ảnh NhaPho_14_GoiYMong
+16:35:54 ảnh NhaPho_15_PhuLuc
+16:35:54 phụ lục: mở được
+16:35:55 ảnh NhaPho_40_VanBanPhapLy
+16:35:55 văn bản pháp lý: 39 văn bản, 23 đang áp dụng, 15 hết hiệu lực; dự án trích dẫn: Luật Xây dựng số 135/2025/QH15; Nghị định 217/2026/NĐ-CP; Nghị định 212/2026/NĐ-CP; Thông tư 34/2026/TT-BXD; TCVN 2737:2023; QCVN 02:2022/BXD; TCVN 5574:2018; TCVN 1651:2018; TCVN 9386-1:2025; TCVN 9386-5:2025; TCVN 9362:2012; kiểm tra dự án: 0 cảnh báo, 1 lưu ý
+16:35:57 ảnh NhaPho_41_KiemChung
+16:35:57 kiểm chứng: 28 bài toán, 89 đại lượng: 89 đạt, 0 không đạt; sai số lớn nhất 1.67%; thời gian 0.1 s → D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_KiemChung\BaoCaoKiemChung.docx
+16:35:58 ảnh NhaPho_47_CayMoHinh
+16:35:58 cây mô hình: 8 nhánh; 78 thanh, 12 sàn, 5 trường hợp tải, 15 tổ hợp
+16:35:59 ảnh NhaPho_48_KiemTraMoHinh
+16:35:59 kiểm tra mô hình: 0 lỗi, 0 cảnh báo, 1 thông tin (0 mục sửa tự động được).
+16:35:59    TIET_DIEN_KHONG_DUNG: 1 (Thông tin)
+16:36:01 ảnh NhaPho_49_BangKetQua
+16:36:01 bảng kết quả Chuyển vị nút (Joint Displacements): 44 dòng
+16:36:01 bảng kết quả Phản lực gối (Joint Reactions): 8 dòng
+16:36:01 bảng kết quả Nội lực dầm (Element Forces – Beams): 460 dòng
+16:36:01 bảng kết quả Nội lực cột (Element Forces – Columns): 264 dòng
+16:36:01 bảng kết quả Chuyển vị lệch tầng (Story Drifts): 8 dòng
+16:36:01 bảng kết quả Chu kỳ & tỷ lệ khối lượng (Modal Periods & Mass Ratios): 12 dòng
+16:36:01 bảng kết quả Phản lực đáy (Base Reactions): 1 dòng
+16:36:02 ảnh NhaPho_50_ToHop
+16:36:02 tổ hợp tải trọng: 15 tổ hợp (9 TTGH I, 5 TTGH II, 1 bao); vấn đề: 0
+16:36:02 quy trình mô hình ETABS: xong
+16:36:04 ảnh NhaPho_51_HuongDan
+16:36:04 hướng dẫn sử dụng: 15 chương, 195 mục; chương 4 = "Hai chế độ làm việc – Triển khai hồ sơ"; ngữ cảnh hiện tại = giao-dien.tro-giup → 3.9. Trợ giúp ngay trên phần mềm
+16:36:05 ảnh NhaPho_52_BatDauNhanh
+16:36:05 bắt đầu nhanh: 10 bước, đã làm 6
+16:36:06 dàn trang: 24 tờ, 24 file DXF
+16:36:07 ảnh NhaPho_10_DanTrang_1
+16:36:09 ảnh NhaPho_11_DanTrang_2
+16:36:09 dàn trang: PDF NhaPho_DanTrang.pdf
+16:36:09 dao động riêng: 12 dạng, 32 bậc tự do động, Khử tĩnh các bậc tự do không khối lượng + Householder/QL (giải đầy đủ); nguồn khối lượng 1·TT + 1·HTHT + 0.24·HT; T1 = 1.314 s, Ct·H^0,75 = 0.537 s; Σ UX = 100.0 %, Σ UY = 100.0 %
+16:36:09    Dạng |   T (s) |  f (Hz) |   UX % |   UY % |   RZ % |  ΣUX % |  ΣUY % | phương
+16:36:09       1 |   1.314 |   0.761 |   85.7 |    0.0 |    3.2 |   85.7 |    0.0 | X
+16:36:09       2 |   1.252 |   0.799 |    0.0 |   93.1 |    0.0 |   85.7 |   93.1 | Y
+16:36:09       3 |   1.174 |   0.852 |    2.7 |    0.0 |   87.1 |   88.4 |   93.1 | Xoắn
+16:36:09       4 |   0.411 |   2.432 |    7.5 |    0.0 |    0.2 |   95.9 |   93.2 | X
+16:36:09       5 |   0.410 |   2.441 |    0.0 |    5.6 |    0.0 |   95.9 |   98.7 | Y
+16:36:09    tầng T2: M = 70.49 t, CM (2.50; 6.75), CR (2.50; 6.75)
+16:36:09    tầng T3: M = 82.66 t, CM (2.46; 5.57), CR (2.50; 6.71)
+16:36:09    tầng T4: M = 70.08 t, CM (2.50; 6.75), CR (2.50; 6.66)
+16:36:09    tầng MAI: M = 38.34 t, CM (2.50; 6.75), CR (2.50; 6.68)
+16:36:11 ảnh NhaPho_43_DaoDong_Mode1
+16:36:12 ảnh NhaPho_44_DaoDong_Mode3
+16:36:13 nhập kết quả: đã ghi bảng kiểu ETABS D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_NoiLuc_kieuETABS.csv (1300531 byte)
+16:36:15 ảnh NhaPho_33_NhapKetQua_XemTruoc
+16:36:15 ảnh NhaPho_33_NhapKetQua
+16:36:16 nhập kết quả: nguồn ETABS, 78/78 thanh, 21 trường hợp/tổ hợp, TTGH I 9, ghi chú 3
+16:36:16 ảnh NhaPho_34_NoiLucNhap
+16:36:16 nhập kết quả: thép dầm GIỐNG trước khi nhập – D2-1: Dưới 2Ø14 L=5.65; Trên 2Ø14 L=5.65; Mũ gối 6Ø16 L=1.70; Mũ gối 6Ø16 L=1.70; Tăng cường dưới 2Ø14 L=3.76; Đai 41Ø6 L=1.04 | D2-1: Dưới 2Ø14 L=5.65; Trên 2Ø14 L=5.65; Mũ gối 6Ø16 L=1.70; Mũ gối 6Ø16 L=1.70; Tăng cường dưới 2Ø14 L=3.76; Đai 41Ø6 L=1.04
+16:36:17 nhập kết quả: đã khôi phục nội lực của chương trình (Việt Const)
+16:36:17 so sánh ETABS: đã ghi bảng kiểu ETABS D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_SoSanh_kieuETABS.csv (1300531 byte)
+16:36:18 ảnh NhaPho_42_SoSanhETABS
+16:36:19 so sánh ETABS: 21/21 trường hợp, 78/78 cấu kiện; thanh TB 0.0000 %, max 0.0000 % (C2 #56 (HT, M2)); phản lực max 0.0000 %; cảnh báo 0, sai lệch lớn 0; không khớp 0; đánh giá Phù hợp – ĐẠT (≈ 0 %)
+16:36:19 so sánh ETABS: báo cáo D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_SoSanhETABS\SoSanh_ETABS.xlsx + D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_SoSanhETABS\BaoCaoSoSanh_ETABS.docx
+16:36:19 chọn thép: dầm D2-4 (D:13), 3 nhịp, 12 vùng thép
+16:36:20 ảnh NhaPho_20_ChonThep
+16:36:21 chọn thép: vùng 1 có 12 phương án
+16:36:21 chọn thép: áp dụng 2Ø16 → lựa chọn lưu 2, dầm D2-4 ĐẠT, thép dưới nhịp 1 = 2Ø16, vùng dùng thép chọn = 1
+16:36:22 ảnh NhaPho_21_ChonThep_SauApDung
+16:36:25 chọn thép sàn: ô S2-1, 6 vùng, phương án cả tầng: 3 phương án
+16:36:25 ảnh NhaPho_20b_ChonThepSan
+16:36:25 shop drawing: ok, 6 file → D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_GiaCongThep; 164 dòng gia công, 823 cây thép, 5969.8 kg, hao hụt 102.60 m
+16:36:26 ảnh NhaPho_27_CauThang
+16:36:26 cầu thang CT1: 2 vế chữ U có chiếu nghỉ, 19 bậc h = 174 mm, b = 283 mm, 2h+b = 630 mm, bản 100 mm; 0 lưu ý
+16:36:26 cầu thang: áp dụng đạt – 1 cầu thang khai báo
+16:36:27 cầu thang: 15 tải cầu thang truyền vào khung, 0 cảnh báo cầu thang
+16:36:27 thiết kế CT1: 4 bộ phận, đạt – CT1 BT1 Ø10a200/Ø8a200; CT1 BT2 Ø10a200/Ø8a200; CT1 CN1 Ø10a200/Ø8a200; CT1 DCN 2Ø18+2Ø14/2Ø14
+16:36:27 bản vẽ cầu thang: D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_KC-08_CauThang.dxf (298320 byte, 7 hình)
+16:36:27 khối lượng cầu thang: bê tông 2.594 m³, ván khuôn 26.77 m²; Xây bậc thang gạch 0.918 m³; Ốp lát bậc thang đá granite 28.884 m²; Trát mặt dưới bản thang, chiếu nghỉ 23.460 m²
+16:36:28 ảnh NhaPho_25_KhoiLuong
+16:36:28 khối lượng: bê tông 47.57 m³, lót 0.00 m³, ván khuôn 511.9 m², thép 2342.8 kg, xây 2.01 m³, 13 vật tư, 0 lưu ý
+16:36:28 bảng khối lượng Excel: D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_BangKhoiLuong.xlsx (28946 byte)
+16:36:30 ảnh NhaPho_26_ThuyetMinh
+16:36:30 thuyết minh tự động: D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_ThuyetMinhTuDong.docx (72603 byte)
+16:36:31 ảnh NhaPho_21_ChuanLayer
+16:36:33 ảnh NhaPho_22_LayerKetCau
+16:36:33 chuẩn layer CAD: font Arial, layer xuất 0→0, BE_TONG→BE_TONG, THEP→THEP, DAI→DAI, KICH_THUOC→KICH_THUOC, CHU→CHU, KY_HIEU→KY_HIEU, TRUC→TRUC, KHUNG_TEN→KHUNG_TEN
+16:36:34 ảnh NhaPho_28_ThietLapBanVe
+16:36:35 ảnh NhaPho_28b_KieuKichThuoc
+16:36:35 thiết lập bản vẽ: dầm 1/50, mặt cắt 1/25, mặt bằng 1/100, chữ dim 2.5 mm, ghi chú 2.5 mm, nhãn 2.5 mm; kiểu kích thước: VXT_1-15, VXT_1-25, VXT_1-30, VXT_1-50, VXT_1-100, VXT_1-200, VXT_1-250
+16:36:35 liên kết AutoCAD: ghi D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_acad_selftest.json
+16:36:35 liên kết AutoCAD: 2 tầng; Tường 24, Cột 12, Dầm 2, Lưới trục 20, Cửa 4, Tên phòng 4 – Tầng 1 – 5 tường, 5 trục, 6 cột KT, 2 phòng | Tầng 2 – 5 tường, 5 trục, 6 cột KT, 2 phòng
+16:36:36 liên kết AutoCAD: đề xuất 2 cao trình, 6 cột, 14 dầm
+16:36:37 liên kết AutoCAD: hộp thoại – 2 tầng, 6 cột, 2 cao trình
+16:36:37 ảnh NhaPho_23_AcadLink
+16:36:37 bản vẽ link: NhaPho_BanVeLink.dxf – 13 nét, 6 chữ, 3 layer, $INSUNITS = 4 → ×0.001, tầng T3
+16:36:37 bản vẽ link: phạm vi (6.00; -2.70) – (17.50; 6.50); bắt điểm góc → 
+16:36:39 ảnh NhaPho_53_BanVeLink
+16:36:41 ảnh NhaPho_54_QuanLyLink
+16:36:41 bản vẽ link: so sánh – Bản vẽ "NhaPho_BanVeLink.dxf" ↔ tầng T3: thêm 3 trục, 4 tường; dời 2 trục; không còn trên bản vẽ: 4 trục, 2 tường.
+16:36:41 bản vẽ link: đã bỏ liên kết – còn 0 bản vẽ
+16:36:41 đọc DWG: ghi D:\a\VXT.KetCau\VXT.KetCau\ManHinh\NhaPho_selftest.dwg (9643 byte, AC1032)
+16:36:41 đọc DWG: NhaPho_selftest.dwg: DWG AutoCAD 2018, $INSUNITS = 4 → ×0.001 (đơn vị → m), 39 thực thể, 0 miền tô, 6 layer
+16:36:41 đọc DWG: MẶT BẰNG TẦNG 1 – 5 tường, 5 trục, 6 cột KT, 2 phòng
+16:36:41 đọc DWG: đề xuất 1 cao trình, 6 cột, 7 dầm
+16:36:43 đọc DWG: hộp thoại – 1 tầng, 6 cột, 1 cao trình
+16:36:43 ảnh NhaPho_24_DocDWG
+16:36:45 hiệu chỉnh bản vẽ: mở KC-01 – MẶT BẰNG KẾT CẤU CÁC TẦNG, 599 thực thể
+16:36:46 hiệu chỉnh bản vẽ: dời nhãn KHÔNG CÓ nhãn (x trước 0), sửa chữ đúng; 1 chỉnh sửa, không còn áp dụng: 0
+16:36:46 ảnh NhaPho_35_HieuChinhBanVe
+16:36:46 hiệu chỉnh bản vẽ: xuất gộp 4 bản vẽ → NhaPho_BoBanVe.dxf (669 KB), chữ đã sửa trong file: có
+16:36:46 hiệu chỉnh bản vẽ: đã hoàn lại chỉnh sửa
+16:36:47 dàn trang thủ công: trang trắng KC-25 A3 420×297 mm
+16:36:50 ảnh NhaPho_19_DanTrangThuCong
+16:36:50 dàn trang thủ công: 10 đối tượng, 1 khung nhìn
+16:36:50 dàn trang thủ công: xoá/hoàn tác/làm lại 10→9→10→9→10 – đúng
+16:36:50 dàn trang thủ công: DXF NhaPho_DanTrangThuCong.dxf (15 KB), PDF NhaPho_DanTrangThuCong.pdf (123 KB)
+16:36:50 hatch: bộ ghi DXF 2018/DWG đã đăng ký; định dạng xuất theo chuẩn: DXF R12 (tương thích cũ)
+16:36:50 hatch: không có dầm/móng để vẽ
+16:36:52 ảnh NhaPho_56_Hatch
+16:36:52 hatch dàn trang KC-13: 0 miền tô trên tờ, 39 thực thể
+16:36:53 ảnh NhaPho_ChonCheDo
+16:37:04 triển khai Dầm D1: đạt, 8 kiểm tra, 8 số hiệu thép, 7 hình
+16:37:04 triển khai Cột C1: đạt, 8 kiểm tra, 7 số hiệu thép, 3 hình
+16:37:04 triển khai Sàn (ô bản) S1: đạt, 5 kiểm tra, 5 số hiệu thép, 2 hình
+16:37:04 triển khai Mặt bằng sàn SAN1: đạt, 16 kiểm tra, 27 số hiệu thép, 2 hình
+16:37:04 triển khai Lanh tô – ô văng LT1: đạt, 10 kiểm tra, 7 số hiệu thép, 2 hình
+16:37:04 triển khai Cầu thang bộ CT1: đạt, 16 kiểm tra, 15 số hiệu thép, 9 hình
+16:37:04 triển khai Hố pít – vách thang máy HTM1: đạt, 17 kiểm tra, 22 số hiệu thép, 3 hình
+16:37:04 triển khai Móng đơn M1: đạt, 9 kiểm tra, 2 số hiệu thép, 2 hình
+16:37:04 triển khai Móng băng MBG1: đạt, 12 kiểm tra, 5 số hiệu thép, 2 hình
+16:37:04 triển khai Móng cọc (đài cọc) Đ1: đạt, 10 kiểm tra, 3 số hiệu thép, 2 hình
+16:37:04 triển khai Móng bè MB1: đạt, 15 kiểm tra, 5 số hiệu thép, 2 hình
+16:37:04 triển khai Dự ứng lực DUL1: đạt, 7 kiểm tra, 3 số hiệu thép, 2 hình
+16:37:04 triển khai Bể nước BN1: đạt, 13 kiểm tra, 17 số hiệu thép, 2 hình
+16:37:04 triển khai: mặt bằng kết cấu 4 bản vẽ (MẶT BẰNG KẾT CẤU MÓNG, MẶT BẰNG ĐỊNH VỊ CỘT, MẶT BẰNG KẾT CẤU TẦNG 2 (+3.600), MẶT BẰNG LANH TÔ – Ô VĂNG TẦNG 2 (+3.600)), 24 vị trí cấu kiện
+16:37:04 triển khai: xuất 19 file
+16:37:04 bản vẽ kiểu Revit: KC-01 – 2 khung nhìn, 55 khung nhìn trong trình duyệt
+16:37:04 mẫu định dạng: Mẫu tự kiểm tra – Nhà phố mẫu 4 tầng.kcvxt-mau – chuẩn CAD, tờ mẫu, thông tin khung tên, thuyết minh, định mức, tuỳ chọn thép, 25 tờ mẫu
+16:37:05 ảnh NhaPho_29_Template
+16:37:05 khung tên người dùng: 21 thực thể, 14 chữ, 9 trường; kích thước 180×40 mm (1 đơn vị = 1 mm); toàn bộ model space
+16:37:06 tờ từ mẫu: KC-26 A3, 1 ô khung nhìn (Ghi chú chung )
+16:37:07 ảnh NhaPho_30_KhungTenNguoiDung
+16:37:07 khung tên người dùng: DXF NhaPho_KhungTenNguoiDung.dxf – tên công trình có, số hiệu có, chỗ trống đã thay hết
+16:37:07 XONG – không lỗi
+16:37:08 mở D:\a\VXT.KetCau\VXT.KetCau\KetQuaMau\TuBanVeKienTruc\TuBanVeKienTruc.kcvxt
+16:37:11 phân tích + thiết kế: 101 thanh, 72 cấu kiện
+16:37:15 ảnh TuBanVeKienTruc_1_MatBang
+16:37:15 vừa màn hình: 7.8 px/m, vùng vẽ 457×307 px, công trình phủ 41 % chiều hạn chế, nhãn ẩn vì hết chỗ: 27  – CẢNH BÁO: mặt bằng còn nhỏ
+16:37:16 ảnh TuBanVeKienTruc_2_MatBang_ChonDam
+16:37:18 ảnh TuBanVeKienTruc_3_MatBang_ChonSan
+16:37:20 ảnh TuBanVeKienTruc_4_3D_ChonDam
+16:37:22 ảnh TuBanVeKienTruc_5_BieuDo_0
+16:37:24 ảnh TuBanVeKienTruc_5_BieuDo_1
+16:37:26 ảnh TuBanVeKienTruc_5_BieuDo_2
+16:37:27 ảnh TuBanVeKienTruc_6_BieuDo_LucCat
+16:37:29 ảnh TuBanVeKienTruc_7_Mong
+16:37:29 ban công: Đã thêm ban công vươn 1.20 m dài 5.00 m: 2 dầm công xôn D22x30, dầm biên D22x30, 1 ô sàn, lan can 1 kN/m.
+16:37:29 cầu thang: Cầu thang 2.50×5.00 m – tải truyền vào 5 dầm viền.
+16:37:29 WC: ST3-1: Sàn vệ sinh (hạ cốt, chống thấm) – hoàn thiện 2 kN/m², hoạt tải 1.5 kN/m². Hạ cốt mặc định Δ = -50 mm (sửa ở 'Hạ cốt sàn…').
+16:37:30 ảnh TuBanVeKienTruc_8_SauKhiSua
+16:37:32 ảnh TuBanVeKienTruc_9_3D_SauKhiSua
+16:37:32 dầm: Đã thêm dầm D22x30 dài 5.00 m tại tầng T3 (đã chia tại các nút giao).
+16:37:32 tường: Đã khai báo Tường 110 trát 2 mặt dài 5.00 m tại tầng T3 – nằm trên dầm.
+16:37:32 gán tường lên dầm: Đã khai báo Tường 110 trát 2 mặt dài 1.30 m tại tầng T3 – nằm trên dầm.
+16:37:32 cấu tạo sàn: ST3-8: cấu tạo "Sàn vệ sinh" – hoàn thiện 2.01 kN/m², hoạt tải 1.5 kN/m².
+16:37:34 móng cọc: 4 đài, 0 không đạt
+16:37:36 ảnh TuBanVeKienTruc_10_MongCoc
+16:37:36 móng băng: 2 dải, 0 không đạt
+16:37:38 ảnh TuBanVeKienTruc_11_MongBang
+16:37:38 bố trí cọc: đài ĐC1 (nút 1) tự chọn 3 cọc, 1.30×1.45×0.60 m, Pmax = 440.8 kN
+16:37:42 ảnh TuBanVeKienTruc_31_BoTriCoc
+16:37:42 bố trí cọc (thử 5 cọc): 5 cọc 250×250 – đài 1650×1650×600 mm; Pmax = 207.9 / [P] = 450 kN (46%), Pmin = 48.8 kN; thép đáy Ø12a180 / Ø12a200 → ĐẠT
+16:37:42 bố trí cọc: 16 hạng mục kiểm tra, 0 không đạt, 2 cảnh báo; η nhóm = 0.77
+16:37:43 bố trí cọc: sau áp dụng ĐC1 5 cọc, 1.65×1.65×0.60 m, Pmax = 207.9 kN – đạt; bố trí riêng: 4 nút
+16:37:45 ảnh TuBanVeKienTruc_32_MongCocSauBoTri
+16:37:45 bố trí cọc: đã trả lại thông số móng ban đầu (Móng đơn)
+16:37:46 móng lệch tâm: 2 cạnh ranh giới, 8 móng đơn (8 lệch tâm), 4 dầm cân bằng, 0 móng kết hợp, 0 móng không đạt
+16:37:46    M1: (a) Có dầm móng cân bằng, 1.50×2.30×0.40 m, ex = 640, ey = 0 mm, pmax = 220.2 / 1,2R = 264.7 kN/m² – đạt
+16:37:46    M2: (a) Có dầm móng cân bằng, 1.50×2.30×0.40 m, ex = -640, ey = 0 mm, pmax = 218.1 / 1,2R = 264.7 kN/m² – đạt
+16:37:46    M3: (a) Có dầm móng cân bằng, 1.70×2.60×0.45 m, ex = 740, ey = 0 mm, pmax = 201.0 / 1,2R = 266.5 kN/m² – đạt
+16:37:46    M4: (a) Có dầm móng cân bằng, 1.60×2.40×0.45 m, ex = -690, ey = 0 mm, pmax = 215.0 / 1,2R = 265.6 kN/m² – đạt
+16:37:46    DM1 ×1: 500×750, L = 5.00 m, M = 522.7 kN.m, Q = 32.7 kN, 5Ø22+2Ø16 / 2Ø18+1Ø16, Ø8a300 – đạt
+16:37:46    DM2 ×1: 500×750, L = 5.00 m, M = 701.3 kN.m, Q = 52.9 kN, 5Ø25+2Ø22 / 2Ø25, Ø8a300 – đạt
+16:37:46    DM3 ×1: 500×750, L = 5.00 m, M = 745.5 kN.m, Q = 44.5 kN, 7Ø25 / 2Ø20+2Ø16, Ø8a300 – đạt
+16:37:48 ảnh TuBanVeKienTruc_36_MongLechTam
+16:37:51 ảnh TuBanVeKienTruc_37_MongLechTamChiTiet
+16:37:51 móng lệch tâm (hộp thoại): Móng 1.50×2.30×0.40 m; e = (640; 0) mm; ptb = 204.3, pmax = 220.2, pmin = 115.5 kN/m², R = 220.6 → ĐẠT
+16:37:51 móng lệch tâm: đã trả lại thông số móng ban đầu (Móng đơn, 0 ranh giới)
+16:37:52 lùi cọc: 2 cạnh có khoảng lùi, 8 đài (6 đài lùi cọc), 4 dầm cân bằng, 0 đài không đạt
+16:37:52    ĐC1: 2 cọc, đài 0.78×1.30×0.60 m, khoảng lùi nhỏ nhất 500 mm, e = 390/0 mm, Pmax = 374.3 (không DM 370.1) / [P] = 450 kN, công xôn M = 172.4 kN.m – đề xuất (a) Dầm cân bằng chung hai đài biên – đạt
+16:37:52    ĐC2: 2 cọc, đài 0.78×1.30×0.60 m, khoảng lùi nhỏ nhất 500 mm, e = -390/0 mm, Pmax = 371.4 (không DM 367.0) / [P] = 450 kN, công xôn M = 173.0 kN.m – đề xuất (a) Dầm cân bằng chung hai đài biên – đạt
+16:37:52    ĐC4: 3 cọc, đài 1.45×1.30×0.60 m, khoảng lùi nhỏ nhất 501 mm, e = -824/0 mm, Pmax = 316.4 (không DM 1518.4) / [P] = 450 kN, công xôn M = 205.2 kN.m – đề xuất (a) Dầm cân bằng chung hai đài biên – đạt
+16:37:52    ĐC6: 3 cọc, đài 1.45×1.30×0.60 m, khoảng lùi nhỏ nhất 501 mm, e = -824/0 mm, Pmax = 368.9 (không DM 1691.6) / [P] = 450 kN, công xôn M = 232.9 kN.m – đề xuất (a) Dầm cân bằng chung hai đài biên – đạt
+16:37:54 ảnh TuBanVeKienTruc_38_LuiCocRanh
+16:37:55 cừ tràm: thiết kế xong, 8 móng đơn (8 gia cố cừ tràm), 8 không đạt
+16:37:55    M1 ×1: 4.20×6.30×0.45 m, ptb = 65.2 kN/m², [p]1 = 67.9, [p]2 = 56.7 → [p] = 56.7; 662 cây, lún 6.10 cm, đầu cừ 1.60 m / MNN 0.50 m – KHÔNG ĐẠT
+16:37:55    M2 ×1: 4.20×6.30×0.45 m, ptb = 65.5 kN/m², [p]1 = 67.9, [p]2 = 56.7 → [p] = 56.7; 662 cây, lún 6.14 cm, đầu cừ 1.60 m / MNN 0.50 m – KHÔNG ĐẠT
+16:37:55    M3 ×1: 4.70×7.10×0.50 m, ptb = 75.9 kN/m², [p]1 = 68.0, [p]2 = 56.9 → [p] = 56.9; 835 cây, lún 7.77 cm, đầu cừ 1.60 m / MNN 0.50 m – KHÔNG ĐẠT
+16:37:55    M4 ×1: 4.60×6.90×0.50 m, ptb = 67.3 kN/m², [p]1 = 68.0, [p]2 = 56.9 → [p] = 56.9; 794 cây, lún 6.60 cm, đầu cừ 1.60 m / MNN 0.50 m – KHÔNG ĐẠT
+16:37:59 ảnh TuBanVeKienTruc_39_CuTram
+16:37:59 cừ tràm (hộp thoại): móng M1 4.20×6.30 m (ptb = 65.2 kN/m²), hố khoan HK-CT (tự kiểm tra): 662 cây; PP(1) [p]1 = 67.9 kN/m², PP(2) [p]2 = 56.7 kN/m² → [p] = 56.7 kN/m²; lún khối quy ước 6.10 cm; đầu cừ 1.60 m / MNN 0.50 m → KHÔNG KHẢ THI – dùng móng cọc BTCT: móng cần lớn hơn 0,5·bước cột (giới hạn 2.50 m) mà vẫn chưa thoả [p] – dừng ở 4.20×6.30 m
+16:37:59 lùi cọc / cừ tràm: đã trả lại thông số móng, hố khoan, nền đất ban đầu (Móng đơn, 0 ranh giới, 0 hố khoan)
+16:38:00 ảnh TuBanVeKienTruc_45_KhaiBaoTietDien
+16:38:00 khai báo tiết diện: 14 tiết diện
+16:38:01 dầm phụ: Đã thêm 2 dầm phụ D22x30 song song trục Y trong ô 5.00×5.00 m tầng T3: cách mép ô 1667; 3333 mm, chia lại 1 ô sàn.
+16:38:01 vẽ nhanh theo lưới: mọi đoạn trục tầng T3 đã có dầm
+16:38:03 ảnh TuBanVeKienTruc_46_DamPhuTheoKhoangCach
+16:38:03 ảnh TuBanVeKienTruc_46b_ThanhLenh_San_GanTai
+16:38:04 công cụ dầm: đã hoàn tác về mô hình trước khi thử
+16:38:04 giao diện Revit – vẽ tường: Đã khai báo Gạch đặc 220 trát 2 mặt dài 5.00 m tại tầng T3 – nằm trên dầm.
+16:38:04 giao diện Revit – cửa: Đã đặt cửa đi D1 900x2200 lên tường #38 (tâm cách đầu tường 1.20 m) – tường tự cắt ô cửa, tải tường trừ diện tích cửa. | Đã đặt cửa sổ S1 1200x1400 lên tường #38 (tâm cách đầu tường 3.50 m) – tường tự cắt ô cửa, tải tường trừ diện tích cửa.; đoạn tường đặc: 3
+16:38:05 ảnh TuBanVeKienTruc_46c_Revit_CuaCatTuong
+16:38:06 ảnh TuBanVeKienTruc_46d_SuaKieuTuong
+16:38:07 giao diện Revit – tay nắm tường đang chọn: 0
+16:38:07 ảnh TuBanVeKienTruc_46e_Revit_TayNam
+16:38:07 giao diện Revit – 3D tường quanh 2 ô cửa: 6 khối
+16:38:09 ảnh TuBanVeKienTruc_46f_Revit_3D_TuongCoCua
+16:38:09 đặt đồ đạc bắt điểm: Mặt tường, góc 0°, 4 kích thước tạm (+X=1475; -X=1475; +Y=2795; -Y=10)
+16:38:10 ảnh TuBanVeKienTruc_46g_Revit_3D_DoDacChon
+16:38:11 ảnh TuBanVeKienTruc_46h_MatCat_1_1
+16:38:12 ảnh TuBanVeKienTruc_46i_MatCat_1_1_CoMong
+16:38:12 khung nhìn mặt cắt ngang tầng: 15; mặt cắt đứng: 2
+16:38:12 giao diện Revit: đã trả lại mô hình và giao diện cổ điển
+16:38:12 sàn hạ cốt: ST3-1: Sàn vệ sinh (hạ cốt, chống thấm) – hoàn thiện 2 kN/m², hoạt tải 1.5 kN/m².
+16:38:13 sàn hạ cốt: ô ST3-1 Δ = -50 mm, liên kết 1 cạnh ngàm, 3 cạnh khớp, 1 thanh mũ cấu tạo cạnh bậc
+16:38:13 sàn hạ cốt: 7 dầm đỡ ô hạ cốt, 0 không đủ chiều cao
+16:38:13    D3-1: Dầm biên ô sàn hạ cốt (ô ST3-8 (dầm biên), nhịp 1): h ≥ hs1 + Δ + hs2 = 100 + 50 + 100 = 250 mm ≤ h = 300 mm – đạt
+16:38:13    D3-2: Dầm biên ô sàn hạ cốt (ô ST3-1 / ô ST3-8, nhịp 1): h ≥ hs1 + Δ + hs2 = 100 + 50 + 100 = 250 mm ≤ h = 400 mm – đạt
+16:38:13    D3-3: Dầm biên ô sàn hạ cốt (ô ST3-1 (dầm biên), nhịp 1): h ≥ hs1 + Δ + hs2 = 100 + 50 + 100 = 250 mm ≤ h = 500 mm – đạt
+16:38:13    D3-4: Dầm biên ô sàn hạ cốt (ô ST3-1 (dầm biên), nhịp 1): h ≥ hs1 + Δ + hs2 = 100 + 50 + 100 = 250 mm ≤ h = 300 mm – đạt
+16:38:14 ảnh TuBanVeKienTruc_55_SanHaCot
+16:38:14 sàn hạ cốt: đã trả lại mô hình ban đầu (2 ô hạ cốt)
+16:38:14 dầm cong: Đã thêm dầm cong D22x30 R = 3.63 m, chiều dài cung 5.52 m (dây cung 5.00 m, độ vồng 1.00 m) tại tầng T3.
+16:38:14 dầm cong DT3-C1: L cung = 5.517 m, |T| max (TT) = 2.01 kN.m
+16:38:16 ảnh TuBanVeKienTruc_16_DamCong
+16:38:18 ảnh TuBanVeKienTruc_17_DamCong3D
+16:38:20 ảnh TuBanVeKienTruc_18_DamCongBieuDo
+16:38:22 địa danh: Thái Nguyên /  → vùng , W0 = 0.95 kN/m²
+16:38:22 ảnh TuBanVeKienTruc_12_DiaDanhGio
+16:38:23 hố khoan: 1 hố, 5 lớp, sâu 30.0 m
+16:38:23 ảnh TuBanVeKienTruc_13_DiaChat
+16:38:23 gợi ý móng: 5 phương án, chọn: Móng băng
+16:38:25 ảnh TuBanVeKienTruc_14_GoiYMong
+16:38:27 ảnh TuBanVeKienTruc_15_PhuLuc
+16:38:27 phụ lục: mở được
+16:38:29 ảnh TuBanVeKienTruc_40_VanBanPhapLy
+16:38:29 văn bản pháp lý: 39 văn bản, 23 đang áp dụng, 15 hết hiệu lực; dự án trích dẫn: Luật Xây dựng số 135/2025/QH15; Nghị định 217/2026/NĐ-CP; Nghị định 212/2026/NĐ-CP; Thông tư 34/2026/TT-BXD; TCVN 2737:2023; QCVN 02:2022/BXD; TCVN 5574:2018; TCVN 1651:2018; TCVN 9386-1:2025; TCVN 9386-5:2025; TCVN 9362:2012; kiểm tra dự án: 0 cảnh báo, 1 lưu ý
+16:38:30 ảnh TuBanVeKienTruc_41_KiemChung
+16:38:30 kiểm chứng: 28 bài toán, 89 đại lượng: 89 đạt, 0 không đạt; sai số lớn nhất 1.67%; thời gian 0.1 s → D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_KiemChung\BaoCaoKiemChung.docx
+16:38:32 ảnh TuBanVeKienTruc_47_CayMoHinh
+16:38:32 cây mô hình: 8 nhánh; 107 thanh, 20 sàn, 5 trường hợp tải, 15 tổ hợp
+16:38:33 ảnh TuBanVeKienTruc_48_KiemTraMoHinh
+16:38:33 kiểm tra mô hình: 2 lỗi, 0 cảnh báo, 1 thông tin (2 mục sửa tự động được).
+16:38:33    THANH_TRUNG: 2 (Lỗi)
+16:38:33    TIET_DIEN_KHONG_DUNG: 1 (Thông tin)
+16:38:34 ảnh TuBanVeKienTruc_49_BangKetQua
+16:38:34 bảng kết quả Chuyển vị nút (Joint Displacements): 64 dòng
+16:38:34 bảng kết quả Phản lực gối (Joint Reactions): 8 dòng
+16:38:34 bảng kết quả Nội lực dầm (Element Forces – Beams): 617 dòng
+16:38:34 bảng kết quả Nội lực cột (Element Forces – Columns): 236 dòng
+16:38:34 bảng kết quả Chuyển vị lệch tầng (Story Drifts): 8 dòng
+16:38:34 bảng kết quả Chu kỳ & tỷ lệ khối lượng (Modal Periods & Mass Ratios): 12 dòng
+16:38:34 bảng kết quả Phản lực đáy (Base Reactions): 1 dòng
+16:38:35 ảnh TuBanVeKienTruc_50_ToHop
+16:38:35 tổ hợp tải trọng: 15 tổ hợp (9 TTGH I, 5 TTGH II, 1 bao); vấn đề: 0
+16:38:35 quy trình mô hình ETABS: xong
+16:38:38 ảnh TuBanVeKienTruc_51_HuongDan
+16:38:38 hướng dẫn sử dụng: 15 chương, 195 mục; chương 4 = "Hai chế độ làm việc – Triển khai hồ sơ"; ngữ cảnh hiện tại = giao-dien.tro-giup → 3.9. Trợ giúp ngay trên phần mềm
+16:38:39 ảnh TuBanVeKienTruc_52_BatDauNhanh
+16:38:39 bắt đầu nhanh: 10 bước, đã làm 6
+16:38:40 dàn trang: 33 tờ, 33 file DXF
+16:38:42 ảnh TuBanVeKienTruc_10_DanTrang_1
+16:38:43 ảnh TuBanVeKienTruc_11_DanTrang_2
+16:38:43 dàn trang: PDF TuBanVeKienTruc_DanTrang.pdf
+16:38:43 dao động riêng: 12 dạng, 30 bậc tự do động, Khử tĩnh các bậc tự do không khối lượng + Householder/QL (giải đầy đủ); nguồn khối lượng 1·TT + 1·HTHT + 0.24·HT; T1 = 1.277 s, Ct·H^0,75 = 0.537 s; Σ UX = 100.0 %, Σ UY = 100.0 %
+16:38:43    Dạng |   T (s) |  f (Hz) |   UX % |   UY % |   RZ % |  ΣUX % |  ΣUY % | phương
+16:38:43       1 |   1.277 |   0.783 |   92.1 |    0.0 |    1.4 |   92.1 |    0.0 | X
+16:38:43       2 |   0.919 |   1.088 |    1.2 |    0.0 |   91.6 |   93.4 |    0.0 | Xoắn
+16:38:43       3 |   0.759 |   1.318 |    0.0 |   86.1 |    0.0 |   93.4 |   86.1 | Y
+16:38:43       4 |   0.437 |   2.288 |    5.2 |    0.0 |    0.0 |   98.5 |   86.1 | X
+16:38:43       5 |   0.321 |   3.117 |    0.2 |    0.0 |    4.2 |   98.7 |   86.1 | Xoắn
+16:38:43    tầng T2: M = 119.03 t, CM (2.52; 7.27), CR (2.44; 7.29)
+16:38:43    tầng T3: M = 140.71 t, CM (2.52; 5.99), CR (2.50; 7.45)
+16:38:43    tầng MAI: M = 89.29 t, CM (2.45; 7.46), CR (2.50; 7.47)
+16:38:43    tầng MAITUM: M = 23.54 t, CM (2.50; 7.25), CR (2.50; 7.35)
+16:38:45 ảnh TuBanVeKienTruc_43_DaoDong_Mode1
+16:38:47 ảnh TuBanVeKienTruc_44_DaoDong_Mode3
+16:38:47 nhập kết quả: đã ghi bảng kiểu ETABS D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_NoiLuc_kieuETABS.csv (1561455 byte)
+16:38:49 ảnh TuBanVeKienTruc_33_NhapKetQua_XemTruoc
+16:38:50 ảnh TuBanVeKienTruc_33_NhapKetQua
+16:38:50 nhập kết quả: nguồn ETABS, 107/107 thanh, 21 trường hợp/tổ hợp, TTGH I 9, ghi chú 3
+16:38:51 ảnh TuBanVeKienTruc_34_NoiLucNhap
+16:38:51 nhập kết quả: thép dầm GIỐNG trước khi nhập – D2-1: Dưới 2Ø14 L=4.95; Trên 2Ø14 L=4.95; Đai 29Ø6 L=1.24 | D2-1: Dưới 2Ø14 L=4.95; Trên 2Ø14 L=4.95; Đai 29Ø6 L=1.24
+16:38:51 nhập kết quả: đã khôi phục nội lực của chương trình (Việt Const)
+16:38:51 so sánh ETABS: đã ghi bảng kiểu ETABS D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_SoSanh_kieuETABS.csv (1561455 byte)
+16:38:53 ảnh TuBanVeKienTruc_42_SoSanhETABS
+16:38:53 so sánh ETABS: 21/21 trường hợp, 107/107 cấu kiện; thanh TB 0.0000 %, max 0.0000 % (D27 #55 (GX, M3)); phản lực max 0.0000 %; cảnh báo 0, sai lệch lớn 0; không khớp 0; đánh giá Phù hợp – ĐẠT (≈ 0 %)
+16:38:53 so sánh ETABS: báo cáo D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_SoSanhETABS\SoSanh_ETABS.xlsx + D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_SoSanhETABS\BaoCaoSoSanh_ETABS.docx
+16:38:53 chọn thép: dầm D2-3 (D:40), 2 nhịp, 9 vùng thép
+16:38:55 ảnh TuBanVeKienTruc_20_ChonThep
+16:38:55 chọn thép: vùng 1 có 12 phương án
+16:38:56 chọn thép: áp dụng 3Ø18 → lựa chọn lưu 1, dầm D2-3 ĐẠT, thép dưới nhịp 1 = 3Ø18, vùng dùng thép chọn = 1
+16:38:57 ảnh TuBanVeKienTruc_21_ChonThep_SauApDung
+16:38:59 chọn thép sàn: ô S2-1, 6 vùng, phương án cả tầng: 3 phương án
+16:38:59 ảnh TuBanVeKienTruc_20b_ChonThepSan
+16:38:59 shop drawing: ok, 6 file → D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_GiaCongThep; 353 dòng gia công, 852 cây thép, 7477.1 kg, hao hụt 142.21 m
+16:39:01 ảnh TuBanVeKienTruc_27_CauThang
+16:39:01 cầu thang CT1: 2 vế chữ U có chiếu nghỉ, 19 bậc h = 174 mm, b = 283 mm, 2h+b = 630 mm, bản 100 mm; 1 lưu ý
+16:39:01 cầu thang: áp dụng đạt – 1 cầu thang khai báo
+16:39:01 cầu thang: 15 tải cầu thang truyền vào khung, 1 cảnh báo cầu thang
+16:39:01 thiết kế CT1: 4 bộ phận, đạt – CT1 BT1 Ø10a200/Ø8a200; CT1 BT2 Ø10a200/Ø8a200; CT1 CN1 Ø8a200/Ø8a200; CT1 DCN 2Ø12/2Ø12
+16:39:01 thiết kế CT-1: 4 bộ phận, đạt – CT-1 BT1 Ø10a150/Ø8a190; CT-1 BT2 Ø12a180/Ø8a150; CT-1 CN1 Ø8a200/Ø8a200; CT-1 DCN 2Ø12/2Ø12
+16:39:01 thiết kế CT-3: 4 bộ phận, đạt – CT-3 BT1 Ø10a200/Ø8a200; CT-3 BT2 Ø10a200/Ø8a200; CT-3 CN1 Ø8a200/Ø8a200; CT-3 DCN 2Ø12/2Ø12
+16:39:01 thiết kế CT-4: 4 bộ phận, đạt – CT-4 BT1 Ø10a200/Ø8a200; CT-4 BT2 Ø10a200/Ø8a200; CT-4 CN1 Ø8a170/Ø8a200; CT-4 DCN 2Ø14/2Ø12
+16:39:01 bản vẽ cầu thang: D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_KC-08_CauThang.dxf (1133451 byte, 28 hình)
+16:39:01 khối lượng cầu thang: bê tông 3.816 m³, ván khuôn 36.54 m²; Xây bậc thang gạch 0.240 m³; Ốp lát bậc thang đá granite 7.106 m²; Trát mặt dưới bản thang, chiếu nghỉ 5.688 m²; Xây bậc thang gạch 0.327 m³; Ốp lát bậc thang đá granite 7.518 m²; Trát mặt dưới bản thang, chiếu nghỉ 5.693 m²; Xây bậc thang gạch 0.240 m³; Ốp lát bậc thang đá granite 7.106 m²; Trát mặt dưới bản thang, chiếu nghỉ 5.688 m²; Xây bậc thang gạch 0.501 m³; Ốp lát bậc thang đá granite 15.866 m²; Trát mặt dưới bản thang, chiếu nghỉ 12.908 m²
+16:39:03 ảnh TuBanVeKienTruc_25_KhoiLuong
+16:39:03 khối lượng: bê tông 56.81 m³, lót 0.00 m³, ván khuôn 584.0 m², thép 1655.6 kg, xây 69.26 m³, 13 vật tư, 0 lưu ý
+16:39:03 bảng khối lượng Excel: D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_BangKhoiLuong.xlsx (42383 byte)
+16:39:05 ảnh TuBanVeKienTruc_26_ThuyetMinh
+16:39:05 thuyết minh tự động: D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_ThuyetMinhTuDong.docx (77068 byte)
+16:39:06 ảnh TuBanVeKienTruc_21_ChuanLayer
+16:39:07 ảnh TuBanVeKienTruc_22_LayerKetCau
+16:39:07 chuẩn layer CAD: font Arial, layer xuất 0→0, BE_TONG→BE_TONG, THEP→THEP, DAI→DAI, KICH_THUOC→KICH_THUOC, CHU→CHU, KY_HIEU→KY_HIEU, TRUC→TRUC, KHUNG_TEN→KHUNG_TEN
+16:39:09 ảnh TuBanVeKienTruc_28_ThietLapBanVe
+16:39:10 ảnh TuBanVeKienTruc_28b_KieuKichThuoc
+16:39:10 thiết lập bản vẽ: dầm 1/50, mặt cắt 1/25, mặt bằng 1/100, chữ dim 2.5 mm, ghi chú 2.5 mm, nhãn 2.5 mm; kiểu kích thước: VXT_1-15, VXT_1-25, VXT_1-30, VXT_1-50, VXT_1-100, VXT_1-200, VXT_1-250
+16:39:10 liên kết AutoCAD: ghi D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_acad_selftest.json
+16:39:10 liên kết AutoCAD: 2 tầng; Tường 24, Cột 12, Dầm 2, Lưới trục 20, Cửa 4, Tên phòng 4 – Tầng 1 – 5 tường, 5 trục, 6 cột KT, 2 phòng | Tầng 2 – 5 tường, 5 trục, 6 cột KT, 2 phòng
+16:39:10 liên kết AutoCAD: đề xuất 2 cao trình, 6 cột, 14 dầm
+16:39:12 liên kết AutoCAD: hộp thoại – 2 tầng, 6 cột, 2 cao trình
+16:39:12 ảnh TuBanVeKienTruc_23_AcadLink
+16:39:12 bản vẽ link: TuBanVeKienTruc_BanVeLink.dxf – 13 nét, 6 chữ, 3 layer, $INSUNITS = 4 → ×0.001, tầng T3
+16:39:12 bản vẽ link: phạm vi (6.00; -4.00) – (17.50; 5.20); bắt điểm góc → 
+16:39:14 ảnh TuBanVeKienTruc_53_BanVeLink
+16:39:16 ảnh TuBanVeKienTruc_54_QuanLyLink
+16:39:16 bản vẽ link: so sánh – Bản vẽ "TuBanVeKienTruc_BanVeLink.dxf" ↔ tầng T3: thêm 3 trục, 4 tường; dời 2 trục; không còn trên bản vẽ: 4 trục, 11 tường.
+16:39:16 bản vẽ link: đã bỏ liên kết – còn 0 bản vẽ
+16:39:16 đọc DWG: ghi D:\a\VXT.KetCau\VXT.KetCau\ManHinh\TuBanVeKienTruc_selftest.dwg (9643 byte, AC1032)
+16:39:16 đọc DWG: TuBanVeKienTruc_selftest.dwg: DWG AutoCAD 2018, $INSUNITS = 4 → ×0.001 (đơn vị → m), 39 thực thể, 0 miền tô, 6 layer
+16:39:16 đọc DWG: MẶT BẰNG TẦNG 1 – 5 tường, 5 trục, 6 cột KT, 2 phòng
+16:39:16 đọc DWG: đề xuất 1 cao trình, 6 cột, 7 dầm
+16:39:18 đọc DWG: hộp thoại – 1 tầng, 6 cột, 1 cao trình
+16:39:18 ảnh TuBanVeKienTruc_24_DocDWG
+16:39:20 hiệu chỉnh bản vẽ: mở KC-01 – MẶT BẰNG KẾT CẤU CÁC TẦNG, 736 thực thể
+16:39:21 hiệu chỉnh bản vẽ: dời nhãn KHÔNG CÓ nhãn (x trước 0), sửa chữ đúng; 1 chỉnh sửa, không còn áp dụng: 0
+16:39:21 ảnh TuBanVeKienTruc_35_HieuChinhBanVe
+16:39:21 hiệu chỉnh bản vẽ: xuất gộp 7 bản vẽ → TuBanVeKienTruc_BoBanVe.dxf (1817 KB), chữ đã sửa trong file: có
+16:39:21 hiệu chỉnh bản vẽ: đã hoàn lại chỉnh sửa
+16:39:22 dàn trang thủ công: trang trắng KC-34 A3 420×297 mm
+16:39:24 ảnh TuBanVeKienTruc_19_DanTrangThuCong
+16:39:24 dàn trang thủ công: 10 đối tượng, 1 khung nhìn
+16:39:24 dàn trang thủ công: xoá/hoàn tác/làm lại 10→9→10→9→10 – đúng
+16:39:24 dàn trang thủ công: DXF TuBanVeKienTruc_DanTrangThuCong.dxf (16 KB), PDF TuBanVeKienTruc_DanTrangThuCong.pdf (135 KB)
+16:39:24 hatch: bộ ghi DXF 2018/DWG đã đăng ký; định dạng xuất theo chuẩn: DXF R12 (tương thích cũ)
+16:39:24 hatch: không có dầm/móng để vẽ
+16:39:26 ảnh TuBanVeKienTruc_56_Hatch
+16:39:26 hatch dàn trang KC-16: 0 miền tô trên tờ, 45 thực thể
+16:39:27 ảnh TuBanVeKienTruc_ChonCheDo
+16:39:38 triển khai Dầm D1: đạt, 8 kiểm tra, 8 số hiệu thép, 7 hình
+16:39:38 triển khai Cột C1: đạt, 8 kiểm tra, 7 số hiệu thép, 3 hình
+16:39:38 triển khai Sàn (ô bản) S1: đạt, 5 kiểm tra, 5 số hiệu thép, 2 hình
+16:39:38 triển khai Mặt bằng sàn SAN1: đạt, 16 kiểm tra, 27 số hiệu thép, 2 hình
+16:39:38 triển khai Lanh tô – ô văng LT1: đạt, 10 kiểm tra, 7 số hiệu thép, 2 hình
+16:39:38 triển khai Cầu thang bộ CT1: đạt, 16 kiểm tra, 15 số hiệu thép, 9 hình
+16:39:38 triển khai Hố pít – vách thang máy HTM1: đạt, 17 kiểm tra, 22 số hiệu thép, 3 hình
+16:39:38 triển khai Móng đơn M1: đạt, 9 kiểm tra, 2 số hiệu thép, 2 hình
+16:39:38 triển khai Móng băng MBG1: đạt, 12 kiểm tra, 5 số hiệu thép, 2 hình
+16:39:38 triển khai Móng cọc (đài cọc) Đ1: đạt, 10 kiểm tra, 3 số hiệu thép, 2 hình
+16:39:38 triển khai Móng bè MB1: đạt, 15 kiểm tra, 5 số hiệu thép, 2 hình
+16:39:38 triển khai Dự ứng lực DUL1: đạt, 7 kiểm tra, 3 số hiệu thép, 2 hình
+16:39:38 triển khai Bể nước BN1: đạt, 13 kiểm tra, 17 số hiệu thép, 2 hình
+16:39:38 triển khai: mặt bằng kết cấu 4 bản vẽ (MẶT BẰNG KẾT CẤU MÓNG, MẶT BẰNG ĐỊNH VỊ CỘT, MẶT BẰNG KẾT CẤU TẦNG 2 (+3.600), MẶT BẰNG LANH TÔ – Ô VĂNG TẦNG 2 (+3.600)), 24 vị trí cấu kiện
+16:39:38 triển khai: xuất 19 file
+16:39:38 bản vẽ kiểu Revit: KC-01 – 2 khung nhìn, 55 khung nhìn trong trình duyệt
+16:39:38 mẫu định dạng: Mẫu tự kiểm tra – Nhà phố từ bản vẽ kiến trúc.kcvxt-mau – chuẩn CAD, tờ mẫu, thông tin khung tên, thuyết minh, định mức, tuỳ chọn thép, 34 tờ mẫu
+16:39:39 ảnh TuBanVeKienTruc_29_Template
+16:39:39 khung tên người dùng: 21 thực thể, 14 chữ, 9 trường; kích thước 180×40 mm (1 đơn vị = 1 mm); toàn bộ model space
+16:39:40 tờ từ mẫu: KC-35 A3, 1 ô khung nhìn (Ghi chú chung )
+16:39:41 ảnh TuBanVeKienTruc_30_KhungTenNguoiDung
+16:39:41 khung tên người dùng: DXF TuBanVeKienTruc_KhungTenNguoiDung.dxf – tên công trình có, số hiệu có, chỗ trống đã thay hết
+16:39:41 XONG – không lỗi
