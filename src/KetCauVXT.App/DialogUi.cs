@@ -36,6 +36,73 @@ internal abstract class RowBase : INotifyPropertyChanged
 /// <summary>Tiện ích dựng giao diện hộp thoại bằng mã (không XAML).</summary>
 internal static class DialogUi
 {
+    /// <summary>Thân hộp thoại cuộn được (chuột giữa / thanh cuộn) + hàng nút cố định ở đáy – dùng cho hộp thoại dài
+    /// để không tràn màn hình. Cửa sổ cần đặt MaxHeight (vd. vùng làm việc màn hình).</summary>
+    public static DockPanel ScrollBody(UIElement body, UIElement buttons)
+    {
+        var dock = new DockPanel { LastChildFill = true };
+        if (buttons != null)
+        {
+            var bar = new Border { Child = buttons, BorderBrush = new SolidColorBrush(Color.FromRgb(210, 210, 210)), BorderThickness = new Thickness(0, 1, 0, 0) };
+            DockPanel.SetDock(bar, Dock.Bottom);
+            dock.Children.Add(bar);
+        }
+        var sv = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, PanningMode = PanningMode.VerticalOnly };
+        WheelToScroll(sv);
+        dock.Children.Add(sv);
+        return dock;
+    }
+
+    /// <summary>Chuột giữa cuộn vùng nội dung kể cả khi con trỏ đang trên ô nhập / hộp chọn (ComboBox đóng không ăn lăn chuột).</summary>
+    public static void WheelToScroll(ScrollViewer sv)
+    {
+        sv.PreviewMouseWheel += (s, e) =>
+        {
+            if (e.Handled) return;
+            if (e.OriginalSource is DependencyObject d)
+            {
+                // ComboBox đang mở danh sách hoặc ô lưới / danh sách có cuộn riêng: để chúng tự cuộn
+                for (var x = d; x != null && !ReferenceEquals(x, sv); x = x is Visual || x is System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(x) : LogicalTreeHelper.GetParent(x))
+                {
+                    if (x is ComboBox cb && cb.IsDropDownOpen) return;
+                    if (x is ScrollViewer inner && inner.ScrollableHeight > 0) return;
+                }
+            }
+            sv.ScrollToVerticalOffset(sv.VerticalOffset - e.Delta / 3.0);
+            e.Handled = true;
+        };
+    }
+
+    /// <summary>Gắn toàn cục (App.OnStartup): mọi cửa sổ tự co theo nội dung mà cao hơn màn hình → giới hạn chiều cao theo
+    /// vùng làm việc, bọc nội dung vào vùng cuộn chuột giữa, kéo về trong màn hình.</summary>
+    public static void RegisterFitToScreen()
+    {
+        EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler((s, e) =>
+        {
+            if (s is not Window w || !ReferenceEquals(e.OriginalSource, w)) return;
+            try { FitToScreen(w); } catch (Exception) { }
+        }));
+    }
+
+    public static void FitToScreen(Window w)
+    {
+        var wa = SystemParameters.WorkArea;
+        double maxH = Math.Max(300, wa.Height - 24);
+        if (w.SizeToContent == SizeToContent.Manual || w.ActualHeight <= maxH + 1) return;
+        if (w.Content is UIElement c && w.Content is not ScrollViewer)
+        {
+            w.Content = null;
+            var sv = new ScrollViewer { Content = c, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+            WheelToScroll(sv);
+            w.Content = sv;
+        }
+        w.MaxHeight = maxH;
+        if (w.ResizeMode == ResizeMode.NoResize) w.ResizeMode = ResizeMode.CanResize;
+        w.UpdateLayout();
+        if (w.Top + w.ActualHeight > wa.Bottom) w.Top = Math.Max(wa.Top, wa.Bottom - w.ActualHeight);
+        if (w.Top < wa.Top) w.Top = wa.Top;
+    }
+
     public static DataGrid NewGrid()
     {
         return new DataGrid

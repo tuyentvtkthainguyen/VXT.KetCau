@@ -38,7 +38,9 @@ internal sealed class FoundationDialog : Window
         DialogUi.Setup(this, "Thiết kế móng", 560, 640);
         Help.Attach(this, "mong.loai");   // nút "?" + F1 – Help.cs
         SizeToContent = SizeToContent.Height;
-        ResizeMode = ResizeMode.NoResize;
+        ResizeMode = ResizeMode.CanResize;   // kéo giãn được; nội dung cuộn bằng chuột giữa, nút luôn ở đáy
+        MaxHeight = Math.Max(360, SystemParameters.WorkArea.Height - 24);
+        MinHeight = 300;
 
         _cbType = new ComboBox { ItemsSource = TypeNames, SelectedIndex = (int)f.Type, Width = 160 };
         _cbType.SelectionChanged += (s, e) => UpdateGroups();
@@ -131,9 +133,8 @@ internal sealed class FoundationDialog : Window
         bCancel.IsCancel = true;
         var bs = DialogUi.Row(bDesign, bSave, bCancel);
         bs.HorizontalAlignment = HorizontalAlignment.Right;
-        bs.Margin = new Thickness(0, 10, 0, 0);
-        root.Children.Add(bs);
-        Content = root;
+        bs.Margin = new Thickness(10, 6, 10, 10);
+        Content = DialogUi.ScrollBody(root, bs);
         UpdateGroups();
     }
 

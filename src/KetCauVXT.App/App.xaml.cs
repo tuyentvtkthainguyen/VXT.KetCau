@@ -30,6 +30,7 @@ public partial class App : Application
         // Bộ ghi DXF 2018 / DWG 2018 có HATCH (KetCauVXT.Dwg – ACadSharp) cho Chuẩn layer CAD → Định dạng xuất
         global::KetCauVXT.Dwg.CadDocWriter.Register();
         global::KetCauVXT.Model.TemplateService.AutoApplyDefault = true;
+        DialogUi.RegisterFitToScreen();   // hộp thoại dài hơn màn hình → cuộn bằng chuột giữa, không tràn màn
         base.OnStartup(e);
         StartWindows(e.Args ?? Array.Empty<string>());
     }
