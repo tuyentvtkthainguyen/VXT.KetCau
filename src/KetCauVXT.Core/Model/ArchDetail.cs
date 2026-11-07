@@ -29,6 +29,9 @@ public class Railing
     public RailKind Kind { get; set; } = RailKind.Inox;
     /// <summary>Cao độ chân lan can so với sàn tầng (m) – vd. đặt trên gờ / bậc</summary>
     public double BaseOffset { get; set; }
+    /// <summary>Tải ngang tiêu chuẩn tác dụng lên tay vịn (kN/m, hoạt tải): nhà ở 0,3; công trình công cộng 0,8; khán đài, sân vận động 1,5
+    /// (TCVN 2737 – tải trọng lên lan can). 0 = không xét.</summary>
+    public double HorizontalLoad { get; set; } = 0.3;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public double Length
@@ -199,13 +202,29 @@ public static class ArchDetail
 
     public static RoofElement AddRoof(Project p, string story, double x0, double y0, double x1, double y1, RoofShape shape, double slopePercent, double overhang, string type, double eave = 0)
     {
-        p.Arch ??= new ArchModel();
         if (x1 - x0 < 0.5 || y1 - y0 < 0.5) throw new ArgumentException("Đường bao mái quá nhỏ.");
+        return AddRoof(p, story, new List<(double X, double Y)> { (x0, y0), (x1, y0), (x1, y1), (x0, y1) }, shape, slopePercent, overhang, type, eave);
+    }
+
+    /// <summary>Đường bao các ô sàn của tầng (hợp các ô, lưới 5 cm) – nhà chữ L, T, U… cho mái theo đường bao sàn.</summary>
+    public static List<(double X, double Y)> FootprintOutline(Project p, string story)
+    {
+        var polys = p.Slabs.Where(s => s.Story == story)
+            .Select(s => (IReadOnlyList<(double X, double Y)>)s.Nodes.Select(id => p.Node(id)).Where(n => n != null).Select(n => (n.X, n.Y)).ToList()).ToList();
+        return RasterOutline.UnionOutline(polys, 0.05);
+    }
+
+    /// <summary>Mái theo đa giác đường bao (chữ nhật hoặc trực giao chữ L, T, U…).</summary>
+    public static RoofElement AddRoof(Project p, string story, IReadOnlyList<(double X, double Y)> outline, RoofShape shape, double slopePercent, double overhang, string type, double eave = 0)
+    {
+        p.Arch ??= new ArchModel();
+        if (outline == null || outline.Count < 3 || Math.Abs(RasterOutline.SignedArea(outline)) < 0.25) throw new ArgumentException("Đường bao mái quá nhỏ.");
+        var pts = outline.Select(q => new[] { Math.Round(q.X, 4), Math.Round(q.Y, 4) }).ToList();
+        if (RasterOutline.SignedArea(outline) < 0) pts.Reverse();
         var r = new RoofElement
         {
             Id = NextId(p.Arch.Roofs, x => x.Id), Story = story, Type = type, Shape = shape, SlopePercent = Math.Max(0, slopePercent),
-            Overhang = Math.Max(0, overhang), EaveHeight = eave,
-            Outline = new List<double[]> { new[] { x0, y0 }, new[] { x1, y0 }, new[] { x1, y1 }, new[] { x0, y1 } }
+            Overhang = Math.Max(0, overhang), EaveHeight = eave, Outline = pts
         };
         r.RidgeHeight = Math.Round(RoofGeometry.Rise(r), 3);
         p.Arch.Roofs.Add(r);
@@ -401,40 +420,102 @@ public static class ArchDetail
     };
 }
 
-/// <summary>Hình học mái dốc trên hộp bao đường bao (mái 1 dốc, 2 dốc có tường thu hồi, 4 dốc – mái chóp khi vuông).</summary>
+/// <summary>Hình học mái dốc. Đường bao chữ nhật: mái 1 dốc, 2 dốc (tường thu hồi), 4 dốc (vuông → mái chóp).
+/// Đường bao trực giao chữ L, T, U…: chia thành các hình chữ nhật, mỗi khối một mái cùng độ dốc; khối hẹp hơn (mái cánh) kéo dài vào
+/// khối rộng hơn tới đường nóc của khối đó để hai mái giao nhau như mái thật (phần khuất nằm dưới mặt mái chính).</summary>
 public static class RoofGeometry
 {
-    private static (double X0, double Y0, double X1, double Y1) Box(RoofElement r)
+    public sealed record Block(double X0, double Y0, double X1, double Y1, bool ExtW, bool ExtE, bool ExtS, bool ExtN);
+
+    private static List<(double X, double Y)> Pts(RoofElement r) => r.Outline.Select(q => (q[0], q[1])).ToList();
+
+    /// <summary>Các khối chữ nhật của mái (đã cộng độ vươn ở cạnh ngoài, đã kéo dài mái cánh). Ext* = cạnh đó là cạnh ngoài nhà (có diềm).</summary>
+    public static List<Block> Blocks(RoofElement r)
     {
-        double x0 = r.Outline.Min(q => q[0]) - r.Overhang, x1 = r.Outline.Max(q => q[0]) + r.Overhang;
-        double y0 = r.Outline.Min(q => q[1]) - r.Overhang, y1 = r.Outline.Max(q => q[1]) + r.Overhang;
-        return (x0, y0, x1, y1);
+        var res = new List<Block>();
+        if (r.Outline.Count < 3) return res;
+        var pts = Pts(r);
+        List<(double X0, double Y0, double X1, double Y1)> rects;
+        if (pts.Count > 4 && RasterOutline.IsOrthogonal(pts)) rects = RasterOutline.Rectangles(pts);
+        else rects = new() { (pts.Min(q => q.X), pts.Min(q => q.Y), pts.Max(q => q.X), pts.Max(q => q.Y)) };
+        if (rects.Count == 0) return res;
+        bool Shared(int i, char side)
+        {
+            var a = rects[i];
+            for (int j = 0; j < rects.Count; j++)
+            {
+                if (j == i) continue;
+                var b = rects[j];
+                double oy = Math.Min(a.Y1, b.Y1) - Math.Max(a.Y0, b.Y0), ox = Math.Min(a.X1, b.X1) - Math.Max(a.X0, b.X0);
+                if (side == 'W' && Math.Abs(a.X0 - b.X1) < 1e-6 && oy > 1e-6) return true;
+                if (side == 'E' && Math.Abs(a.X1 - b.X0) < 1e-6 && oy > 1e-6) return true;
+                if (side == 'S' && Math.Abs(a.Y0 - b.Y1) < 1e-6 && ox > 1e-6) return true;
+                if (side == 'N' && Math.Abs(a.Y1 - b.Y0) < 1e-6 && ox > 1e-6) return true;
+            }
+            return false;
+        }
+        double ov = r.Overhang;
+        for (int i = 0; i < rects.Count; i++)
+        {
+            var q = rects[i];
+            bool w = !Shared(i, 'W'), e = !Shared(i, 'E'), so = !Shared(i, 'S'), n = !Shared(i, 'N');
+            double x0 = q.X0 - (w ? ov : 0), x1 = q.X1 + (e ? ov : 0), y0 = q.Y0 - (so ? ov : 0), y1 = q.Y1 + (n ? ov : 0);
+            // mái cánh: kéo dài vào khối kề rộng hơn tới đường nóc khối đó
+            double sh = Math.Min(q.X1 - q.X0, q.Y1 - q.Y0);
+            for (int j = 0; j < rects.Count; j++)
+            {
+                if (j == i) continue;
+                var b = rects[j];
+                double shb = Math.Min(b.X1 - b.X0, b.Y1 - b.Y0);
+                double ai = (q.X1 - q.X0) * (q.Y1 - q.Y0), aj = (b.X1 - b.X0) * (b.Y1 - b.Y0);
+                // khối hẹp hơn kéo vào khối rộng hơn; bằng nhau → khối nhỏ hơn (diện tích) kéo vào khối lớn
+                bool into = shb > sh + 1e-6 || (Math.Abs(shb - sh) <= 1e-6 && (aj > ai + 1e-6 || (Math.Abs(aj - ai) <= 1e-6 && j < i)));
+                if (!into) continue;
+                double oy = Math.Min(q.Y1, b.Y1) - Math.Max(q.Y0, b.Y0), ox = Math.Min(q.X1, b.X1) - Math.Max(q.X0, b.X0);
+                if (Math.Abs(q.X1 - b.X0) < 1e-6 && oy > 1e-6) x1 = Math.Max(x1, b.X0 + (b.X1 - b.X0) / 2);
+                if (Math.Abs(q.X0 - b.X1) < 1e-6 && oy > 1e-6) x0 = Math.Min(x0, b.X1 - (b.X1 - b.X0) / 2);
+                if (Math.Abs(q.Y1 - b.Y0) < 1e-6 && ox > 1e-6) y1 = Math.Max(y1, b.Y0 + (b.Y1 - b.Y0) / 2);
+                if (Math.Abs(q.Y0 - b.Y1) < 1e-6 && ox > 1e-6) y0 = Math.Min(y0, b.Y1 - (b.Y1 - b.Y0) / 2);
+            }
+            res.Add(new Block(x0, y0, x1, y1, w, e, so, n));
+        }
+        return res;
     }
 
-    /// <summary>Chiều cao đỉnh mái trên diềm (m).</summary>
+    /// <summary>Chiều cao đỉnh mái cao nhất trên diềm (m).</summary>
     public static double Rise(RoofElement r)
     {
-        if (r.Outline.Count < 3) return 0;
-        var (x0, y0, x1, y1) = Box(r);
-        double sh = Math.Min(x1 - x0, y1 - y0), s = r.SlopePercent / 100.0;
-        return r.Shape switch { RoofShape.MotMai => s * sh, RoofShape.HaiMai => s * sh / 2, RoofShape.BonMai => s * sh / 2, _ => 0 };
+        double s = r.SlopePercent / 100.0, best = 0;
+        foreach (var b in Blocks(r))
+        {
+            double sh = Math.Min(b.X1 - b.X0, b.Y1 - b.Y0);
+            best = Math.Max(best, r.Shape switch { RoofShape.MotMai => s * sh, RoofShape.HaiMai => s * sh / 2, RoofShape.BonMai => s * sh / 2, _ => 0 });
+        }
+        return best;
     }
 
-    /// <summary>Các mặt mái (đa giác 3D, ngược chiều kim đồng hồ nhìn từ trên) và tam giác tường thu hồi (mái 2 dốc).</summary>
+    /// <summary>Các mặt mái (đa giác 3D, ngược chiều kim đồng hồ nhìn từ trên) và tam giác tường thu hồi (mái 2 dốc, ở cạnh ngoài nhà).</summary>
     public static (List<List<Vec3>> Faces, List<List<Vec3>> Gables) Build(RoofElement r, double storyZ)
     {
         var faces = new List<List<Vec3>>(); var gables = new List<List<Vec3>>();
-        if (r.Outline.Count < 3) return (faces, gables);
-        var (x0, y0, x1, y1) = Box(r);
+        foreach (var b in Blocks(r)) BuildBlock(r, b, storyZ, faces, gables);
+        return (faces, gables);
+    }
+
+    private static void BuildBlock(RoofElement r, Block bk, double storyZ, List<List<Vec3>> faces, List<List<Vec3>> gables)
+    {
+        double x0 = bk.X0, y0 = bk.Y0, x1 = bk.X1, y1 = bk.Y1;
         bool alongX = x1 - x0 >= y1 - y0;
         // hệ địa phương: u dọc cạnh dài, v ngang (cạnh ngắn)
         double U0 = alongX ? x0 : y0, U1 = alongX ? x1 : y1, V0 = alongX ? y0 : x0, V1 = alongX ? y1 : x1;
-        double ze = storyZ + r.EaveHeight, h = Rise(r), vm = (V0 + V1) / 2, hv = (V1 - V0) / 2;
+        bool extU0 = alongX ? bk.ExtW : bk.ExtS, extU1 = alongX ? bk.ExtE : bk.ExtN;
+        double s = r.SlopePercent / 100.0;
+        double ze = storyZ + r.EaveHeight, vm = (V0 + V1) / 2, hv = (V1 - V0) / 2;
+        double h = r.Shape switch { RoofShape.MotMai => s * (V1 - V0), RoofShape.HaiMai or RoofShape.BonMai => s * hv, _ => 0 };
         Vec3 P(double u, double v, double z) => alongX ? new Vec3(u, v, z) : new Vec3(v, u, z);
         List<Vec3> Poly(params Vec3[] pts)
         {
             var l = pts.ToList();
-            // đảm bảo ngược chiều kim đồng hồ nhìn từ trên (theo hình chiếu bằng)
             double a = 0; for (int i = 0; i < l.Count; i++) { var p = l[i]; var q = l[(i + 1) % l.Count]; a += p.X * q.Y - q.X * p.Y; }
             if (a < 0) l.Reverse();
             return l;
@@ -450,15 +531,26 @@ public static class RoofGeometry
             case RoofShape.HaiMai:
                 faces.Add(Poly(P(U0, V0, ze), P(U1, V0, ze), P(U1, vm, ze + h), P(U0, vm, ze + h)));
                 faces.Add(Poly(P(U0, vm, ze + h), P(U1, vm, ze + h), P(U1, V1, ze), P(U0, V1, ze)));
-                // tường thu hồi tại hai đầu (lùi vào bằng độ vươn mái)
-                double uA = U0 + r.Overhang, uB = U1 - r.Overhang, vA = V0 + r.Overhang, vB = V1 - r.Overhang;
-                double hw = r.SlopePercent / 100.0 * (vB - vA) / 2;
+                // tường thu hồi ở đầu hồi ngoài nhà (lùi vào bằng độ vươn)
+                double ov = r.Overhang, vA = V0 + ov, vB = V1 - ov;
+                double hw = s * (vB - vA) / 2;
                 if (hw > 0.05)
-                    foreach (double u in new[] { uA, uB })
-                        gables.Add(new List<Vec3> { P(u, vA, ze), P(u, vB, ze), P(u, (vA + vB) / 2, ze + hw) });
+                {
+                    if (extU0) gables.Add(new List<Vec3> { P(U0 + ov, vA, ze), P(U0 + ov, vB, ze), P(U0 + ov, (vA + vB) / 2, ze + hw) });
+                    if (extU1) gables.Add(new List<Vec3> { P(U1 - ov, vA, ze), P(U1 - ov, vB, ze), P(U1 - ov, (vA + vB) / 2, ze + hw) });
+                }
                 break;
             case RoofShape.BonMai:
                 double d = Math.Min(hv, (U1 - U0) / 2);
+                if (!extU0 || !extU1)
+                {   // đầu khối nằm trong mái khác: nóc chạy thẳng tới đầu khối (mái cánh giao mái chính), chỉ đầu ngoài nhà mới có mặt hông
+                    var ra0 = P(extU0 ? U0 + d : U0, vm, ze + h); var rb0 = P(extU1 ? U1 - d : U1, vm, ze + h);
+                    faces.Add(Poly(P(U0, V0, ze), P(U1, V0, ze), rb0, ra0));
+                    faces.Add(Poly(P(U1, V1, ze), P(U0, V1, ze), ra0, rb0));
+                    if (extU1) faces.Add(Poly(P(U1, V0, ze), P(U1, V1, ze), rb0));
+                    if (extU0) faces.Add(Poly(P(U0, V1, ze), P(U0, V0, ze), ra0));
+                    break;
+                }
                 if (U1 - U0 - 2 * d < 1e-6)
                 {   // mái chóp (mặt bằng vuông)
                     var top = P((U0 + U1) / 2, vm, ze + h);
@@ -477,8 +569,31 @@ public static class RoofGeometry
                 }
                 break;
         }
-        return (faces, gables);
     }
+
+    /// <summary>Diện tích mặt bằng mái (kể độ vươn, không kể phần mái cánh kéo vào trong mái chính).</summary>
+    public static double PlanArea(RoofElement r)
+    {
+        if (r.Outline.Count < 3) return 0;
+        var pts = Pts(r);
+        double ov = r.Overhang;
+        if (!(pts.Count > 4 && RasterOutline.IsOrthogonal(pts)))
+            return (pts.Max(q => q.X) - pts.Min(q => q.X) + 2 * ov) * (pts.Max(q => q.Y) - pts.Min(q => q.Y) + 2 * ov);
+        // đa giác trực giao: diện tích + độ vươn dọc chu vi + góc
+        double A = Math.Abs(RasterOutline.SignedArea(pts)), per = 0;
+        for (int i = 0; i < pts.Count; i++) per += Math.Abs(pts[i].X - pts[(i + 1) % pts.Count].X) + Math.Abs(pts[i].Y - pts[(i + 1) % pts.Count].Y);
+        int n = pts.Count, convex = (n + 4) / 2, reflex = n - convex;
+        return A + per * ov + (convex - reflex) * ov * ov;
+    }
+
+    /// <summary>Diện tích nghiêng: các mặt cùng độ dốc → S bằng / cos α (mái bằng: S bằng).</summary>
+    public static double SlopedArea(RoofElement r)
+    {
+        double s = r.Shape == RoofShape.Bang ? 0 : r.SlopePercent / 100.0;
+        return PlanArea(r) * Math.Sqrt(1 + s * s);
+    }
+
+    public static double GableArea(RoofElement r) => Build(r, 0).Gables.Sum(Area3D);
 
     public static double Area3D(IReadOnlyList<Vec3> pts)
     {
@@ -487,8 +602,6 @@ public static class RoofGeometry
         return n.Length / 2;
     }
 
-    public static double SlopedArea(RoofElement r) => Build(r, 0).Faces.Sum(Area3D);
-    public static double GableArea(RoofElement r) => Build(r, 0).Gables.Sum(Area3D);
 
     /// <summary>Khối tấm phẳng dày t trên mặt đa giác 3D (kéo theo pháp tuyến hướng lên / theo dir).</summary>
     public static Solid PlateSolid(IReadOnlyList<Vec3> poly, double t, Vec3? extrude = null)
@@ -651,6 +764,7 @@ public static class ArchDetailLoads
                 if (pts.Count < 3) continue;
                 double cx = pts.Average(q => q.X), cy = pts.Average(q => q.Y);
                 if (cx < x0 - 1e-6 || cx > x1 + 1e-6 || cy < y0 - 1e-6 || cy > y1 + 1e-6) continue;
+                if (r.Outline.Count > 4 && !RasterOutline.Inside(r.Outline.Select(q => (q[0], q[1])).ToList(), cx, cy)) continue;
                 p.AreaLoads.Add(new AreaLoad { Slab = sl.Id, Pattern = "HTHT", Q = Math.Round(r.SlabLoad, 4), Note = $"{r.Type} (mái #{r.Id}) dồn lên sàn", Source = WallLoadGenerator.WallSource });
                 n++;
             }
@@ -670,11 +784,28 @@ public static class ArchDetailLoads
                 double L = w.Chord;
                 if (L < 0.05) continue;
                 double covered = 0;
+                // hướng ra ngoài (phía xa tâm các ô sàn của tầng) cho tải ngang
+                double nx = -(w.Y2 - w.Y1) / L, ny = (w.X2 - w.X1) / L;
+                var sl0 = p.Slabs.Where(s => s.Story == r.Story).SelectMany(s => s.Nodes).Select(id => p.Node(id)).Where(nd => nd != null).ToList();
+                if (sl0.Count > 0)
+                {
+                    double cx = sl0.Average(nd => nd.X), cy = sl0.Average(nd => nd.Y);
+                    if ((cx - (w.X1 + w.X2) / 2) * nx + (cy - (w.Y1 + w.Y2) / 2) * ny > 0) { nx = -nx; ny = -ny; }
+                }
+                double qh = Math.Max(0, r.HorizontalLoad);
                 foreach (var (f, r0, r1, len) in WallLoadGenerator.BeamsUnder(p, w, z, 0.22))
                 {
                     var fl = new FrameLoad { Element = f.Id, Pattern = "HTHT", Dir = LoadDir.Gravity, Note = note, Source = WallLoadGenerator.WallSource };
                     fl.Points.Add(new[] { r0, q }); fl.Points.Add(new[] { r1, q });
                     p.FrameLoads.Add(fl);
+                    if (qh > 0 && p.Pattern("HT") != null)
+                        foreach (var (dir, comp) in new[] { (LoadDir.GlobalX, qh * nx), (LoadDir.GlobalY, qh * ny) })
+                        {
+                            if (Math.Abs(comp) < 1e-6) continue;
+                            var fh = new FrameLoad { Element = f.Id, Pattern = "HT", Dir = dir, Note = $"Tải ngang tay vịn {qh:0.##} kN/m (lan can #{r.Id})", Source = WallLoadGenerator.WallSource };
+                            fh.Points.Add(new[] { r0, Math.Round(comp, 4) }); fh.Points.Add(new[] { r1, Math.Round(comp, 4) });
+                            p.FrameLoads.Add(fh);
+                        }
                     covered += len;
                 }
                 double rest = L - covered;
@@ -683,7 +814,6 @@ public static class ArchDetailLoads
                 if (sl == null)
                 {
                     // lan can sát mép sàn (ban công) thường nằm ngay trong mép ô sàn: thử lùi vào 0,15 m hai phía
-                    double nx = -(w.Y2 - w.Y1) / L, ny = (w.X2 - w.X1) / L;
                     foreach (int sg in new[] { 1, -1 })
                     {
                         sl = ModelEdit.SlabAt(p, r.Story, (w.X1 + w.X2) / 2 + sg * 0.15 * nx, (w.Y1 + w.Y2) / 2 + sg * 0.15 * ny);

@@ -53,6 +53,28 @@ public static class ArchDetailTests
         var plate = solids.First(s => s.Id == $"MAID-{r2.Id}-1");
         check("KT tấm mái nghiêng đúng độ dốc (pháp tuyến)", Math.Abs(plate.ZDir.Z), 1 / Math.Sqrt(1 + 0.16), 1e-6);
 
+        // ---- mái nhà chữ L: chia khối, mái cánh chạy vào mái chính ----
+        var L = new List<(double X, double Y)> { (0, 0), (10, 0), (10, 4), (4, 4), (4, 10), (0, 10) };
+        check("KT đa giác chữ L chia 2 hình chữ nhật", RasterOutline.Rectangles(L).Count, 2, 0);
+        var un = RasterOutline.UnionOutline(new List<IReadOnlyList<(double X, double Y)>> { new List<(double, double)> { (0, 0), (4, 0), (4, 10), (0, 10) }, new List<(double, double)> { (4, 0), (10, 0), (10, 4), (4, 4) } });
+        check("KT hợp 2 ô sàn → đường bao chữ L 6 đỉnh", un?.Count ?? 0, 6, 0);
+        check("KT hợp 2 ô sàn → diện tích 64", Math.Abs(RasterOutline.SignedArea(un)), 64, 1e-6);
+        var ring = new bool[5, 5];
+        for (int i = 0; i < 5; i++) for (int j = 0; j < 5; j++) ring[i, j] = !(i == 2 && j == 2);
+        var rl2 = RasterOutline.Loops(ring, 0, 0, 1);
+        check("KT vòng có lỗ: 1 vòng ngoài + 1 lỗ", B(rl2.Count == 2 && rl2.Count(l => RasterOutline.SignedArea(l) > 0) == 1), 1, 0);
+        var rL = ArchDetail.AddRoof(p, "MAI", L, RoofShape.BonMai, 50, 0, "Mái ngói chữ L");
+        var bl = RoofGeometry.Blocks(rL);
+        check("KT mái chữ L: 2 khối", bl.Count, 2, 0);
+        check("KT mái chữ L: khối cánh kéo vào tới nóc mái chính (x = 2)", bl.Min(b => b.X0 > 3 ? 99 : b.X1 > 9 ? b.X0 : 99), 2, 1e-9);
+        var (fL, _) = RoofGeometry.Build(rL, 0);
+        check("KT mái chữ L: 4 + 3 mặt", fL.Count, 7, 0);
+        check("KT mái chữ L: hai nóc cùng cao 1,0", fL.SelectMany(q => q).Max(q => q.Z), 1.0, 1e-9);
+        check("KT mái chữ L: S nghiêng = 64·√1,25", RoofGeometry.SlopedArea(rL), 64 * Math.Sqrt(1.25), 1e-6);
+        rL.Overhang = 0.5;
+        check("KT mái chữ L đua 0,5: S bằng = 64 + 40·0,5 + 4·0,25", RoofGeometry.PlanArea(rL), 85, 1e-6);
+        p.Arch.Roofs.Remove(rL);
+
         // ================= 2. Tường, phào chỉ, ốp =================
         var wt = p.WallTypes.First(t => Math.Abs(t.Thickness - 0.22) < 1e-6).Name;
         var wr = ModelEdit.AddWall(p, "T2", 0, 0, 8, 0, wt);
@@ -84,6 +106,9 @@ public static class ArchDetailTests
         var railLoads = p.FrameLoads.Where(l => l.Note.Contains("Lan can xây")).ToList();
         check("KT tải lan can lên dầm trục B tầng T2 (2 nhịp)", railLoads.Count, 2, 0);
         check("KT giá trị tải lan can", railLoads.Sum(l => l.Points[0][1]) / Math.Max(1, railLoads.Count), 2.52, 1e-9);
+        var hz = p.FrameLoads.Where(l => l.Note.Contains($"lan can #{rl.Id}")).ToList();
+        check("KT tải ngang tay vịn: 2 dầm, phương Y", B(hz.Count == 2 && hz.All(l => l.Dir == LoadDir.GlobalY && l.Pattern == "HT")), 1, 0);
+        check("KT tải ngang hướng ra ngoài nhà (+Y) 0,3 kN/m", hz.Sum(l => l.Points[0][1]) / Math.Max(1, hz.Count), 0.3, 1e-9);
         WallLoadGenerator.Apply(p);
         check("KT tải lan can không nhân đôi khi phân tích lại", p.FrameLoads.Count(l => l.Note.Contains("Lan can xây")), 2, 0);
         r2.SlabLoad = ArchDetailLoads.DefaultRoofLoad(r2.Type);

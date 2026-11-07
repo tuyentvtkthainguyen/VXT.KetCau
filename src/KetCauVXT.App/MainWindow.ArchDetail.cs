@@ -23,6 +23,8 @@ public partial class MainWindow
     private readonly List<(double X, double Y)> _adPts = new();
     private RailKind _adRailKind = RailKind.Inox;
     private double _adRailH = 1.0;
+    private int _adRailUse;
+    private static readonly double[] RailHz = { 0.3, 0.8, 1.5, 0 };
     private SweepPreset _adSweep = ArchDetail.SweepPresets[0];
     private CladPreset _adClad = ArchDetail.CladPresets[0];
 
@@ -124,19 +126,23 @@ public partial class MainWindow
         f.Num("slope", "Độ dốc (%)", 30);
         f.Num("ov", "Đua mái (m)", 0.5);
         f.Num("eave", "Chân mái trên cao độ tầng (m)", 0);
+        f.Combo("src", "Đường bao", new[] { "Theo đường bao ô sàn của tầng (nhà chữ L, T, U…)", "Hình chữ nhật nhập toạ độ bên dưới" });
         f.Num("x0", "Đường bao X từ (m)", fp.Item1); f.Num("x1", "đến (m)", fp.Item3);
         f.Num("y0", "Đường bao Y từ (m)", fp.Item2); f.Num("y1", "đến (m)", fp.Item4);
         f.Check("load", "Dồn tải lớp mái (kể xà gồ / li tô) lên các ô sàn trong đường bao khi phân tích", true);
         f.Check("rep", "Xoá mái cũ của tầng này", false);
-        f.Hint("Đường bao mặc định = hộp bao ô sàn tầng. Mái tôn ~0,3, mái ngói ~0,9 kN/m² mặt bằng (sửa được trong tải sàn sau khi tạo).");
+        f.Hint("Nhà chữ L, T, U: mái chia theo khối, mái cánh chạy vào mái chính (giao nóc). Tầng chưa có ô sàn → dùng hình chữ nhật. Mái tôn ~0,3, mái ngói ~0,9 kN/m² mặt bằng (sửa được trong tải sàn sau khi tạo).");
         if (!f.Run("Tạo mái")) return;
         try
         {
             string snap = Snapshot();
             string story = f.S("st"), type = string.IsNullOrWhiteSpace(f.S("type")) ? RoofTypes[0] : f.S("type").Trim();
             if (f.B("rep")) _p.Arch?.Roofs.RemoveAll(r => r.Story == story);
-            var r = ArchDetail.AddRoof(_p, story, f.D("x0", 0), f.D("y0", 0), f.D("x1", 8), f.D("y1", 5), (RoofShape)Math.Max(0, f.I("shape")),
-                f.D("slope", 30), f.D("ov", 0.5), type, f.D("eave", 0));
+            var outline = f.I("src") == 0 ? ArchDetail.FootprintOutline(_p, story) : null;
+            var r = outline != null && outline.Count >= 4
+                ? ArchDetail.AddRoof(_p, story, outline, (RoofShape)Math.Max(0, f.I("shape")), f.D("slope", 30), f.D("ov", 0.5), type, f.D("eave", 0))
+                : ArchDetail.AddRoof(_p, story, f.D("x0", 0), f.D("y0", 0), f.D("x1", 8), f.D("y1", 5), (RoofShape)Math.Max(0, f.I("shape")),
+                    f.D("slope", 30), f.D("ov", 0.5), type, f.D("eave", 0));
             if (f.B("load")) r.SlabLoad = ArchDetailLoads.DefaultRoofLoad(type);
             ArchDetailChanged($"Đã tạo {type} ({RoofShapeNames[(int)r.Shape]}) dốc {r.SlopePercent:0.#}% – cao đỉnh {r.RidgeHeight:0.00} m, diện tích nghiêng {RoofGeometry.SlopedArea(r):0.0} m²"
                               + (r.SlabLoad > 0 ? $", tải {r.SlabLoad:0.##} kN/m² lên sàn {story} (chạy lại phân tích)." : "."), snap);
@@ -176,11 +182,13 @@ public partial class MainWindow
         var f = new MiniForm(this, "Lan can");
         f.Combo("k", "Loại lan can", Enum.GetValues<RailKind>().Select(ArchDetail.RailName), (int)_adRailKind);
         f.Num("h", "Chiều cao (m)", _adRailH);
+        f.Combo("use", "Tải ngang tay vịn (TCVN 2737)", new[] { "Nhà ở – 0,3 kN/m", "Công trình công cộng – 0,8 kN/m", "Khán đài, sân vận động – 1,5 kN/m", "Không xét" }, _adRailUse);
         f.Hint("Bấm các điểm trên mặt bằng (bắt nút, giao trục), Enter kết thúc, Backspace bỏ điểm cuối, Esc dừng. "
                + "Tải đứng: inox 0,3 · kính 0,5 · sắt 0,4 · xây 110 ≈ 2,52·H kN/m – tự dồn lên dầm đỡ (hoặc sàn) khi phân tích.");
         if (!f.Run("Bắt đầu vẽ")) return;
         _adRailKind = (RailKind)Math.Max(0, f.I("k"));
         _adRailH = Math.Clamp(f.D("h", 1.0), 0.3, 3.0);
+        _adRailUse = Math.Max(0, f.I("use"));
         StartAdTool(AdTool.Railing, $"Lan can ({ArchDetail.RailName(_adRailKind)}, cao {_adRailH:0.00} m): bấm điểm đầu.");
     }
 
@@ -296,6 +304,7 @@ public partial class MainWindow
         {
             string snap = Snapshot();
             var r = ArchDetail.AddRailing(_p, st, _adPts, _adRailKind, _adRailH);
+            r.HorizontalLoad = RailHz[Math.Clamp(_adRailUse, 0, RailHz.Length - 1)];
             _adPts.Clear();
             ArchDetailChanged($"Đã vẽ {ArchDetail.RailName(r.Kind)} dài {r.Length:0.00} m, tải {ArchDetail.RailLoad(r):0.##} kN/m – bấm điểm đầu lan can tiếp theo, Esc dừng.", snap);
         }
