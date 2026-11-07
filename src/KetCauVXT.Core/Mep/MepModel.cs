@@ -291,6 +291,8 @@ public class MepRun
     public int Id { get; set; }
     public MepSystemKind System { get; set; }
     public MepRunKind Kind { get; set; } = MepRunKind.Ong;
+    /// <summary>Ghi chú lần đi tuyến gần nhất (vd. ống gen không đi được trong sàn → đã đi trong tường); không lưu.</summary>
+    [JsonIgnore] public string RouteNote { get; set; }
     public string Story { get; set; } = "";
     public int FromId { get; set; }
     public int ToId { get; set; }
@@ -470,6 +472,21 @@ public class MepSettings
     public PanelOptions Panel { get; set; } = new();
     /// <summary>Bể nước mái / bể ngầm, bơm (Mep/MepRound4.cs)</summary>
     public WaterTankOptions Water { get; set; } = new();
+
+    // ---- bảng TCVN + tuyến ống gen trong sàn / trần (Mep/MepStandards.cs, Mep/SlabConduit.cs) ----
+    /// <summary>Lựa chọn áp dụng tiêu chuẩn (loại công trình, nhiệt độ, nhóm mạch, khí hậu) + giá trị tuỳ chỉnh</summary>
+    public MepStdOptions Standards { get; set; } = new();
+    /// <summary>Tuyến ống gen điện: TranSan (mặc định, khuyến nghị) = ngang trong sàn / trần, chỉ đi đứng trong tường tới thiết bị;
+    /// TrongTuong = ngang trong tường (cách cũ). Cấp nước vẫn đi trong tường.</summary>
+    public ConduitRouteMode ConduitRoute { get; set; } = ConduitRouteMode.TranSan;
+    /// <summary>Lớp cán nền trên mặt sàn để chuyển ống gen ra khỏi dầm dưới tường (m)</summary>
+    public double ScreedLevel { get; set; } = 0.03;
+    /// <summary>Bước lưới dò tuyến ống gen trong sàn (m)</summary>
+    public double ConduitRouteStep { get; set; } = 0.1;
+    /// <summary>Phạt mỗi lần ống gen qua dầm trong chiều dày sàn (m tương đương)</summary>
+    public double ConduitBeamPenalty { get; set; } = 3.0;
+    /// <summary>Phạt mỗi lần đổi hướng ống gen (m tương đương)</summary>
+    public double ConduitBendPenalty { get; set; } = 0.3;
 }
 
 /// <summary>Toàn bộ dữ liệu điện nước của dự án (Project.Mep).</summary>

@@ -134,6 +134,8 @@ public static class SectionMaterialTests
             new() { Id = 3, Story = "T1", X1 = 4, Y1 = 3, X2 = 0, Y2 = 3, Type = "Tường 220 trát 2 mặt" },
             new() { Id = 4, Story = "T1", X1 = 0, Y1 = 3, X2 = 0, Y2 = 0, Type = "Tường 220 trát 2 mặt" },
         };
+        // kiểm tra rãnh tường cần tuyến ống gen ngang trong tường → chọn rõ TrongTuong (mặc định mới: trần / sàn – ít rãnh tường hơn)
+        pm.Mep.Settings.ConduitRoute = ConduitRouteMode.TrongTuong;
         var s1 = MepRouting.PlaceOnWall(pm, "Ổ cắm đơn", pm.Walls[0], 1.0, 1);
         var s2 = MepRouting.PlaceOnWall(pm, "Ổ cắm đơn", pm.Walls[1], 2.0, 1);
         MepRouting.Connect(pm, s1.Id, s2.Id, MepSystemKind.DienOCam);

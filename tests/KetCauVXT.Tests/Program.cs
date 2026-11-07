@@ -655,6 +655,8 @@ Console.WriteLine("93. Điều hoà – thông gió đợt 3: chọn / sửa t�
 HvacRound3Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("94. Điện nước đợt 4: bám tường khi kéo 3D, dò tuyến ống gió tránh cột, tải lạnh CLTD, tủ điện, bể nước – bơm, sơ đồ đứng");
 MepRound4Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("95. Điện nước theo bảng TCVN (9206/9207, IEC 60364-5-52, 4513, 4474, 5687), ống gen đi trong sàn / trần tránh cột – dầm");
+TcvnMepTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

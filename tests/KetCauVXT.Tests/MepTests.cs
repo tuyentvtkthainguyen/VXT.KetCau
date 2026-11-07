@@ -21,6 +21,9 @@ public static class MepTests
             new() { Id = 3, Story = "T1", X1 = 4, Y1 = 3, X2 = 0, Y2 = 3, Type = "Tường 220 trát 2 mặt" },
             new() { Id = 4, Story = "T1", X1 = 0, Y1 = 3, X2 = 0, Y2 = 0, Type = "Tường 220 trát 2 mặt" },
         };
+        // Các kiểm tra trong tệp này viết cho tuyến ống gen đi NGANG TRONG TƯỜNG (cách cũ). Từ khi áp dụng "ống gen ưu tiên đi trần / sàn"
+        // mặc định là ConduitRouteMode.TranSan (xem TcvnMepTests) → chọn rõ TrongTuong để giữ nguyên các số kiểm tra (5 điểm, Z = 0,3 / 3,15, WallId…).
+        p.Mep.Settings.ConduitRoute = ConduitRouteMode.TrongTuong;
         return p;
     }
 

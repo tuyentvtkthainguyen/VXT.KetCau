@@ -137,9 +137,9 @@ public class HvacFitting
 public class HvacSettings
 {
     /// <summary>Vận tốc gió ống chính (m/s)</summary>
-    public double VelocityMain { get; set; } = 6;
+    public double VelocityMain { get; set; } = MepStandards.Val("dhkk.v_chinh");
     /// <summary>Vận tốc gió ống nhánh (m/s)</summary>
-    public double VelocityBranch { get; set; } = 4;
+    public double VelocityBranch { get; set; } = MepStandards.Val("dhkk.v_nhanh");
     /// <summary>Tỷ lệ cạnh w/h lớn nhất ống chữ nhật</summary>
     public double MaxAspect { get; set; } = 4;
     /// <summary>Khe từ đáy sàn trên tới đỉnh ống gió (m)</summary>

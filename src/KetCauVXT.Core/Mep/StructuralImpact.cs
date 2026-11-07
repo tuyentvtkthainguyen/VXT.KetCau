@@ -44,7 +44,7 @@ public sealed class StrengtheningItem
 /// <summary>Một điểm ảnh hưởng tới kết cấu.</summary>
 public sealed class StructuralImpactItem
 {
-    /// <summary>XUYEN_DAM, XUYEN_COT, LO_SAN, LO_SAN_THANG_HANG, RANH_TUONG, TREO_ONG</summary>
+    /// <summary>XUYEN_DAM, XUYEN_COT, LO_SAN, LO_SAN_THANG_HANG, RANH_TUONG, TREO_ONG, ONG_GEN_QUA_DAM, SAN_MONG, ONG_GEN_NGANG_TUONG, ONG_GEN_TRAN_SAN</summary>
     public string Code { get; set; } = "";
     public ImpactSeverity Severity { get; set; }
     public string Story { get; set; } = "";
@@ -335,6 +335,9 @@ public static class StructuralImpact
                         double t = SegParam(a.X, a.Y, c.X, c.Y, ni.X, ni.Y, nj.X, nj.Y);
                         double x = a.X + t * (c.X - a.X), y = a.Y + t * (c.Y - a.Y), z = a.Z + t * (c.Z - a.Z);
                         if (z + rad <= zb + 1e-6 || z - rad >= zt - 1e-6) continue;
+                        // ống gen điện đi trong chiều dày sàn qua dầm: xét riêng theo điều kiện sàn ≥ 100, Ø ≤ 25, 1/3 giữa nhịp (SlabConduit.Check)
+                        if (r.Kind != MepRunKind.Ong && MepSystems.IsElectric(r.System) && SlabConduit.SlabAtZ(p, x, y, z, rad) is { } sz
+                            && z + rad <= zt + 1e-6 && z - rad >= zt - sz.T - 1e-6) continue;
                         double? other = null; double otherDia = 0;
                         if (holesOnBeam.TryGetValue(f.Id, out var hs) && hs.Count > 0)
                         {
@@ -412,6 +415,8 @@ public static class StructuralImpact
                     Proposal = rc ? "Đặt ống chờ trước khi đổ bê tông tường" : "Đi rãnh đứng / dưới sàn – trần; hoặc đi ống nổi trong hộp kỹ thuật"
                 });
             }
+            // ---- ống gen điện trong sàn / trần (qua dầm, sàn mỏng, đoạn ngang trong tường, không đi được) ----
+            list.AddRange(SlabConduit.Check(p, r));
             // ---- quang treo ống thoát ----
             int nh2 = MepDrainage.Hangers(p, r);
             if (nh2 > 0)

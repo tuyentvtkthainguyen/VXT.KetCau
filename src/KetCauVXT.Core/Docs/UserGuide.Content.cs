@@ -950,15 +950,17 @@ public static partial class UserGuide
 
         c.Sec("mo-hinh.dien-nuoc", "Bộ môn Điện nước: thiết bị chôn ngầm trong tường, tuyến ống / dây, cảnh báo khi kiến trúc thay đổi")
             .P("Menu **Thiết kế → Môi trường Điện nước** mở cửa sổ riêng của bộ môn điện nước. Phần kiến trúc (tường, cửa) hiện **mờ như bản vẽ tham chiếu (xref)** – không sửa được ở đây. "
-                + "Mặc định **mọi thiết bị, ống gen, khớp nối, điểm chia, đoạn đổi tiết diện của đường cấp thoát nước và dây điện đều chôn ngầm trong tường**: tuyến đi theo tim tường ở cao độ ngang chuẩn "
-                + "(ổ cắm / cấp nước 0,3 m trên sàn, chiếu sáng sát trần, thoát nước trong sàn), lên / xuống thiết bị trong tường.")
+                + "Mặc định **thiết bị, ống cấp nước, khớp nối, điểm chia chôn ngầm trong tường** (cấp nước đi ngang trong tường ở 0,3 m trên sàn); **ống gen điện ưu tiên đi ngang trong sàn / trần**, "
+                + "chỉ đi đứng trong tường tới thiết bị, không đi qua cột và dầm (xem {s:mo-hinh.dien-nuoc-tcvn}); thoát nước đi dưới sàn.")
             .Steps("**Đặt thiết bị**: tab *Cấp thoát nước* (bồn cầu, lavabo, sen tắm, vòi nước, thoát sàn, van, điểm nối ống, bình nóng lạnh) hoặc *Điện* (ổ cắm đơn / đôi, công tắc 1–3 hạt, đèn ốp trần / tuýp / downlight / hắt tường, quạt trần / treo tường, hộp chia, aptomat, tủ điện) "
                 + "→ bấm gần tường (≤ 1 m): thiết bị gắn vào **mặt tường phía bấm**, cao độ lắp mặc định theo họ (ổ cắm 0,4 m, công tắc 1,25 m, lavabo 0,8 m…; đèn, quạt trần đặt trên trần). Esc để thôi.",
                 "**Nối tuyến**: chọn hệ thống (cấp nước lạnh / nóng, thoát nước thải / xám / mưa, điện chiếu sáng / ổ cắm / điều hoà / điện nhẹ) → *Nối tuyến ống* hoặc *Nối dây (ống gen)* → bấm thiết bị nguồn rồi thiết bị đích. "
                 + "Tuyến tự đi trong các tường liền nhau (đường ngắn nhất), tự sinh **cút 90° / chếch 45°** tại chỗ đổi hướng, **măng sông / khớp nối ống gen** theo chiều dài cây ống (ống nước 4 m, ống gen 2,9 m), "
                 + "**tê / tê giảm** (điện: **hộp nối**) tại điểm có ≥ 3 tuyến, **côn thu** khi đổi tiết diện tại điểm nối ống.",
-                "**Tự chọn cỡ**: cấp nước theo đương lượng N (q = 0,2·α·√N + K·N, α = 2,15, K = 0,002 – TCVN 4513, ống PPR v ≤ 1,5 m/s); thoát nước theo tổng DFU (có bồn cầu → Ø110); "
-                + "dây điện I = P/(U·cosφ) → aptomat → dây Cu/PVC trong ống chôn tường (tối thiểu chiếu sáng 1,5 mm², ổ cắm 2,5 mm²) → ống gen sao cho dây chiếm ≤ 40 % tiết diện.",
+                "**Tự chọn cỡ** (bảng tiêu chuẩn – {s:mo-hinh.dien-nuoc-tcvn}): cấp nước theo đương lượng N (nhà ở q = 0,2·a·√N + K·N, a theo tiêu chuẩn dùng nước – 125 l → 2,15, K = 0,002…0,006 theo N; "
+                + "công trình công cộng q = 0,2·α·√N – TCVN 4513, ống PPR v ≤ 1,5 m/s); thoát nước theo tổng DFU (có bồn cầu → Ø110); "
+                + "dây điện I = P/(U·cosφ) → aptomat → dây Cu/PVC trong ống gen (IEC 60364-5-52 cách lắp B1, hiệu chỉnh nhiệt độ / nhóm mạch, sụt áp ≤ 3 % chiếu sáng, ≤ 5 % mạch khác; "
+                + "tối thiểu chiếu sáng 1,5 mm², ổ cắm 2,5 mm²) → ống gen sao cho dây chiếm ≤ 40 % tiết diện.",
                 "**Kiến trúc thay đổi**: khi tường dời, đổi dài / dày, bị xoá hoặc thêm cửa, lúc quay lại cửa sổ Điện nước (hoặc bấm *Kiểm tra → Cập nhật theo kiến trúc*) chương trình tự **dời thiết bị theo tường**, đi lại tuyến, tính lại phụ kiện "
                 + "và liệt kê **cảnh báo**: thiết bị nằm trong ô cửa, tường bị xoá (thiết bị mồ côi), tường quá mỏng không chôn được ống (Ø ngoài > ½ lõi + 1 lớp trát, vd ống Ø110 trong tường 110), "
                 + "thiết bị chồng nhau, tuyến xuyên cột / dầm (cần ống lồng). *Đi tới* phóng tới chỗ lỗi, *Sửa nhanh* dời thiết bị ra cạnh ô cửa / gắn vào tường gần nhất.",
@@ -967,6 +969,26 @@ public static partial class UserGuide
             .Bullets("Thư viện điện nước: *Thư viện MEP → Xem thư viện / Thêm họ thiết bị*. Họ thêm được lưu trong dự án và trong thư viện người dùng **chỉ trên máy này** (%AppData%\\VietConst\\ThuVienMEP.json).",
                 "Chọn thiết bị để sửa ký hiệu, cao độ, vị trí dọc tường, mạch điện, đổi mặt tường chôn; chọn tuyến để sửa cỡ hoặc bật / tắt *Tự chọn cỡ*. Delete xoá; mọi thao tác hoàn tác được (Ctrl+Z ở cửa sổ chính).",
                 "Thiết bị và tuyến điện nước có khối 3D (dùng cho khung nhìn 3D, IFC / OBJ và kiểm tra va chạm giữa các bộ môn).");
+
+        c.Sec("mo-hinh.dien-nuoc-tcvn", "Thông số theo TCVN và tuyến ống gen đi trong trần / sàn")
+            .P("Mọi thông số điện nước – ĐHKK lấy từ **một bảng tiêu chuẩn** (Mep/MepStandards.cs), mỗi dòng ghi nguồn \"Theo TCVN … Bảng …\". "
+                + "*Cài đặt điện nước* hiện bảng: giá trị **Tiêu chuẩn** (chỉ xem), ô **Tuỳ chỉnh** (trống = theo tiêu chuẩn) và **Nguồn**; dòng có dấu **(*)** là số trích theo thực hành / tài liệu thứ cấp – "
+                + "cần đối chiếu bản gốc tiêu chuẩn trước khi dùng cho hồ sơ.")
+            .Bullets("**Cấp nước (TCVN 4513:1988)**: chọn *Loại công trình* – nhà ở q = 0,2·a·√N + K·N (a theo tiêu chuẩn dùng nước: 100 → 2,2; 125 → 2,15; 150 → 2,1; 200 → 2,05…; K = 0,002 khi N ≤ 300, 0,003 ≤ 500, 0,004 ≤ 800, 0,005 ≤ 1200, 0,006 lớn hơn); "
+                + "công trình công cộng q = 0,2·α·√N (nhà trẻ 1,2; bệnh viện 1,4; cơ quan 1,5; trường học 1,8; an dưỡng 2,0; khách sạn 2,5); đương lượng lavabo 0,33, chậu bếp 1,0, sen 0,67, xí có két 0,5; v ≤ 1,5 m/s; bể – bơm 150 l/người·ngđ, Kngày 1,3.",
+                "**Thoát nước (TCVN 4474:1987)**: ống có xí ≥ Ø110; độ dốc tiêu chuẩn / nhỏ nhất Ø50: 3,5 % / 2,5 %, Ø100: 2 % / 1,2 %, Ø150: 1 % / 0,7 %; ống thông hơi vượt mái ≥ 0,7 m.",
+                "**Điện (TCVN 9206 / 9207:2012, IEC 60364-5-52)**: dòng cho phép dây Cu/PVC cách lắp B1 (1,5 → 17,5 A; 2,5 → 24 A; 4 → 32 A; 6 → 41 A; 10 → 57 A; 16 → 76 A; 25 → 101 A) × hệ số nhiệt độ (Bảng B.52.14: 35 °C → 0,94) × hệ số nhóm mạch (Bảng B.52.17: 2 mạch → 0,80); "
+                + "sụt áp ≤ 3 % chiếu sáng, ≤ 5 % mạch khác (Phụ lục G, ρ = 0,0225 Ω·mm²/m); Kc chiếu sáng 0,9, ổ cắm 0,5, điều hoà 0,8, bình nóng 0,7; ổ cắm 0,4 m, công tắc 1,25 m, tủ điện 1,5 m.",
+                "**ĐHKK (TCVN 5687:2010)**: trong nhà mùa hè 25 °C, 60 % (Bảng A.1, nghỉ ngơi tĩnh tại 25…28 °C, 60…70 %); ngoài nhà (Phụ lục B, m = 35 h/năm) Hà Nội 37,8 °C – 53,4 %, TP.HCM 36,8 °C – 56 % (chọn *Khí hậu ngoài nhà*); "
+                + "gió tươi 25 m³/h·người; vận tốc ống gió chính 6 m/s, nhánh 4 m/s.")
+            .Steps("**Tuyến ống gen** (*Cài đặt điện nước → Tuyến ống gen điện*): **Trần / sàn (khuyến nghị, mặc định)** – ổ cắm, điều hoà đặt thấp đi trong **sàn dưới chân** (tim ống ở giữa chiều dày sàn; tầng nền không có sàn: trong lớp bê tông lót), "
+                + "chiếu sáng và thiết bị đặt cao đi trong **sàn trên (trần)**; trong tường chỉ có **đoạn đứng** từ thiết bị xuống mặt sàn / lên đáy sàn. *Trong tường* – cách cũ, đi ngang theo tim tường.",
+                "**Không đi qua cột, dầm**: tuyến trong sàn được dò trực giao tránh tiết diện cột (khe hở 50 mm) và dải bề rộng dầm. Chỉ được **qua dầm trong chiều dày sàn** khi sàn ≥ 100 mm, ống gen ≤ Ø25 và điểm qua nằm trong **1/3 giữa nhịp** (cách gối ≥ L/3); "
+                + "không đạt thì vòng đường khác; không có đường → tuyến đi theo tường và có cảnh báo **ONG_GEN_TRAN_SAN**.",
+                "Thiết bị trên tường đặt trên dầm (hoặc dưới dầm): ống đi đứng tới **lớp cán nền** (mặc định 30 mm trên mặt sàn) / dưới đáy dầm rồi chuyển ra khỏi bề rộng dầm trước khi vào sàn.",
+                "**Kiểm tra kết cấu** cho ống gen trong sàn: **ONG_GEN_QUA_DAM** (qua dầm: đạt → Gợi ý; sàn mỏng, Ø lớn, sát gối → Cảnh báo), **SAN_MONG** (Ø ống > 1/3 chiều dày sàn), "
+                + "**ONG_GEN_NGANG_TUONG** (còn đoạn ngang > 0,3 m trong tường khi đã chọn trần / sàn). Rãnh đục tường và khối lượng tường trừ rãnh giảm tương ứng vì đoạn ngang không còn nằm trong tường.")
+            .Tip("Cấp nước vẫn đi trong tường như trước; chỉ ống gen điện (dây trong ống gen) áp dụng tuyến trần / sàn. Tuyến vẽ tay (điểm trung gian) giữ nguyên như người dùng vẽ.");
 
         c.Sec("mo-hinh.thoat-nuoc-ket-cau", "Thoát nước đi dưới sàn có độ dốc; cảnh báo điểm nguy hiểm cho kết cấu và chi tiết gia cường")
             .P("Ống **thoát nước** (thải, xám, mưa) **không đi trong tường**: từ thiết bị chỉ có đoạn đứng ngắn xuyên sàn ngay trước mặt tường, đoạn ngang **treo dưới đáy sàn** "

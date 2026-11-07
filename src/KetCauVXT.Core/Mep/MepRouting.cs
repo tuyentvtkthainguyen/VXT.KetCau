@@ -173,7 +173,8 @@ public static class MepRouting
         return el + set.RunHeight;
     }
 
-    /// <summary>Tính lại đường đi của tuyến. Trả false nếu không đi được trong tường (đã đi thẳng thay thế).</summary>
+    /// <summary>Tính lại đường đi của tuyến. Trả false nếu không đi được trong tường (đã đi thẳng thay thế).
+    /// Ống gen điện (Settings.ConduitRoute = TranSan, mặc định): đi trong sàn / trần tránh cột – dầm (SlabConduit).</summary>
     public static bool Route(Project p, MepRun r)
     {
         var m = p.Mep; var a = m.Device(r.FromId); var b = m.Device(r.ToId);
@@ -200,6 +201,14 @@ public static class MepRouting
             AddIfNew(r.Path, new MepPt(cb.X, cb.Y, pb.Z, b.WallId));
             Simplify(r.Path);
             return true;
+        }
+
+        // ống gen điện: mặc định đi ngang trong sàn / trần, chỉ đi đứng trong tường (SlabConduit); không đi được → đi theo tường + ghi chú
+        r.RouteNote = null;
+        if (SlabConduit.Applies(p, r))
+        {
+            if (SlabConduit.Route(p, r, a, b)) return true;
+            r.Path = new List<MepPt>();
         }
 
         bool drain = MepSystems.IsDrain(r.System);

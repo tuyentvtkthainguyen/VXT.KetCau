@@ -437,17 +437,17 @@ public static class HvacCoolingDetailed
 /// <summary>Thông số tủ điện (lưu trong MepSettings.Panel).</summary>
 public sealed class PanelOptions
 {
-    public int MaxLightingPoints { get; set; } = 10;
-    public int MaxSocketPoints { get; set; } = 8;
+    public int MaxLightingPoints { get; set; } = (int)MepStandards.Val("dien.max_cs");
+    public int MaxSocketPoints { get; set; } = (int)MepStandards.Val("dien.max_oc");
     /// <summary>"Tự động" / "1 pha" / "3 pha"</summary>
     public string Phases { get; set; } = PanelOptions.Auto;
     /// <summary>Tự động chuyển 3 pha khi công suất tính toán vượt (kW)</summary>
     public double ThreePhaseAboveKw { get; set; } = 12;
-    public double KcLighting { get; set; } = 0.9;
-    public double KcSocket { get; set; } = 0.5;
-    public double KcAc { get; set; } = 0.8;
-    public double KcHeater { get; set; } = 0.7;
-    public double CosPhi { get; set; } = 0.85;
+    public double KcLighting { get; set; } = MepStandards.Val("dien.kc_cs");
+    public double KcSocket { get; set; } = MepStandards.Val("dien.kc_oc");
+    public double KcAc { get; set; } = MepStandards.Val("dien.kc_ac");
+    public double KcHeater { get; set; } = MepStandards.Val("dien.kc_nong");
+    public double CosPhi { get; set; } = MepStandards.Val("dien.cos");
     public double MinBreakerLighting { get; set; } = 10;
     public double MinBreakerSocket { get; set; } = 16;
     public const string Auto = "Tự động", One = "1 pha", Three = "3 pha";
@@ -459,9 +459,9 @@ public sealed class WaterTankOptions
     /// <summary>Số người dùng nước; 0 = chưa khai báo (không lập bảng bể / bơm)</summary>
     public int Occupants { get; set; }
     /// <summary>Tiêu chuẩn dùng nước (l/người·ngày đêm)</summary>
-    public double LitersPerPerson { get; set; } = 150;
+    public double LitersPerPerson { get; set; } = MepStandards.Val("cap.q_nguoi");
     /// <summary>Hệ số không điều hoà ngày</summary>
-    public double KDay { get; set; } = 1.3;
+    public double KDay { get; set; } = MepStandards.Val("cap.kngay");
     public double RoofDays { get; set; } = 1;
     public double GroundDays { get; set; } = 2;
     /// <summary>Dự trữ chữa cháy cộng vào bể ngầm (m³)</summary>
@@ -783,11 +783,11 @@ public static class WaterSupplyCalc
             Headers = new[] { "Hạng mục", "Công thức", "Giá trị", "Đơn vị" },
             Widths = new double[] { 26, 46, 12, 8 }
         };
-        t.Add("Lượng nước ngày đêm", $"N·q = {o.Occupants}·{o.LitersPerPerson:0}/1000", Math.Round(r.DailyM3, 2), "m³");
+        t.Add("Lượng nước ngày đêm", $"N·q = {o.Occupants}·{o.LitersPerPerson:0}/1000 (q theo TCVN 4513:1988 Bảng 1)", Math.Round(r.DailyM3, 2), "m³");
         t.Add("Bể nước mái", $"N·q·{o.RoofDays:0.#} ngày → bồn {r.RoofTankL:0} l", Math.Round(r.RoofM3, 2), "m³");
         t.Add("Bể ngầm", $"N·q·{o.GroundDays:0.#} ngày + dự trữ {o.FireReserve:0.#} m³ → {r.GroundTankL:0} l", Math.Round(r.GroundM3, 2), "m³");
-        t.Add("Lưu lượng bơm", $"Q = Qngày·{o.KDay:0.##} / {o.PumpHours:0.#} h", Math.Round(r.PumpM3h, 2), "m³/h");
-        t.Add("Ống đẩy PPR", "v ≤ 1,5 m/s", r.PipeDn, "mm");
+        t.Add("Lưu lượng bơm", $"Q = Qngày·Kngày {o.KDay:0.##} / {o.PumpHours:0.#} h (Kngày theo TCVN 4513:1988)", Math.Round(r.PumpM3h, 2), "m³/h");
+        t.Add("Ống đẩy PPR", $"v ≤ {MepStandards.Get(p.Mep?.Settings?.Standards, "cap.v_max"):0.0#} m/s (Theo TCVN 4513:1988)", r.PipeDn, "mm");
         t.Add("Chiều cao đẩy tĩnh", "z miệng bể mái − z mực nước bể ngầm", Math.Round(r.StaticHead, 2), "m");
         t.Add("Tổn thất", $"{o.LocalFactor:0.#}·Hazen-Williams (C = {o.HazenC:0})", Math.Round(r.FrictionHead, 2), "m");
         t.Add("Cột áp bơm", $"H = Htĩnh + tổn thất + {o.FreeHead:0.#} m tự do", Math.Round(r.PumpHead, 2), "m");
@@ -956,6 +956,8 @@ public static class MepRound4
             }
         }
         catch (Exception) { }
+        // có bảng tính (tủ điện / bể – bơm / tải lạnh) → kèm bảng thông số tiêu chuẩn đã áp dụng (nguồn TCVN, giá trị tuỳ chỉnh)
+        if (res.Count > 0) res.Add(MepStandards.Table(p.Mep.Settings?.Standards));
         return res;
     }
 }

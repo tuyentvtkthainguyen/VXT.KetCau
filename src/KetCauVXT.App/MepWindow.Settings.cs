@@ -30,6 +30,33 @@ public sealed partial class MepWindow
         public double Height { get; set; } = 0.4;
     }
 
+    /// <summary>Dòng bảng thông số tiêu chuẩn: giá trị theo tiêu chuẩn (chỉ xem) + ô "Tuỳ chỉnh" (trống = theo tiêu chuẩn).</summary>
+    public sealed class StdRow
+    {
+        public string Key { get; set; } = "";
+        public string Group { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Standard { get; set; } = "";
+        public string Unit { get; set; } = "";
+        public string Source { get; set; } = "";
+        public string Custom { get; set; } = "";
+    }
+
+    /// <summary>Đổi bảng thông số thành danh sách tuỳ chỉnh (bỏ ô trống / không phải số / bằng giá trị tiêu chuẩn).</summary>
+    public static List<MepStdOverride> OverridesFrom(IEnumerable<StdRow> rows)
+    {
+        var res = new List<MepStdOverride>();
+        foreach (var r in rows.Where(r => r != null && !string.IsNullOrWhiteSpace(r.Custom)))
+        {
+            if (!double.TryParse(r.Custom.Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) continue;
+            if (Math.Abs(v - MepStandards.Val(r.Key)) < 1e-12) continue;
+            res.Add(new MepStdOverride { Key = r.Key, Value = v });
+        }
+        return res;
+    }
+
+    private const string RouteSlab = "Trần / sàn (khuyến nghị)", RouteWall = "Trong tường";
+
     private static string F(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
     private static double P(string s, double def) =>
         double.TryParse((s ?? "").Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && v >= 0 ? v : def;
@@ -107,6 +134,27 @@ public sealed partial class MepWindow
         var cbMount = Combo("ĐHKK – cách lắp dàn nóng mặc định", new[] { HvacMount.Floor, HvacMount.Bracket }, hv.OutdoorMount);
         var cbCool = Combo("ĐHKK – phương pháp tải lạnh", new[] { HvacMount.QuickMethod, HvacMount.DetailMethod }, hv.CoolingMethod);
         var cbPhase = Combo("Tủ điện – số pha", new[] { PanelOptions.Auto, PanelOptions.One, PanelOptions.Three }, pn.Phases);
+        var so = cur.Standards ??= new MepStdOptions();
+        var cbRoute = Combo("Tuyến ống gen điện", new[] { RouteSlab, RouteWall }, cur.ConduitRoute == ConduitRouteMode.TrongTuong ? RouteWall : RouteSlab);
+        var kinds = Enum.GetValues<MepBuildingKind>().ToList();
+        var cbKind = Combo("Loại công trình (TCVN 4513 – hệ số a / α)", kinds.Select(MepStandards.BuildingName).ToArray(), MepStandards.BuildingName(so.Building));
+        var cbClimate = Combo("Khí hậu ngoài nhà (TCVN 5687 Phụ lục B)", new[] { MepStandards.HaNoi, MepStandards.Hcm }, so.Climate);
+        Add("Cấp nước – tiêu chuẩn chọn hệ số a (l/người·ngđ)", so.WaterNorm, (s, _, v) => s.Standards.WaterNorm = Math.Max(50, v));
+        Add("Dây dẫn – nhiệt độ môi trường (°C, chuẩn IEC 30)", so.AmbientC, (s, _, v) => s.Standards.AmbientC = v);
+        Add("Dây dẫn – số mạch đi chung ống / bó", so.GroupedCircuits, (s, _, v) => s.Standards.GroupedCircuits = Math.Max(1, (int)Math.Round(v)));
+        Add("Ống gen trong sàn – lớp cán nền (m)", cur.ScreedLevel, (s, _, v) => s.ScreedLevel = v);
+        Add("Ống gen trong sàn – bước lưới dò tuyến (m)", cur.ConduitRouteStep, (s, _, v) => s.ConduitRouteStep = Math.Max(0.02, v));
+        Add("Ống gen trong sàn – phạt mỗi lần qua dầm (m)", cur.ConduitBeamPenalty, (s, _, v) => s.ConduitBeamPenalty = v);
+        var stdRows = new ObservableCollection<StdRow>(MepStandards.Items.Select(it => new StdRow
+        {
+            Key = it.Key, Group = it.Group, Name = it.Name, Standard = F(it.Value), Unit = it.Unit, Source = it.Label,
+            Custom = MepStandards.IsOverridden(so, it.Key) ? F(MepStandards.Get(so, it.Key)) : ""
+        }));
+        var gs = new DataGrid { ItemsSource = stdRows, AutoGenerateColumns = false, CanUserAddRows = false, CanUserDeleteRows = false, Height = 260, Margin = new Thickness(6) };
+        void RoCol(string h, string path, double w) => gs.Columns.Add(new DataGridTextColumn { Header = h, Binding = new Binding(path), IsReadOnly = true, Width = w });
+        RoCol("Nhóm", nameof(StdRow.Group), 80); RoCol("Thông số", nameof(StdRow.Name), 220); RoCol("Tiêu chuẩn", nameof(StdRow.Standard), 70);
+        gs.Columns.Add(new DataGridTextColumn { Header = "Tuỳ chỉnh", Binding = new Binding(nameof(StdRow.Custom)), Width = 70 });
+        RoCol("Đơn vị", nameof(StdRow.Unit), 70); RoCol("Nguồn", nameof(StdRow.Source), 320);
         var below = new CheckBox { Content = "Ống thoát đi DƯỚI sàn (treo dưới đáy sàn) tới ống đứng", IsChecked = cur.DrainBelowSlab, Margin = new Thickness(6, 4, 6, 4) };
 
         var rules = new ObservableCollection<SlopeRuleRow>((cur.SlopeRules ?? new()).Where(r => r != null).Select(r => new SlopeRuleRow
@@ -128,6 +176,8 @@ public sealed partial class MepWindow
         sp.Children.Add(new TextBlock { Text = "Thông số chung", FontWeight = FontWeights.Bold, Margin = new Thickness(6, 6, 6, 0) });
         sp.Children.Add(grid);
         sp.Children.Add(below);
+        sp.Children.Add(new TextBlock { Text = "Bảng thông số theo TCVN / IEC (ô Tuỳ chỉnh trống = theo tiêu chuẩn; (*) = cần đối chiếu bản gốc tiêu chuẩn)", TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.Bold, Margin = new Thickness(6, 8, 6, 0) });
+        sp.Children.Add(gs);
         sp.Children.Add(new TextBlock { Text = "Độ dốc theo hệ thống + dải Ø (ghi đè độ dốc mặc định; Ø đến = 0 → mọi Ø; Min / Max = 0 → không kẹp; kẹp cả độ dốc nhập tay)", TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.Bold, Margin = new Thickness(6, 8, 6, 0) });
         sp.Children.Add(gr);
         sp.Children.Add(new TextBlock { Text = "Cao độ lắp mặc định theo nhóm thiết bị (m so với sàn; áp dụng khi đặt mới, thiết bị trên trần vẫn theo trần)", TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.Bold, Margin = new Thickness(6, 8, 6, 0) });
@@ -144,13 +194,19 @@ public sealed partial class MepWindow
         };
         ok.Click += (_, _) => dlg.DialogResult = true;
         if (dlg.ShowDialog() != true) return;
-        gr.CommitEdit(); gh.CommitEdit();
+        gr.CommitEdit(); gh.CommitEdit(); gs.CommitEdit();
 
         Edit(() =>
         {
             var s = _p.Mep.Settings; var h = _p.Mep.Hvac.Settings;
             foreach (var (label, box, set) in fields) set(s, h, P(box.Text, 0));
             s.DrainBelowSlab = below.IsChecked == true;
+            s.ConduitRoute = (cbRoute.SelectedItem as string) == RouteWall ? ConduitRouteMode.TrongTuong : ConduitRouteMode.TranSan;
+            s.Standards ??= new MepStdOptions();
+            int ki = Array.IndexOf(kinds.Select(MepStandards.BuildingName).ToArray(), cbKind.SelectedItem as string);
+            s.Standards.Building = ki >= 0 ? kinds[ki] : MepBuildingKind.NhaO;
+            s.Standards.Climate = cbClimate.SelectedItem as string ?? MepStandards.HaNoi;
+            s.Standards.Overrides = OverridesFrom(stdRows);
             h.OutdoorMount = cbMount.SelectedItem as string ?? HvacMount.Floor;
             h.CoolingMethod = cbCool.SelectedItem as string ?? HvacMount.QuickMethod;
             s.Panel.Phases = cbPhase.SelectedItem as string ?? PanelOptions.Auto;

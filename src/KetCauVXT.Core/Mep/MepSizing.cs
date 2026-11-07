@@ -2,11 +2,13 @@ using KetCauVXT.Model;
 
 namespace KetCauVXT.Mep;
 
-/// <summary>Chọn cỡ ống / dây đơn giản:
-/// • Cấp nước: q = 0,2·α·√N + K·N (TCVN 4513, nhà ở, α = 2,15; K = 0,002), ống PPR PN20 với v ≤ 1,5 m/s.
+/// <summary>Chọn cỡ ống / dây (bảng tiêu chuẩn ở Mep/MepStandards.cs, ghi đè được trong Cài đặt điện nước):
+/// • Cấp nước: q = 0,2·a·√N + K·N (TCVN 4513, nhà ở: a theo tiêu chuẩn dùng nước – 125 l → 2,15; K theo N – N ≤ 300 → 0,002;
+///   công trình công cộng q = 0,2·α·√N), ống PPR PN20 với v ≤ 1,5 m/s.
 /// • Thoát nước: theo tổng đương lượng thoát DFU (TCVN 4474 giản lược); nhánh có bồn cầu ≥ Ø110.
-/// • Dây điện: I = P/(U·cosφ), aptomat In ≥ I, dây Cu/PVC trong ống gen chôn tường (IEC 60364-5-52 cách lắp B1) Iz ≥ In;
-///   tối thiểu chiếu sáng 1,5 mm², ổ cắm / điều hoà 2,5 mm².
+/// • Dây điện: I = P/(U·cosφ), aptomat In ≥ I, dây Cu/PVC trong ống gen chôn tường / sàn (IEC 60364-5-52 Bảng B.52.4 cách lắp B1)
+///   Iz·k1·k2 ≥ In (k1 nhiệt độ B.52.14, k2 nhóm mạch B.52.17); tối thiểu chiếu sáng 1,5 mm², ổ cắm / điều hoà 2,5 mm²;
+///   sụt áp ≤ 3 % chiếu sáng / 5 % mạch khác (IEC 60364-5-52 Phụ lục G) – không đạt thì tăng tiết diện.
 /// • Ống gen: tổng diện tích dây ≤ 40 % tiết diện trong ống.</summary>
 public static class MepSizing
 {
@@ -16,16 +18,19 @@ public static class MepSizing
     public static readonly (double Dn, double Di)[] Ppr = { (20, 13.2), (25, 16.6), (32, 21.2), (40, 26.6), (50, 33.4), (63, 42.0) };
     /// <summary>Ống thoát uPVC (mm).</summary>
     public static readonly double[] Upvc = { 34, 42, 49, 60, 76, 90, 110 };
-    /// <summary>Tiết diện dây (mm²) → dòng cho phép Iz (A), Cu/PVC trong ống chôn tường, 2 dây mang tải.</summary>
-    public static readonly (double S, double Iz)[] Wire = { (1.5, 17.5), (2.5, 24), (4, 32), (6, 41), (10, 57), (16, 76) };
+    /// <summary>Tiết diện dây (mm²) → dòng cho phép Iz (A), Cu/PVC trong ống chôn tường / sàn, 2 dây mang tải (IEC 60364-5-52 Bảng B.52.4, B1).</summary>
+    public static readonly (double S, double Iz)[] Wire = MepStandards.Sections.Select((x, i) => (x, MepStandards.IzB1[i])).ToArray();
     /// <summary>Đường kính ngoài dây CV (mm).</summary>
-    public static readonly (double S, double Do)[] WireOd = { (1.5, 3.0), (2.5, 3.6), (4, 4.2), (6, 4.8), (10, 6.0), (16, 7.4) };
+    public static readonly (double S, double Do)[] WireOd = { (1.5, 3.0), (2.5, 3.6), (4, 4.2), (6, 4.8), (10, 6.0), (16, 7.4), (25, 9.2), (35, 10.4) };
     /// <summary>Ống gen PVC (mm) → đường kính trong (mm).</summary>
     public static readonly (double Dn, double Di)[] Conduit = { (16, 13.0), (20, 16.5), (25, 21.3), (32, 27.6) };
     public static readonly double[] Breakers = { 6, 10, 16, 20, 25, 32, 40, 50, 63 };
 
-    /// <summary>Lưu lượng cấp nước tính toán (l/s) theo tổng đương lượng N.</summary>
-    public static double SupplyFlow(double n) => n <= 0 ? 0 : 0.2 * Alpha * Math.Sqrt(n) + K * n;
+    /// <summary>Lưu lượng cấp nước tính toán (l/s) theo tổng đương lượng N – nhà ở, tiêu chuẩn 125 l/người·ngđ (a = 2,15; K theo N).</summary>
+    public static double SupplyFlow(double n) => MepStandards.SupplyFlow(n, null);
+
+    /// <summary>Lưu lượng cấp nước tính toán (l/s) theo loại công trình / tiêu chuẩn dùng nước của dự án (TCVN 4513).</summary>
+    public static double SupplyFlow(double n, MepStdOptions o) => MepStandards.SupplyFlow(n, o);
 
     /// <summary>Ống PPR nhỏ nhất có vận tốc ≤ vmax với lưu lượng q (l/s).</summary>
     public static double SupplyPipe(double q, double vmax = VMax)
@@ -66,13 +71,21 @@ public static class MepSizing
     public static double MinSection(MepSystemKind s) => s is MepSystemKind.DienOCam or MepSystemKind.DienDieuHoa ? 2.5 : 1.5;
 
     /// <summary>Tiết diện dây (mm²) cho công suất P (W): In = aptomat ≥ I, Iz ≥ In, ≥ tối thiểu hệ thống.</summary>
-    public static double WireFor(double powerW, MepSystemKind sys, double u = 220, double cosPhi = 0.85)
+    public static double WireFor(double powerW, MepSystemKind sys, double u = 220, double cosPhi = 0.85) => WireFor(powerW, sys, u, cosPhi, null, 0);
+
+    /// <summary>Tiết diện dây theo IEC 60364-5-52: In = aptomat ≥ I; Iz·k1·k2 ≥ In; sụt áp trên chiều dài lengthM ≤ giới hạn; ≥ tối thiểu.</summary>
+    public static double WireFor(double powerW, MepSystemKind sys, double u, double cosPhi, MepStdOptions o, double lengthM)
     {
-        double inom = Breaker(Current(powerW, u, cosPhi));
-        double min = MinSection(sys);
-        foreach (var (s, iz) in Wire)
-            if (s >= min - 1e-9 && iz >= inom - 1e-9) return s;
-        return Wire[^1].S;
+        double i = Current(powerW, u, cosPhi), inom = Breaker(i);
+        double min = Math.Max(MinSection(sys), MepStandards.Get(o, sys is MepSystemKind.DienOCam or MepSystemKind.DienDieuHoa ? "dien.s_min_oc" : "dien.s_min_cs"));
+        double lim = MepStandards.VoltageDropLimit(sys, o);
+        foreach (double s in MepStandards.Sections)
+        {
+            if (s < min - 1e-9 || MepStandards.Iz(s, o) < inom - 1e-9) continue;
+            if (lengthM > 0 && MepStandards.VoltageDropPct(i, lengthM, s, cosPhi, u, o) > lim + 1e-9) continue;
+            return s;
+        }
+        return MepStandards.Sections[^1];
     }
 
     /// <summary>Ống gen nhỏ nhất chứa n dây tiết diện s (hệ số lấp đầy 40 %).</summary>
@@ -82,7 +95,7 @@ public static class MepSizing
         if (od <= 0) od = 3.6;
         double need = Math.Max(1, n) * Math.PI * od * od / 4;
         foreach (var (dn, di) in Conduit)
-            if (need <= 0.40 * Math.PI * di * di / 4 + 1e-9) return dn;
+            if (need <= MepStandards.Val("dien.fill") * Math.PI * di * di / 4 + 1e-9) return dn;
         return Conduit[^1].Dn;
     }
 
@@ -113,16 +126,19 @@ public static class MepSizing
         {
             var down = Downstream(m, r);
             var fams = down.Select(d => m.FamilyOf(d)).Where(f => f != null).ToList();
+            var so = m.Settings?.Standards;
             double old = r.Size, oldC = r.ConduitSize;
             if (MepSystems.IsSupply(r.System))
-                r.Size = SupplyPipe(SupplyFlow(fams.Sum(f => f.SupplyUnits)));
+                r.Size = SupplyPipe(SupplyFlow(fams.Sum(f => f.SupplyUnits), so), MepStandards.Get(so, "cap.v_max"));
             else if (MepSystems.IsDrain(r.System))
                 r.Size = DrainPipe(fams.Sum(f => f.DrainUnits), fams.Any(f => f.Symbol == "boncau"));
             else
             {
                 var c = m.Circuits.FirstOrDefault(x => x.Name == r.Circuit);
                 double pw = fams.Sum(f => f.Power) * (c?.Demand ?? 1.0);
-                r.Size = WireFor(pw, r.System, c?.Voltage ?? 220, c?.CosPhi ?? 0.85);
+                // sụt áp theo chiều dài tuyến tới thiết bị xa nhất phía sau (đơn giản: chiều dài tuyến này + các tuyến phía sau cùng hệ)
+                double len = r.Length + down.Sum(d => m.Runs.Where(x => x.System == r.System && x.FromId == d.Id).Sum(x => x.Length));
+                r.Size = WireFor(pw, r.System, c?.Voltage ?? 220, c?.CosPhi ?? 0.85, so, len);
                 r.ConduitSize = ConduitFor(r.Size, Math.Max(1, r.Conductors));
             }
             if (Math.Abs(old - r.Size) > 1e-9 || Math.Abs(oldC - r.ConduitSize) > 1e-9) changed++;
