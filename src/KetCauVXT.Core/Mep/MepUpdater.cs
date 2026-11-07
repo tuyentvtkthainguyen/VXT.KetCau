@@ -99,6 +99,7 @@ public static class MepUpdater
                     Fix = "Vẽ tay tuyến hoặc thêm tường"
                 });
         }
+        try { res.Rerouted += ConduitSpacing.Spread(p); } catch (Exception) { }   // giãn ống gen song song quá sát (Mep/MepRound5.cs)
         var fit = new List<MepFitting>();
         foreach (var r in m.Runs) fit.AddRange(MepRouting.RunFittings(p, r));
         fit.AddRange(MepRouting.NodeFittings(p));

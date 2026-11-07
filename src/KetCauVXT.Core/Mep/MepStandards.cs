@@ -42,16 +42,23 @@ public class MepStdOptions
     public int GroupedCircuits { get; set; } = 1;
     /// <summary>Địa phương lấy thông số khí hậu ngoài nhà (TCVN 5687:2010 Phụ lục B): "Hà Nội" / "TP. Hồ Chí Minh"</summary>
     public string Climate { get; set; } = MepStandards.HaNoi;
+    /// <summary>Phiên bản TCVN 5687 dùng cho thông số khí hậu: "2010" (mặc định, Phụ lục B) hoặc "2024" (số liệu khí hậu dẫn chiếu QCVN 02:2022/BXD)</summary>
+    public string Edition { get; set; } = MepStandards.Ed2010;
+    /// <summary>Tải lạnh chi tiết lấy Δt, Δw và hiệu chỉnh CLTD theo khí hậu địa phương (Climate / Edition) thay cho giá trị nhập tay</summary>
+    public bool CoolingFromClimate { get; set; }
+    /// <summary>Ống đứng thoát nước có ống thông hơi (tra sức chứa ống đứng theo cột có / không thông hơi)</summary>
+    public bool StackVented { get; set; } = true;
     /// <summary>Giá trị tuỳ chỉnh theo khoá</summary>
     public List<MepStdOverride> Overrides { get; set; } = new();
 }
 
 public static class MepStandards
 {
-    public const string HaNoi = "Hà Nội", Hcm = "TP. Hồ Chí Minh";
+    public const string HaNoi = "Hà Nội", Hcm = "TP. Hồ Chí Minh", ThaiNguyen = "Thái Nguyên";
+    public const string Ed2010 = "2010", Ed2024 = "2024";
     public const string T9206 = "TCVN 9206:2012", T9207 = "TCVN 9207:2012", Iec = "IEC 60364-5-52", T4513 = "TCVN 4513:1988",
         T4474 = "TCVN 4474:1987", T5687 = "TCVN 5687:2010";
-    public const string GDien = "Điện", GNuoc = "Cấp nước", GThoat = "Thoát nước", GDhkk = "ĐHKK", GOngGen = "Ống gen trong sàn";
+    public const string GDien = "Điện", GNuoc = "Cấp nước", GThoat = "Thoát nước", GDhkk = "ĐHKK", GOngGen = "Ống gen trong sàn", GChieuSang = "Chiếu sáng";
 
     /// <summary>Danh mục thông số (khoá → giá trị, đơn vị, nguồn).</summary>
     public static readonly IReadOnlyList<MepStdItem> Items = new List<MepStdItem>
@@ -97,6 +104,9 @@ public static class MepStandards
         new("dhkk.phi_hn", GDhkk, "Độ ẩm ngoài nhà Hà Nội (m = 35 h/năm)", 53.4, "%", T5687 + " Phụ lục B"),
         new("dhkk.t_hcm", GDhkk, "Nhiệt độ ngoài nhà TP.HCM (m = 35 h/năm)", 36.8, "°C", T5687 + " Phụ lục B"),
         new("dhkk.phi_hcm", GDhkk, "Độ ẩm ngoài nhà TP.HCM (m = 35 h/năm)", 56.0, "%", T5687 + " Phụ lục B"),
+        new("dhkk.t_tn", GDhkk, "Nhiệt độ ngoài nhà Thái Nguyên (lấy theo trạm Hà Nội – cần đối chiếu trạm Thái Nguyên)", 37.8, "°C", T5687 + " Phụ lục B (trạm Hà Nội)", false),
+        new("dhkk.phi_tn", GDhkk, "Độ ẩm ngoài nhà Thái Nguyên (lấy theo trạm Hà Nội)", 53.4, "%", T5687 + " Phụ lục B (trạm Hà Nội)", false),
+        new("dhkk.dr", GDhkk, "Biên độ nhiệt ngày mùa hè (hiệu chỉnh CLTD)", 8, "°C", "ASHRAE (phương pháp CLTD) – số liệu khí hậu địa phương", false),
         new("dhkk.gio_tuoi", GDhkk, "Gió tươi tối thiểu phòng ở / văn phòng", 25, "m³/h·người", T5687 + " Phụ lục F", false),
         new("dhkk.v_chinh", GDhkk, "Vận tốc gió ống chính (5…8)", 6, "m/s", T5687 + " (công trình công cộng – thực hành)", false),
         new("dhkk.v_nhanh", GDhkk, "Vận tốc gió ống nhánh (3…5)", 4, "m/s", T5687 + " (công trình công cộng – thực hành)", false),
@@ -105,6 +115,27 @@ public static class MepStandards
         new("gen.d_qua_dam", GOngGen, "Ø ống gen lớn nhất được đi qua dầm trong chiều dày sàn", 25, "mm", T9207 + " (thực hành)", false),
         new("gen.ty_san", GOngGen, "Ø ống gen / chiều dày sàn lớn nhất", 1.0 / 3.0, "", "TCVN 5574:2018 (cấu tạo – ống chôn ≤ 1/3 h sàn)", false),
         new("gen.cach_cot", GOngGen, "Khoảng hở ống gen tới mép cột", 0.05, "m", "Thực hành thi công", false),
+        new("gen.kc_d", GOngGen, "Khoảng hở giữa 2 ống gen song song trong sàn ≥ k·Ø", 3, "Ø", T9207 + " (thực hành – khoảng hở để bê tông bao quanh ống)", false),
+        new("gen.kc_min", GOngGen, "Khoảng hở nhỏ nhất giữa 2 ống gen song song trong sàn", 0.05, "m", T9207 + " (thực hành)", false),
+        new("gen.max_bo", GOngGen, "Số ống gen song song tối đa trong một dải sàn", 4, "ống", T9207 + " / TCVN 5574:2018 (thực hành – không làm yếu tiết diện sàn)", false),
+        new("gen.dai_rong", GOngGen, "Bề rộng dải sàn xét số ống gen đi chung", 1.0, "m", "Thực hành thi công", false),
+        new("gen.overlap", GOngGen, "Chiều dài đi song song tối thiểu để xét khoảng hở", 0.5, "m", "Thực hành thi công", false),
+        // ---- chiếu sáng ----
+        new("cs.uf", GChieuSang, "Hệ số sử dụng quang thông UF (phòng trung bình, trần – tường sáng)", 0.6, "", "TCVN 7114-1:2008 / phương pháp hệ số sử dụng (thực hành)", false),
+        new("cs.mf", GChieuSang, "Hệ số duy trì MF (môi trường sạch, LED)", 0.8, "", "TCVN 7114-1:2008 mục hệ số duy trì (thực hành)", false),
+        new("cs.lm_w", GChieuSang, "Hiệu suất phát quang khi họ đèn chưa khai báo quang thông", 100, "lm/W", "Đèn LED thông dụng (thực hành)", false),
+        // ---- thoát nước: ống đứng, ống thoát ra, bể tự hoại ----
+        new("thoat.k_khong_th", GThoat, "Hệ số giảm sức chứa ống đứng không có ống thông hơi", 0.5, "", T4474 + " (ống đứng không thông hơi – thực hành)", false),
+        new("tuhoai.q", GThoat, "Lượng nước thải vào bể tự hoại", 150, "l/người·ngđ", "TCVN 10334:2014 / " + T4474 + " (thực hành)", false),
+        new("tuhoai.t_nuoc", GThoat, "Thời gian lưu nước trong bể", 1, "ngày", "TCVN 10334:2014 (lưu nước 1…3 ngày)", false),
+        new("tuhoai.a", GThoat, "Lượng cặn trung bình một người", 0.6, "l/người·ngđ", "Giáo trình cấp thoát nước trong nhà (a = 0,5…0,8)", false),
+        new("tuhoai.t_hut", GThoat, "Thời gian giữa 2 lần hút cặn", 180, "ngày", "TCVN 10334:2014 (thực hành 6…12 tháng)", false),
+        new("tuhoai.w1", GThoat, "Độ ẩm cặn tươi", 95, "%", "Giáo trình cấp thoát nước trong nhà", false),
+        new("tuhoai.w2", GThoat, "Độ ẩm cặn đã lên men", 90, "%", "Giáo trình cấp thoát nước trong nhà", false),
+        new("tuhoai.b", GThoat, "Hệ số giảm thể tích cặn khi lên men", 0.7, "", "Giáo trình cấp thoát nước trong nhà", false),
+        new("tuhoai.c", GThoat, "Hệ số kể đến cặn giữ lại khi hút", 1.2, "", "Giáo trình cấp thoát nước trong nhà", false),
+        new("tuhoai.h", GThoat, "Chiều sâu lớp nước bể tự hoại", 1.5, "m", "TCVN 10334:2014 (≥ 1,2 m – thực hành)", false),
+        new("tuhoai.b_min", GThoat, "Bề rộng trong nhỏ nhất bể tự hoại", 0.8, "m", "TCVN 10334:2014 (thực hành)", false),
     };
 
     private static readonly Dictionary<string, MepStdItem> _byKey = Items.ToDictionary(i => i.Key);
@@ -260,10 +291,38 @@ public static class MepStandards
     // =================================================================
     public static (double T, double Phi) Indoor(MepStdOptions o = null) => (Get(o, "dhkk.t_trong"), Get(o, "dhkk.phi_trong"));
 
+    /// <summary>Địa phương có thông số ngoài nhà: (tên, khoá t, khoá φ). Các tỉnh không có trạm riêng lấy theo trạm gần nhất (ghi rõ trong tên).</summary>
+    public static readonly (string Name, string KeyT, string KeyPhi)[] Provinces =
+    {
+        (HaNoi, "dhkk.t_hn", "dhkk.phi_hn"), (Hcm, "dhkk.t_hcm", "dhkk.phi_hcm"), (ThaiNguyen, "dhkk.t_tn", "dhkk.phi_tn"),
+        ("Bắc Ninh (trạm Hà Nội)", "dhkk.t_hn", "dhkk.phi_hn"), ("Bắc Giang (trạm Hà Nội)", "dhkk.t_hn", "dhkk.phi_hn"),
+        ("Vĩnh Phúc (trạm Hà Nội)", "dhkk.t_hn", "dhkk.phi_hn"), ("Hưng Yên (trạm Hà Nội)", "dhkk.t_hn", "dhkk.phi_hn"),
+        ("Bình Dương (trạm TP.HCM)", "dhkk.t_hcm", "dhkk.phi_hcm"), ("Đồng Nai (trạm TP.HCM)", "dhkk.t_hcm", "dhkk.phi_hcm"),
+        ("Long An (trạm TP.HCM)", "dhkk.t_hcm", "dhkk.phi_hcm"),
+    };
+
+    /// <summary>Địa phương ứng với lựa chọn Climate (so khớp tên đầu, "HCM" = TP.HCM); không khớp → Hà Nội.</summary>
+    public static (string Name, string KeyT, string KeyPhi) Province(MepStdOptions o)
+    {
+        string c = (o?.Climate ?? HaNoi).Trim();
+        if (c.Contains("Hồ Chí Minh") || c.Contains("HCM")) return Provinces[1];
+        foreach (var pv in Provinces)
+        {
+            string head = pv.Name.Split('(')[0].Trim();
+            if (c.StartsWith(head, StringComparison.OrdinalIgnoreCase)) return pv;
+        }
+        return Provinces[0];
+    }
+
+    /// <summary>Nguồn số liệu khí hậu theo phiên bản đã chọn.</summary>
+    public static string ClimateSource(MepStdOptions o) => (o?.Edition ?? Ed2010) == Ed2024
+        ? "TCVN 5687:2024 (số liệu khí hậu dẫn chiếu QCVN 02:2022/BXD – giá trị mặc định lấy theo bảng 2010, cần đối chiếu QCVN 02:2022)"
+        : T5687 + " Phụ lục B";
+
     public static (double T, double Phi) Outdoor(MepStdOptions o = null)
     {
-        bool hcm = (o?.Climate ?? HaNoi).Contains("Hồ Chí Minh") || (o?.Climate ?? "").Contains("HCM");
-        return hcm ? (Get(o, "dhkk.t_hcm"), Get(o, "dhkk.phi_hcm")) : (Get(o, "dhkk.t_hn"), Get(o, "dhkk.phi_hn"));
+        var pv = Province(o);
+        return (Get(o, pv.KeyT), Get(o, pv.KeyPhi));
     }
 
     /// <summary>Lưu lượng gió tươi (m³/h) cho số người.</summary>
@@ -297,7 +356,7 @@ public static class MepStandards
             Cite(o, "dien.du_cs"), Cite(o, "dien.du_khac"),
             $"Thoát nước: {SrcSlope}: Ø50 {DrainSlopes[0].Std * 100:0.#} % (min {DrainSlopes[0].Min * 100:0.#} %), Ø100 {DrainSlopes[1].Std * 100:0.#} % (min {DrainSlopes[1].Min * 100:0.#} %)",
             Cite(o, "dhkk.t_trong"), Cite(o, "dhkk.phi_trong"),
-            $"Ngoài nhà {o.Climate}: t = {Outdoor(o).T:0.0} °C, φ = {Outdoor(o).Phi:0.#} % (Theo {T5687} Phụ lục B)",
+            $"Ngoài nhà {o.Climate}: t = {Outdoor(o).T:0.0} °C, φ = {Outdoor(o).Phi:0.#} % (Theo {ClimateSource(o)})",
             Cite(o, "dhkk.gio_tuoi"),
         };
         if (Items.Any(i => !i.Verified)) L.Add("(*) Giá trị trích theo thực hành / tài liệu thứ cấp – cần đối chiếu bản gốc tiêu chuẩn; có thể tuỳ chỉnh trong Cài đặt điện nước.");

@@ -330,6 +330,8 @@ public sealed class CoolingInput
     /// <summary>Chênh lệch độ chứa ẩm trong / ngoài (kg/kg)</summary>
     public double DeltaW { get; set; } = 0.008;
     public double Safety { get; set; } = 1.1;
+    /// <summary>Hiệu chỉnh CLTD tường / mái (°C): (25,5 − t trong) + (t ngoài − DR/2 − 29,4); 0 = dùng CLTD bảng (MepRound5.ClimateCooling.Apply tính theo địa phương)</summary>
+    public double CltdCorrection { get; set; }
 }
 
 /// <summary>Một mặt bao ngoài: tường, hướng, diện tích tường đặc / kính.</summary>
@@ -387,13 +389,13 @@ public static class HvacCoolingDetailed
                 if (t != null && t.Kind == WallOpeningKind.Window) ag += t.Width * t.Height;
             }
             double aw = Math.Max(0, L * hgt - ag);
-            double qw = o.UWall * aw * CltdWall[k];
+            double qw = o.UWall * aw * Math.Max(0, CltdWall[k] + o.CltdCorrection);
             double qg = ag * (o.UGlass * o.DeltaT + Shgf[k] * o.ShadingCoef * o.GlassClf);
             walls.Add(new CoolingWall(w.Id, Orients[k], aw, ag, qw, qg));
             qW += qw; qG += qg;
         }
         bool roof = o.Roof ?? TopStory(p, r.Story);
-        double qR = roof ? o.URoof * A * o.CltdRoof : 0;
+        double qR = roof ? o.URoof * A * Math.Max(0, o.CltdRoof + o.CltdCorrection) : 0;
         int n = o.People > 0 ? o.People : 2;
         double qPS = n * o.PeopleSensible, qPL = n * o.PeopleLatent;
         double qL = o.LightingWm2 * A, qE = o.EquipmentWm2 * A;
@@ -929,7 +931,7 @@ public static class RiserDiagrams
 public static class MepRound4
 {
     /// <summary>Hình vẽ sơ đồ (tỷ lệ 1, không theo tỷ lệ mặt bằng).</summary>
-    public static bool IsSchematic(string name) => name == ElectricalPanels.DiagramTitle || name == RiserDiagrams.SupplyTitle || name == RiserDiagrams.DrainTitle;
+    public static bool IsSchematic(string name) => name == ElectricalPanels.DiagramTitle || name == RiserDiagrams.SupplyTitle || name == RiserDiagrams.DrainTitle || MepRound5.IsSchematic(name);
 
     public static List<Figure> Figures(Project p)
     {
@@ -938,6 +940,7 @@ public static class MepRound4
         try { var f = ElectricalPanels.Diagram(ElectricalPanels.Build(p)); if (f != null) res.Add(f); } catch (Exception) { }
         try { var f = RiserDiagrams.Supply(p); if (f != null) res.Add(f); } catch (Exception) { }
         try { var f = RiserDiagrams.Drain(p); if (f != null) res.Add(f); } catch (Exception) { }
+        try { res.AddRange(MepRound5.Figures(p)); } catch (Exception) { }
         return res;
     }
 
@@ -951,11 +954,14 @@ public static class MepRound4
         {
             if (p.Mep.Hvac?.Settings?.CoolingMethod == HvacMount.DetailMethod && (p.Arch?.Rooms?.Count ?? 0) > 0)
             {
-                var t = HvacCoolingDetailed.Table(p);
+                var so = p.Mep.Settings?.Standards;
+                var t = HvacCoolingDetailed.Table(p, so?.CoolingFromClimate == true ? ClimateCooling.Input(so) : null);
                 if (t.Rows.Count > 0) res.Add(t);
             }
         }
         catch (Exception) { }
+        // chiếu sáng (LPD, phương pháp quang thông), ống đứng – ống thoát ra, bể tự hoại – Mep/MepRound5.cs
+        try { res.AddRange(MepRound5.Tables(p)); } catch (Exception) { }
         // có bảng tính (tủ điện / bể – bơm / tải lạnh) → kèm bảng thông số tiêu chuẩn đã áp dụng (nguồn TCVN, giá trị tuỳ chỉnh)
         if (res.Count > 0) res.Add(MepStandards.Table(p.Mep.Settings?.Standards));
         return res;

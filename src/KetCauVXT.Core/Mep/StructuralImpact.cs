@@ -44,7 +44,7 @@ public sealed class StrengtheningItem
 /// <summary>Một điểm ảnh hưởng tới kết cấu.</summary>
 public sealed class StructuralImpactItem
 {
-    /// <summary>XUYEN_DAM, XUYEN_COT, LO_SAN, LO_SAN_THANG_HANG, RANH_TUONG, TREO_ONG, ONG_GEN_QUA_DAM, SAN_MONG, ONG_GEN_NGANG_TUONG, ONG_GEN_TRAN_SAN</summary>
+    /// <summary>XUYEN_DAM, XUYEN_COT, LO_SAN, LO_SAN_THANG_HANG, RANH_TUONG, TREO_ONG, ONG_GEN_QUA_DAM, SAN_MONG, ONG_GEN_NGANG_TUONG, ONG_GEN_TRAN_SAN, ONG_GEN_SAT_NHAU, ONG_GEN_BO, ONG_GEN_GIAO</summary>
     public string Code { get; set; } = "";
     public ImpactSeverity Severity { get; set; }
     public string Story { get; set; } = "";
@@ -515,6 +515,8 @@ public static class StructuralImpact
                     });
                 }
         }
+        // ống gen song song trong sàn: khoảng hở ≥ 3Ø và ≥ 50 mm, số ống trong một dải sàn, chồng ống tại chỗ giao (Mep/MepRound5.cs)
+        try { list.AddRange(ConduitSpacing.Check(p)); } catch (Exception) { }
         return list;
     }
 

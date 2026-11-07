@@ -990,6 +990,45 @@ public static partial class UserGuide
                 + "**ONG_GEN_NGANG_TUONG** (còn đoạn ngang > 0,3 m trong tường khi đã chọn trần / sàn). Rãnh đục tường và khối lượng tường trừ rãnh giảm tương ứng vì đoạn ngang không còn nằm trong tường.")
             .Tip("Cấp nước vẫn đi trong tường như trước; chỉ ống gen điện (dây trong ống gen) áp dụng tuyến trần / sàn. Tuyến vẽ tay (điểm trung gian) giữ nguyên như người dùng vẽ.");
 
+        c.Sec("mo-hinh.dien-nuoc-dot5", "Khoảng hở ống gen, khí hậu theo tỉnh, chiếu sáng LPD, ống đứng thoát nước và bể tự hoại")
+            .P("Các phép kiểm tra bổ sung cho điện nước (Mep/MepRound5.cs). Thông số nằm trong bảng tiêu chuẩn của {s:mo-hinh.dien-nuoc-tcvn} "
+                + "và tuỳ chỉnh được; dòng có dấu **(*)** là giá trị theo thực hành, cần đối chiếu bản gốc tiêu chuẩn.")
+            .Bullets("**Ống gen song song trong sàn**: khoảng hở giữa 2 ống ≥ **max(3·Ø, 50 mm)** khi đi cạnh nhau ≥ 0,5 m. Vi phạm → cảnh báo **ONG_GEN_SAT_NHAU**; "
+                + "khi *Đi lại tuyến* / đối chiếu, tuyến vẽ sau được **giãn** sang bên: dời đoạn giữa, 2 đoạn kề kéo dài theo, vẫn tránh cột và chỉ qua dầm ở 1/3 giữa nhịp.",
+                "**Số ống trong một dải sàn**: quá 4 ống gen song song trong dải rộng 1 m → **ONG_GEN_BO**. Tại chỗ 2 ống giao nhau, tổng Ø chồng lên phải ≤ 1/3 chiều dày sàn, nếu không → **ONG_GEN_GIAO** "
+                + "(cùng quy tắc với **SAN_MONG** cho một ống).",
+                "**Khí hậu ĐHKK**: *Khí hậu ngoài nhà* chọn theo tỉnh: Hà Nội, TP.HCM, **Thái Nguyên**, Bắc Ninh, Bắc Giang, Vĩnh Phúc, Hưng Yên, Bình Dương, Đồng Nai, Long An. "
+                + "Tỉnh chưa có số liệu riêng lấy theo trạm gần nhất; tên tỉnh ghi rõ trạm. Thái Nguyên tạm lấy giá trị trạm Hà Nội (*) và sửa được qua khoá *dhkk.t_tn* / *dhkk.phi_tn*. "
+                + "*Phiên bản TCVN 5687*: **2010** (Phụ lục B) hoặc **2024**. Bản 2024 dẫn chiếu số liệu khí hậu của QCVN 02:2022/BXD; giá trị mặc định vẫn theo bảng 2010 nên cần nhập lại theo QCVN 02:2022.",
+                "**Tải lạnh theo khí hậu** (*Tải lạnh chi tiết: Δt, Δw, hiệu chỉnh CLTD theo khí hậu địa phương* = Có): "
+                + "Δt = t ngoài − t trong (Hà Nội 37,8 − 25 = 12,8 °C). "
+                + "Δw = w ngoài − w trong, với áp suất hơi bão hoà theo công thức Magnus. "
+                + "CLTD tường / mái cộng thêm hiệu chỉnh (25,5 − t trong) + (t ngoài − DR/2 − 29,4), trong đó DR là biên độ nhiệt ngày (mặc định 8 °C, Hà Nội → +4,9 °C). "
+                + "Mặc định là Không: giữ Δt 9 °C như trước.",
+                "**Chiếu sáng (TCVN 7114-1:2008, QCVN 09:2017/BXD)**: loại phòng nhận theo tên phòng. Mỗi loại có độ rọi yêu cầu và mật độ công suất LPD lớn nhất: "
+                + "văn phòng / phòng họp 500 lx, 11 W/m²; "
+                + "lớp học 300 lx; "
+                + "phòng khách 150 lx; "
+                + "phòng ngủ 100 lx; "
+                + "bếp 200 lx; "
+                + "vệ sinh 200 lx; "
+                + "hành lang 100 lx; "
+                + "cầu thang 150 lx; "
+                + "kho 100 lx. "
+                + "Kiểm tra Σ W đèn trong phòng / diện tích ≤ LPD. Số đèn cần tính theo phương pháp hệ số sử dụng **N = E·A / (Φ·UF·MF)** (UF 0,6; MF 0,8). "
+                + "Quang thông Φ lấy theo thư viện (ốp trần 2200 lm, tuýp LED 1,2 m 1800 lm, downlight 800 lm, hắt tường 960 lm); họ chưa khai báo thì lấy 100 lm/W. "
+                + "Sửa LPD / độ rọi bằng khoá *cs.lpd.(mã)* / *cs.e.(mã)* (mã: vanphong, hop, lophoc, khach, ngu, bep, wc, hanhlang, cauthang, kho, khac).",
+                "**Ống đứng thoát nước (TCVN 4474:1987; sức chứa DFU tham khảo IPC (*))**: DFU cộng dồn **từ tầng trên xuống**. Ø ống đứng chọn tại chân ống và giữ suốt chiều cao; ống có xí ≥ Ø110. "
+                + "Sức chứa theo số tầng có thiết bị (≤ 3 hoặc > 3 khoảng nhánh), ví dụ Ø110 chứa 240 / 500 DFU. "
+                + "Ống không có thông hơi lấy 0,5 sức chứa (*Ống đứng thoát nước có ống thông hơi* = Không). "
+                + "**Ống thoát ra** hố ga / bể tự hoại chọn Ø theo tổng DFU và độ dốc tiêu chuẩn của Ø đó.",
+                "**Bể tự hoại 3 ngăn (TCVN 10334:2014)**: chỉ lập khi đã khai báo số người dùng nước. "
+                + "Thể tích nước Wn = t·q·N/1000 (lưu 1 ngày, 150 l/người·ngđ). "
+                + "Thể tích cặn Wc = a·T·(100 − W1)·b·c·N / ((100 − W2)·1000), với a = 0,6; T = 180 ngày; W1 = 95 %; W2 = 90 %; b = 0,7; c = 1,2. "
+                + "Dung tích W = Wn + Wc. Lớp nước sâu 1,5 m, bề rộng ≥ 0,8 m; chia ngăn chứa L/2, ngăn lắng L/4, ngăn lọc L/4. "
+                + "Bộ bản vẽ có hình mặt cắt dọc và mặt bằng bể (tỷ lệ 1:50) với ống vào / ra Ø110 và ống thông hơi.")
+            .Tip("Bảng chiếu sáng chỉ xuất khi phòng có đèn. Bảng ống đứng và bể tự hoại chỉ xuất khi đã khai báo số người, nên các dự án cũ không đổi số bảng.");
+
         c.Sec("mo-hinh.thoat-nuoc-ket-cau", "Thoát nước đi dưới sàn có độ dốc; cảnh báo điểm nguy hiểm cho kết cấu và chi tiết gia cường")
             .P("Ống **thoát nước** (thải, xám, mưa) **không đi trong tường**: từ thiết bị chỉ có đoạn đứng ngắn xuyên sàn ngay trước mặt tường, đoạn ngang **treo dưới đáy sàn** "
                 + "(trong không gian trần tầng dưới; ô sàn **hạ cốt** đủ sâu thì đi trong lớp hạ cốt) và **dốc về ống đứng** (hộp gen kỹ thuật). Tầng thấp nhất: ống chôn trong lớp đất đắp dưới sàn nền.")

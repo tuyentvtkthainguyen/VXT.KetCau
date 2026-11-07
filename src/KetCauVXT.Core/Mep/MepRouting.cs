@@ -474,6 +474,7 @@ public static class MepRouting
             if (pos.Wall != null) { d.X = pos.X; d.Y = pos.Y; }
         }
         foreach (var r in m.Runs) Route(p, r);
+        try { ConduitSpacing.Spread(p); } catch (Exception) { }   // giãn ống gen song song quá sát trong sàn (Mep/MepRound5.cs)
         var all = new List<MepFitting>();
         foreach (var r in m.Runs) all.AddRange(RunFittings(p, r));
         all.AddRange(NodeFittings(p));

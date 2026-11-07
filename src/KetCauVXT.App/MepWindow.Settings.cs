@@ -138,7 +138,11 @@ public sealed partial class MepWindow
         var cbRoute = Combo("Tuyến ống gen điện", new[] { RouteSlab, RouteWall }, cur.ConduitRoute == ConduitRouteMode.TrongTuong ? RouteWall : RouteSlab);
         var kinds = Enum.GetValues<MepBuildingKind>().ToList();
         var cbKind = Combo("Loại công trình (TCVN 4513 – hệ số a / α)", kinds.Select(MepStandards.BuildingName).ToArray(), MepStandards.BuildingName(so.Building));
-        var cbClimate = Combo("Khí hậu ngoài nhà (TCVN 5687 Phụ lục B)", new[] { MepStandards.HaNoi, MepStandards.Hcm }, so.Climate);
+        var cbClimate = Combo("Khí hậu ngoài nhà (TCVN 5687 – địa phương)", MepStandards.Provinces.Select(x => x.Name).ToArray(), MepStandards.Province(so).Name);
+        var cbEdition = Combo("TCVN 5687 – phiên bản số liệu khí hậu", new[] { MepStandards.Ed2010, MepStandards.Ed2024 }, so.Edition ?? MepStandards.Ed2010);
+        const string Yes = "Có", No = "Không";
+        var cbCoolClimate = Combo("Tải lạnh chi tiết: Δt, Δw, hiệu chỉnh CLTD theo khí hậu địa phương", new[] { No, Yes }, so.CoolingFromClimate ? Yes : No);
+        var cbVent = Combo("Ống đứng thoát nước có ống thông hơi", new[] { Yes, No }, so.StackVented ? Yes : No);
         Add("Cấp nước – tiêu chuẩn chọn hệ số a (l/người·ngđ)", so.WaterNorm, (s, _, v) => s.Standards.WaterNorm = Math.Max(50, v));
         Add("Dây dẫn – nhiệt độ môi trường (°C, chuẩn IEC 30)", so.AmbientC, (s, _, v) => s.Standards.AmbientC = v);
         Add("Dây dẫn – số mạch đi chung ống / bó", so.GroupedCircuits, (s, _, v) => s.Standards.GroupedCircuits = Math.Max(1, (int)Math.Round(v)));
@@ -206,6 +210,9 @@ public sealed partial class MepWindow
             int ki = Array.IndexOf(kinds.Select(MepStandards.BuildingName).ToArray(), cbKind.SelectedItem as string);
             s.Standards.Building = ki >= 0 ? kinds[ki] : MepBuildingKind.NhaO;
             s.Standards.Climate = cbClimate.SelectedItem as string ?? MepStandards.HaNoi;
+            s.Standards.Edition = cbEdition.SelectedItem as string ?? MepStandards.Ed2010;
+            s.Standards.CoolingFromClimate = (cbCoolClimate.SelectedItem as string) == Yes;
+            s.Standards.StackVented = (cbVent.SelectedItem as string) != No;
             s.Standards.Overrides = OverridesFrom(stdRows);
             h.OutdoorMount = cbMount.SelectedItem as string ?? HvacMount.Floor;
             h.CoolingMethod = cbCool.SelectedItem as string ?? HvacMount.QuickMethod;

@@ -108,6 +108,8 @@ public class MepFamily
     public bool Ceiling { get; set; }
     /// <summary>Công suất (W) – thiết bị điện</summary>
     public double Power { get; set; }
+    /// <summary>Quang thông đèn (lm) – dùng cho phương pháp hệ số sử dụng N = E·A / (Φ·UF·MF); 0 = Power × hiệu suất mặc định (cs.lm_w)</summary>
+    public double Lumen { get; set; }
     /// <summary>Đương lượng cấp nước N (TCVN 4513) – thiết bị vệ sinh</summary>
     public double SupplyUnits { get; set; }
     /// <summary>Đương lượng thoát nước (DFU, TCVN 4474 giản lược)</summary>
@@ -206,13 +208,13 @@ public class MepLibrary
         for (int k = 1; k <= 3; k++)
             L.Add(new MepFamily { Name = $"Công tắc {k} hạt", Category = MepCategory.CongTac, Symbol = "congtac" + k, W = 0.086, D = 0.04, H = 0.086, MountHeight = 1.25,
                 Connectors = { C(MepSystemKind.DienChieuSang, 1.5) } });
-        L.Add(new MepFamily { Name = "Đèn ốp trần", Category = MepCategory.Den, Symbol = "den", W = 0.3, D = 0.3, H = 0.08, WallHosted = false, Ceiling = true, Power = 24,
+        L.Add(new MepFamily { Name = "Đèn ốp trần", Category = MepCategory.Den, Symbol = "den", W = 0.3, D = 0.3, H = 0.08, WallHosted = false, Ceiling = true, Power = 24, Lumen = 2200,
             Connectors = { C(MepSystemKind.DienChieuSang, 1.5) } });
-        L.Add(new MepFamily { Name = "Đèn tuýp LED 1,2 m", Category = MepCategory.Den, Symbol = "dentuyp", W = 1.2, D = 0.06, H = 0.05, WallHosted = false, Ceiling = true, Power = 18,
+        L.Add(new MepFamily { Name = "Đèn tuýp LED 1,2 m", Category = MepCategory.Den, Symbol = "dentuyp", W = 1.2, D = 0.06, H = 0.05, WallHosted = false, Ceiling = true, Power = 18, Lumen = 1800,
             Connectors = { C(MepSystemKind.DienChieuSang, 1.5) } });
-        L.Add(new MepFamily { Name = "Đèn downlight", Category = MepCategory.Den, Symbol = "downlight", W = 0.12, D = 0.12, H = 0.06, WallHosted = false, Ceiling = true, Power = 9,
+        L.Add(new MepFamily { Name = "Đèn downlight", Category = MepCategory.Den, Symbol = "downlight", W = 0.12, D = 0.12, H = 0.06, WallHosted = false, Ceiling = true, Power = 9, Lumen = 800,
             Connectors = { C(MepSystemKind.DienChieuSang, 1.5) } });
-        L.Add(new MepFamily { Name = "Đèn hắt tường", Category = MepCategory.Den, Symbol = "denhat", W = 0.2, D = 0.1, H = 0.1, MountHeight = 2.2, Power = 12,
+        L.Add(new MepFamily { Name = "Đèn hắt tường", Category = MepCategory.Den, Symbol = "denhat", W = 0.2, D = 0.1, H = 0.1, MountHeight = 2.2, Power = 12, Lumen = 960,
             Connectors = { C(MepSystemKind.DienChieuSang, 1.5) } });
         L.Add(new MepFamily { Name = "Quạt trần", Category = MepCategory.Quat, Symbol = "quattran", W = 1.2, D = 1.2, H = 0.4, WallHosted = false, Ceiling = true, Power = 75,
             Connectors = { C(MepSystemKind.DienChieuSang, 1.5) } });
