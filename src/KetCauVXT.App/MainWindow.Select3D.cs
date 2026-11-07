@@ -9,7 +9,7 @@ using Shapes = System.Windows.Shapes;
 namespace KetCauVXT.App;
 
 // =====================================================================
-// QUÉT CHỌN TRONG KHUNG NHÌN 3D: bật "Quét chọn" trên thanh nổi 3D rồi kéo khung
+// QUÉT CHỌN TRONG KHUNG NHÌN 3D: bật "Quét chọn" trên thanh nổi 3D (phím Q) rồi kéo khung; Ctrl/Shift + kéo luôn quét
 //   trái → phải: khung bao (xanh dương, nằm trọn) · phải → trái: khung cắt (xanh lá nét đứt, chạm)
 //   Ctrl: thêm · Shift: bỏ · Delete: xoá nhóm · Esc: bỏ chọn. Kết quả dùng chung nhóm chọn của mặt bằng (_mixSel).
 // Lõi: Model/InteractionOps.cs (Screen3DSelect).
@@ -28,13 +28,20 @@ public partial class MainWindow
         _v3BoxToggle = new CheckBox
         {
             Content = "Quét chọn (kéo khung)", Foreground = Brushes.WhiteSmoke, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0),
-            ToolTip = "Bật: kéo trái → phải chọn đối tượng nằm trọn khung, phải → trái chọn đối tượng chạm khung; Ctrl thêm, Shift bỏ. Tắt: kéo để xoay."
+            ToolTip = "Bật (phím Q): kéo trái → phải chọn đối tượng nằm trọn khung, phải → trái chọn đối tượng chạm khung; Ctrl thêm, Shift bỏ.\n"
+                    + "Tắt: kéo để xoay; Ctrl + kéo vẫn quét thêm, Shift + kéo vẫn quét bỏ."
         };
         sp.Children.Add(_v3BoxToggle);
         view3DHost.PreviewKeyDown += (s, e) =>
         {
             if (IsTextInputFocused() || e.Handled) return;
-            if (e.Key == Key.Delete && _mixSel.Count > 0) { DeleteMixedSelection(); Build3D(); e.Handled = true; }
+            if (e.Key == Key.Q && Keyboard.Modifiers == ModifierKeys.None)
+            {
+                _v3BoxToggle.IsChecked = _v3BoxToggle.IsChecked != true;
+                SetStatus(_v3BoxToggle.IsChecked == true ? "3D: BẬT quét chọn – kéo khung để chọn (Q để tắt)." : "3D: TẮT quét chọn – kéo để xoay (Ctrl/Shift + kéo vẫn quét).");
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Delete && _mixSel.Count > 0) { DeleteMixedSelection(); Build3D(); e.Handled = true; }
             else if (e.Key == Key.Escape && _mixSel.Count > 0) { ClearMixedSelection(); Build3D(); e.Handled = true; }
         };
     }
@@ -42,7 +49,8 @@ public partial class MainWindow
     private bool View3DBoxStart(object sender, MouseButtonEventArgs e)
     {
         EnsureBox3DToggle();
-        if (_v3BoxToggle?.IsChecked != true || !ReferenceEquals(sender, view3DHost) || view3DHost.Child is not Grid g) return false;
+        bool modDrag = (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0;   // Ctrl/Shift + kéo: luôn quét
+        if ((_v3BoxToggle?.IsChecked != true && !modDrag) || !ReferenceEquals(sender, view3DHost) || view3DHost.Child is not Grid g) return false;
         _v3Boxing = true;
         _v3BoxA = e.GetPosition(viewport3D);
         _v3BoxRect ??= new Shapes.Rectangle { StrokeThickness = 1.2, IsHitTestVisible = false, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
@@ -75,7 +83,11 @@ public partial class MainWindow
         if (_v3BoxRect != null) _v3BoxRect.Visibility = Visibility.Collapsed;
         if (_p == null) return true;
         var b = e.GetPosition(viewport3D);
-        if (Math.Abs(b.X - _v3BoxA.X) + Math.Abs(b.Y - _v3BoxA.Y) < 4) return true;   // bấm không kéo: bỏ qua
+        if (Math.Abs(b.X - _v3BoxA.X) + Math.Abs(b.Y - _v3BoxA.Y) < 4)   // bấm không kéo: chọn 1 đối tượng như thường
+        {
+            SelectObject(Pick3D(viewport3D, b, _pick3D));
+            return true;
+        }
         bool crossing = b.X < _v3BoxA.X;
         List<Solid> solids;
         try { solids = _v3Cache ?? ModelSolids.Build(_p, null, false); } catch (Exception) { solids = new List<Solid>(); }
