@@ -157,7 +157,7 @@ public static class SoilStandardTests
         var p = ModelBuilder.NewProject("Đài cọc giống nhau");
         ModelBuilder.SetGrid(p, new[] { 4.0, 4.0 }, new[] { 5.0 });
         ModelBuilder.SetStories(p, new[] { 3.6, 3.3, 3.3, 3.3 }, 0.0);
-        ModelBuilder.BuildFromGrid(p, new ModelBuilder.GridFrameOptions { ColumnSection = "C22x22", BeamSectionX = "D22x35", BeamSectionY = "D22x40", PerimeterWallLoad = 7.5 });
+        ModelBuilder.BuildFromGrid(p, new ModelBuilder.GridFrameOptions { ColumnSection = "C22x22", BeamSectionX = "D22x30", BeamSectionY = "D22x40", PerimeterWallLoad = 7.5 });
         var r = FrameAnalysis.Run(p);
         p.Foundation.Type = FoundationType.Pile;
         p.Foundation.PileCapacity = 450; p.Foundation.PileSize = 0.25;
