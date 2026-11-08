@@ -215,7 +215,13 @@ public static class GeotechCalc
         s.GammaAbove = Df > 1e-6 ? sig / Df : s.Gamma;
         s.Depth = Df;
         s.ROverride = 0;
+        // ktc (TCVN 9362:2012): 1,1 khi chỉ tiêu lớp đặt móng lấy từ bảng tra, 1,0 khi từ thí nghiệm trực tiếp
+        if (l.Source == SoilPropSource.Table) s.Ktc = Math.Max(s.Ktc, 1.1);
+        else if (!string.IsNullOrEmpty(s.StdName)) s.Ktc = 1.0;
         notes.Add($"Hố khoan {bh.Name}: đáy móng Df = {F(Df)} m đặt trên lớp \"{l.Name}\" ({l.KindText}, {F(l.Top)}–{F(l.Bottom)} m, N = {F(l.N, "0.#")})");
+        notes.Add(l.Source == SoilPropSource.Table
+            ? $"Chỉ tiêu lớp đặt móng theo bảng tra TCVN 9362:2012 (lớp tiêu chuẩn \"{(string.IsNullOrEmpty(l.StdName) ? l.KindText : l.StdName)}\", e = {F(l.VoidRatio)}, IL = {F(l.IL)}) → ktc = {F(s.Ktc, "0.0")}"
+            : $"Chỉ tiêu lớp đặt móng theo hố khoan khảo sát và thí nghiệm → ktc = {F(s.Ktc, "0.0")}");
         notes.Add($"φ = {F(l.Phi, "0.#")}°, c = {F(l.C, "0.#")} kPa, γII = {F(s.Gamma, "0.##")} kN/m³{(sub ? " (đẩy nổi γsat − 10, dưới mực nước ngầm)" : "")}, E = {F(s.E, "0.#")} MPa");
         notes.Add($"γ'II trên đáy móng = σ'bt(Df)/Df = {F(sig, "0.#")}/{F(Df)} = {F(s.GammaAbove, "0.##")} kN/m³");
         if (l.Kind == SoilKind.Fill) notes.Add("CẢNH BÁO: đáy móng nằm trong lớp đất đắp – cần hạ sâu móng hoặc xử lý nền");

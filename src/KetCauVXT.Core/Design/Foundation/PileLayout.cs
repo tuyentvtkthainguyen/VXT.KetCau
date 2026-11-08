@@ -100,6 +100,21 @@ public static class PileLayout
         return pts.Select(q => (Math.Round(q.X, 6) + 0.0, Math.Round(q.Y, 6) + 0.0)).ToList();
     }
 
+    /// <summary>[Gán nhiều móng] Bố trí cọc của một đài đã thiết kế (bản ghi người dùng nếu có, ngược lại toạ độ cọc + kích thước đài thật)
+    /// – dùng để gán cùng một đài cọc cho nhiều chân cột.</summary>
+    public static PileCapOverride FromCap(FoundationSettings fs, PileCapDesign cap)
+    {
+        if (cap == null) return null;
+        var own = cap.NodeIds.Select(n => Find(fs, n)).FirstOrDefault(o => IsActive(o));
+        if (own != null) return own.Clone();
+        return new PileCapOverride
+        {
+            Pattern = PilePattern.Custom, L = cap.L, B = cap.B, H = cap.H,
+            CustomPiles = cap.Piles.Select(q => new PilePoint(Math.Round(q.X, 4), Math.Round(q.Y, 4))).ToList(),
+            Note = "Gán giống đài " + cap.Name
+        };
+    }
+
     /// <summary>Bố trí do người dùng chọn tại nút chân cột (null nếu không có).</summary>
     public static PileCapOverride Find(FoundationSettings fs, int nodeId) =>
         fs?.CapOverrides?.FirstOrDefault(o => o != null && o.NodeId == nodeId);

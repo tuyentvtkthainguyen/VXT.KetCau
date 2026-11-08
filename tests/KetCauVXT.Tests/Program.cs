@@ -665,6 +665,8 @@ Console.WriteLine("98. Kiến trúc kiểu Revit: mái dốc, trần, lan can, p
 ArchDetailTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("99. Bố trí móng: nhân bản, đồng nhất, lệch tâm / xoay dóng mép cột, đường chuẩn ranh đất xiên, móng đa giác");
 FootingShapeTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("100. Chỉ tiêu cơ lý đất theo bảng tra TCVN 9362:2012, danh mục 3.321 xã/phường sau sắp xếp, gán đài cọc giống nhau");
+SoilStandardTests.Run(Check);
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

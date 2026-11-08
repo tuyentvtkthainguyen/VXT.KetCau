@@ -20,6 +20,7 @@ internal static class GeoUi
         ("Sét", SoilKind.Clay, SandGrain.Medium),
         ("Sét pha", SoilKind.SiltyClay, SandGrain.Medium),
         ("Cát pha", SoilKind.SandyClay, SandGrain.Medium),
+        ("Cát bụi", SoilKind.Sand, SandGrain.Silty),
         ("Cát hạt nhỏ", SoilKind.Sand, SandGrain.Fine),
         ("Cát hạt vừa", SoilKind.Sand, SandGrain.Medium),
         ("Cát hạt thô", SoilKind.Sand, SandGrain.Coarse),
@@ -28,6 +29,12 @@ internal static class GeoUi
     };
 
     public static readonly string[] KindTexts = KindChoices.Select(k => k.Text).ToArray();
+
+    public const string SrcTable = "Bảng tra TCVN", SrcTest = "Thí nghiệm";
+    public static readonly string[] SourceTexts = { SrcTable, SrcTest };
+    /// <summary>Lớp cấu tạo tiêu chuẩn (SoilStandard.Catalog) + "(nhập tay)"</summary>
+    public const string StdNone = "(tự nhập)";
+    public static readonly string[] StdTexts = new[] { StdNone }.Concat(SoilStandard.Catalog.Select(s => s.Name)).ToArray();
 
     public static (SoilKind Kind, SandGrain Grain) ParseKind(string text)
     {
@@ -83,7 +90,7 @@ internal static class GeoUi
                 lines.Children.Add(new EllipseGeometry(new Point(2.5, 2.5), 0.6, 0.6));
                 break;
             case SoilKind.Sand:
-                double r = g == SandGrain.Fine ? 0.5 : g == SandGrain.Coarse ? 1.0 : 0.75;
+                double r = g is SandGrain.Fine or SandGrain.Silty ? 0.5 : g is SandGrain.Coarse or SandGrain.Gravelly ? 1.0 : 0.75;
                 lines.Children.Add(new EllipseGeometry(new Point(2.5, 2.5), r, r));
                 lines.Children.Add(new EllipseGeometry(new Point(7.5, 7.5), r, r));
                 break;
@@ -127,16 +134,57 @@ internal sealed class GeoLayerRow : RowBase
     public string Kind
     {
         get => L.KindText;
-        set { var k = GeoUi.ParseKind(value); L.Kind = k.Kind; L.Grain = k.Grain; Changed(); }
+        set { var k = GeoUi.ParseKind(value); L.Kind = k.Kind; L.Grain = k.Grain; L.StdName = ""; Recalc(); Changed(); }
     }
-    public double Gamma { get => L.Gamma; set { L.Gamma = value; Changed(); } }
-    public double GammaSat { get => L.GammaSat; set { L.GammaSat = Math.Max(value, 0); Changed(); } }
-    public double Phi { get => L.Phi; set { L.Phi = Math.Clamp(value, 0, 50); Changed(); } }
-    public double C { get => L.C; set { L.C = Math.Max(value, 0); Changed(); } }
-    public double E { get => L.E; set { L.E = Math.Max(value, 0); Changed(); } }
+    /// <summary>[Bảng tra] Lớp cấu tạo tiêu chuẩn: chọn → loại đất, e, IL, Sr, N mặc định của trạng thái và chỉ tiêu theo bảng tra TCVN 9362:2012</summary>
+    public string Std
+    {
+        get => string.IsNullOrEmpty(L.StdName) ? GeoUi.StdNone : L.StdName;
+        set
+        {
+            var s = SoilStandard.Find(value);
+            if (s == null) { L.StdName = ""; Changed(); return; }
+            SoilStandard.ApplyStd(L, s);
+            RaiseAll(); _changed?.Invoke();
+        }
+    }
+    /// <summary>Nguồn chỉ tiêu: bảng tra (tính lại khi đổi loại đất / e / IL / Sr) hoặc thí nghiệm (nhập tay)</summary>
+    public string Source
+    {
+        get => L.Source == SoilPropSource.Table ? GeoUi.SrcTable : GeoUi.SrcTest;
+        set
+        {
+            var src = value == GeoUi.SrcTable ? SoilPropSource.Table : SoilPropSource.Test;
+            if (src == L.Source) return;
+            L.Source = src;
+            if (src == SoilPropSource.Table) Recalc();
+            RaiseAll(); _changed?.Invoke();
+        }
+    }
+    /// <summary>Lớp theo bảng tra: tính lại γ, φ, c, E, R0 từ loại đất, e, IL, Sr</summary>
+    private void Recalc()
+    {
+        if (L.Source != SoilPropSource.Table) return;
+        SoilStandard.ApplyTo(L);
+        RaiseAll();
+    }
+    /// <summary>Sửa trực tiếp chỉ tiêu cường độ / biến dạng → chuyển sang "Thí nghiệm" (có hố khoan khảo sát)</summary>
+    private void Override(Action set)
+    {
+        set();
+        if (L.Source == SoilPropSource.Table) { L.Source = SoilPropSource.Test; L.R0 = 0; RaiseAll(); }
+        Changed();
+    }
+    public double Gamma { get => L.Gamma; set { if (Math.Abs(value - L.Gamma) > 1e-9) Override(() => L.Gamma = value); } }
+    public double GammaSat { get => L.GammaSat; set { if (Math.Abs(value - L.GammaSat) > 1e-9) Override(() => L.GammaSat = Math.Max(value, 0)); } }
+    public double Phi { get => L.Phi; set { if (Math.Abs(value - L.Phi) > 1e-9) Override(() => L.Phi = Math.Clamp(value, 0, 50)); } }
+    public double C { get => L.C; set { if (Math.Abs(value - L.C) > 1e-9) Override(() => L.C = Math.Max(value, 0)); } }
+    public double E { get => L.E; set { if (Math.Abs(value - L.E) > 1e-9) Override(() => L.E = Math.Max(value, 0)); } }
     public double N { get => L.N; set { L.N = Math.Max(value, 0); Changed(); } }
-    public double IL { get => L.IL; set { L.IL = value; Changed(); } }
-    public double VoidRatio { get => L.VoidRatio; set { L.VoidRatio = Math.Max(value, 0); Changed(); } }
+    public double IL { get => L.IL; set { L.IL = value; Recalc(); Changed(); } }
+    public double VoidRatio { get => L.VoidRatio; set { L.VoidRatio = Math.Max(value, 0); Recalc(); Changed(); } }
+    public double Sr { get => L.Sr; set { L.Sr = Math.Clamp(value, 0, 1); Recalc(); Changed(); } }
+    public string R0 => L.R0 > 0 ? L.R0.ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "–";
     public string Description { get => L.Description; set { L.Description = value ?? ""; Changed(); } }
     public void RefreshAll() => RaiseAll();
 }
@@ -195,15 +243,19 @@ public partial class MainWindow
         _geoGrid.Columns.Add(DialogUi.Text("Tên lớp", "Name", false, 120));
         _geoGrid.Columns.Add(DialogUi.Num("Từ (m)", "Top", "0.0#"));
         _geoGrid.Columns.Add(DialogUi.Num("Đến (m)", "Bottom", "0.0#"));
-        _geoGrid.Columns.Add(DialogUi.Combo("Loại đất", "Kind", GeoUi.KindTexts, 110));
+        _geoGrid.Columns.Add(DialogUi.Combo("Lớp tiêu chuẩn (tra bảng)", "Std", GeoUi.StdTexts, 170));
+        _geoGrid.Columns.Add(DialogUi.Combo("Chỉ tiêu theo", "Source", GeoUi.SourceTexts, 100));
+        _geoGrid.Columns.Add(DialogUi.Combo("Loại đất", "Kind", GeoUi.KindTexts, 100));
+        _geoGrid.Columns.Add(DialogUi.Num("e", "VoidRatio", "0.##"));
+        _geoGrid.Columns.Add(DialogUi.Num("IL (−1 = rời)", "IL", "0.##"));
+        _geoGrid.Columns.Add(DialogUi.Num("Sr", "Sr", "0.##"));
         _geoGrid.Columns.Add(DialogUi.Num("γ (kN/m³)", "Gamma", "0.0#"));
         _geoGrid.Columns.Add(DialogUi.Num("γsat (0 = γ+1)", "GammaSat", "0.0#"));
         _geoGrid.Columns.Add(DialogUi.Num("φ (°)", "Phi", "0.#"));
         _geoGrid.Columns.Add(DialogUi.Num("c (kPa)", "C", "0.#"));
         _geoGrid.Columns.Add(DialogUi.Num("E (MPa)", "E", "0.#"));
+        _geoGrid.Columns.Add(DialogUi.Text("R0 bảng (kPa)", "R0", true, 70));
         _geoGrid.Columns.Add(DialogUi.Num("N (SPT)", "N", "0.#"));
-        _geoGrid.Columns.Add(DialogUi.Num("IL (−1 = rời)", "IL", "0.##"));
-        _geoGrid.Columns.Add(DialogUi.Num("e", "VoidRatio", "0.##"));
         _geoGrid.Columns.Add(DialogUi.Text("Mô tả", "Description", false, 160));
         _geoGrid.SelectionChanged += (s, e) => UpdateGeoHint();
         _geoHint = DialogUi.Hint("");
@@ -212,7 +264,11 @@ public partial class MainWindow
             DialogUi.Btn("+ Lớp", (s, e) => GeoAddLayer()),
             DialogUi.Btn("Xoá lớp", (s, e) => GeoDeleteLayer()),
             DialogUi.Btn("Sắp xếp / nối liền", (s, e) => GeoSortLayers()),
-            DialogUi.Btn("Chọn theo đất tham khảo…", (s, e) => GeoPickPreset(), true)));
+            DialogUi.Btn("Chọn lớp đất theo bảng tra TCVN…", (s, e) => GeoPickPreset(), true),
+            DialogUi.Btn("Tra lại bảng cho lớp chọn", (s, e) => GeoRetable())));
+        layers.Children.Add(DialogUi.Hint("Mặc định mỗi lớp lấy chỉ tiêu theo lớp cấu tạo tiêu chuẩn và bảng tra TCVN 9362:2012 (c, φ, E theo e và IL; R0; γ từ e, Sr) – "
+            + "đổi e, IL, Sr hoặc loại đất thì chỉ tiêu tự tra lại. Có hố khoan khảo sát và thí nghiệm: nhập trực tiếp γ, φ, c, E → cột \"Chỉ tiêu theo\" tự chuyển sang \"Thí nghiệm\". "
+            + "Thiết kế móng nông: ktc = 1,1 khi chỉ tiêu tra bảng, 1,0 khi theo thí nghiệm."));
         layers.Children.Add(_geoGrid);
         layers.Children.Add(_geoHint);
         root.Children.Add(new GroupBox { Header = "Các lớp đất (độ sâu tính từ miệng hố khoan)", Content = layers });
@@ -417,9 +473,10 @@ public partial class MainWindow
         DialogUi.Commit(_geoGrid);
         double top = bh.Layers.Count == 0 ? 0 : bh.Layers.Max(l => l.Bottom);
         var last = bh.Sorted().LastOrDefault();
-        var pre = last != null ? SoilPresets.Nearest(last) : SoilPresets.All[3];
-        var l = pre.ToLayer(top, top + 3);
-        l.Name = "Lớp " + (bh.Layers.Count + 1);
+        // [Bảng tra] lớp mới mặc định theo lớp cấu tạo tiêu chuẩn (tra bảng TCVN 9362:2012)
+        var std = last != null ? SoilStandard.Nearest(last) : SoilStandard.Find("Sét pha – dẻo cứng");
+        var l = SoilStandard.NewLayer(std, top, top + 3);
+        l.Name = "Lớp " + (bh.Layers.Count + 1) + " – " + std.Name;
         bh.Layers.Add(l);
         MarkDirty(false);
         LoadGeoHole();
@@ -464,19 +521,34 @@ public partial class MainWindow
         var bh = GeoSel;
         DialogUi.Commit(_geoGrid);
         var row = _geoGrid.SelectedItem as GeoLayerRow;
-        var dlg = new SoilPresetWindow(row?.L) { Owner = this };
+        var dlg = new SoilStandardWindow(row?.L) { Owner = this };
         if (dlg.ShowDialog() != true || dlg.Selected == null) return;
         if (bh == null) { GeoAddHole(false); bh = GeoSel; if (bh == null) return; bh.Layers.Clear(); row = null; }
-        if (row != null && !dlg.AddNew) dlg.Selected.FillLayer(row.L);
+        if (row != null && !dlg.AddNew) SoilStandard.ApplyStd(row.L, dlg.Selected);
         else
         {
             double top = bh.Layers.Count == 0 ? 0 : bh.Layers.Max(l => l.Bottom);
-            bh.Layers.Add(dlg.Selected.ToLayer(top, top + 3));
+            var l = SoilStandard.NewLayer(dlg.Selected, top, top + 3);
+            l.Name = "Lớp " + (bh.Layers.Count + 1) + " – " + dlg.Selected.Name;
+            bh.Layers.Add(l);
         }
         MarkDirty(false);
         LoadGeoHole();
         RefreshGeoList(_geoList.SelectedIndex);
-        SetStatus($"Đã điền lớp theo đất tham khảo \"{dlg.Selected.Name}\" – {SoilPresets.Disclaimer.ToLowerInvariant()}.");
+        SetStatus($"Đã gán lớp tiêu chuẩn \"{dlg.Selected.Name}\" – chỉ tiêu theo bảng tra {SoilStandard.Std}; có thí nghiệm thì nhập trực tiếp để thay.");
+    }
+
+    /// <summary>Tra lại bảng TCVN cho các lớp đang chọn (bỏ chỉ tiêu nhập tay, theo e, IL, Sr hiện có).</summary>
+    private void GeoRetable()
+    {
+        DialogUi.Commit(_geoGrid);
+        var rows = _geoGrid.SelectedItems.OfType<GeoLayerRow>().ToList();
+        if (rows.Count == 0) { SetStatus("Chọn lớp đất cần tra lại bảng."); return; }
+        foreach (var r in rows) { SoilStandard.ApplyTo(r.L); r.RefreshAll(); }
+        MarkDirty(false);
+        RedrawGeoLog();
+        UpdateGeoHint();
+        SetStatus($"Đã tra lại bảng {SoilStandard.Std} cho {rows.Count} lớp.");
     }
 
     private void UpdateGeoHint()
@@ -485,10 +557,15 @@ public partial class MainWindow
         var row = _geoGrid?.SelectedItem as GeoLayerRow;
         if (row == null) { _geoHint.Text = "Chọn một lớp để xem gợi ý tương quan SPT và khoảng giá trị tham khảo. " + SoilPresets.Disclaimer + "."; return; }
         var l = row.L;
-        var pre = SoilPresets.Nearest(l);
         var hints = SoilPresets.CorrelationHints(l.N, l.IsCohesive);
-        _geoHint.Text = $"Lớp \"{l.Name}\" ({l.KindText}, N = {GF(l.N, "0.#")}): " + string.Join("; ", hints) +
-                        $".\nTham khảo \"{pre.Name}\": γ {pre.GammaText}, φ {pre.PhiText}°, c {pre.CText} kPa, E {pre.EText} MPa, N {pre.NText}, R0 {pre.R0Text} kPa – {pre.Note}.";
+        var tb = SoilStandard.Lookup(l);
+        string tab = tb.InTable
+            ? $"Bảng tra {SoilStandard.Std} ({SoilStandard.ClassName(tb.Class)} {tb.State}, e = {GF(l.VoidRatio)}{(l.IsCohesive ? ", IL = " + GF(l.IL) : "")}): "
+              + $"γ = {GF(tb.Gamma)}, φ = {GF(tb.Phi, "0.#")}°, c = {GF(tb.C, "0.#")} kPa, E = {GF(tb.E, "0.#")} MPa{(double.IsFinite(tb.R0) ? ", R0 = " + GF(tb.R0, "0") + " kPa" : "")}"
+            : "Không có trong bảng tra TCVN – phải khảo sát";
+        _geoHint.Text = $"Lớp \"{l.Name}\" – chỉ tiêu theo {(l.Source == SoilPropSource.Table ? "bảng tra" : "thí nghiệm")}. {tab}."
+                        + (tb.Warnings.Count > 0 ? "\n⚠ " + string.Join("; ", tb.Warnings) : "")
+                        + $"\nTương quan SPT (N = {GF(l.N, "0.#")}): " + string.Join("; ", hints) + ".";
     }
 
     private void GeoApplyToSoil()
@@ -498,6 +575,7 @@ public partial class MainWindow
         if (bh == null || bh.Layers.Count == 0) { MessageBox.Show(this, "Chọn hố khoan có lớp đất.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information); return; }
         ApplyUiToProject(false);
         var notes = GeotechCalc.ApplyToSoil(_p.Soil, bh, _p.Soil.Depth);
+        _p.Soil.StdName = "";   // chỉ tiêu nay lấy từ hố khoan (ktc theo nguồn chỉ tiêu của lớp đặt móng)
         LoadUiFromProject();
         MarkDirty(false);
         MessageBox.Show(this, "Đã gán chỉ tiêu nền vào tab 'Công trình':\n\n" + string.Join("\n", notes.Select(n => "• " + n)), AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);

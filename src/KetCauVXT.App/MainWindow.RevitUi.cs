@@ -112,7 +112,7 @@ public partial class MainWindow
     // ==================================================================
     private static FrameworkElement RvGroup(string title, params UIElement[] buttons)
     {
-        var sp = new StackPanel { Orientation = Orientation.Horizontal };
+        var sp = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var b in buttons) sp.Children.Add(b);
         var g = new DockPanel { Margin = new Thickness(2, 0, 2, 0) };
         var lb = new TextBlock { Text = title, FontSize = 10.5, Foreground = Brushes.DimGray, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 1, 0, 1) };
@@ -143,9 +143,10 @@ public partial class MainWindow
 
     private void RvTab(string header, params FrameworkElement[] groups)
     {
-        var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(2, 2, 2, 0) };
+        // [Giao diện] các nhóm lệnh xuống dòng khi khung hẹp – hiện đủ trong khung nhìn, không phải kéo thanh cuộn ngang
+        var sp = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(2, 2, 2, 0) };
         foreach (var g in groups) sp.Children.Add(g);
-        var sv = new ScrollViewer { Content = sp, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var sv = new ScrollViewer { Content = sp, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled };
         _rvTabs.Items.Add(new TabItem { Header = header, Content = sv, Padding = new Thickness(10, 2, 10, 2) });
     }
 

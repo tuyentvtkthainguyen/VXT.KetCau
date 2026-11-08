@@ -15,4 +15,9 @@
 
   <!-- Không dùng gói NuGet nào: Word/Excel/DXF/JSON đều tự ghi bằng thư viện chuẩn .NET -->
 
+  <ItemGroup>
+    <!-- Danh mục 34 tỉnh / 3321 xã-phường sau sắp xếp (Model/AdminUnits.cs) -->
+    <EmbeddedResource Include="Data\DonViHanhChinh.txt" LogicalName="KetCauVXT.Data.DonViHanhChinh.txt" />
+  </ItemGroup>
+
 </Project>

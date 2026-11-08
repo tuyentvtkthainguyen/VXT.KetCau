@@ -128,12 +128,16 @@ internal sealed class PileLayoutDialog : Window
     /// <summary>Tóm tắt một dòng của kết quả thử (ghi nhật ký tự kiểm tra)</summary>
     public string Summary => _sum.Text;
 
-    public PileLayoutDialog(Project p, Func<AnalysisResults> res, PileCapDesign cap, Func<List<int>, PileCapOverride, Task> apply)
+    public PileLayoutDialog(Project p, Func<AnalysisResults> res, PileCapDesign cap, Func<List<int>, PileCapOverride, Task> apply,
+        IEnumerable<int> extraNodes = null, int focusNode = 0)
     {
         ZoomPan.Wrap(_plan);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _p = p; _res = res; _apply = apply;
         _nodes = cap.NodeIds.ToList();
-        _node = _nodes.FirstOrDefault();
+        // [Gán nhiều móng] các chân cột chọn thêm bằng Ctrl + bấm trên mặt bằng móng
+        int nSame = _nodes.Count;
+        if (extraNodes != null) foreach (int x in extraNodes) if (!_nodes.Contains(x)) _nodes.Add(x);
+        _node = focusNode != 0 && _nodes.Contains(focusNode) ? focusNode : _nodes.FirstOrDefault();
         DialogUi.Setup(this, "Bố trí cọc – " + (string.IsNullOrEmpty(cap.Name) ? "đài cọc" : cap.Name) + " (nút " + _node + ")", 1320, 760);
         Help.Attach(this, "mong.coc");   // nút "?" + F1 – Help.cs
 
@@ -142,7 +146,9 @@ internal sealed class PileLayoutDialog : Window
         _tSx = Box(cur.SpacingX * 1000); _tSy = Box(cur.SpacingY * 1000);
         _tL = Box(cur.L * 1000); _tB = Box(cur.B * 1000); _tH = Box(cur.H * 1000);
         _cbRot.SelectedIndex = cur.Rotate == null ? 0 : cur.Rotate.Value ? 2 : 1;
-        _chkAll.Content = $"Áp dụng cho tất cả {_nodes.Count} vị trí đài giống hệt ({cap.Name} ×{Math.Max(cap.Quantity, 1)})";
+        _chkAll.Content = _nodes.Count > nSame
+            ? $"Áp dụng cho tất cả {_nodes.Count} vị trí: {nSame} đài giống hệt {cap.Name} + {_nodes.Count - nSame} chân cột chọn thêm (Ctrl + bấm)"
+            : $"Áp dụng cho tất cả {_nodes.Count} vị trí đài giống hệt ({cap.Name} ×{Math.Max(cap.Quantity, 1)})";
         _chkAll.IsChecked = true;
         _chkAll.Visibility = _nodes.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
 

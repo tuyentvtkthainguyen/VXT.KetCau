@@ -348,7 +348,7 @@ public static class BoredPileDesign
         double n = Math.Max(l.N, 0);
         string kind = l.Kind switch
         {
-            SoilKind.Sand => l.Grain == SandGrain.Fine ? BoredPile.KindSandFine : BoredPile.KindSandCoarse,
+            SoilKind.Sand => l.Grain is SandGrain.Fine or SandGrain.Silty ? BoredPile.KindSandFine : BoredPile.KindSandCoarse,
             SoilKind.Gravel or SoilKind.Rock => BoredPile.KindSandCoarse,
             _ => l.IsCohesive || l.Kind == SoilKind.Fill ? BoredPile.KindClay : BoredPile.KindSandSilty
         };

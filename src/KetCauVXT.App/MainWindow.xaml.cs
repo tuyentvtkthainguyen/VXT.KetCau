@@ -316,6 +316,7 @@ public partial class MainWindow : Window
             cbRebarMain.SelectedItem = _p.Concrete.RebarMain; cbRebarStir.SelectedItem = _p.Concrete.RebarStirrup;
             txtPhi.Text = F(_p.Soil.Phi); txtC.Text = F(_p.Soil.C); txtGamma.Text = F(_p.Soil.Gamma);
             txtDepth.Text = F(_p.Soil.Depth); txtROverride.Text = F(_p.Soil.ROverride);
+            LoadSoilStdUi();   // [Bảng tra] lớp đất theo TCVN 9362 – MainWindow.SoilStd.cs
             RefreshSectionCombos();
             LoadGeoUi();   // tab Địa chất – MainWindow.Geotech.cs
         }
@@ -364,6 +365,7 @@ public partial class MainWindow : Window
         _p.Concrete.RebarStirrup = cbRebarStir.SelectedItem as string ?? "CB240-T";
         _p.Soil.Phi = Num(txtPhi, _p.Soil.Phi); _p.Soil.C = Num(txtC, _p.Soil.C); _p.Soil.Gamma = Num(txtGamma, _p.Soil.Gamma);
         _p.Soil.Depth = Num(txtDepth, _p.Soil.Depth); _p.Soil.ROverride = Num(txtROverride, _p.Soil.ROverride);
+        ApplySoilStdUi();   // [Bảng tra] sửa φ, c, γ khác bảng tra → theo thí nghiệm (ktc = 1,0)
         // vật liệu bê tông của tiết diện theo cấu kiện
         foreach (var f in _p.Frames.Where(f_ => f_.IsConcrete))
         {

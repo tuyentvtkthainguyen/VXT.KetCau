@@ -89,6 +89,81 @@ internal sealed class SoilPresetWindow : Window
     }
 }
 
+/// <summary>[Bảng tra] Chọn lớp đất cấu tạo tiêu chuẩn: loại đất + trạng thái → chỉ tiêu cơ lý theo bảng tra TCVN 9362:2012 (c, φ, E theo e, IL; R0; γ).</summary>
+internal sealed class SoilStandardWindow : Window
+{
+    public StdSoil Selected { get; private set; }
+    public bool AddNew { get; private set; }
+
+    private sealed class Row
+    {
+        public StdSoil S { get; init; }
+        public StdSoilResult R { get; init; }
+        private static string F(double v, string f = "0.##") => double.IsFinite(v) ? v.ToString(f, CultureInfo.InvariantCulture) : "–";
+        public string Name => S.Name;
+        public string Cls => SoilStandard.ClassName(SoilStandard.ClassOf(S.Kind, S.Grain));
+        public string E0 => F(S.E0);
+        public string IL => S.IL >= -0.5 ? F(S.IL) : "–";
+        public string Gamma => F(R.Gamma, "0.0");
+        public string Phi => F(R.Phi, "0.#");
+        public string C => F(R.C, "0.#");
+        public string E => F(R.E, "0.#");
+        public string R0 => F(R.R0, "0");
+        public string N => F(S.N, "0");
+        public string Note => string.Join("; ", new[] { S.Note }.Concat(R.Warnings).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct());
+    }
+
+    public SoilStandardWindow(SoilLayer current)
+    {
+        DialogUi.Setup(this, "Lớp đất cấu tạo tiêu chuẩn – chỉ tiêu cơ lý theo bảng tra " + SoilStandard.Std, 1180, 620);
+        var root = new DockPanel { Margin = new Thickness(10) };
+        var head = new StackPanel();
+        var info = DialogUi.Label("Chọn loại đất và trạng thái: chương trình tra bảng " + SoilStandard.Std + " (Phụ lục – giá trị tiêu chuẩn c, φ của đất cát và đất dính theo hệ số rỗng e, độ sệt IL; "
+            + "mô đun biến dạng E của đất kỷ Đệ tứ; áp lực tính toán quy ước R0) và tính γ = γw(Gs + Sr·e)/(1 + e). Dùng làm cơ sở khi chưa có thí nghiệm "
+            + "(móng nông: ktc = 1,1). Khi có hố khoan khảo sát và thí nghiệm: nhập trực tiếp các chỉ tiêu trong bảng lớp đất.", double.NaN, true);
+        info.Foreground = Brushes.DarkGreen;
+        head.Children.Add(info);
+        DockPanel.SetDock(head, Dock.Top);
+        root.Children.Add(head);
+
+        var g = DialogUi.NewGrid();
+        g.SelectionMode = DataGridSelectionMode.Single;
+        g.IsReadOnly = true;
+        g.Columns.Add(DialogUi.Text("Lớp đất tiêu chuẩn", "Name", true, 210));
+        g.Columns.Add(DialogUi.Text("Nhóm bảng tra", "Cls", true, 110));
+        g.Columns.Add(DialogUi.Text("e", "E0", true, 45));
+        g.Columns.Add(DialogUi.Text("IL", "IL", true, 45));
+        g.Columns.Add(DialogUi.Text("γ (kN/m³)", "Gamma", true, 65));
+        g.Columns.Add(DialogUi.Text("φ (°)", "Phi", true, 50));
+        g.Columns.Add(DialogUi.Text("c (kPa)", "C", true, 55));
+        g.Columns.Add(DialogUi.Text("E (MPa)", "E", true, 60));
+        g.Columns.Add(DialogUi.Text("R0 (kPa)", "R0", true, 65));
+        g.Columns.Add(DialogUi.Text("N (ước lượng)", "N", true, 80));
+        g.Columns.Add(DialogUi.Text("Ghi chú", "Note", true, 300));
+        var rows = SoilStandard.Catalog.Select(s => new Row { S = s, R = SoilStandard.Lookup(s.Kind, s.Grain, s.E0, s.IL, s.Sr) }).ToList();
+        g.ItemsSource = rows;
+        var near = current != null ? (SoilStandard.Find(current.StdName) ?? SoilStandard.Nearest(current)) : SoilStandard.Find("Sét pha – dẻo cứng");
+        g.SelectedItem = rows.FirstOrDefault(r => ReferenceEquals(r.S, near)) ?? rows.FirstOrDefault();
+
+        var bottom = new StackPanel();
+        bottom.Children.Add(DialogUi.Hint("N (SPT) chỉ là giá trị ước lượng theo trạng thái để tính sơ bộ cọc theo SPT – phải thay bằng N của hố khoan. "
+            + "e, IL, Sr sửa được trong bảng lớp đất: chỉ tiêu tự tra lại (nội suy tuyến tính theo e; đất dính theo dải IL)."));
+        var bFill = DialogUi.Btn(current != null ? "Gán cho lớp đang chọn" : "Thêm lớp", (s, e) => { Selected = (g.SelectedItem as Row)?.S; AddNew = current == null; DialogResult = Selected != null; }, true);
+        bFill.IsDefault = true;
+        var bAdd = DialogUi.Btn("Thêm lớp mới", (s, e) => { Selected = (g.SelectedItem as Row)?.S; AddNew = true; DialogResult = Selected != null; });
+        var bCancel = DialogUi.Btn("Huỷ", (s, e) => DialogResult = false);
+        bCancel.IsCancel = true;
+        var bs = current != null ? DialogUi.Row(bFill, bAdd, bCancel) : DialogUi.Row(bFill, bCancel);
+        bs.HorizontalAlignment = HorizontalAlignment.Right;
+        bottom.Children.Add(bs);
+        DockPanel.SetDock(bottom, Dock.Bottom);
+        root.Children.Add(bottom);
+        g.MouseDoubleClick += (s, e) => { if (g.SelectedItem is Row r) { Selected = r.S; AddNew = current == null; DialogResult = true; } };
+        root.Children.Add(g);
+        Content = root;
+    }
+}
+
 /// <summary>Cửa sổ "Gợi ý phương án móng": bảng FoundationAdvisor (khả thi, lý do, số liệu chính), giải thích, bảng sức chịu tải cọc / lún của phương án chọn,
 /// nút "Áp dụng phương án này".</summary>
 internal sealed class GeoAdvisorWindow : Window

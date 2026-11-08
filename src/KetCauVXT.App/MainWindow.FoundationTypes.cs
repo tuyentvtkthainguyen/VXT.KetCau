@@ -159,42 +159,55 @@ public partial class MainWindow
             }
         }
 
+        var nodeMap = NodeMap();
         foreach (var pc in DesignCaps())
         {
             count++;
-            bool ok = pc.Ok, sel = ReferenceEquals(selItem, pc);
+            bool ok = pc.Ok;
             if (!ok) bad++;
             Brush st = ok ? FootOkStroke : FootBadStroke;
-            var p0 = FW2S(pc.X + pc.OffsetX - pc.L / 2, pc.Y + pc.OffsetY + pc.B / 2); var p1 = FW2S(pc.X + pc.OffsetX + pc.L / 2, pc.Y + pc.OffsetY - pc.B / 2);   // [MóngLệchTâm] tâm đài lệch
-            var r = new Shapes.Rectangle
+            // đài gộp giống hệt (Quantity > 1): vẽ ở mọi vị trí (Locations); mỗi vị trí ứng với chân cột gần nhất
+            var locs = pc.Locations != null && pc.Locations.Count > 0 ? pc.Locations : new List<(double X, double Y)> { (pc.X, pc.Y) };
+            bool first = true;
+            foreach (var (lx, ly) in locs)
             {
-                Width = Math.Max(2, p1.X - p0.X), Height = Math.Max(2, p1.Y - p0.Y), Fill = ok ? FootOkFill : FootBadFill, Stroke = st,
-                StrokeThickness = sel ? 3 : 1.4, Effect = sel ? GlowEffect : null, IsHitTestVisible = false
-            };
-            Canvas.SetLeft(r, p0.X); Canvas.SetTop(r, p0.Y);
-            fndCanvas.Children.Add(r);
-            double ps = pc.PileSize > 0 ? pc.PileSize : _p.Foundation.PileSize;
-            double d = Math.Max(4, ps * _fScale);
-            foreach (var (px, py) in pc.Piles)
-            {
-                var c = FW2S(pc.X + px, pc.Y + py);
-                Shapes.Shape sh = pc.PileRound
-                    ? new Shapes.Ellipse { Width = d, Height = d }
-                    : new Shapes.Rectangle { Width = d, Height = d };
-                sh.Fill = PileFill; sh.Stroke = PileStroke; sh.StrokeThickness = 1; sh.IsHitTestVisible = false;
-                Canvas.SetLeft(sh, c.X - d / 2); Canvas.SetTop(sh, c.Y - d / 2);
-                fndCanvas.Children.Add(sh);
-                double k = d * 0.35;
-                CLine(fndCanvas, new Point(c.X - k, c.Y - k), new Point(c.X + k, c.Y + k), PileStroke, 0.6, false);
-                CLine(fndCanvas, new Point(c.X - k, c.Y + k), new Point(c.X + k, c.Y - k), PileStroke, 0.6, false);
-            }
-            _fndHits.Add((new Rect(p0, p1), pc.NodeIds.FirstOrDefault(), null, pc));
-            if (labels || sel)
-            {
-                string name = string.IsNullOrEmpty(pc.Name) ? "ĐC" : pc.Name;
-                var t = CText(fndCanvas, $"{name} – {pc.Piles.Count} cọc, Pmax={pc.PMax.ToString("0", Inv)} kN", new Point((p0.X + p1.X) / 2, p0.Y - 9), st, sel ? 11 : 9.5, true, true, true);
-                if (sel) t.FontWeight = FontWeights.Bold;
-                CText(fndCanvas, $"{pc.L.ToString("0.00", Inv)}×{pc.B.ToString("0.00", Inv)}×{pc.H.ToString("0.00", Inv)}", new Point((p0.X + p1.X) / 2, p1.Y + 9), Brushes.DimGray, 9, true, true, true);
+                double dx = lx - pc.X, dy = ly - pc.Y;
+                int node = pc.NodeIds.Count == 0 ? 0 : pc.NodeIds.OrderBy(id => nodeMap.TryGetValue(id, out var nn) ? (nn.X - lx) * (nn.X - lx) + (nn.Y - ly) * (nn.Y - ly) : double.MaxValue).First();
+                bool sel = ReferenceEquals(selItem, pc) && (locs.Count == 1 || node == _selFooting || _selFooting == 0 && first);
+                bool multi = _fndMulti.Contains(node);
+                var p0 = FW2S(lx + pc.OffsetX - pc.L / 2, ly + pc.OffsetY + pc.B / 2); var p1 = FW2S(lx + pc.OffsetX + pc.L / 2, ly + pc.OffsetY - pc.B / 2);   // [MóngLệchTâm] tâm đài lệch
+                var r = new Shapes.Rectangle
+                {
+                    Width = Math.Max(2, p1.X - p0.X), Height = Math.Max(2, p1.Y - p0.Y), Fill = ok ? FootOkFill : FootBadFill, Stroke = multi ? MultiSelStroke : st,
+                    StrokeThickness = sel || multi ? 3 : 1.4, Effect = sel ? GlowEffect : null, IsHitTestVisible = false
+                };
+                if (multi) r.StrokeDashArray = new DoubleCollection { 4, 2 };
+                Canvas.SetLeft(r, p0.X); Canvas.SetTop(r, p0.Y);
+                fndCanvas.Children.Add(r);
+                double ps = pc.PileSize > 0 ? pc.PileSize : _p.Foundation.PileSize;
+                double d = Math.Max(4, ps * _fScale);
+                foreach (var (px, py) in pc.Piles)
+                {
+                    var c = FW2S(pc.X + dx + px, pc.Y + dy + py);
+                    Shapes.Shape sh = pc.PileRound
+                        ? new Shapes.Ellipse { Width = d, Height = d }
+                        : new Shapes.Rectangle { Width = d, Height = d };
+                    sh.Fill = PileFill; sh.Stroke = PileStroke; sh.StrokeThickness = 1; sh.IsHitTestVisible = false;
+                    Canvas.SetLeft(sh, c.X - d / 2); Canvas.SetTop(sh, c.Y - d / 2);
+                    fndCanvas.Children.Add(sh);
+                    double k = d * 0.35;
+                    CLine(fndCanvas, new Point(c.X - k, c.Y - k), new Point(c.X + k, c.Y + k), PileStroke, 0.6, false);
+                    CLine(fndCanvas, new Point(c.X - k, c.Y + k), new Point(c.X + k, c.Y - k), PileStroke, 0.6, false);
+                }
+                _fndHits.Add((new Rect(p0, p1), node, null, pc));
+                if (labels || sel)
+                {
+                    string name = string.IsNullOrEmpty(pc.Name) ? "ĐC" : pc.Name;
+                    var t = CText(fndCanvas, $"{name} – {pc.Piles.Count} cọc, Pmax={pc.PMax.ToString("0", Inv)} kN", new Point((p0.X + p1.X) / 2, p0.Y - 9), st, sel ? 11 : 9.5, true, true, true);
+                    if (sel) t.FontWeight = FontWeights.Bold;
+                    CText(fndCanvas, $"{pc.L.ToString("0.00", Inv)}×{pc.B.ToString("0.00", Inv)}×{pc.H.ToString("0.00", Inv)}", new Point((p0.X + p1.X) / 2, p1.Y + 9), Brushes.DimGray, 9, true, true, true);
+                }
+                first = false;
             }
         }
         return count;

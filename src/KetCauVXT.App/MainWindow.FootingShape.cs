@@ -48,6 +48,7 @@ public partial class MainWindow
         {
             ("Bố trí móng…", "Móng chọn: xoay theo mép cột / góc nhập / đường chuẩn; mép móng thẳng mép cột hoặc lệch tâm nhập tay; cắt theo ranh đất", (s, e) => FndPlacementUi()),
             ("Nhân bản móng…", "Chép kích thước + bố trí của móng chọn sang nhiều chân cột (bấm chọn trên mặt bằng, cùng tiết diện cột, danh sách nút)", (s, e) => FndCopyUi()),
+            ("Gán đài cọc giống nhau", "Chép sơ đồ cọc + kích thước đài của đài bấm sau cùng cho mọi đài / chân cột đang chọn (Ctrl + bấm để chọn nhiều, Ctrl + A chọn mọi đài)", (s, e) => FndCapCopyUi()),
             ("Đồng nhất móng…", "Gom các móng có kích thước gần nhau thành một loại móng (lấy kích thước lớn nhất) – giảm số loại móng", (s, e) => FndUnifyUi()),
             ("Vẽ đường chuẩn", "Bấm lần lượt các điểm (bắt dính góc cột, giao trục, góc đất) – đường ranh đất xiên; Esc kết thúc", (s, e) => FndToolStart(FndTool.LotLine)),
             ("Đường chuẩn…", "Danh sách đường chuẩn: toạ độ, khe hở móng, bật / tắt, xoá", (s, e) => FndLotLinesUi()),
@@ -297,6 +298,7 @@ public partial class MainWindow
 
     private void DrawFndToolOverlay()
     {
+        DrawFndMultiOverlay();   // [Gán nhiều móng] khung các móng chọn bằng Ctrl + bấm
         _fndToolLayer = new Canvas { IsHitTestVisible = false };
         fndCanvas.Children.Add(_fndToolLayer);
         RefreshToolLayer();
@@ -409,6 +411,7 @@ public partial class MainWindow
         if (!f.Run("Áp dụng")) return;
         string snap = Snapshot();
         var targets = new List<int> { node };
+        foreach (int x in SelectedFoundationNodes()) if (!targets.Contains(x)) targets.Add(x);   // [Gán nhiều móng] Ctrl + bấm
         if (f.B("same")) targets.AddRange(FootingLayout.SameColumnNodes(_p, node));
         foreach (int t in targets)
         {

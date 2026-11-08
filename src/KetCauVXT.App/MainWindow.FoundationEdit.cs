@@ -20,7 +20,7 @@ public partial class MainWindow
     /// <summary>Chân cột thuộc móng đang chọn trên mặt bằng móng (móng đơn, đài cọc, móng băng).</summary>
     private List<int> SelectedFoundationNodes()
     {
-        var res = new List<int>();
+        var res = new List<int>(_fndMulti);   // [Gán nhiều móng] Ctrl + bấm chọn nhiều móng / chân cột
         switch (_fndSelItem)
         {
             case FootingDesign fd: res.Add(fd.NodeId); break;
@@ -90,7 +90,7 @@ public partial class MainWindow
         var fd = _fndSelItem as FootingDesign ?? _design?.Footings.FirstOrDefault(f => f.NodeId == node);
         var ft = _p.Footings.FirstOrDefault(f => f.NodeId == node);
         double L0 = ft?.L > 0 ? ft.L : fd?.L ?? 0, B0 = ft?.B > 0 ? ft.B : fd?.B ?? 0, H0 = ft?.Height > 0 ? ft.Height : fd?.H ?? 0;
-        var f = new MiniForm(this, $"Sửa móng tại chân cột nút {node}");
+        var f = new MiniForm(this, nodes.Count > 1 ? $"Sửa {nodes.Count} móng chọn (gán giống nhau) – nút {string.Join(", ", nodes.Take(10))}{(nodes.Count > 10 ? "…" : "")}" : $"Sửa móng tại chân cột nút {node}");
         f.Combo("type", "Loại móng tại chân cột", new[] { "Theo công trình (" + FoundationTypeName(_p.Foundation.Type) + ")", "Móng đơn", "Móng cọc", "Móng băng" },
             ft?.Type == null ? 0 : (int)ft.Type.Value + 1);
         f.Num("L", "Cạnh L theo X (m, 0 = tự chọn)", Math.Round(L0, 3));
@@ -102,14 +102,19 @@ public partial class MainWindow
         string snap = Snapshot();
         FoundationType? t = f.I("type") <= 0 ? null : (FoundationType)(f.I("type") - 1);
         foreach (int nd in nodes) FoundationReset.Clear(_p, _design, new[] { nd });
-        var nf = FoundationReset.SetSize(_p, node, f.D("L", 0), f.D("B", 0), f.D("H", 0));
-        nf.Type = t;
+        Footing nf = null;
+        foreach (int nd in nodes)   // [Gán nhiều móng] mọi móng chọn (Ctrl + bấm) nhận cùng kích thước / loại móng
+        {
+            var x = FoundationReset.SetSize(_p, nd, f.D("L", 0), f.D("B", 0), f.D("H", 0));
+            x.Type = t;
+            nf ??= x;
+        }
         PushUndo(snap);
         MarkDirty(false);
         SyncFoundationUi();
         RedrawFoundationPlan();
         if (f.B("run")) await DesignFoundation();
-        else SetStatus($"Đã chốt móng nút {node}: {nf.L:0.##} × {nf.B:0.##} × {nf.Height:0.##} m – bấm \"Thiết kế móng\" để kiểm tra.");
+        else SetStatus($"Đã chốt {nodes.Count} móng (nút {string.Join(", ", nodes.Take(8))}): {nf.L:0.##} × {nf.B:0.##} × {nf.Height:0.##} m – bấm \"Thiết kế móng\" để kiểm tra.");
     }
 
     private void BtnFndEdit_Click(object sender, RoutedEventArgs e) => FndEditSelected();
@@ -163,6 +168,8 @@ public partial class MainWindow
             case Key.Delete: FndDeleteSelected(); e.Handled = true; break;
             case Key.E: case Key.Enter: FndEditSelected(); e.Handled = true; break;
             case Key.F: case Key.Home: BtnFndFit_Click(this, new RoutedEventArgs()); e.Handled = true; break;
+            case Key.Escape when _fndMulti.Count > 0: _fndMulti.Clear(); RedrawFoundationPlan(); SetStatus("Đã bỏ chọn nhiều móng."); e.Handled = true; break;
+            case Key.A when (Keyboard.Modifiers & ModifierKeys.Control) != 0: FndSelectAllSameType(); e.Handled = true; break;
         }
     }
 }

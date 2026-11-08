@@ -412,7 +412,14 @@ public partial class MainWindow
         // ưu tiên ô nhỏ nhất chứa điểm bấm (cột nằm trong móng)
         var hit = _fndHits.Where(x => x.r.Contains(s)).OrderBy(x => x.r.Width * x.r.Height)
             .Select(x => ((int node, FrameElement col, object item)?)(x.node, x.col, x.item)).FirstOrDefault();
-        if (hit == null) { _fndSelItem = null; if (HasSelection) ClearSelection(); return; }
+        bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
+        if (hit == null)
+        {
+            if (ctrl) return;   // Ctrl + bấm ra ngoài: giữ danh sách chọn
+            _fndMulti.Clear(); _fndSelItem = null; if (HasSelection) ClearSelection(); else RedrawFoundationPlan(); return;
+        }
+        if (ctrl && FndToggleMulti(hit.Value.node, hit.Value.col, hit.Value.item)) return;   // [Gán nhiều móng] Ctrl + bấm: thêm / bỏ móng khỏi danh sách chọn
+        if (!ctrl) _fndMulti.Clear();
         _fndSelItem = hit.Value.item;
         if (hit.Value.node != 0) Select(footingNode: hit.Value.node);
         else if (hit.Value.col != null) Select(frame: hit.Value.col);

@@ -135,7 +135,8 @@ public partial class MainWindow
         OneRowTabs.Apply(_ribbon);   // [Hoàn thiện] tiêu đề tab một hàng (không xuống dòng khi khung hẹp)
         foreach (var k in new[] { RtLuoi, RtMong, RtCot, RtDam, RtSan, RtTuong, RtCad })
         {
-            var sv = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 92, Content = P(k) };
+            // [Giao diện] hiện đủ mọi nút (xuống dòng theo bề rộng khung), không giới hạn chiều cao / không thanh cuộn
+            var sv = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = P(k) };
             _ribbon.Items.Add(new TabItem { Header = k, Content = sv, Padding = new Thickness(8, 1, 8, 1), ToolTip = RibbonTip(k) });
         }
         _ribbon.SelectedIndex = 3;   // Dầm
@@ -245,6 +246,7 @@ public partial class MainWindow
         w.Children.Add(SmallBtn("Thiết kế lại móng", FndRedesign, "Xoá toàn bộ móng đã thiết kế rồi thiết kế lại từ đầu", out _));
         w.Children.Add(SmallBtn("Bố trí móng…", FndPlacementUi, "Móng chọn: xoay theo mép cột, mép móng thẳng mép cột, lệch tâm (dầm cân bằng) – mặt bằng móng", out _));
         w.Children.Add(SmallBtn("Nhân bản móng…", FndCopyUi, "Chép kích thước + bố trí móng chọn sang nhiều chân cột", out _));
+        w.Children.Add(SmallBtn("Gán đài cọc giống nhau", FndCapCopyUi, "Mô hình móng: Ctrl + bấm chọn nhiều đài / chân cột, bấm đài nguồn sau cùng → cùng sơ đồ cọc, kích thước đài", out _));
         w.Children.Add(SmallBtn("Đồng nhất móng…", FndUnifyUi, "Gom móng gần bằng nhau thành một loại móng", out _));
         w.Children.Add(SmallBtn("Đường chuẩn…", FndLotLinesUi, "Đường ranh đất xiên (vẽ bằng chuột: tab Mô hình móng → Vẽ đường chuẩn)", out _));
         w.Children.Add(RSep());

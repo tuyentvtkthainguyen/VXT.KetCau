@@ -24,7 +24,16 @@ public enum SoilKind
 }
 
 /// <summary>Cỡ hạt cát.</summary>
-public enum SandGrain { Fine, Medium, Coarse }
+public enum SandGrain { Fine, Medium, Coarse, Silty, Gravelly }
+
+/// <summary>Nguồn chỉ tiêu cơ lý của lớp đất.</summary>
+public enum SoilPropSource
+{
+    /// <summary>Theo hố khoan khảo sát và thí nghiệm (nhập trực tiếp) – ktc = 1,0</summary>
+    Test = 0,
+    /// <summary>Theo bảng tra TCVN 9362:2012 từ loại đất + trạng thái (e, IL) – ktc = 1,1 (Design/Foundation/SoilStandard.cs)</summary>
+    Table = 1
+}
 
 /// <summary>Một lớp đất trong hố khoan. Độ sâu tính từ miệng hố khoan (mặt đất tự nhiên), m.</summary>
 public class SoilLayer
@@ -54,6 +63,14 @@ public class SoilLayer
     public SoilKind Kind { get; set; } = SoilKind.SiltyClay;
     /// <summary>Cỡ hạt (chỉ dùng khi Kind = Sand)</summary>
     public SandGrain Grain { get; set; } = SandGrain.Medium;
+    /// <summary>Nguồn chỉ tiêu: thí nghiệm (mặc định cho dữ liệu cũ) hoặc bảng tra TCVN 9362:2012</summary>
+    public SoilPropSource Source { get; set; } = SoilPropSource.Test;
+    /// <summary>Lớp cấu tạo tiêu chuẩn đã chọn (SoilStandard.Catalog), "" = không</summary>
+    public string StdName { get; set; } = "";
+    /// <summary>Độ bão hoà Sr (0…1); 0 = mặc định theo loại đất</summary>
+    public double Sr { get; set; }
+    /// <summary>Áp lực tính toán quy ước R0 theo bảng tra (kPa); 0 = không có</summary>
+    public double R0 { get; set; }
 
     [JsonIgnore]
     public double Thickness => Math.Max(Bottom - Top, 0);
@@ -75,7 +92,7 @@ public class SoilLayer
         SoilKind.Clay => "Sét",
         SoilKind.SiltyClay => "Sét pha",
         SoilKind.SandyClay => "Cát pha",
-        SoilKind.Sand => g switch { SandGrain.Fine => "Cát hạt nhỏ", SandGrain.Coarse => "Cát hạt thô", _ => "Cát hạt vừa" },
+        SoilKind.Sand => g switch { SandGrain.Fine => "Cát hạt nhỏ", SandGrain.Coarse => "Cát hạt thô", SandGrain.Silty => "Cát bụi", SandGrain.Gravelly => "Cát sỏi", _ => "Cát hạt vừa" },
         SoilKind.Gravel => "Sỏi sạn",
         SoilKind.Rock => "Đá phong hoá",
         _ => k.ToString()

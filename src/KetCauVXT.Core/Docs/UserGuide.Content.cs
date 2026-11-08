@@ -705,6 +705,28 @@ public static partial class UserGuide
                 "Mọi hình vẽ của giai đoạn thiết kế – mặt cắt móng, biểu đồ cấu kiện, dạng dao động, bố trí cọc, cầu thang, phác thép, móng lệch tâm, tờ dàn trang: **con lăn thu phóng vào con trỏ**, **kéo chuột giữa / phải di chuyển**, **F / bấm đúp chuột giữa** về vừa khung. "
                 + "Sửa nét, chữ, nhãn thép trên bản vẽ hồ sơ: **Hiệu chỉnh bản vẽ…**.");
 
+        c.Sec("khoi-tao.dat-nen-tcvn", "Chỉ tiêu cơ lý đất theo bảng tra TCVN 9362:2012 – lớp đất cấu tạo tiêu chuẩn, hố khoan và thí nghiệm")
+            .P("Khi chọn lớp đất, chương trình mặc định lấy chỉ tiêu cơ lý theo **lớp cấu tạo tiêu chuẩn** (loại đất + trạng thái) và **bảng tra TCVN 9362:2012**: "
+               + "c, φ của đất cát theo hệ số rỗng e; c, φ của đất dính theo dải độ sệt IL và e; mô đun biến dạng E của đất kỷ Đệ tứ; áp lực tính toán quy ước R0; γ = γw·(Gs + Sr·e)/(1 + e).")
+            .Bullets("**Tab Địa chất**: \"+ Lớp\" tạo lớp theo lớp tiêu chuẩn; cột **Lớp tiêu chuẩn (tra bảng)** chọn nhanh (cát sỏi / thô / vừa / nhỏ / bụi chặt – chặt vừa – rời; cát pha cứng – dẻo; sét pha, sét cứng → dẻo chảy; sỏi sạn; đất đắp, bùn, đá – ngoài bảng tra). "
+                + "Đổi **loại đất, e, IL, Sr** → chỉ tiêu tự tra lại (nội suy tuyến tính theo e). Nút **Chọn lớp đất theo bảng tra TCVN…** xem toàn bộ danh mục với γ, φ, c, E, R0.",
+                "**Có hố khoan khảo sát và thí nghiệm**: nhập trực tiếp γ, φ, c, E vào bảng lớp đất → cột **Chỉ tiêu theo** tự chuyển sang \"Thí nghiệm\" (giữ nguyên số nhập). Chọn lại \"Bảng tra TCVN\" hoặc nút \"Tra lại bảng cho lớp chọn\" để trở về bảng tra.",
+                "**Tab Công trình** (chưa dùng hố khoan): ô **Lớp đất (bảng tra TCVN 9362)** điền φ, c, γ, E của nền dưới móng; sửa tay φ, c, γ → tự chuyển \"theo thí nghiệm\".",
+                "**Hệ số ktc** trong công thức R = m1·m2/ktc·(A·b·γ + B·h·γ' + D·c): 1,1 khi chỉ tiêu lớp đặt móng tra bảng, 1,0 khi theo thí nghiệm trực tiếp (TCVN 9362:2012). Thuyết minh địa chất ghi nguồn chỉ tiêu từng lớp.",
+                "Giới hạn bảng tra: cát rời không có R0; đất dính IL > 0,75 (dẻo chảy, chảy), bùn, đất đắp, đá: ngoài bảng – chương trình cảnh báo, bắt buộc khảo sát. N (SPT) của lớp tiêu chuẩn chỉ là ước lượng theo trạng thái.");
+
+        c.Sec("khoi-tao.dia-danh-moi", "Địa điểm xây dựng theo địa danh sau sắp xếp (34 tỉnh / thành, 3.321 xã / phường / đặc khu)")
+            .P("Tab Công trình → Địa điểm: chọn tỉnh / thành (gõ được tên tỉnh cũ, vd Bắc Kạn → Thái Nguyên), ô **Xã/phường/đặc khu** liệt kê đủ đơn vị hành chính cấp xã sau sắp xếp từ 01/7/2025 "
+               + "(danh mục theo QĐ 19/2025/QĐ-TTg và các nghị quyết sau đó). Địa danh chưa có số liệu gió: tra Bảng 5.1 QCVN 02:2022 rồi chọn vùng gió – chương trình lưu lại cho lần sau.");
+
+        c.Sec("khoi-tao.chon-nhieu-mong", "Chọn nhiều móng (Ctrl + bấm) – gán nhiều móng / đài cọc giống nhau")
+            .Bullets("Mặt bằng móng: **Ctrl + bấm** thêm / bỏ móng, đài cọc hoặc chân cột vào danh sách chọn (khung cam nét đứt); **Ctrl + A** chọn mọi móng cùng loại; **Esc** bỏ chọn.",
+                "**Sửa móng…** (hoặc E / Enter): cùng L × B × H, loại móng cho mọi móng chọn. **Xoá móng chọn** (Delete), **Bố trí móng…** áp dụng cho tất cả.",
+                "**Bố trí cọc…**: thêm lựa chọn \"Áp dụng cho tất cả … chân cột chọn thêm (Ctrl + bấm)\" – cùng sơ đồ cọc, kích thước đài.",
+                "**Gán đài cọc giống nhau**: bấm (Ctrl) các đài / chân cột cần gán, bấm đài nguồn sau cùng → chép toạ độ cọc + kích thước đài của đài nguồn cho tất cả (chân cột chưa là móng cọc được chuyển sang móng cọc), thiết kế lại; đài giống hệt gộp chung tên.",
+                "Đài cọc gộp giống hệt (SL > 1) nay được vẽ ở mọi vị trí trên mặt bằng móng.",
+                "Thanh lệnh các tab (Móng, Dầm, Sàn… và ribbon Kiến trúc / Kết cấu): mọi nút hiện đủ trong khung nhìn – tự xuống dòng khi khung hẹp, không cần kéo thanh cuộn; tiêu đề tab xuống dòng thay cho nút ».");
+
         c.Sec("khoi-tao.bo-tri-mong", "Bố trí móng: nhân bản, đồng nhất, lệch tâm / xoay dóng mép cột, đường chuẩn ranh đất xiên, móng đa giác cho đất méo")
             .P("Tab **Mô hình móng**, các nút trên thanh công cụ mặt bằng móng. Mọi thay đổi có hoàn tác Ctrl+Z; bấm \"Thiết kế móng\" (hoặc chọn \"Thiết kế lại ngay\") để kiểm tra áp lực nền, chọc thủng, uốn, thép.")
             .Bullets("**Móng giống nhau**: các móng giống hệt được gộp chung một tên (M2, SL = 6) và **vẽ ở mọi chân cột** trên mặt bằng móng, 3D, bản vẽ bố trí móng.",

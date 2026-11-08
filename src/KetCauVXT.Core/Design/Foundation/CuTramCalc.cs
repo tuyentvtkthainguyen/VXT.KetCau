@@ -203,7 +203,7 @@ public static class CuTramCalc
         if (!l.IsCohesive)
         {
             if (l.Kind is SoilKind.Gravel or SoilKind.Rock) return 0.2;
-            if (l.Kind == SoilKind.Sand) return l.Grain == SandGrain.Fine ? 0.3 : 0.2;
+            if (l.Kind == SoilKind.Sand) return l.Grain is SandGrain.Fine or SandGrain.Silty ? 0.3 : 0.2;
             note = "đất rời không xác định – lấy cột cát bụi (0,4)";
             return 0.4;
         }

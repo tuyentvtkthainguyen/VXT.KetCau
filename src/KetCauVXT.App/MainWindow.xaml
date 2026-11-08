@@ -325,7 +325,7 @@
                             <GroupBox Header="Địa điểm xây dựng – vùng gió, động đất (QCVN 02:2022/BXD)">
                                 <StackPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tỉnh/Thành phố (từ 01/7/2025)" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbLocProvince" IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True" ToolTip="34 tỉnh/thành sau sắp xếp; gõ được tên tỉnh cũ (vd Bắc Kạn → Thái Nguyên), không dấu cũng được" SelectionChanged="CbLocProvince_SelectionChanged" LostKeyboardFocus="CbLocProvince_LostFocus"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Xã/phường (huyện cũ)" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbLocName" IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True" ToolTip="Chọn từ danh mục địa danh hoặc gõ tên mới" SelectionChanged="CbLocName_SelectionChanged" LostKeyboardFocus="CbLocName_LostFocus"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Xã/phường/đặc khu (sau sắp xếp)" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbLocName" IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True" MaxDropDownHeight="420" ToolTip="Danh mục 3.321 xã/phường/đặc khu của 34 tỉnh/thành sau sắp xếp (từ 01/7/2025) + địa danh đã lưu số liệu gió; gõ tên để tìm" SelectionChanged="CbLocName_SelectionChanged" LostKeyboardFocus="CbLocName_LostFocus"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Vùng áp lực gió" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbWindZone" SelectionChanged="CbWindZone_SelectionChanged"/></DockPanel>
                                     <TextBlock x:Name="txtZoneInfo" Margin="208,0,2,2" TextWrapping="Wrap" Foreground="DimGray"/>
                                     <TextBlock x:Name="txtLocStatus" Margin="208,0,2,4" TextWrapping="Wrap"/>
@@ -364,11 +364,13 @@
                             </GroupBox>
                             <GroupBox Header="Nền đất dưới móng đơn (TCVN 9362:2012)">
                                 <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Lớp đất (bảng tra TCVN 9362)" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbSoilStd" SelectionChanged="CbSoilStd_SelectionChanged" ToolTip="Chọn lớp đất cấu tạo tiêu chuẩn → φ, c, γ, E theo bảng tra TCVN 9362:2012 (ktc = 1,1). Có thí nghiệm: chọn (theo thí nghiệm) rồi nhập trực tiếp."/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Góc ma sát trong φ (độ)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtPhi"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Lực dính c (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtC"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Trọng lượng riêng γ (kN/m³)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtGamma"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Độ sâu chôn móng Df (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtDepth"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="R tiêu chuẩn nhập tay (kN/m², 0 = tính)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtROverride"/></DockPanel>
+                                    <TextBlock x:Name="txtSoilStdInfo" TextWrapping="Wrap" Foreground="DimGray" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </GroupBox>
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
@@ -534,7 +536,7 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+                <WrapPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
                     <TextBlock Text="Tầng đang xem:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <ComboBox x:Name="cbStory" Width="140" SelectionChanged="CbStory_SelectionChanged"/>
                     <Button Content="Vừa màn hình" Click="BtnFit_Click" Style="{StaticResource SmallButton}" Margin="8,0,6,0"/>
@@ -542,7 +544,7 @@
                               Checked="ChkLabels_Changed" Unchecked="ChkLabels_Changed"/>
                     <TextBlock Text="Biểu đồ M3 theo:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <ComboBox x:Name="cbDiagramCase" Width="120" SelectionChanged="CbDiagramCase_SelectionChanged"/>
-                </StackPanel>
+                </WrapPanel>
 
                 <TabControl Grid.Row="1" x:Name="tabView">
                     <TabItem Header="Mặt bằng">

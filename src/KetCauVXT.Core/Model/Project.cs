@@ -60,6 +60,8 @@ public class SoilSettings
     public double M1 { get; set; } = 1.1;
     public double M2 { get; set; } = 1.0;
     public double Ktc { get; set; } = 1.0;
+    /// <summary>Lớp đất tiêu chuẩn đã chọn để tra bảng TCVN 9362:2012 (φ, c, γ, E; ktc = 1,1); "" = nhập theo thí nghiệm</summary>
+    public string StdName { get; set; } = "";
     /// <summary>Nếu &gt; 0 thì dùng trực tiếp sức chịu tải tiêu chuẩn này (kN/m²) thay cho công thức</summary>
     public double ROverride { get; set; }
     /// <summary>Trọng lượng riêng trung bình móng + đất đắp, kN/m³</summary>

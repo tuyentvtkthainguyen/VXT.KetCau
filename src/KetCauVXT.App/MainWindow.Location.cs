@@ -98,6 +98,13 @@ public partial class MainWindow
                 if (_nameChoices.ContainsKey(d)) continue;
                 _nameChoices[d] = e; names.Add(d);
             }
+        // danh mục xã / phường / đặc khu sau sắp xếp (Model/AdminUnits.cs) – chưa có số liệu gió thì chọn vùng gió để lưu lại
+        if (p != null)
+        {
+            var have = new HashSet<string>(names.Select(n => LocationDb.PlaceKey(_nameChoices[n].Name)));
+            foreach (var c in AdminUnits.Of(p.Name).OrderBy(c => c.Type == "Phường" ? 0 : c.Type == "Xã" ? 1 : 2).ThenBy(c => LocationDb.Norm(c.ShortName), StringComparer.Ordinal))
+                if (have.Add(LocationDb.PlaceKey(c.FullName))) names.Add(c.FullName);
+        }
         string keep = cbLocName.Text;
         bool was = _locUpdating; _locUpdating = true;
         try { cbLocName.ItemsSource = names; cbLocName.Text = keep; }
@@ -295,7 +302,8 @@ public partial class MainWindow
         var p = CurrentProvince();
         string name = (cbLocName.Text ?? "").Trim();
         int n = p == null ? 0 : _locDb.ForProvince(p.Name).Count;
-        string count = p == null ? "" : $" (danh mục có {n} địa danh của {p.Name})";
+        int nc = p == null ? 0 : AdminUnits.Of(p.Name).Count;
+        string count = p == null ? "" : $" ({p.Name}: {nc} xã/phường/đặc khu sau sắp xếp, {n} địa danh đã có số liệu gió)";
         Brush color = Brushes.DimGray;
         string text;
         if (p == null)
@@ -303,7 +311,7 @@ public partial class MainWindow
                 ? "Không nhận ra tỉnh/thành phố – chọn trong danh sách (34 đơn vị từ 01/7/2025; gõ được tên tỉnh cũ)."
                 : "Chọn tỉnh/thành phố và xã/phường nơi xây dựng để áp dụng vùng gió theo QCVN 02:2022/BXD.";
         else if (name.Length == 0)
-            text = "Chọn hoặc gõ tên xã/phường (huyện cũ)" + count + ".";
+            text = "Chọn xã/phường/đặc khu (tên sau sắp xếp 01/7/2025) hoặc gõ tên" + count + ".";
         else
         {
             var en = CurrentEntry();

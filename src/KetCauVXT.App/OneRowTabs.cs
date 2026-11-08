@@ -15,9 +15,8 @@ internal static class OneRowTabs
         "<DockPanel LastChildFill=\"True\">" +
         "<DockPanel DockPanel.Dock=\"Top\" LastChildFill=\"True\">" +
         "<Button x:Name=\"PART_More\" DockPanel.Dock=\"Right\" Content=\"»\" Padding=\"7,0,7,0\" Margin=\"2,2,2,0\" Visibility=\"Collapsed\" Focusable=\"False\" ToolTip=\"Các tab không đủ chỗ hiện\"/>" +
-        "<ScrollViewer x:Name=\"PART_HeaderScroll\" HorizontalScrollBarVisibility=\"Hidden\" VerticalScrollBarVisibility=\"Disabled\" Focusable=\"False\">" +
-        "<StackPanel Orientation=\"Horizontal\" IsItemsHost=\"True\" Margin=\"2,2,2,0\"/>" +
-        "</ScrollViewer>" +
+        // [Giao diện] tiêu đề tab xuống dòng khi khung hẹp – mọi tab luôn hiện đủ, không phải cuộn / bấm »
+        "<WrapPanel Orientation=\"Horizontal\" IsItemsHost=\"True\" Margin=\"2,2,2,0\"/>" +
         "</DockPanel>" +
         "<Border Background=\"{TemplateBinding Background}\" BorderBrush=\"{TemplateBinding BorderBrush}\" BorderThickness=\"{TemplateBinding BorderThickness}\" Padding=\"{TemplateBinding Padding}\">" +
         "<ContentPresenter ContentSource=\"SelectedContent\"/>" +

@@ -29,12 +29,16 @@ internal static class GeotechReport
         {
             d.Heading($"{n}.{k++}. Hố khoan {bh.Name} (X = {N(bh.X)} m, Y = {N(bh.Y)} m, cao độ miệng {N(bh.GroundElevation, "0.00")} m, " +
                       (bh.WaterDepth < 0 ? "không gặp nước ngầm" : "mực nước ngầm sâu " + N(bh.WaterDepth) + " m") + ")", 2);
-            d.Table(new[] { "Lớp", "Độ sâu (m)", "Loại đất", "γ (kN/m³)", "γsat", "φ (°)", "c (kPa)", "E (MPa)", "N", "IL", "e" },
+            d.Table(new[] { "Lớp", "Độ sâu (m)", "Loại đất", "γ (kN/m³)", "γsat", "φ (°)", "c (kPa)", "E (MPa)", "N", "IL", "e", "Chỉ tiêu theo" },
                 bh.Sorted().Select(l => new[]
                 {
                     l.Name, $"{N(l.Top)}–{N(l.Bottom)}", l.KindText, N(l.Gamma, "0.0"), N(l.GammaSatOrDefault, "0.0"), N(l.Phi, "0.#"), N(l.C, "0.#"),
-                    N(l.E, "0.#"), N(l.N, "0.#"), l.IL < 0 ? "–" : N(l.IL, "0.##"), l.VoidRatio > 0 ? N(l.VoidRatio, "0.##") : "–"
-                }), new[] { 3.2, 1.6, 2.0, 1.2, 1.0, 1.0, 1.0, 1.0, 0.8, 0.8, 0.8 }, 9);
+                    N(l.E, "0.#"), N(l.N, "0.#"), l.IL < 0 ? "–" : N(l.IL, "0.##"), l.VoidRatio > 0 ? N(l.VoidRatio, "0.##") : "–",
+                    l.Source == SoilPropSource.Table ? "Bảng tra TCVN 9362" : "Thí nghiệm"
+                }), new[] { 3.0, 1.5, 1.8, 1.1, 0.9, 0.9, 0.9, 0.9, 0.7, 0.7, 0.7, 1.6 }, 9);
+            if (bh.Layers.Any(l => l.Source == SoilPropSource.Table))
+                d.Paragraph("Lớp \"Bảng tra TCVN 9362\": chỉ tiêu c, φ, E là giá trị tiêu chuẩn tra bảng TCVN 9362:2012 theo loại đất, hệ số rỗng e và độ sệt IL "
+                            + "(γ = γw·(Gs + Sr·e)/(1 + e)); dùng ktc = 1,1 khi tính sức chịu tải nền. Phải thay bằng kết quả thí nghiệm khi có hố khoan khảo sát.");
         }
 
         // ---- lớp đặt móng, R ----

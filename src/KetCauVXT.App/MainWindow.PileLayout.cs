@@ -42,7 +42,9 @@ public partial class MainWindow
     private PileLayoutDialog OpenPileLayout(PileCapDesign cap)
     {
         try { _pileDlg?.Close(); } catch (InvalidOperationException) { }
-        var dlg = new PileLayoutDialog(_p, () => _res, cap, ApplyPileLayout) { Owner = this };
+        // [Gán nhiều móng] chân cột chọn thêm bằng Ctrl + bấm → áp dụng cùng một bố trí cọc cho tất cả
+        var extra = SelectedFoundationNodes().Where(n => !cap.NodeIds.Contains(n)).ToList();
+        var dlg = new PileLayoutDialog(_p, () => _res, cap, ApplyPileLayout, extra, _selFooting) { Owner = this };
         dlg.Closed += (s, e) => { if (ReferenceEquals(_pileDlg, dlg)) _pileDlg = null; };
         _pileDlg = dlg;
         dlg.Show();
