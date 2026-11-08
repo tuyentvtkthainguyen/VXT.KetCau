@@ -715,6 +715,11 @@ public static partial class UserGuide
                 "**Họ đồ đạc tham số** (Thư viện 3D, nguồn \"Họ tham số\"): bàn ăn, bàn trà, bàn làm việc, ghế, giường đôi / đơn, tủ quần áo, sofa, kệ tivi, tủ bếp dưới / trên, bàn thờ, bồn cầu, lavabo, bồn tắm – chọn đồ đạc trên mặt bằng, bấm **E** (hoặc Enter) sửa Rộng × Sâu × Cao, cao độ, góc xoay: chân bàn, đầu giường, tay sofa… tự dựng lại.",
                 "**Nhập mô hình**: nhận thêm vùng sàn, ban công, lỗ sàn (layer SAN), cầu thang (cụm mặt bậc, layer THANG) và mái dốc từ các mặt nghiêng (độ dốc, 1 / 2 / 4 dốc) – sau khi triển khai kết cấu, mái được thêm theo đường bao sàn tầng trên cùng.",
                 "**Plugin SketchUp…**: cài VietConst_SketchUp.rbz (thư mục SketchUp trong thư mục cài) bằng Window → Extension Manager → Install Extension; Extensions → Việt Const → Xuất… ghi *.vxtmesh.json (m, Z lên, theo tag) để nhập trực tiếp, không phải chọn đơn vị / trục.")
+            .Bullets("**Lan can – xoắn dầm biên**: tải ngang tay vịn đặt cao hơn trọng tâm dầm e = chân lan can + H + h_dầm/2 → mômen xoắn phân bố mt = q_ngang·e (hoạt tải HT) trên dầm đỡ; bộ giải tính xoắn phân bố / tập trung quanh trục thanh, thiết kế dầm kiểm tra xoắn (cốt dọc + đai chịu xoắn).",
+                "**Thư viện từ phần mềm khác – cách chính xác nhất**: dùng công cụ xuất riêng của từng phần mềm (giữ đúng điểm chèn, kích thước thật, m, trục Z lên, nhóm theo tag / layer / loại họ): "
+                + "SketchUp → \"Đưa component đang chọn vào thư viện Việt Const\"; 3ds Max → VietConst_Export.ms; Revit → \"Đưa họ vào thư viện Việt Const\". "
+                + "Không có công cụ: xuất OBJ / DAE / DXF 3D (3DFACE, lưới đa diện POLYLINE, MESH; đơn vị theo $INSUNITS) rồi Thư viện 3D → Nhập….",
+                "**Ký hiệu mặt bằng** của mục thư viện lấy theo hình chiếu bằng của lưới (giữ đúng hình bàn chữ L, giường, bồn cầu…), co giãn theo Rộng × Sâu; họ tham số vẽ từng chi tiết (mặt bàn, chân, đầu giường…).")
             .Tip("Dựng nhanh mô hình khối trong SketchUp (sàn, tường, cột, ô cửa) → Export OBJ → Nhập mô hình → kiểm tra mặt bằng nhận diện → triển khai kết cấu → chạy phân tích, thiết kế BTCT.");
 
         c.Sec("khoi-tao.dat-va-xem", "Đặt đồ đạc bằng bắt điểm, kích thước tạm, thao tác 3D, mặt cắt tầng và mặt cắt công trình")

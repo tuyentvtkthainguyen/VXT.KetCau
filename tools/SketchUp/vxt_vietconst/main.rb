@@ -104,10 +104,71 @@ module VXT
       UI.messagebox("Lỗi xuất mô hình: #{ex.message}")
     end
 
+    # ---- Xuất component / group đang chọn thành mục thư viện Việt Const (%APPDATA%\VietConst\ThuVien3D\<Nhóm>\<tên>.vxtlib.json)
+    #      Toạ độ theo gốc component (điểm chèn), m, Z lên; gốc thư viện = tâm đáy hộp bao; tên = tên định nghĩa; nhóm = tag hoặc đoán theo tên.
+    def self.guess_category(name)
+      n = name.to_s.downcase
+      return 'Thiết bị vệ sinh' if n =~ /(bồn cầu|bon cau|lavabo|chậu|toilet|wc|sen|vòi|bồn tắm|bathtub|sink)/
+      return 'Đèn' if n =~ /(đèn|den |lamp|light)/
+      return 'Điện' if n =~ /(ổ cắm|công tắc|quạt|điều hoà|điều hòa|socket|switch|fan|air)/
+      return 'Cửa' if n =~ /(cửa|door|window)/
+      'Nội thất'
+    end
+
+    def self.safe(s)
+      s.to_s.gsub(/[\\\/:*?"<>|]/, '_').strip
+    end
+
+    def self.export_library
+      model = Sketchup.active_model
+      items = model.selection.to_a.select { |e| e.is_a?(Sketchup::ComponentInstance) || e.is_a?(Sketchup::Group) }
+      if items.empty?
+        UI.messagebox('Chọn một hoặc nhiều component / group cần đưa vào thư viện Việt Const.')
+        return
+      end
+      appdata = ENV['APPDATA'] || File.join(Dir.home, 'AppData', 'Roaming')
+      root = File.join(appdata, 'VietConst', 'ThuVien3D')
+      done = {}
+      count = 0
+      items.each do |e|
+        defn = e.respond_to?(:definition) ? e.definition : e.entities.parent
+        name = defn.name.to_s.empty? ? 'DoiTuong' : defn.name.to_s
+        next if done[name]
+        done[name] = true
+        col = MeshCollector.new
+        # theo hệ toạ độ của component (không áp dụng vị trí đặt) nhưng giữ tỷ lệ co giãn của instance
+        tr = e.transformation
+        sc = Geom::Transformation.scaling(tr.xaxis.length, tr.yaxis.length, tr.zaxis.length)
+        col.collect(e.respond_to?(:definition) ? e.definition.entities : e.entities, sc, '')
+        next if col.faces.empty?
+        xs = col.verts.map { |v| v[0] }; ys = col.verts.map { |v| v[1] }; zs = col.verts.map { |v| v[2] }
+        cx = (xs.min + xs.max) / 2.0; cy = (ys.min + ys.max) / 2.0; z0 = zs.min
+        verts = col.verts.map { |v| [(v[0] - cx).round(4), (v[1] - cy).round(4), (v[2] - z0).round(4)] }
+        tag = (e.layer && !['Layer0', 'Untagged'].include?(e.layer.name)) ? e.layer.name.to_s : ''
+        cat = tag.empty? ? guess_category(name) : tag
+        disc = ['Thiết bị vệ sinh', 'Đèn', 'Điện'].include?(cat) ? 'DienNuoc' : 'KienTruc'
+        dir = File.join(root, safe(cat))
+        Dir.mkdir(File.join(appdata, 'VietConst')) unless Dir.exist?(File.join(appdata, 'VietConst'))
+        Dir.mkdir(root) unless Dir.exist?(root)
+        Dir.mkdir(dir) unless Dir.exist?(dir)
+        data = { 'Id' => "#{safe(cat)}/#{safe(name)}", 'Name' => name, 'Category' => cat, 'Source' => 'SketchUp (plugin)',
+                 'Vertices' => verts, 'Faces' => col.faces,
+                 'Width' => (xs.max - xs.min).round(4), 'Depth' => (ys.max - ys.min).round(4), 'Height' => (zs.max - zs.min).round(4),
+                 'Discipline' => disc }
+        File.open(File.join(dir, safe(name) + '.vxtlib.json'), 'w:UTF-8') { |f| f.write(JSON.generate(data)) }
+        count += 1
+      end
+      UI.messagebox("Đã đưa #{count} mục vào thư viện Việt Const:\n#{root}\n\nTrong Việt Const: BIM → Thư viện 3D… (mở lại để thấy mục mới).")
+    rescue StandardError => ex
+      UI.messagebox("Lỗi xuất thư viện: #{ex.message}")
+    end
+
     unless file_loaded?(__FILE__)
       menu = UI.menu('Extensions').add_submenu('Việt Const')
       menu.add_item('Xuất cả mô hình sang Việt Const…') { export(false) }
       menu.add_item('Xuất phần đang chọn sang Việt Const…') { export(true) }
+      menu.add_separator
+      menu.add_item('Đưa component đang chọn vào thư viện Việt Const') { export_library }
       file_loaded(__FILE__)
     end
   end

@@ -174,6 +174,26 @@ public partial class MainWindow
                 poly.Opacity = dn; poly.IsHitTestVisible = dn >= 0.999;
             }
             planCanvas.Children.Add(poly);
+            // ký hiệu chi tiết: họ tham số → các chi tiết (mặt bàn, chân, đầu giường…); thư viện → đường bao hình chiếu bằng
+            Point Loc(double u, double v) => W2S(f.X + cs * u - sn * v, f.Y + sn * u + cs * v);
+            var symBr = poly.Stroke;
+            var fam = FurnitureFamilies.Find(f.Family);
+            if (fam != null)
+            {
+                foreach (var pt in fam.Parts(Math.Max(0.1, f.Width), Math.Max(0.1, f.Depth), Math.Max(0.1, f.Height)))
+                    planCanvas.Children.Add(new Shapes.Polygon
+                    {
+                        Points = new PointCollection { Loc(pt.X0, pt.Y0), Loc(pt.X1, pt.Y0), Loc(pt.X1, pt.Y1), Loc(pt.X0, pt.Y1) },
+                        Stroke = symBr, StrokeThickness = 0.6, IsHitTestVisible = false, Opacity = mep ? dn : 1
+                    });
+            }
+            else if (f.PlanSymbol != null)
+                foreach (var loop in f.PlanSymbol.Where(l => l.Count >= 3))
+                    planCanvas.Children.Add(new Shapes.Polygon
+                    {
+                        Points = new PointCollection(loop.Select(q => Loc(q[0] * f.Width, q[1] * f.Depth))),
+                        Stroke = symBr, StrokeThickness = 0.7, IsHitTestVisible = false, Opacity = mep ? dn : 1
+                    });
         }
     }
 
@@ -243,7 +263,7 @@ public partial class MainWindow
         Add("Chép kiến trúc sang tầng khác…", CopyArchUi);
         Add("Khối lượng hoàn thiện kiến trúc…", ArchQtyUi);
         Add("Nhập mô hình SketchUp / Revit (OBJ, DAE, vxtmesh) → mặt bằng…", ImportMeshModelUi);
-        Add("Plugin SketchUp xuất sang Việt Const…", SketchUpPluginUi);
+        Add("Công cụ xuất SketchUp / 3ds Max / Revit → thư viện, mô hình…", SketchUpPluginUi);
         m.Items.Add(new Separator());
         Add("Kiểm tra _va chạm", RunClashUi);
         m.Items.Add(new Separator());
@@ -437,7 +457,7 @@ public partial class MainWindow
         void Reload() { list.ItemsSource = Library3D.LoadAll().Select(i => new LibRow { I = i, Text = $"{i.Category} – {i.Name} ({i.Width:0.00}×{i.Depth:0.00}×{i.Height:0.00} m, {i.Source})" }).ToList(); list.DisplayMemberPath = "Text"; }
         Reload();
         var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
-        var bImp = new Button { Content = "Nhập OBJ / DAE / Revit…", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 6, 0) };
+        var bImp = new Button { Content = "Nhập OBJ / DAE / DXF 3D / Revit…", Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 6, 0) };
         var bPlace = new Button { Content = "Đặt vào mặt bằng (bắt điểm)", Padding = new Thickness(8, 2, 8, 2) };
         bar.Children.Add(bImp); bar.Children.Add(bPlace);
         DockPanel.SetDock(bar, Dock.Bottom);
@@ -445,7 +465,7 @@ public partial class MainWindow
         w.Content = dock;
         bImp.Click += (s, e) =>
         {
-            var dlg = new OpenFileDialog { Filter = "Mô hình 3D (*.obj;*.dae;*.vxtmesh.json)|*.obj;*.dae;*.json", Multiselect = true, Title = "Nhập vào thư viện 3D" };
+            var dlg = new OpenFileDialog { Filter = "Mô hình 3D (*.obj;*.dae;*.dxf;*.vxtmesh.json)|*.obj;*.dae;*.dxf;*.json", Multiselect = true, Title = "Nhập vào thư viện 3D (SketchUp, Revit, 3ds Max, AutoCAD)" };
             if (dlg.ShowDialog(w) != true) return;
             foreach (var f in dlg.FileNames)
             {

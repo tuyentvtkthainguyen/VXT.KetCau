@@ -49,6 +49,12 @@ namespace KetCauVXT.RevitExport
         /// <summary>Mảng số [x, y] viết trên một dòng.</summary>
         public JsonWriter Pair(double a, double b) { Key(null); _sb.Append('[').Append(Num(a)).Append(", ").Append(Num(b)).Append(']'); return this; }
 
+        /// <summary>Mảng số [x, y, z] trên một dòng.</summary>
+        public JsonWriter Triple(double a, double b, double c) { Key(null); _sb.Append('[').Append(Num(a)).Append(", ").Append(Num(b)).Append(", ").Append(Num(c)).Append(']'); return this; }
+
+        /// <summary>Mảng số nguyên [i, j, k] trên một dòng.</summary>
+        public JsonWriter IntTriple(int a, int b, int c) { Key(null); _sb.Append('[').Append(a).Append(", ").Append(b).Append(", ").Append(c).Append(']'); return this; }
+
         private static string Num(double v)
         {
             if (double.IsNaN(v) || double.IsInfinity(v)) return "0";

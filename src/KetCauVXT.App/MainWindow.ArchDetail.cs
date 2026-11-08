@@ -38,7 +38,7 @@ public partial class MainWindow
             RvBtn("Ốp / sơn tường…", "", "Vùng ốp đá, gạch thẻ, gạch men, gỗ, sơn màu nhấn trên mặt tường (trừ ô cửa)", CladdingUi),
             RvBtn("Chép KT sang tầng…", "", "Sao chép tường (kèm cửa, phào, ốp), phòng, trần, lan can, đồ đạc của tầng đang xem sang các tầng khác", CopyArchUi),
             RvBtn("KL hoàn thiện KT…", "", "Bảng khối lượng mái, trần, lan can, phào chỉ, ốp / sơn theo tầng – xuất CSV", ArchQtyUi),
-            RvBtn("Plugin SketchUp…", "", "Cài plugin SketchUp xuất mô hình sang Việt Const (*.vxtmesh.json, m, Z lên) – kèm trong bộ cài", SketchUpPluginUi),
+            RvBtn("Công cụ xuất SketchUp / 3ds Max / Revit…", "", "Plugin SketchUp, công cụ 3ds Max, add-in Revit: đưa đồ đạc / họ vào thư viện, xuất mô hình (m, Z lên) – kèm trong bộ cài", SketchUpPluginUi),
             RvBtn("Nhập mô hình SketchUp / Revit…", "", "Mô hình 3D (OBJ, DAE, *.vxtmesh.json) → tự tìm cao độ sàn, cắt mặt bằng từng tầng (tường, cột, cửa) → triển khai kết cấu", ImportMeshModelUi));
 
     // ==================================================================
@@ -483,12 +483,17 @@ public partial class MainWindow
     {
         string dir = Path.Combine(AppContext.BaseDirectory, "SketchUp");
         string rbz = Path.Combine(dir, "VietConst_SketchUp.rbz");
-        string msg = "Plugin SketchUp \"Việt Const – Xuất mô hình\" xuất mô hình (m, trục Z lên) ra *.vxtmesh.json để nhập vào Việt Const.\n\n"
-                     + "Cài: SketchUp → Window → Extension Manager → Install Extension → chọn VietConst_SketchUp.rbz.\n"
-                     + "Dùng: Extensions → Việt Const → Xuất cả mô hình / phần đang chọn → lưu file → Việt Const: BIM → Nhập mô hình SketchUp / Revit….\n\n"
-                     + "Plugin chỉ ghi file trên máy, không kết nối mạng, không thu thập dữ liệu.\n\n"
-                     + (File.Exists(rbz) ? "File plugin: " + rbz + "\n\nMở thư mục chứa plugin?" : "Không thấy file plugin trong thư mục cài (" + dir + ") – cài lại Việt Const bản mới.");
-        if (MessageBox.Show(this, msg, "Plugin SketchUp", File.Exists(rbz) ? MessageBoxButton.YesNo : MessageBoxButton.OK, MessageBoxImage.Information) == MessageBoxResult.Yes)
+        string ms = Path.Combine(AppContext.BaseDirectory, "3dsMax", "VietConst_Export.ms");
+        string msg = "CÔNG CỤ XUẤT SANG VIỆT CONST (chỉ ghi file trên máy, không kết nối mạng, không thu thập dữ liệu)\n\n"
+                     + "• SketchUp – plugin VietConst_SketchUp.rbz: Window → Extension Manager → Install Extension.\n"
+                     + "   Extensions → Việt Const → Xuất cả mô hình / phần chọn (*.vxtmesh.json) hoặc \"Đưa component đang chọn vào thư viện\".\n"
+                     + "• 3ds Max – VietConst_Export.ms: Scripting → Run Script… → bảng Việt Const: đưa đối tượng / nhóm vào thư viện, xuất mô hình.\n"
+                     + "• Revit – add-in Việt Const: lệnh \"Đưa họ vào thư viện Việt Const\" (mỗi loại họ một mục, theo gốc chèn của họ) và \"Xuất sang Việt Const\".\n"
+                     + "• Phần mềm khác: xuất OBJ / DAE / DXF 3D (3DFACE, lưới đa diện, MESH) → BIM → Thư viện 3D → Nhập….\n\n"
+                     + "Mục thư viện ghi thẳng vào %AppData%\\VietConst\\ThuVien3D – mở lại Thư viện 3D là thấy; ký hiệu mặt bằng tự lấy theo hình chiếu bằng.\n\n"
+                     + (File.Exists(rbz) ? "Plugin SketchUp: " + rbz + "\n" : "") + (File.Exists(ms) ? "Công cụ 3ds Max: " + ms + "\n" : "")
+                     + (File.Exists(rbz) ? "\nMở thư mục chứa plugin SketchUp?" : "\nKhông thấy plugin trong thư mục cài (" + dir + ") – cài lại Việt Const bản mới.");
+        if (MessageBox.Show(this, msg, "Công cụ xuất SketchUp / 3ds Max / Revit", File.Exists(rbz) ? MessageBoxButton.YesNo : MessageBoxButton.OK, MessageBoxImage.Information) == MessageBoxResult.Yes)
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "/select,\"" + rbz + "\"") { UseShellExecute = true }); } catch (Exception ex) { ShowError("Mở thư mục", ex); }
     }
 

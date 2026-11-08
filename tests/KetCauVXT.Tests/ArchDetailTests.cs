@@ -133,7 +133,7 @@ public static class ArchDetailTests
             var pt = ModelBuilder.NewProject("Xoắn");
             var ta = pt.GetOrAddNode(0, 0, 3); var tm = pt.GetOrAddNode(2, 0, 3); var tb = pt.GetOrAddNode(4, 0, 3);
             ta.Restraint = new[] { true, true, true, true, true, true }; tb.Restraint = new[] { true, true, true, true, true, true };
-            string tsec = pt.Sections.First().Name;
+            string tsec = pt.FrameSections.First(q => q.Name.StartsWith("D")).Name;
             pt.Frames.Add(new FrameElement { Id = 1, NodeI = ta.Id, NodeJ = tm.Id, Section = tsec, Kind = FrameKind.Beam });
             pt.Frames.Add(new FrameElement { Id = 2, NodeI = tm.Id, NodeJ = tb.Id, Section = tsec, Kind = FrameKind.Beam });
             pt.InvalidateIndex();
@@ -216,6 +216,50 @@ public static class ArchDetailTests
         check("KT khối 3D có chi tiết họ tham số", all3.Count(x => FurnitureFamilies.BaseId(x.Id) == $"DD-{bed.Id}"), 4, 0);
         var dd = all3.Where(x => x.Id.StartsWith("DD-")).ToList();
         check("KT mã khối đồ đạc không trùng", dd.Select(x => x.Id).Distinct().Count(), dd.Count, 0);
+
+        // ================= 6b. Thư viện: DXF 3D, ký hiệu mặt bằng, file do plugin ghi thẳng =================
+        string dx3 = string.Join("\n", new[]
+        {
+            "0","SECTION","2","HEADER","9","$INSUNITS","70","4","0","ENDSEC","0","SECTION","2","ENTITIES",
+            // 3DFACE tứ giác 1000 × 500 mm ở z = 0
+            "0","3DFACE","8","0","10","0","20","0","30","0","11","1000","21","0","31","0","12","1000","22","500","32","0","13","0","23","500","33","0",
+            // lưới đa diện: tam giác đứng cao 800 mm
+            "0","POLYLINE","8","0","66","1","70","64","71","3","72","1",
+            "0","VERTEX","8","0","10","0","20","0","30","0","70","192",
+            "0","VERTEX","8","0","10","1000","20","0","30","0","70","192",
+            "0","VERTEX","8","0","10","0","20","0","30","800","70","192",
+            "0","VERTEX","8","0","10","0","20","0","30","0","70","128","71","1","72","2","73","-3",
+            "0","SEQEND","0","ENDSEC","0","EOF"
+        });
+        var dItem = Library3D.ReadDxf3D(dx3, "Kệ");
+        check("KT DXF 3D: 3DFACE tứ giác → 2 tam giác + polyface 1", dItem.Faces.Count, 3, 0);
+        check("KT DXF 3D: mm → m (rộng 1,0, sâu 0,5, cao 0,8)", B(Math.Abs(dItem.Width - 1) < 1e-9 && Math.Abs(dItem.Depth - 0.5) < 1e-9 && Math.Abs(dItem.Height - 0.8) < 1e-9), 1, 0);
+        // ký hiệu mặt bằng của tấm chữ L (hai tấm ngang) → 1 vòng 6 đỉnh
+        var Lm = new LibraryItem { Name = "Bàn chữ L" };
+        void Plate(double x0, double y0, double x1, double y1)
+        {
+            int b0 = Lm.Vertices.Count;
+            Lm.Vertices.Add(new[] { x0, y0, 0.75 }); Lm.Vertices.Add(new[] { x1, y0, 0.75 }); Lm.Vertices.Add(new[] { x1, y1, 0.75 }); Lm.Vertices.Add(new[] { x0, y1, 0.75 });
+            Lm.Faces.Add(new[] { b0, b0 + 1, b0 + 2 }); Lm.Faces.Add(new[] { b0, b0 + 2, b0 + 3 });
+        }
+        Plate(0, 0, 1.6, 0.6); Plate(0, 0.6, 0.6, 1.6);
+        Lm.Vertices.Add(new[] { 0.0, 0, 0 }); Lm.Faces.Add(new[] { 0, 1, Lm.Vertices.Count - 1 });   // chân (mặt đứng)
+        Library3D.Normalize(Lm);
+        check("KT ký hiệu mặt bằng bàn chữ L: 1 vòng 6 đỉnh", B(Lm.PlanSymbol != null && Lm.PlanSymbol.Count == 1 && Lm.PlanSymbol[0].Count == 6), 1, 0);
+        double symA = Lm.PlanSymbol == null ? 0 : Math.Abs(RasterOutline.SignedArea(Lm.PlanSymbol[0].Select(q => (q[0], q[1])).ToList()));
+        check("KT ký hiệu chữ L: diện tích tỷ lệ = (1,6·0,6 + 0,6·1,0) / 1,6²", symA, (1.6 * 0.6 + 0.6 * 1.0) / (1.6 * 1.6), 0.03);
+        // file do plugin SketchUp / 3ds Max / Revit ghi thẳng vào thư viện (không có ký hiệu) → nạp tự tính
+        string libDir2 = Path.Combine(dir, "ThuVienPlugin");
+        Directory.CreateDirectory(Path.Combine(libDir2, "Nội thất"));
+        File.WriteAllText(Path.Combine(libDir2, "Nội thất", "BanL.vxtlib.json"), System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Id = "Nội thất/BanL", Name = "Bàn L (SketchUp)", Category = "Nội thất", Source = "SketchUp (plugin)",
+            Vertices = Lm.Vertices, Faces = Lm.Faces, Width = Lm.Width, Depth = Lm.Depth, Height = Lm.Height, Discipline = "KienTruc"
+        }));
+        var pl = Library3D.LoadAll(libDir2);
+        check("KT nạp mục plugin: có ký hiệu mặt bằng", B(pl.Count == 1 && pl[0].PlanSymbol != null && pl[0].PlanSymbol.Count == 1), 1, 0);
+        var pf = Library3D.Place(p, pl[0], "T2A", 6, 3);
+        check("KT đặt mục thư viện: mang ký hiệu mặt bằng", B(pf.PlanSymbol != null && pf.PlanSymbol.Count == 1 && pf.Family == null), 1, 0);
 
         // ================= 6. Mô hình SketchUp → mặt bằng =================
         var m = HouseMesh();

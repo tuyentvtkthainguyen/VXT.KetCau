@@ -227,6 +227,9 @@ jobs:
           New-Item -ItemType Directory -Force publish\SketchUp | Out-Null
           Compress-Archive -Path tools\SketchUp\vxt_vietconst.rb, tools\SketchUp\vxt_vietconst -DestinationPath publish\SketchUp\VietConst_SketchUp.zip -Force
           Move-Item publish\SketchUp\VietConst_SketchUp.zip publish\SketchUp\VietConst_SketchUp.rbz -Force
+          # công cụ 3ds Max (MAXScript) → {app}\3dsMax
+          New-Item -ItemType Directory -Force publish\3dsMax | Out-Null
+          Copy-Item tools\3dsMax\VietConst_Export.ms publish\3dsMax\ -Force
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
           if (Test-Path KetQuaMau\HuongDan\HuongDanSuDung.md) { Copy-Item KetQuaMau\HuongDan\HuongDanSuDung.md publish\HuongDan.md -Force } else { Copy-Item README.md publish\HuongDan.md -Force }

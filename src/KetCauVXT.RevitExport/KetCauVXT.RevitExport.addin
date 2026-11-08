@@ -16,4 +16,15 @@
     <VendorDescription>Vũ Xuân Tuyến – Việt Const</VendorDescription>
     <VisibilityMode>NotVisibleInFamily</VisibilityMode>
   </AddIn>
+  <AddIn Type="Command">
+    <Name>Đưa họ vào thư viện Việt Const</Name>
+    <Text>Đưa họ vào thư viện Việt Const</Text>
+    <Description>Ghi hình học các loại họ (đồ đạc, thiết bị vệ sinh, đèn, cửa…) đang chọn vào thư viện 3D của Việt Const (%AppData%\VietConst\ThuVien3D)</Description>
+    <Assembly>KetCauVXT.RevitExport.dll</Assembly>
+    <FullClassName>KetCauVXT.RevitExport.ExportLibraryCommand</FullClassName>
+    <ClientId>8e4c2a1d-3f6b-4b7e-9a2c-5d1f0e7b6c32</ClientId>
+    <VendorId>VXT</VendorId>
+    <VendorDescription>Vũ Xuân Tuyến – Việt Const</VendorDescription>
+    <VisibilityMode>NotVisibleInFamily</VisibilityMode>
+  </AddIn>
 </RevitAddIns>
