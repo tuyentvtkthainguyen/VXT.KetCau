@@ -93,6 +93,7 @@ public partial class MainWindow : Window
     {
         if (_busy) return;
         bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
+        if (e.Key == Key.Escape && EscapeDrawCommand()) { e.Handled = true; return; }   // [Esc thoát lệnh] – MainWindow.EscCommand.cs
         if (ctrl && e.Key == Key.N) { MnuNew_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (ctrl && e.Key == Key.O) { MnuOpen_Click(this, new RoutedEventArgs()); e.Handled = true; }
         else if (ctrl && e.Key == Key.S) { MnuSave_Click(this, new RoutedEventArgs()); e.Handled = true; }

@@ -719,6 +719,13 @@ public static partial class UserGuide
             .P("Tab Công trình → Địa điểm: chọn tỉnh / thành (gõ được tên tỉnh cũ, vd Bắc Kạn → Thái Nguyên), ô **Xã/phường/đặc khu** liệt kê đủ đơn vị hành chính cấp xã sau sắp xếp từ 01/7/2025 "
                + "(danh mục theo QĐ 19/2025/QĐ-TTg và các nghị quyết sau đó). Địa danh chưa có số liệu gió: tra Bảng 5.1 QCVN 02:2022 rồi chọn vùng gió – chương trình lưu lại cho lần sau.");
 
+        c.Sec("khoi-tao.esc-thoat-lenh", "Phím Esc thoát lệnh vẽ cấu kiện")
+            .Bullets("Đang dùng lệnh vẽ (＋ Dầm, dầm cong, tường, ô sàn, ban công, cầu thang, cột, lan can, chi tiết kiến trúc, đặt cửa / đồ đạc, vẽ trục, mặt cắt, lệnh gõ ở dòng lệnh, sửa dầm, "
+                + "vẽ đường chuẩn / móng đa giác / nhân bản móng): bấm **Esc một lần** để thoát hẳn lệnh, trở về chế độ **Chọn** – kể cả khi con trỏ nhập đang ở ô chữ của thanh lệnh hoặc dòng lệnh.",
+                "Lan can đang vẽ dở (≥ 2 điểm) được giữ lại khi Esc; điểm đầu chưa thành đoạn bị bỏ.",
+                "Đang sửa ô bảng hoặc danh sách thả xuống đang mở: Esc chỉ huỷ ô / đóng danh sách đó. Không có lệnh nào: Esc bỏ chọn đối tượng như trước.",
+                "Chế độ Triển khai hồ sơ (mặt bằng vị trí cấu kiện): Esc cũng thoát lệnh đặt cấu kiện về \"Chọn\".");
+
         c.Sec("khoi-tao.chon-nhieu-mong", "Chọn nhiều móng (Ctrl + bấm) – gán nhiều móng / đài cọc giống nhau")
             .Bullets("Mặt bằng móng: **Ctrl + bấm** thêm / bỏ móng, đài cọc hoặc chân cột vào danh sách chọn (khung cam nét đứt); **Ctrl + A** chọn mọi móng cùng loại; **Esc** bỏ chọn.",
                 "**Sửa móng…** (hoặc E / Enter): cùng L × B × H, loại móng cho mọi móng chọn. **Xoá móng chọn** (Delete), **Bố trí móng…** áp dụng cho tất cả.",

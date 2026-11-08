@@ -97,6 +97,20 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             else if (e.Key == Key.Delete && _sel != null) DeleteItem(_sel);
             else if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control) { Undo(); e.Handled = true; }
         };
+        // [Esc thoát lệnh] đang vẽ cấu kiện (cột, móng, dầm, sàn, lanh tô, ô văng, cầu thang, mặt cắt, di chuyển…): Esc thoát hẳn lệnh về "Chọn"
+        // kể cả khi con trỏ nhập đang ở ô chữ / danh sách của mặt bằng (trừ ô bảng đang sửa, danh sách thả xuống đang mở)
+        PreviewKeyDown += (s, e) =>
+        {
+            if (e.Key != Key.Escape || (_tool == "Chon" && _first == null && _moveItem == null && _winFrom == null)) return;
+            for (var d = Keyboard.FocusedElement as DependencyObject; d != null; d = d is Visual ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))
+                if ((d is DataGridCell c && c.IsEditing) || (d is ComboBox cb && cb.IsDropDownOpen)) return;
+            _first = null; _moveItem = null; _winFrom = null;
+            if (_tools.TryGetValue("Chon", out var rbSel)) rbSel.IsChecked = true;
+            _tool = "Chon";
+            _cv.Focus();
+            Redraw(); UpdateHint();
+            e.Handled = true;
+        };
         Reload();
     }
 
