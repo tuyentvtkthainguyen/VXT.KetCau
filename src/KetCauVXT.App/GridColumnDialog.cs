@@ -28,6 +28,17 @@ internal sealed class GridColumnDialog : Window
         private void On([CallerMemberName] string n = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
     }
 
+    /// <summary>Một dòng bảng trục: tên, khoảng cách tới trục trước (dòng đầu = 0), toạ độ tự tính.</summary>
+    public sealed class AxisVm : INotifyPropertyChanged
+    {
+        private string _name = ""; private double _sp, _c;
+        public string Name { get => _name; set { _name = value; On(); } }
+        public double Spacing { get => _sp; set { _sp = value; On(); } }
+        public double Coord { get => _c; set { _c = value; On(); } }
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void On([CallerMemberName] string n = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+    }
+
     public GridColumnPlan Plan { get; private set; }
     /// <summary>true = chỉ đổi chiều cao tầng, giữ mô hình; false = tạo lại khung từ lưới.</summary>
     public bool HeightsOnly { get; private set; }
@@ -35,7 +46,9 @@ internal sealed class GridColumnDialog : Window
     private readonly bool _hasModel;
     private readonly int _modelStories;
     private readonly string _origGridKey;
-    private readonly TextBox _tX, _tY, _tFirstX, _tFirstY, _tBase;
+    private readonly TextBox _tBase;
+    private readonly ObservableCollection<AxisVm> _ax = new(), _ay = new();
+    private readonly DataGrid _gx, _gy;
     private readonly ObservableCollection<StoryVm> _rows = new();
     private readonly DataGrid _grid;
     private readonly Canvas _cv;
@@ -52,24 +65,18 @@ internal sealed class GridColumnDialog : Window
         ResizeMode = ResizeMode.CanResize;
         MaxHeight = Math.Max(420, SystemParameters.WorkArea.Height - 24);
 
-        _tX = Box(string.Join(" ", plan.SpansX.Select(v => DialogUi.F(v))), 230);
-        _tY = Box(string.Join(" ", plan.SpansY.Select(v => DialogUi.F(v))), 230);
-        _tFirstX = Box(plan.FirstX, 50); _tFirstY = Box(plan.FirstY, 50);
+        FillAxes(_ax, plan.Names(GridDir.X), plan.SpansX);
+        FillAxes(_ay, plan.Names(GridDir.Y), plan.SpansY);
         _tBase = Box(DialogUi.F(plan.BaseElevation), 70);
         _origGridKey = GridKey();
-        foreach (var t in new[] { _tX, _tY, _tFirstX, _tFirstY }) t.LostFocus += (s, e) => GridChanged();
-        foreach (var t in new[] { _tX, _tY, _tFirstX, _tFirstY }) t.KeyDown += (s, e) => { if (e.Key == Key.Enter) { GridChanged(); e.Handled = true; } };
         _tBase.LostFocus += (s, e) => Recalc();
 
         // ---------- cột trái: lưới trục + bảng tầng ----------
-        var left = new StackPanel { Width = 330, Margin = new Thickness(0, 0, 10, 0) };
-        var gAx = new StackPanel();
-        gAx.Children.Add(Line("Bước trục X (m)", _tX));
-        gAx.Children.Add(Line("Bước trục Y (m)", _tY));
-        gAx.Children.Add(Line("Tên trục đầu X / Y", DialogUi.Row(_tFirstX, new TextBlock { Text = " / ", VerticalAlignment = VerticalAlignment.Center }, _tFirstY)));
-        gAx.Children.Add(DialogUi.Hint("Nhập dạng 3.6 4.2 3.6 hoặc 3*3.3. Tên trục: 1 → 1, 2, 3…; A → A, B, C…; X1 → X1, X2…"));
-        left.Children.Add(new GroupBox { Header = "Lưới trục mặt bằng", Content = gAx, Padding = new Thickness(4) });
-
+        var left = new StackPanel { Width = 360, Margin = new Thickness(0, 0, 10, 0) };
+        _gx = AxisGrid(_ax, GridDir.X);
+        _gy = AxisGrid(_ay, GridDir.Y);
+        left.Children.Add(new GroupBox { Header = "Trục X (trục đứng trên mặt bằng: 1, 2, 3…)", Content = AxisPanel(_gx, _ax, GridDir.X), Padding = new Thickness(4) });
+        left.Children.Add(new GroupBox { Header = "Trục Y (trục ngang trên mặt bằng: A, B, C…)", Content = AxisPanel(_gy, _ay, GridDir.Y), Padding = new Thickness(4), Margin = new Thickness(0, 6, 0, 0) });
         var gSt = new StackPanel();
         gSt.Children.Add(Line("Cao độ chân cột (m)", _tBase));
         _grid = DialogUi.NewGrid();
@@ -139,21 +146,107 @@ internal sealed class GridColumnDialog : Window
         return d;
     }
 
-    private string GridKey() => $"{_tX.Text.Trim()}|{_tY.Text.Trim()}|{_tFirstX.Text.Trim()}|{_tFirstY.Text.Trim()}";
+    private string GridKey() => string.Join(";", _ax.Select(a => a.Name + "=" + DialogUi.F(a.Spacing))) + "|" + string.Join(";", _ay.Select(a => a.Name + "=" + DialogUi.F(a.Spacing)));
+
+    private static void FillAxes(ObservableCollection<AxisVm> rows, IList<string> names, IList<double> spans)
+    {
+        rows.Clear();
+        for (int i = 0; i <= spans.Count; i++)
+            rows.Add(new AxisVm { Name = i < names.Count ? names[i] : (i + 1).ToString(), Spacing = i == 0 ? 0 : Math.Round(spans[i - 1], 4) });
+    }
+
+    private DataGrid AxisGrid(ObservableCollection<AxisVm> rows, GridDir d)
+    {
+        var g = DialogUi.NewGrid();
+        g.ItemsSource = rows;
+        g.Height = 150;
+        g.Columns.Add(DialogUi.Text("Tên trục", "Name", false, 70));
+        g.Columns.Add(DialogUi.Num("Khoảng cách tới trục trước (m)", "Spacing", "0.###", false, 150));
+        g.Columns.Add(DialogUi.Num("Toạ độ (m)", "Coord", "0.000", true, 80));
+        g.CellEditEnding += (s, e) => Dispatcher.BeginInvoke(new Action(() => AxesChanged(d)));
+        g.BeginningEdit += (s, e) => { if (e.Row.GetIndex() == 0 && (e.Column.Header as string ?? "").StartsWith("Khoảng")) e.Cancel = true; };   // trục đầu: toạ độ 0
+        return g;
+    }
+
+    private UIElement AxisPanel(DataGrid g, ObservableCollection<AxisVm> rows, GridDir d)
+    {
+        var sp = new StackPanel();
+        sp.Children.Add(g);
+        var quick = Box("", 120);
+        quick.ToolTip = "Điền nhanh cả bảng: 3.6 4.2 3.6 hoặc 3*3.3 (tên trục tiếp nối từ tên trục đầu)";
+        sp.Children.Add(DialogUi.Row(
+            DialogUi.Btn("Thêm trục", (s, e) =>
+            {
+                DialogUi.Commit(g);
+                double spc = rows.Count > 1 ? rows[^1].Spacing : 3.6;
+                rows.Add(new AxisVm { Name = NextName(rows, d), Spacing = spc > 0 ? spc : 3.6 });
+                Plan.InsertMaskAxis(d, rows.Count - 1);
+                AxesChanged(d);
+            }),
+            DialogUi.Btn("Chèn trục giữa", (s, e) =>
+            {   // chèn sau trục chọn, chia đôi khoảng tới trục kế tiếp – các trục khác giữ nguyên toạ độ
+                DialogUi.Commit(g);
+                int k = g.SelectedIndex;
+                if (k < 0 || k >= rows.Count - 1) { MessageBox.Show(this, "Chọn một trục (không phải trục cuối) để chèn trục giữa nó và trục kế tiếp.", Title); return; }
+                double half = Math.Round(rows[k + 1].Spacing / 2, 4);
+                rows[k + 1].Spacing = Math.Round(rows[k + 1].Spacing - half, 4);
+                rows.Insert(k + 1, new AxisVm { Name = rows[k].Name + "'", Spacing = half });
+                Plan.InsertMaskAxis(d, k + 1);
+                AxesChanged(d);
+            }),
+            DialogUi.Btn("Xoá trục", (s, e) =>
+            {   // xoá trục chọn: khoảng cách của nó cộng vào trục sau → các trục khác giữ nguyên toạ độ
+                DialogUi.Commit(g);
+                int k = g.SelectedIndex;
+                if (k < 0 || rows.Count <= 2) return;
+                if (k + 1 < rows.Count) rows[k + 1].Spacing = Math.Round(rows[k + 1].Spacing + (k == 0 ? 0 : rows[k].Spacing), 4);
+                rows.RemoveAt(k);
+                rows[0].Spacing = 0;
+                Plan.RemoveMaskAxis(d, k);
+                AxesChanged(d);
+            })));
+        sp.Children.Add(DialogUi.Row(DialogUi.Label("Điền nhanh"), quick, DialogUi.Btn("Điền", (s, e) =>
+        {
+            var spans = DetailShim.ParseList(quick.Text);
+            if (spans.Count == 0 || spans.Any(v => v <= 0)) { MessageBox.Show(this, "Nhập dạng 3.6 4.2 3.6 hoặc 3*3.3.", Title); return; }
+            string first = rows.Count > 0 ? rows[0].Name : (d == GridDir.X ? "1" : "A");
+            FillAxes(rows, GridColumnSetup.AxisNames(first, spans.Count + 1), spans);
+            Plan.ResizeMask();
+            AxesChanged(d);
+        })));
+        return sp;
+    }
+
+    private static string NextName(ObservableCollection<AxisVm> rows, GridDir d)
+    {
+        var used = new HashSet<string>(rows.Select(r => r.Name), StringComparer.OrdinalIgnoreCase);
+        string last = rows.Count > 0 ? rows[^1].Name : (d == GridDir.X ? "0" : "");
+        foreach (var n in GridColumnSetup.AxisNames(string.IsNullOrEmpty(last) ? "A" : last, 2).Skip(1)) if (!used.Contains(n)) return n;
+        for (int k = rows.Count + 1; ; k++) { var n = (d == GridDir.X ? "" : "Y") + k; if (!used.Contains(n)) return n; }
+    }
+
+    /// <summary>Bảng trục → Plan (bước trục, tên), toạ độ tự tính, vẽ lại.</summary>
+    private void AxesChanged(GridDir d)
+    {
+        SyncAxes(d);
+        if (_hasModel && GridKey() != _origGridKey && _rbHeights.IsChecked == true) _rbRebuild.IsChecked = true;   // đổi lưới → tạo lại khung
+        Recalc();
+    }
+
+    private void SyncAxes(GridDir d)
+    {
+        var rows = d == GridDir.X ? _ax : _ay;
+        if (rows.Count > 0) rows[0].Spacing = 0;
+        var spans = rows.Skip(1).Select(r => r.Spacing).ToList();
+        if (d == GridDir.X) { Plan.SpansX = spans; Plan.NamesX = rows.Select(r => (r.Name ?? "").Trim()).ToList(); }
+        else { Plan.SpansY = spans; Plan.NamesY = rows.Select(r => (r.Name ?? "").Trim()).ToList(); }
+        Plan.ResizeMask();
+    }
 
     private string NewStoryName()
     {
         var used = new HashSet<string>(_rows.Select(r => r.Name), StringComparer.OrdinalIgnoreCase);
         for (int k = _rows.Count + 1; ; k++) { var n = "T" + k; if (!used.Contains(n)) return n; }
-    }
-
-    private void GridChanged()
-    {
-        Plan.SpansX = DetailShim.ParseList(_tX.Text);
-        Plan.SpansY = DetailShim.ParseList(_tY.Text);
-        Plan.FirstX = _tFirstX.Text.Trim(); Plan.FirstY = _tFirstY.Text.Trim();
-        Plan.ResizeMask();
-        ColumnsChanged();
     }
 
     private void ColumnsChanged()
@@ -170,6 +263,11 @@ internal sealed class GridColumnDialog : Window
         {
             double z = DialogUi.ParseNum(_tBase.Text, 0);
             foreach (var r in _rows) { z += r.Height; r.Elevation = Math.Round(z, 4); }
+            foreach (var axes in new[] { _ax, _ay })
+            {
+                double c = 0;
+                for (int k = 0; k < axes.Count; k++) { if (k > 0) c += axes[k].Spacing; axes[k].Coord = Math.Round(c, 4); }
+            }
             bool sameCount = _rows.Count == _modelStories;
             _rbHeights.IsEnabled = _hasModel && sameCount;
             if (!_rbHeights.IsEnabled && _rbHeights.IsChecked == true) _rbRebuild.IsChecked = true;
@@ -196,7 +294,7 @@ internal sealed class GridColumnDialog : Window
         const double pad = 46;
         _s = Math.Min((W - 2 * pad) / lx, (H - 2 * pad) / ly);
         _ox = (W - lx * _s) / 2; _oy = (H + ly * _s) / 2;
-        var nx = GridColumnSetup.AxisNames(Plan.FirstX, Plan.NX); var ny = GridColumnSetup.AxisNames(Plan.FirstY, Plan.NY);
+        var nx = Plan.Names(GridDir.X); var ny = Plan.Names(GridDir.Y);
         var axis = new SolidColorBrush(Color.FromRgb(200, 60, 60));
         for (int i = 0; i < _cx.Count; i++)
         {
@@ -292,9 +390,7 @@ internal sealed class GridColumnDialog : Window
 
     private void GridChangedSilently()
     {
-        Plan.SpansX = DetailShim.ParseList(_tX.Text);
-        Plan.SpansY = DetailShim.ParseList(_tY.Text);
-        Plan.FirstX = _tFirstX.Text.Trim(); Plan.FirstY = _tFirstY.Text.Trim();
-        Plan.ResizeMask();
+        DialogUi.Commit(_gx); DialogUi.Commit(_gy);
+        SyncAxes(GridDir.X); SyncAxes(GridDir.Y);
     }
 }

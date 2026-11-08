@@ -37,6 +37,27 @@ public static class GridColumnTests
         check("GC thêm nhịp X: giao điểm mới có cột", pl.ColumnCount, 6 + 3, 0);
         check("GC lỗi trùng tên trục", B(GridColumnSetup.Validate(new GridColumnPlan { SpansX = new() { 3 }, SpansY = new() { 3 }, FirstX = "1", FirstY = "1", Stories = new() { new StoryRow { Name = "T2", Height = 3 } } }) != null), 1, 0);
 
+        // ---- bảng trục (như bảng cao độ): tên từng trục, chèn / xoá trục giữ đúng cột ----
+        var pn = Plan3x3();
+        pn.NamesX = new() { "1", "2", "3" }; pn.NamesY = new() { "A", "B", "C" };
+        pn.Columns[1, 1] = false;                          // 2-B không cột
+        pn.SpansX = new() { 4, 2, 2 }; pn.NamesX = new() { "1", "2", "2'", "3" };
+        pn.InsertMaskAxis(GridDir.X, 2);                   // chèn trục 2' giữa 2 và 3
+        check("GC chèn trục 2': 4 trục X", pn.Columns.GetLength(0), 4, 0);
+        check("GC chèn trục: 2-B vẫn không cột, 3-B vẫn có cột", B(!pn.Columns[1, 1] && pn.Columns[3, 1] && pn.Columns[2, 1]), 1, 0);
+        check("GC tên trục theo bảng", B(string.Join(",", pn.Names(GridDir.X)) == "1,2,2',3"), 1, 0);
+        pn.RemoveMaskAxis(GridDir.X, 1);                   // xoá trục 2
+        pn.SpansX = new() { 6, 2 }; pn.NamesX = new() { "1", "2'", "3" };
+        check("GC xoá trục 2: còn 3 trục, trục 2' giữ cột", B(pn.Columns.GetLength(0) == 3 && pn.Columns[1, 1]), 1, 0);
+        pn.NamesY = new() { "A", "A", "C" };
+        check("GC tên trục Y trùng → báo lỗi", B(GridColumnSetup.Validate(pn) != null), 1, 0);
+        pn.NamesY = new() { "A", "B", "D" };
+        var pq = ModelBuilder.NewProject();
+        GridColumnSetup.Rebuild(pq, pn, new ModelBuilder.GridFrameOptions());
+        check("GC tạo lưới theo tên trong bảng (2', D)", B(pq.GridsX.Any(g => g.Name == "2'" && Math.Abs(g.Coord - 6) < 1e-9) && pq.GridsY.Any(g => g.Name == "D")), 1, 0);
+        var pback = GridColumnSetup.FromProject(pq);
+        check("GC đọc lại tên trục từ dự án", B(string.Join(",", pback.Names(GridDir.X)) == "1,2',3"), 1, 0);
+
         // ---- tạo lại khung, bỏ cột giữa ----
         var p = ModelBuilder.NewProject();
         var plan = Plan3x3();

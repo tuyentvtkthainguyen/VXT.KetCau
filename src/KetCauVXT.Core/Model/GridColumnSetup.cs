@@ -25,6 +25,9 @@ public sealed class GridColumnPlan
     public List<double> SpansY { get; set; } = new();
     public string FirstX { get; set; } = "1";
     public string FirstY { get; set; } = "A";
+    /// <summary>Tên từng trục (nhập trong bảng trục); null hoặc sai số lượng → đánh tên liên tiếp từ FirstX / FirstY</summary>
+    public List<string> NamesX { get; set; }
+    public List<string> NamesY { get; set; }
     public double BaseElevation { get; set; }
     public List<StoryRow> Stories { get; set; } = new();
     /// <summary>[i, j]: i = chỉ số trục X (1, 2, 3…), j = chỉ số trục Y (A, B…); true = có cột.</summary>
@@ -55,6 +58,46 @@ public sealed class GridColumnPlan
 
     /// <summary>Đảo cả cột trục X thứ i (mọi giao điểm trên trục 1, 2…).</summary>
     public void ToggleCol(int i) { bool any = false; for (int j = 0; j < NY; j++) any |= Columns[i, j]; for (int j = 0; j < NY; j++) Columns[i, j] = !any; }
+
+    /// <summary>Tên các trục theo phương (bảng trục nếu đủ, không thì liên tiếp từ tên đầu).</summary>
+    public List<string> Names(GridDir d)
+    {
+        var n = d == GridDir.X ? NamesX : NamesY;
+        int cnt = d == GridDir.X ? NX : NY;
+        if (n != null && n.Count == cnt && n.All(q => !string.IsNullOrWhiteSpace(q))) return n.Select(q => q.Trim()).ToList();
+        return GridColumnSetup.AxisNames(d == GridDir.X ? FirstX : FirstY, cnt);
+    }
+
+    /// <summary>Chèn trục vào vị trí index (0…n) của ma trận cột – giữ đúng cột của các trục khác; trục mới mặc định có cột.</summary>
+    public void InsertMaskAxis(GridDir d, int index, bool val = true)
+    {
+        var old = Columns ?? new bool[0, 0];
+        int ox = old.GetLength(0), oy = old.GetLength(1);
+        int nx = d == GridDir.X ? ox + 1 : ox, ny = d == GridDir.Y ? oy + 1 : oy;
+        var m = new bool[nx, ny];
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < ny; j++)
+            {
+                if (d == GridDir.X && i == index || d == GridDir.Y && j == index) { m[i, j] = val; continue; }
+                int si = d == GridDir.X && i > index ? i - 1 : i, sj = d == GridDir.Y && j > index ? j - 1 : j;
+                m[i, j] = si < ox && sj < oy ? old[si, sj] : val;
+            }
+        Columns = m;
+    }
+
+    /// <summary>Bỏ trục index khỏi ma trận cột (các trục sau dồn lên, giữ đúng cột).</summary>
+    public void RemoveMaskAxis(GridDir d, int index)
+    {
+        var old = Columns ?? new bool[0, 0];
+        int ox = old.GetLength(0), oy = old.GetLength(1);
+        if (d == GridDir.X && (index < 0 || index >= ox) || d == GridDir.Y && (index < 0 || index >= oy)) return;
+        int nx = d == GridDir.X ? ox - 1 : ox, ny = d == GridDir.Y ? oy - 1 : oy;
+        var m = new bool[Math.Max(0, nx), Math.Max(0, ny)];
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < ny; j++)
+                m[i, j] = old[d == GridDir.X && i >= index ? i + 1 : i, d == GridDir.Y && j >= index ? j + 1 : j];
+        Columns = m;
+    }
 
     public List<double> Coords(GridDir d)
     {
@@ -106,6 +149,8 @@ public static class GridColumnSetup
         for (int j = 1; j < ys.Count; j++) plan.SpansY.Add(Math.Round(ys[j].Coord - ys[j - 1].Coord, 4));
         if (xs.Count > 0) plan.FirstX = xs[0].Name;
         if (ys.Count > 0) plan.FirstY = ys[0].Name;
+        plan.NamesX = xs.Select(g => g.Name).ToList();
+        plan.NamesY = ys.Select(g => g.Name).ToList();
         double prev = p.BaseElevation;
         foreach (var s in p.Stories.OrderBy(s => s.Elevation)) { plan.Stories.Add(new StoryRow { Name = s.Name, Height = Math.Round(s.Elevation - prev, 4) }); prev = s.Elevation; }
         plan.ResizeMask();
@@ -129,7 +174,9 @@ public static class GridColumnSetup
         var names = plan.Stories.Select(s => (s.Name ?? "").Trim()).ToList();
         if (names.Any(n => n.Length == 0)) return "Tên tầng không được để trống.";
         if (names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Count) return "Tên tầng bị trùng.";
-        var nx = AxisNames(plan.FirstX, plan.NX); var ny = AxisNames(plan.FirstY, plan.NY);
+        var nx = plan.Names(GridDir.X); var ny = plan.Names(GridDir.Y);
+        if (nx.Distinct(StringComparer.OrdinalIgnoreCase).Count() != nx.Count) return "Tên trục X bị trùng.";
+        if (ny.Distinct(StringComparer.OrdinalIgnoreCase).Count() != ny.Count) return "Tên trục Y bị trùng.";
         if (nx.Intersect(ny, StringComparer.OrdinalIgnoreCase).Any()) return "Tên trục X và trục Y bị trùng (vd cùng bắt đầu bằng số).";
         return null;
     }
@@ -138,7 +185,7 @@ public static class GridColumnSetup
     public static void ApplyGridAndStories(Project p, GridColumnPlan plan)
     {
         p.Grids.Clear();
-        var nx = AxisNames(plan.FirstX, plan.NX); var ny = AxisNames(plan.FirstY, plan.NY);
+        var nx = plan.Names(GridDir.X); var ny = plan.Names(GridDir.Y);
         var cx = plan.Coords(GridDir.X); var cy = plan.Coords(GridDir.Y);
         for (int i = 0; i < cx.Count; i++) p.Grids.Add(new GridLine { Name = nx[i], Dir = GridDir.X, Coord = cx[i] });
         for (int j = 0; j < cy.Count; j++) p.Grids.Add(new GridLine { Name = ny[j], Dir = GridDir.Y, Coord = cy[j] });
