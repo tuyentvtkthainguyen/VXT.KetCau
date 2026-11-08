@@ -281,31 +281,29 @@ public static partial class FootingDesigner
         // ---- phân bố áp lực ròng tính toán (không kể trọng lượng móng + đất) ----
         var design = Cases(loads, angle, 1.0, Df, props.Cx, props.Cy, 0, strapF).Select(cse => (cse.N, D: Solve(cells, cse.N, cse.Ex, cse.Ey))).Where(x => x.D.Ok).ToList();
 
-        // ---- chọc thủng ----
+        // ---- chọc thủng + uốn: tăng H tới khi đạt chọc thủng và bố trí được thép (bước ≥ 100 mm) ----
         double cover = cs.CoverFooting;
         int dGuess = dias[Math.Min(1, dias.Length - 1)];
-        double H = Math.Max(MinHeight, given != null && given.Height > 0 ? given.Height : MinHeight);
+        bool fixedH = given != null && given.Height > 0;
+        double H = Math.Max(MinHeight, fixedH ? given.Height : MinHeight);
         double F = 0, Fu = 0, uIn = 0;
         var colLoc = new ShapedFooting.ColumnGeo(0, 0, cg.Angle - angle, cg.D2, cg.D3);
-        for (int it = 0; it < 100; it++)
+        void Punch(double hh)
         {
-            double h0 = H - cover - dGuess / 1000.0;
+            double h0 = hh - cover - dGuess / 1000.0;
             var basePoly = PolyGeom.ClipConvex(loc, colLoc.Expanded(h0));
-            var inBase = cells.Where(c => PolyGeom.Inside(basePoly, c.X, c.Y)).ToList();
+            var inBase = basePoly.Count >= 3 ? cells.Where(c => PolyGeom.Inside(basePoly, c.X, c.Y)).ToList() : new List<Cell>();
             uIn = PerimeterInside(loc, colLoc.Expanded(h0 / 2));
             Fu = conc.Rbt * uIn * Math.Max(h0, 0);
             F = 0;
             foreach (var (N, D) in design) F = Math.Max(F, N - inBase.Sum(c => D.P(c.X, c.Y) * c.W));
-            if (F <= Fu + 1e-6) break;
-            if (given != null && given.Height > 0) break;
+        }
+        for (int it = 0; it < 100; it++)
+        {
+            Punch(H);
+            if (F <= Fu + 1e-6 || fixedH) break;
             H = Math.Round(H + 0.05, 3);
         }
-        d.H = H; d.Hb = H;   // móng hình dạng: đế phẳng
-        d.Checks.Add(new CheckItem
-        {
-            Name = "Chọc thủng F ≤ Rbt·u·h0", Demand = F, Capacity = Fu, Unit = "kN",
-            Note = "H = " + DesignUtil.F(H * 1000, "0") + " mm, u = " + DesignUtil.F(uIn, "0.00") + " m (phần chu vi trong đáy móng)"
-        });
 
         // ---- uốn tại mép cột (hệ địa phương) ----
         double mL = 0, mB = 0;   // kN.m trên 1 m bề rộng mặt cắt
@@ -316,25 +314,44 @@ public static partial class FootingDesigner
             mB = Math.Max(mB, FaceMoment(cells, loc, D, cy1, false, true));
             mB = Math.Max(mB, FaceMoment(cells, loc, D, cy0, false, false));
         }
-        d.ML = mL * d.B; d.MB = mB * d.L;
         string key = MemberKey(n.Id);
-        string basis = Basis(d.L, d.B, H);
         int nUser = 0;
-        SpacingChoice Ovr(string zone, SpacingChoice auto, Func<int, double> req)
+        SpacingChoice sL = null, sB = null;
+        string basis = "";
+        for (int it = 0; it < 40; it++)
         {
-            var ch = p.ValidRebarChoice(key, zone, -1, basis);
-            if (ch == null || ch.Dia <= 0 || ch.Spacing <= 0) return auto;
-            nUser++;
-            var sc = new SpacingChoice { Dia = ch.Dia, Spacing = ch.Spacing, AsReqPerM = req(ch.Dia), Ok = true };
-            if (sc.AsPerM < sc.AsReqPerM * (1 - 1e-6))
-                d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + sc.Text);
-            return sc;
+            basis = Basis(d.L, d.B, H);
+            nUser = 0;
+            int msgMark = d.Messages.Count;
+            SpacingChoice Ovr(string zone, SpacingChoice auto, Func<int, double> req)
+            {
+                var ch = p.ValidRebarChoice(key, zone, -1, basis);
+                if (ch == null || ch.Dia <= 0 || ch.Spacing <= 0) return auto;
+                nUser++;
+                var sc = new SpacingChoice { Dia = ch.Dia, Spacing = ch.Spacing, AsReqPerM = req(ch.Dia), Ok = true };
+                if (sc.AsPerM < sc.AsReqPerM * (1 - 1e-6))
+                    d.Messages.Add("LỖI bố trí thép do người dùng chọn không đạt – " + zone + " " + sc.Text);
+                return sc;
+            }
+            double hh = H;
+            sL = Ovr(RebarZones.FootingL, RcSection.ChooseSpacing(dia => AsPerM(mL, hh - cover - dia / 2000.0, SteelOf(dia)), dias, 0.20, 0.10, 0.15, 10),
+                dia => AsPerM(mL, hh - cover - dia / 2000.0, SteelOf(dia)));
+            double dl0 = sL.Dia / 1000.0;
+            sB = Ovr(RebarZones.FootingB, RcSection.ChooseSpacing(dia => AsPerM(mB, hh - cover - dl0 - dia / 2000.0, SteelOf(dia)), dias, 0.20, 0.10, 0.15, 10),
+                dia => AsPerM(mB, hh - cover - dl0 - dia / 2000.0, SteelOf(dia)));
+            if ((sL.Ok && sB.Ok) || fixedH || nUser > 0 || H >= 1.5 - 1e-9) break;
+            if (d.Messages.Count > msgMark) d.Messages.RemoveRange(msgMark, d.Messages.Count - msgMark);
+            H = Math.Round(H + 0.05, 3);
         }
-        var sL = Ovr(RebarZones.FootingL, RcSection.ChooseSpacing(dia => AsPerM(mL, H - cover - dia / 2000.0, SteelOf(dia)), dias, 0.20, 0.10, 0.15, 10),
-            dia => AsPerM(mL, H - cover - dia / 2000.0, SteelOf(dia)));
+        Punch(H);
+        d.H = H; d.Hb = H;   // móng hình dạng: đế phẳng
+        d.Checks.Add(new CheckItem
+        {
+            Name = "Chọc thủng F ≤ Rbt·u·h0", Demand = F, Capacity = Fu, Unit = "kN",
+            Note = "H = " + DesignUtil.F(H * 1000, "0") + " mm, u = " + DesignUtil.F(uIn, "0.00") + " m (phần chu vi trong đáy móng)"
+        });
+        d.ML = mL * d.B; d.MB = mB * d.L;
         double dl = sL.Dia / 1000.0;
-        var sB = Ovr(RebarZones.FootingB, RcSection.ChooseSpacing(dia => AsPerM(mB, H - cover - dl - dia / 2000.0, SteelOf(dia)), dias, 0.20, 0.10, 0.15, 10),
-            dia => AsPerM(mB, H - cover - dl - dia / 2000.0, SteelOf(dia)));
         d.UserRebarZones = nUser;
         d.AsL = sL.AsReqPerM * d.B; d.AsB = sB.AsReqPerM * d.L;
         d.DiaL = sL.Dia; d.DiaB = sB.Dia; d.SpacingL = sL.Spacing; d.SpacingB = sB.Spacing;

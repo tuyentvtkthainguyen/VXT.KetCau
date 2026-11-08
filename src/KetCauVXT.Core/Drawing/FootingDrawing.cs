@@ -259,7 +259,7 @@ public static class FootingDrawing
         if (Math.Abs(exS) > 1e-6)   // [MóngLệchTâm] kích thước tim cột – mép móng, đầu dầm cân bằng
         {
             w.DimChainH(new List<double> { 0, (xc1 + xc2) / 2, L }, H, H + neck + 3.5 * th, k);
-            var st = f.Eccentric.Straps.FirstOrDefault(x => x.AlongX && x.NodeA == f.NodeId);
+            var st = f.Eccentric?.Straps.FirstOrDefault(x => x.AlongX && x.NodeA == f.NodeId);   // [MóngHìnhDạng] móng hình dạng: không có Eccentric
             if (st != null)
             {
                 double hs = Math.Min(H, 600 * k);

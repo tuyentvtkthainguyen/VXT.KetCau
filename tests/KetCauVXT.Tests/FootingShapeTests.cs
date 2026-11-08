@@ -76,7 +76,7 @@ public static class FootingShapeTests
         check("Cắt nửa mặt phẳng x ≥ 0,5: diện tích 1,5", PolyGeom.Properties(half).Area, 1.5, 1e-12);
         var diag = new LotLine { X1 = 0, Y1 = 1.5, X2 = 1.5, Y2 = 0 };   // x + y = 1,5
         var cut = PolyGeom.ClipByLine(rect, diag, 2, 1);
-        check("Cắt theo đường chuẩn xiên: giữ phía chứa tim cột", PolyGeom.Properties(cut).Area, 2 - 0.5 * 1 * 1 - 0, 1e-9);
+        check("Cắt theo đường chuẩn xiên: giữ phía chứa tim cột (bỏ hình thang 1 m²)", PolyGeom.Properties(cut).Area, 1.0, 1e-9);
         check("Cắt theo đường chuẩn: mọi đỉnh ở phía trong", B(cut.All(q => q.X + q.Y >= 1.5 - 1e-9)), 1, 0);
         var cut2 = PolyGeom.ClipByLine(rect, new LotLine { X1 = 0, Y1 = 1.5, X2 = 1.5, Y2 = 0, Clearance = 0.1 }, 2, 1);
         check("Khe hở đường chuẩn: đỉnh cách đường ≥ khe hở", B(cut2.All(q => (q.X + q.Y - 1.5) / Math.Sqrt(2) >= 0.1 - 1e-9)), 1, 0);
@@ -165,6 +165,8 @@ public static class FootingShapeTests
         check("Dóng mép cột: M dầm cân bằng = N·e", f3.StrapMoment, f3.N * Math.Abs(f3.Gx - n3.Cx), 1e-6);
         check("Dóng mép cột: Q dầm = N·e/(Ls − e)", f3.StrapShear, f3.N * Math.Abs(f3.Gx - n3.Cx) / (f3.StrapSpan - Math.Abs(f3.Gx - n3.Cx)), 1e-6);
         check("Dóng mép cột: áp lực nền đạt (tự tăng kích thước)", B(f3.Checks.Take(3).All(c => c.Ok)), 1, 0);
+        foreach (var c in f3.Checks.Where(c => !c.Ok)) Console.WriteLine($"   ! {c.Name}: {c.Demand:0.###} / {c.Capacity:0.###} {c.Unit}");
+        foreach (var m in f3.Messages.Where(m => m.StartsWith("LỖI"))) Console.WriteLine("   ! " + m);
         check("Dóng mép cột: đạt", B(f3.Ok), 1, 0);
         // tự cân bằng (không dầm cân bằng): đáy móng chịu N·e → cảnh báo, tách nền
         p.Foundation.Placements[0].StrapBeam = false;
@@ -322,6 +324,11 @@ public static class FootingShapeTests
         int nShaped = s.Footings.Count(f => f.Shaped);
         check("Bản vẽ: có móng hình dạng", B(nShaped >= 2), 1, 0);
         var figs = FootingDrawing.BuildAll(p, s);
+        foreach (var fg in figs.Where(x => x.W.ToDxfString().Contains("L\\U+1ED6I V\\U+1EBC")))
+        {
+            string t = fg.W.ToDxfString(); int k = t.IndexOf("L\\U+1ED6I V\\U+1EBC");
+            Console.WriteLine("   ! Hình lỗi " + fg.Name + ": " + t.Substring(k, Math.Min(300, t.Length - k)).Replace("\n", " "));
+        }
         check("Bản vẽ: không lỗi hình", figs.Count(fg => fg.W.ToDxfString().Contains("L\\U+1ED6I V\\U+1EBC")), 0, 0);
         var fd = s.Footings.First(f => f.Shaped);
         var dp = ShapedFootingDrawing.DetailPlan(p, fd, 1, FootingDrawing.SheetScale);

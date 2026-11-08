@@ -36,7 +36,7 @@ public static class FootingLayout
             nt++;
             if (copySize && (L > 0 || B > 0 || H > 0))
             {
-                FoundationReset.Clear(p, d, new[] { t });
+                FoundationReset.Clear(p, null, new[] { t });   // giữ kết quả thiết kế đang xem (sẽ thiết kế lại)
                 FoundationReset.SetSize(p, t, L, B, H, srcFt?.Type);
                 ns++;
             }
@@ -95,7 +95,7 @@ public static class FootingLayout
                 foreach (int n in g.Nodes)
                 {
                     var ft = p.Footings.FirstOrDefault(f => f.NodeId == n);
-                    FoundationReset.Clear(p, d, new[] { n });
+                    FoundationReset.Clear(p, null, new[] { n });
                     FoundationReset.SetSize(p, n, g.L, g.B, g.H, ft?.Type);
                 }
         return res;
