@@ -28,6 +28,8 @@ internal sealed class StairDialog : Window
 
     public StairDialog(Project p, Stair draft, bool exists, Func<Stair, bool> apply, Func<Stair, bool> remove)
     {
+        ZoomPan.Wrap(_plan);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
+        ZoomPan.Wrap(_sec);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _p = p; _s = draft; _apply = apply; _remove = remove;
         DialogUi.Setup(this, "Khai báo cầu thang " + draft.Name, 1180, 780);
         Help.Attach(this, "mo-hinh.cau-thang");   // nút "?" + F1 – Help.cs

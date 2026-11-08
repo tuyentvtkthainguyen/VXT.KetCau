@@ -37,6 +37,7 @@ internal sealed partial class BoundaryDialog : Window   // [LùiCọcRanh] parti
 
     public BoundaryDialog(Project p)
     {
+        ZoomPan.Wrap(_cv);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _p = p;
         var fs = p.Foundation ?? new FoundationSettings();
         DialogUi.Setup(this, "Ranh giới đất – móng lệch tâm", 900, 560);
@@ -272,6 +273,7 @@ internal sealed class EccentricFootingDialog : Window
 
     public EccentricFootingDialog(Project p, Func<AnalysisResults> res, int node, Func<int, EccentricOverride, Task> apply)
     {
+        ZoomPan.Wrap(_cv);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _p = p; _res = res; _node = node; _apply = apply;
         var n = p.Nodes.FirstOrDefault(x => x.Id == node);
         DialogUi.Setup(this, $"Móng lệch tâm – chân cột nút {node}" + (n != null ? " (" + GridText(p, n) + ")" : ""), 1080, 640);

@@ -127,6 +127,7 @@ public sealed class DetailSheetWindow : Window
         Grid.SetColumn(left, 0); grid.Children.Add(left);
 
         _scroll.Content = _canvas;
+        ZoomPan.Attach(_scroll, _canvas);   // con lăn thu phóng, kéo chuột giữa / phải di chuyển – ZoomPan.cs
         _scroll.SizeChanged += (s, e) => { if (Math.Abs(_zoom - 1) < 1e-9) Render(); };
         Grid.SetColumn(_scroll, 1); grid.Children.Add(_scroll);
 

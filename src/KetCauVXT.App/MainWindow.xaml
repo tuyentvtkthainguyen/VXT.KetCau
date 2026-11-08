@@ -698,6 +698,10 @@
                                 <ComboBox x:Name="cbFndType" Width="100" Margin="0,0,4,0" SelectionChanged="CbFndType_SelectionChanged" ToolTip="Phương án móng cho cả công trình"/>
                                 <Button Content="Thông số…" Click="MnuDesignFoundation_Click" Style="{StaticResource SmallButton}" ToolTip="Thông số móng cọc, móng băng"/>
                                 <Button Content="Thiết kế móng" Click="BtnFndDesign_Click" Style="{StaticResource SmallButton}" FontWeight="Bold"/>
+                                <Button Content="Sửa móng…" Click="BtnFndEdit_Click" Style="{StaticResource SmallButton}" ToolTip="Sửa kích thước L × B × H, loại móng của móng đang chọn rồi thiết kế lại (hoặc bấm đúp vào móng)"/>
+                                <Button Content="Xoá móng chọn" Click="BtnFndDelete_Click" Style="{StaticResource SmallButton}" ToolTip="Xoá móng đã thiết kế tại móng đang chọn (phím Delete) để thiết kế lại"/>
+                                <Button Content="Xoá tất cả móng" Click="BtnFndDeleteAll_Click" Style="{StaticResource SmallButton}" ToolTip="Xoá toàn bộ móng đã thiết kế: kích thước đã chốt, bố trí cọc, thép đã chọn"/>
+                                <Button Content="Thiết kế lại" Click="BtnFndRedesign_Click" Style="{StaticResource SmallButton}" ToolTip="Xoá toàn bộ móng đã thiết kế rồi thiết kế lại từ đầu"/>
                                 <!-- bố trí cọc, kiểm tra an toàn (MainWindow.PileLayout.cs) -->
                                 <Button Content="Bố trí cọc…" Click="BtnPileLayout_Click" Style="{StaticResource SmallButton}" ToolTip="Chọn số cọc, sơ đồ bố trí, khoảng cách cọc, kích thước / chiều cao đài cho đài đang chọn – kiểm tra an toàn trực tiếp"/>
                                 <Button Content="Kiểm tra an toàn…" Click="BtnFndSafety_Click" Style="{StaticResource SmallButton}" ToolTip="Bảng kiểm tra an toàn và sự làm việc của móng đang chọn (đài cọc, móng đơn, móng băng)"/>
@@ -713,6 +717,8 @@
                                     <ColumnDefinition Width="400" MinWidth="220"/>
                                 </Grid.ColumnDefinitions>
                                 <Border Grid.Column="0" x:Name="fndHost" ClipToBounds="True" Background="White"
+                                        Focusable="True" FocusVisualStyle="{x:Null}"
+                                        MouseDown="FndHost_MouseDown" MouseUp="FndHost_MouseUpAny" PreviewMouseMove="FndHost_PreviewMouseMove" KeyDown="FndHost_KeyDown"
                                         MouseWheel="FndHost_MouseWheel"
                                         MouseLeftButtonDown="FndHost_MouseLeftButtonDown"
                                         MouseMove="FndHost_MouseMove"

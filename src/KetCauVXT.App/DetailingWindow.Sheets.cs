@@ -113,6 +113,7 @@ public sealed partial class DetailingWindow
         bar.Children.Add(_sheetHead);
         DockPanel.SetDock(bar, Dock.Top); dp.Children.Add(bar);
         _sheetScroll.Content = _sheetCanvas;
+        ZoomPan.Attach(_sheetScroll, _sheetCanvas);   // con lăn thu phóng, kéo chuột giữa / phải di chuyển – ZoomPan.cs
         dp.Children.Add(_sheetScroll);
         _sheetTab = new TabItem { Header = "Bản vẽ (sheet)", Content = dp };
         _tabs.Items.Add(_sheetTab);

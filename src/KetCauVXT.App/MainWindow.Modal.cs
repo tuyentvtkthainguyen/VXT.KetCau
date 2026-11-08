@@ -144,6 +144,7 @@ public partial class MainWindow
         bar.Children.Add(_btnModalPlay); bar.Children.Add(btnSet);
         _modalCanvas = new Canvas { ClipToBounds = true };
         _modalHost = new Border { Background = new SolidColorBrush(Color.FromRgb(0x20, 0x26, 0x2E)), ClipToBounds = true, Child = _modalCanvas };
+        ZoomPan.Attach(_modalHost, _modalCanvas, true);
         _modalHost.SizeChanged += (s, e) => DrawModal();
         _modalHost.MouseLeftButtonDown += (s, e) => { _modalRot = true; _modalRotStart = e.GetPosition(_modalHost); _mYaw0 = _mYaw; _mPitch0 = _mPitch; _modalHost.CaptureMouse(); };
         _modalHost.MouseMove += (s, e) =>

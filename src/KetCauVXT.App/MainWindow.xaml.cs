@@ -46,6 +46,9 @@ public partial class MainWindow : Window
     // ==================================================================
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        // thu phóng / di chuyển các hình vẽ tĩnh của giai đoạn thiết kế (mặt cắt móng, biểu đồ cấu kiện) – ZoomPan.cs
+        ZoomPan.Attach(fndSecHost, fndSecCanvas, true);
+        ZoomPan.Attach(diagramHost, diagramCanvas, true);
         cbTerrain.ItemsSource = new[] { "A", "B", "C" };
         cbSeisSoil.ItemsSource = new[] { "A", "B", "C", "D", "E" };
         InitLocationUi();

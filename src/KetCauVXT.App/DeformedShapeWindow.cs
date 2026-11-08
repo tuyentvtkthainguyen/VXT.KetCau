@@ -36,6 +36,7 @@ internal sealed class DeformedShapeWindow : Window
 
     public DeformedShapeWindow(Project p, AnalysisResults res, string initialCase)
     {
+        ZoomPan.Wrap(_canvas);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _p = p; _res = res;
         DialogUi.Setup(this, "Hình biến dạng (Deformed Shape)", 1100, 760);
         var names = res.Cases.Keys.Concat(p.Combinations.Concat(res.ExternalCombos).Where(c => c.Type != ComboType.Envelope).Select(c => c.Name)).Distinct().ToList();

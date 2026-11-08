@@ -130,6 +130,7 @@ internal sealed class PileLayoutDialog : Window
 
     public PileLayoutDialog(Project p, Func<AnalysisResults> res, PileCapDesign cap, Func<List<int>, PileCapOverride, Task> apply)
     {
+        ZoomPan.Wrap(_plan);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _p = p; _res = res; _apply = apply;
         _nodes = cap.NodeIds.ToList();
         _node = _nodes.FirstOrDefault();

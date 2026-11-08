@@ -55,6 +55,7 @@ internal sealed class RebarChoiceDialog : Window
         Func<MemberDesignBase, RebarZoneInfo, List<RebarAlternative>> alts, Func<RebarZoneInfo, RebarAlternative, Task> apply,
         Func<RebarZoneInfo, Task> clear)
     {
+        ZoomPan.Wrap(_sketch);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _member = member; _zones = zones; _alts = alts; _apply = apply; _clear = clear;
         DialogUi.Setup(this, "Chọn bố trí thép", 1450, 640);
 

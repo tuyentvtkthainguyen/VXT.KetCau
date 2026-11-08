@@ -116,6 +116,7 @@ internal sealed class ResultImportDialog : Window
 
     public ResultImportDialog(Project p, AnalysisResults own, Func<AnalysisResults, bool, Task<bool>> apply)
     {
+        ZoomPan.Wrap(_canvas);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _p = p; _own = own; _apply = apply;
         _ses = new ResultImportSession(p, own);
         DialogUi.Setup(this, "Nhập kết quả nội lực – ETABS / SAP2000 / SAFE / phần mềm khác", 1250, 760);

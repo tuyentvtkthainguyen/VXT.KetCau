@@ -697,6 +697,14 @@ public static partial class UserGuide
                 "**Hồ sơ theo bộ môn…**: chọn bộ môn – Kiến trúc (KT-01…: mặt bằng các tầng có tường, cửa, tên + diện tích phòng, đồ đạc; thống kê cửa; thống kê phòng), Kết cấu (KC-…: bộ bản vẽ kết cấu), Điện nước (DN-…); trên mặt bằng, bộ môn khác hiện nét xám làm nền đối chiếu.")
             .Tip("Ở bộ môn Điện nước, phần kiến trúc là nền tham chiếu: sửa tường / cửa ở bộ môn Kiến trúc rồi chạy **Kiểm tra va chạm** để thấy thiết bị, ống bị ảnh hưởng.");
 
+        c.Sec("khoi-tao.xoa-mong", "Xoá móng đã thiết kế, sửa móng trên mặt bằng – thu phóng mọi hình vẽ thiết kế")
+            .Bullets("Tab **Mô hình móng**: **Xoá móng chọn** (hoặc chọn móng rồi **Delete**), **Xoá tất cả móng**, **Thiết kế lại** (xoá hết rồi thiết kế lại từ đầu). "
+                + "Xoá bỏ kết quả móng đơn / đài cọc / móng băng / dầm móng, kích thước đã chốt, bố trí cọc tự chọn, thép đã chọn của móng; giữ thông số đất nền, loại móng, ranh giới đất, lệch tâm. Tab Móng trên thanh lệnh có \"Xoá móng đã thiết kế…\", \"Thiết kế lại móng\".",
+                "**Sửa móng trực tiếp trên mặt bằng móng**: bấm đúp vào móng (hoặc chọn rồi **E** / Enter, nút **Sửa móng…**) → sửa L × B × H, loại móng tại chân cột → thiết kế lại với kích thước đó (0 = để chương trình tự chọn).",
+                "Mặt bằng móng: kéo trái / giữa / phải di chuyển, con lăn thu phóng, **F** / bấm đúp chuột giữa vừa màn hình.",
+                "Mọi hình vẽ của giai đoạn thiết kế – mặt cắt móng, biểu đồ cấu kiện, dạng dao động, bố trí cọc, cầu thang, phác thép, móng lệch tâm, tờ dàn trang: **con lăn thu phóng vào con trỏ**, **kéo chuột giữa / phải di chuyển**, **F / bấm đúp chuột giữa** về vừa khung. "
+                + "Sửa nét, chữ, nhãn thép trên bản vẽ hồ sơ: **Hiệu chỉnh bản vẽ…**.");
+
         c.Sec("khoi-tao.chieu-cao-tang", "Sửa chiều cao tầng sau khi đã lập dự án – điều hướng 3D")
             .Bullets("**Chiều cao tầng…** (tab BIM → Cao độ, tab Lưới – Tầng, menu Mô hình, nút cạnh ô \"Chiều cao các tầng\" ở tab Công trình): bảng các tầng (tên, chiều cao, cao độ sàn tự tính) và cao độ chân cột – "
                 + "áp dụng thì cột, dầm, sàn, tường, cầu thang, ống điện nước dời theo cao độ mới, giữ nguyên mô hình; đổi tên tầng cập nhật mọi cấu kiện của tầng. Có hoàn tác Ctrl+Z.",

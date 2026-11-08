@@ -1,5 +1,7 @@
 using KetCauVXT.Mep;
 using KetCauVXT.Model;
+using KetCauVXT.Design;
+using KetCauVXT.Design.Foundation;
 
 namespace KetCauVXT.Tests;
 
@@ -101,5 +103,33 @@ public static class GridColumnTests
         bool threw = false;
         try { GridColumnSetup.ChangeStoryHeights(p, new List<double> { 3.3 }); } catch (ArgumentException) { threw = true; }
         check("GC sai số tầng → báo lỗi", B(threw), 1, 0);
+
+        // ---- xoá móng đã thiết kế để thiết kế lại; chốt kích thước móng sửa trên mặt bằng ----
+        {
+            var pf = ModelBuilder.NewProject();
+            var ds = new DesignSummary();
+            ds.Footings.Add(new FootingDesign { NodeId = 1, L = 1.8, B = 1.5, RebarKeys = { "M:1" } });
+            ds.Footings.Add(new FootingDesign { NodeId = 2, L = 2.0, B = 1.6, RebarKeys = { "M:2" } });
+            ds.PileCaps.Add(new PileCapDesign { NodeIds = { 3 }, RebarKeys = { "P:3" } });
+            pf.Nodes.Add(new Node { Id = 1 }); pf.Nodes.Add(new Node { Id = 2 }); pf.Nodes.Add(new Node { Id = 3 });
+            pf.Footings.Add(new Footing { Label = "M1", NodeId = 1, L = 1.8, B = 1.5, Height = 0.5 });
+            pf.Footings.Add(new Footing { Label = "M2", NodeId = 2, L = 2.0, B = 1.6, Type = FoundationType.Isolated });
+            pf.Foundation.CapOverrides.Add(new PileCapOverride { NodeId = 3 });
+            pf.RebarChoices.Add(new RebarChoice { Member = "M:1" }); pf.RebarChoices.Add(new RebarChoice { Member = "P:3" }); pf.RebarChoices.Add(new RebarChoice { Member = "B:7" });
+            var r1 = FoundationReset.Clear(pf, ds, new[] { 1 });
+            check("MÓNG xoá móng chọn: 1 móng đơn", r1.Footings, 1, 0);
+            check("MÓNG xoá móng chọn: còn móng 2 + đài 3", ds.Footings.Count + ds.PileCaps.Count, 2, 0);
+            check("MÓNG xoá móng chọn: bỏ kích thước chốt nút 1", B(pf.Footings.All(f => f.NodeId != 1)), 1, 0);
+            check("MÓNG xoá móng chọn: bỏ thép đã chọn M:1, giữ thép dầm", B(pf.RebarChoices.All(r => r.Member != "M:1") && pf.RebarChoices.Any(r => r.Member == "B:7")), 1, 0);
+            var r2 = FoundationReset.Clear(pf, ds);
+            check("MÓNG xoá tất cả: móng 2 + đài 3", r2.Footings + r2.PileCaps, 2, 0);
+            check("MÓNG xoá tất cả: bố trí cọc người dùng bỏ", pf.Foundation.CapOverrides.Count, 0, 0);
+            var m2 = pf.Footings.FirstOrDefault(f => f.NodeId == 2);
+            check("MÓNG xoá tất cả: giữ loại móng riêng, kích thước về 0 (tự chọn lại)", B(m2 != null && m2.Type == FoundationType.Isolated && m2.L == 0 && m2.B == 0), 1, 0);
+            check("MÓNG xoá tất cả: kết quả rỗng", ds.Footings.Count + ds.PileCaps.Count, 0, 0);
+            var sz = FoundationReset.SetSize(pf, 1, 2.2, 1.8, 0.6);
+            check("MÓNG sửa trên mặt bằng: chốt 2,2 × 1,8 × 0,6", B(sz.L == 2.2 && sz.B == 1.8 && sz.Height == 0.6 && pf.Footings.Count(f => f.NodeId == 1) == 1), 1, 0);
+            check("MÓNG sửa trên mặt bằng: nhãn mới không trùng", B(pf.Footings.Select(f => f.Label).Distinct().Count() == pf.Footings.Count), 1, 0);
+        }
     }
 }

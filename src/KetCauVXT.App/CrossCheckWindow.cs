@@ -132,6 +132,7 @@ internal sealed class CrossCheckWindow : Window
 
     public CrossCheckWindow(Project p, AnalysisResults ours)
     {
+        ZoomPan.Wrap(_canvas);   // thu phóng / di chuyển hình vẽ – ZoomPan.cs
         _p = p; _ours = ours;
         _ses = new CrossCheckSession(p, ours);
         DialogUi.Setup(this, "So sánh kết quả với ETABS / SAP2000 / SAFE", 1280, 800);

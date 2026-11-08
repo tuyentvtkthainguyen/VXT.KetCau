@@ -241,6 +241,8 @@ public partial class MainWindow
     {
         w.Children.Add(SmallBtn("Chọn mọi chân cột", () => SelectAllOfKind(SelectFilter.Footings), "Chọn mọi cột của tầng đang xem để gán tải chân cột (móng)", out _));
         w.Children.Add(SmallBtn("Thiết kế móng…", () => MnuDesignFoundation_Click(this, new RoutedEventArgs()), "Thông số móng, đất nền (sức chịu tải), loại móng – tải chân cột lấy từ phân tích", out _));
+        w.Children.Add(SmallBtn("Xoá móng đã thiết kế…", FndDeleteAll, "Xoá toàn bộ móng đã thiết kế (kích thước đã chốt, bố trí cọc, thép) để thiết kế lại – xoá từng móng: tab Mô hình móng, chọn móng, Delete", out _));
+        w.Children.Add(SmallBtn("Thiết kế lại móng", FndRedesign, "Xoá toàn bộ móng đã thiết kế rồi thiết kế lại từ đầu", out _));
         w.Children.Add(RSep());
         AddLoadGroup(w, RtMong);
     }
