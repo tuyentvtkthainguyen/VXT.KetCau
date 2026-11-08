@@ -336,7 +336,7 @@ public static class FootingShapeTests
             catch (Exception) { /* thư mục kết quả không ghi được */ }
         }
         // khối lượng: V = A·H
-        var q = Quantities.Compute(p, s);
+        var q = QuantityCalculator.Compute(p, s);
         double vShaped = q.Concrete.Where(c => c.Category == QtyCat.Footing && c.Dims.StartsWith("đa giác")).Sum(c => c.Volume);
         check("Khối lượng: bê tông móng hình dạng = A·H", vShaped, s.Footings.Where(f => f.Shaped).Sum(f => Math.Max(1, f.Quantity) * f.Area * f.H), 1e-9);
         // JSON
