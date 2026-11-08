@@ -93,6 +93,7 @@
             </MenuItem>
             <MenuItem Header="_Vẽ">
                 <MenuItem Header="Lưới trục + lưới cột + chiều cao tầng…" Click="MnuGridColumn_Click"/>
+                <MenuItem Header="Chiều cao tầng (giữ mô hình)…" Click="MnuStoryHeights_Click"/>
                 <MenuItem Header="Tạo khung BTCT từ lưới trục" Click="MnuBuildGrid_Click"/>
                 <MenuItem Header="Tạo khung thép tiền chế..." Click="MnuBuildPortal_Click"/>
                 <Separator/>
@@ -295,10 +296,11 @@
                                 <StackPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bước cột theo X (trục 1, 2, 3...)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtSpansX"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Bước cột theo Y (trục A, B, C...)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtSpansY"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Chiều cao các tầng (dưới → trên)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtHeights"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cao độ chân cột (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtBaseElev"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Chiều cao các tầng (dưới → trên)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtHeights" LostFocus="TxtHeights_LostFocus" ToolTip="Sau khi đã lập mô hình: sửa rồi rời ô → hỏi áp dụng chiều cao mới, giữ nguyên mô hình (hoặc dùng nút Chiều cao tầng…)"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cao độ chân cột (m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtBaseElev" LostFocus="TxtHeights_LostFocus"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Liên kết chân cột" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkFixedBase" Content="Ngàm (bỏ chọn = khớp)" IsChecked="True" VerticalAlignment="Center"/></DockPanel>
                                     <StackPanel Orientation="Horizontal" Margin="208,2,2,2">
+                                        <Button Content="Chiều cao tầng…" Style="{StaticResource SmallButton}" Click="MnuStoryHeights_Click" ToolTip="Sửa chiều cao, tên từng tầng của mô hình đang có – giữ nguyên cột, dầm, sàn"/>
                                         <Button Content="Lưới trục + cột + tầng…" Style="{StaticResource SmallButton}" Click="MnuGridColumn_Click" ToolTip="Một bảng: bước trục, tên trục, đặt / bỏ cột tại từng giao điểm, chiều cao từng tầng"/>
                                         <Button Content="Tải mặt bằng để lấy kích thước…" Style="{StaticResource SmallButton}" Click="BtnGridFromPlan_Click" ToolTip="Mở bản vẽ CAD (DWG/DXF – tự đọc trục) hoặc ảnh chụp / scan mặt bằng (hiệu chỉnh tỷ lệ rồi bấm vị trí trục) để điền bước trục X, Y và chiều cao tầng – GridFromPlanDialog.cs"/>
                                     </StackPanel>
@@ -622,7 +624,9 @@
                                 MouseLeftButtonDown="View3D_MouseLeftButtonDown"
                                 MouseMove="View3D_MouseMove"
                                 MouseLeftButtonUp="View3D_MouseLeftButtonUp"
-                                MouseWheel="View3D_MouseWheel">
+                                MouseWheel="View3D_MouseWheel"
+                                MouseDown="View3D_MouseDown"
+                                MouseUp="View3D_MouseUp">
                             <Viewport3D x:Name="viewport3D" IsHitTestVisible="False">
                                 <Viewport3D.Camera>
                                     <PerspectiveCamera x:Name="camera3D" FieldOfView="45" Position="30,-30,20" LookDirection="-30,30,-20" UpDirection="0,0,1"/>
@@ -665,6 +669,8 @@
                                         MouseMove="View3D_MouseMove"
                                         MouseLeftButtonUp="View3D_MouseLeftButtonUp"
                                         MouseWheel="View3D_MouseWheel"
+                                MouseDown="View3D_MouseDown"
+                                MouseUp="View3D_MouseUp"
                                         IsVisibleChanged="SecondaryHost_IsVisibleChanged">
                                     <Grid>
                                         <Viewport3D x:Name="diaViewport">

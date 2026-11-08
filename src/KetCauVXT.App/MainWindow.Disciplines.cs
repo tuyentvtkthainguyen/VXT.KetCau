@@ -206,6 +206,7 @@ public partial class MainWindow
             RvGroup("Cao độ",
                 RvBtn("Lưới trục + cột + tầng…", "", "Một bảng: lưới trục mặt bằng, lưới cột (giao điểm có / không cột), chiều cao từng tầng – đổi chiều cao tầng giữ nguyên mô hình", OpenGridColumnDialog),
                 RvBtn("Tạo cao độ tầng…", "", "Móng → nền tầng 1 → sàn tầng 2, 3… → mái (tum): số tầng, chiều cao, chiều sâu móng, sinh khung + sàn", OpenLevelWizard),
+                RvBtn("Chiều cao tầng…", "", "Sửa chiều cao, tên từng tầng, cao độ chân cột của mô hình đang có – giữ nguyên cột, dầm, sàn, tường", StoryHeightsUi),
                 RvBtn("Chèn tầng…", "", "Chèn một tầng phía trên tầng đang xem (sao dầm, sàn, nối cột), nâng các tầng trên", InsertStoryUi),
                 RvBtn("Xoá tầng", "", "Xoá tầng đang xem (dầm, sàn, tường), nối cột, hạ các tầng trên", DeleteStoryUi),
                 RvBtn("Sàn mọi ô", "", "Tạo ô sàn cho mọi ô lưới còn thiếu ở tầng đang xem (hoặc mọi tầng)", SlabsAllBaysUi),
@@ -246,6 +247,7 @@ public partial class MainWindow
         Add("Bộ môn _hiển thị…", OpenDisciplineDisplay);
         m.Items.Add(new Separator());
         Add("Tạo _cao độ tầng (móng → mái)…", OpenLevelWizard);
+        Add("Chiều cao tầng (giữ mô hình)…", StoryHeightsUi);
         Add("Chèn tầng…", InsertStoryUi);
         Add("Xoá tầng đang xem", DeleteStoryUi);
         Add("Sàn mọi ô lưới", SlabsAllBaysUi);

@@ -697,6 +697,14 @@ public static partial class UserGuide
                 "**Hồ sơ theo bộ môn…**: chọn bộ môn – Kiến trúc (KT-01…: mặt bằng các tầng có tường, cửa, tên + diện tích phòng, đồ đạc; thống kê cửa; thống kê phòng), Kết cấu (KC-…: bộ bản vẽ kết cấu), Điện nước (DN-…); trên mặt bằng, bộ môn khác hiện nét xám làm nền đối chiếu.")
             .Tip("Ở bộ môn Điện nước, phần kiến trúc là nền tham chiếu: sửa tường / cửa ở bộ môn Kiến trúc rồi chạy **Kiểm tra va chạm** để thấy thiết bị, ống bị ảnh hưởng.");
 
+        c.Sec("khoi-tao.chieu-cao-tang", "Sửa chiều cao tầng sau khi đã lập dự án – điều hướng 3D")
+            .Bullets("**Chiều cao tầng…** (tab BIM → Cao độ, tab Lưới – Tầng, menu Mô hình, nút cạnh ô \"Chiều cao các tầng\" ở tab Công trình): bảng các tầng (tên, chiều cao, cao độ sàn tự tính) và cao độ chân cột – "
+                + "áp dụng thì cột, dầm, sàn, tường, cầu thang, ống điện nước dời theo cao độ mới, giữ nguyên mô hình; đổi tên tầng cập nhật mọi cấu kiện của tầng. Có hoàn tác Ctrl+Z.",
+                "Sửa trực tiếp ô **Chiều cao các tầng** / **Cao độ chân cột** ở tab Công trình khi đã có mô hình: rời ô → chương trình hỏi áp dụng ngay cho mô hình (giữ nguyên cấu kiện).",
+                "Thêm / bớt tầng: **Chèn tầng…** / **Xoá tầng** (BIM → Cao độ). Sau khi đổi chiều cao cần chạy lại phân tích.",
+                "**3D**: kéo chuột trái = xoay (bấm = chọn); kéo chuột **giữa** hoặc **phải** = di chuyển (pan); **Shift + kéo giữa** = xoay; **con lăn** = thu phóng vào điểm dưới con trỏ; "
+                + "**F / Home / bấm đúp chuột giữa / nút Vừa màn hình** = thu phóng vừa toàn mô hình; **Q** bật quét chọn, **Ctrl / Shift + kéo trái** quét thêm / bớt.");
+
         c.Sec("khoi-tao.hoan-thien-kt", "Chi tiết kiến trúc kiểu Revit: mái, trần, lan can, phào chỉ, ốp – sơn, chép tầng, nhập mô hình SketchUp")
             .P("Nhóm **BIM → Hoàn thiện KT** (cũng có ở menu BIM). Mọi phần tử hiện trên mặt bằng, 3D, IFC / SketchUp / OBJ, bảng khối lượng; có hoàn tác Ctrl+Z.")
             .Bullets("**Mái…**: mái bằng, 1 dốc, 2 dốc (tự có 2 tường thu hồi 220), 4 dốc (mặt bằng vuông → mái chóp); độ dốc %, đua mái, chân mái, đường bao (mặc định = hộp bao ô sàn tầng). "

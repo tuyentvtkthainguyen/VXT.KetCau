@@ -217,7 +217,8 @@ public partial class MainWindow
             "Mở mặt bằng DWG/DXF/ảnh để lấy trục, bước cột, cột, tường (như nút 'Tải mặt bằng để lấy kích thước…')", out _));
         w.Children.Insert(1, SmallBtn("Lưới trục + cột + tầng…", OpenGridColumnDialog,
             "Một bảng: bước trục X/Y, tên trục, đặt / bỏ cột tại từng giao điểm, chiều cao từng tầng (đổi chiều cao giữ nguyên mô hình)", out _));
-        w.Children.Insert(2, RSep());
+        w.Children.Insert(2, SmallBtn("Chiều cao tầng…", StoryHeightsUi, "Sửa chiều cao, tên từng tầng của mô hình đang có – giữ nguyên mô hình", out _));
+        w.Children.Insert(3, RSep());
     }
 
     private void BuildColumnTab(WrapPanel w)

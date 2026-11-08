@@ -32,9 +32,14 @@ public partial class MainWindow
                     + "Tắt: kéo để xoay; Ctrl + kéo vẫn quét thêm, Shift + kéo vẫn quét bỏ."
         };
         sp.Children.Add(_v3BoxToggle);
+        var bFit = new Button { Content = "Vừa màn hình", Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(6, 1, 6, 1), ToolTip = "Thu phóng vừa toàn mô hình (phím F / Home, bấm đúp chuột giữa)" };
+        bFit.Click += (s, e) => Zoom3DExtents();
+        sp.Children.Add(bFit);
+        view3DHost.Focusable = true; view3DHost.FocusVisualStyle = null;   // nhận phím Q, F, Home khi bấm vào khung 3D
         view3DHost.PreviewKeyDown += (s, e) =>
         {
             if (IsTextInputFocused() || e.Handled) return;
+            if ((e.Key == Key.F || e.Key == Key.Home) && Keyboard.Modifiers == ModifierKeys.None) { Zoom3DExtents(); e.Handled = true; return; }
             if (e.Key == Key.Q && Keyboard.Modifiers == ModifierKeys.None)
             {
                 _v3BoxToggle.IsChecked = _v3BoxToggle.IsChecked != true;

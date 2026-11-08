@@ -110,7 +110,7 @@ public partial class MainWindow
             g.Children.Add(_chkWall3D);
             var hint = new TextBlock
             {
-                Text = "Kéo chuột: xoay  •  Con lăn: thu phóng  •  Bấm: chọn cấu kiện",
+                Text = "Trái: xoay / bấm chọn  •  Giữa hoặc phải: di chuyển  •  Shift + giữa: xoay  •  Con lăn: thu phóng vào con trỏ  •  F / đúp giữa: vừa màn hình  •  Q: quét chọn",
                 Foreground = new SolidColorBrush(Color.FromRgb(170, 180, 190)), FontSize = 11, IsHitTestVisible = false,
                 Margin = new Thickness(8, 6, 8, 6), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom
             };
@@ -474,6 +474,7 @@ public partial class MainWindow
 
     private void View3D_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (sender is UIElement ue && ue.Focusable) ue.Focus();
         if (View3DDragStart(sender, e)) return;   // kéo đồ đạc đang chọn trên mặt sàn – MainWindow.Furnish.cs
         if (View3DBoxStart(sender, e)) return;    // quét chọn 3D – MainWindow.Select3D.cs
         _rotHost = sender as FrameworkElement ?? view3DHost;
@@ -485,6 +486,7 @@ public partial class MainWindow
 
     private void View3D_MouseMove(object sender, MouseEventArgs e)
     {
+        if (View3DPanMove(e)) return;   // pan / xoay bằng chuột giữa, phải – MainWindow.Nav3D.cs
         if (View3DDragMove(e)) return;
         if (View3DBoxMove(e)) return;
         if (!_rotating || _rotHost == null) return;
@@ -512,8 +514,9 @@ public partial class MainWindow
 
     private void View3D_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        _dist = Math.Clamp(_dist * (e.Delta > 0 ? 1 / 1.15 : 1.15), 0.5, 5000);
-        UpdateCamera();
+        var host = sender as FrameworkElement ?? view3DHost;
+        var (vp, _) = Vp3D(sender);
+        Zoom3DAt(sender, e.GetPosition(vp ?? (IInputElement)host), e.Delta > 0);   // thu phóng vào điểm dưới con trỏ – MainWindow.Nav3D.cs
         e.Handled = true;
     }
 }
