@@ -195,7 +195,7 @@ public partial class MainWindow
             AddSlab(pm.Mesh, pts, t);
         }
         if (_design != null)
-            foreach (var fd in _design.Footings)
+            foreach (var fd in KetCauVXT.Design.Foundation.FootingLayout.AllInstances(_p, _design))   // mọi vị trí của móng gộp giống hệt
             {
                 var pm = _selFooting != 0 && _selFooting == fd.NodeId ? selMesh : footMesh;
                 pm.Begin(fd);
@@ -346,6 +346,7 @@ public partial class MainWindow
     {
         var g = FootingGeom(fd, nodes);
         if (g.L <= 0 || g.B <= 0) return;
+        if (fd.Shaped) { AddShapedFooting3D(m, fd, g); return; }   // [MóngHìnhDạng] lăng trụ đa giác – MainWindow.FootingShape.cs
         // [MóngLệchTâm] đế móng lệch tâm (tâm đế = tim cột + độ lệch tâm; móng kết hợp: tâm khung bao)
         double fx = fd.X + (fd.Eccentric?.OffsetX ?? 0), fy = fd.Y + (fd.Eccentric?.OffsetY ?? 0);
         if (fd.Eccentric?.Combined != null)

@@ -104,7 +104,7 @@ public partial class MainWindow
 
     /// <summary>Móng đơn chứa nút (kể cả vị trí gộp và cột trong của móng kết hợp).</summary>
     private static bool EccHasNode(FootingDesign f, int node) =>
-        f != null && (f.NodeId == node || (f.Eccentric != null && (f.Eccentric.Locations.Any(q => q.NodeId == node) || f.Eccentric.Combined?.NodeB == node)));
+        f != null && (f.NodeId == node || f.RebarKeys.Contains("M:" + node) || (f.Eccentric != null && (f.Eccentric.Locations.Any(q => q.NodeId == node) || f.Eccentric.Combined?.NodeB == node)));
 
     /// <summary>Phạm vi vẽ (Vừa màn hình) của móng đơn kể cả độ lệch tâm.</summary>
     private static void EccExtents(FootingDesign f, List<double> xs, List<double> ys)

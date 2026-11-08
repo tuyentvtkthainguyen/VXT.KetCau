@@ -121,6 +121,7 @@ public partial class MainWindow
     private void FndHost_MouseDown(object sender, MouseButtonEventArgs e)
     {
         fndHost.Focus();
+        if (_fndTool != FndTool.None && e.ChangedButton == MouseButton.Left) return;   // [MóngHìnhDạng] đang vẽ: bấm trái là điểm vẽ
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
         {
             Dispatcher.BeginInvoke(new Action(FndEditSelected), System.Windows.Threading.DispatcherPriority.Background);   // sau khi lần bấm chọn móng đã xử lý
@@ -156,6 +157,7 @@ public partial class MainWindow
     private void FndHost_KeyDown(object sender, KeyEventArgs e)
     {
         if (IsTextInputFocused()) return;
+        if (FndToolKey(e.Key)) { e.Handled = true; return; }   // [MóngHìnhDạng] Enter / Esc / Backspace khi đang vẽ
         switch (e.Key)
         {
             case Key.Delete: FndDeleteSelected(); e.Handled = true; break;

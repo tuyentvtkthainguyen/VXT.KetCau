@@ -705,6 +705,22 @@ public static partial class UserGuide
                 "Mọi hình vẽ của giai đoạn thiết kế – mặt cắt móng, biểu đồ cấu kiện, dạng dao động, bố trí cọc, cầu thang, phác thép, móng lệch tâm, tờ dàn trang: **con lăn thu phóng vào con trỏ**, **kéo chuột giữa / phải di chuyển**, **F / bấm đúp chuột giữa** về vừa khung. "
                 + "Sửa nét, chữ, nhãn thép trên bản vẽ hồ sơ: **Hiệu chỉnh bản vẽ…**.");
 
+        c.Sec("khoi-tao.bo-tri-mong", "Bố trí móng: nhân bản, đồng nhất, lệch tâm / xoay dóng mép cột, đường chuẩn ranh đất xiên, móng đa giác cho đất méo")
+            .P("Tab **Mô hình móng**, các nút trên thanh công cụ mặt bằng móng. Mọi thay đổi có hoàn tác Ctrl+Z; bấm \"Thiết kế móng\" (hoặc chọn \"Thiết kế lại ngay\") để kiểm tra áp lực nền, chọc thủng, uốn, thép.")
+            .Bullets("**Móng giống nhau**: các móng giống hệt được gộp chung một tên (M2, SL = 6) và **vẽ ở mọi chân cột** trên mặt bằng móng, 3D, bản vẽ bố trí móng.",
+                "**Nhân bản móng…**: chọn móng nguồn → chép kích thước L × B × H (chốt) và bố trí (góc, dóng mép cột, lệch tâm, đa giác) sang: các chân cột **bấm chọn trên mặt bằng** (Enter áp dụng), mọi chân cột cùng tiết diện cột, mọi chân cột móng đơn, hoặc danh sách nút (3, 5, 8-11).",
+                "**Đồng nhất móng…**: gom các móng có cạnh chênh ≤ dung sai (mặc định 0,3 m), cùng tiết diện cột, thành một loại – lấy L, B, H lớn nhất của nhóm → ít loại móng, thi công đồng loạt.",
+                "**Bố trí móng…** (móng / chân cột đang chọn): **góc móng** song song trục X/Y, **theo mép cột** (cột xoay thì móng xoay), góc nhập tay, hoặc theo đường chuẩn gần nhất; "
+                + "**dóng phương L / B**: đúng tâm, **mép móng thẳng mép cột** phía âm / dương (cột sát ranh: móng chìa vào trong lô đất), hoặc lệch tâm nhập tay (tâm móng − tim cột, m). Áp dụng được cho mọi chân cột cùng tiết diện.",
+                "**Móng lệch tâm**: khi trọng tâm đáy móng lệch tim cột > 50 mm, mặc định **nối dầm móng cân bằng** tới chân cột đối diện theo hướng lệch tâm (≤ nhịp tối đa trong Ranh giới đất): R1 = N·Ls/(Ls − e) đặt tại trọng tâm đáy, dầm chịu M = N·e, Q = ΔR (ghi trong kết quả, vẽ trên mặt bằng). "
+                + "Bỏ chọn \"Dầm móng cân bằng\" = móng **tự cân bằng**: đáy móng chịu mô men N·e (áp lực không chịu kéo, vùng tiếp xúc ≥ 75%).",
+                "**Vẽ đường chuẩn**: bấm lần lượt các điểm – bắt dính **góc cột** (lấy góc cột ở vị trí góc đất), giao trục, đầu / giao điểm đường chuẩn khác; mỗi đoạn là một đường ranh đất xiên. Esc / Enter kết thúc, Backspace bỏ điểm. "
+                + "**Đường chuẩn…**: sửa toạ độ X1 Y1 X2 Y2, khe hở móng tới đường, bật / tắt, tên. Móng không vượt qua đường chuẩn: móng bị cắt theo đường (hình thang / ngũ giác…), tự tăng kích thước tới khi đạt áp lực nền.",
+                "**Vẽ móng đa giác**: bấm các đỉnh đáy móng bao quanh chân cột (bắt dính góc cột, góc đất), Enter hoặc bấm lại đỉnh đầu để kết thúc → móng hình dạng bất kỳ cho nhà đất méo. Kích thước đa giác do người dùng định; chương trình tính chiều cao (chọc thủng), thép và kiểm tra áp lực.",
+                "**Tính toán móng hình dạng**: áp lực đáy móng tuyến tính trên đa giác, không chịu kéo (lặp vùng tiếp xúc); ptb ≤ R, pmax ≤ 1,2R; chọc thủng theo chu vi cách mép cột h0/2 nằm trong đáy móng; mô men công xôn tại mép cột theo phương L, B của móng chia bề rộng mặt cắt thật → As trên 1 m; "
+                + "thép cắt theo đường bao, nhóm chiều dài 50 mm (mỗi nhóm một số hiệu). Bản vẽ: mặt bằng móng vẽ đường bao thật + đường chuẩn + dầm cân bằng; chi tiết \"MÓNG HÌNH DẠNG\" vẽ theo hệ trục của móng với chiều dài từng cạnh; khối lượng V = A·H.",
+                "Giới hạn: móng hình dạng là móng đế phẳng (không vát); móng gia cố cừ tràm và móng kết hợp chưa hỗ trợ hình dạng; dầm móng cân bằng chỉ ghi nội lực (M, Q) để thiết kế dầm móng.");
+
         c.Sec("khoi-tao.chieu-cao-tang", "Sửa chiều cao tầng sau khi đã lập dự án – điều hướng 3D")
             .Bullets("**Chiều cao tầng…** (tab BIM → Cao độ, tab Lưới – Tầng, menu Mô hình, nút cạnh ô \"Chiều cao các tầng\" ở tab Công trình): bảng các tầng (tên, chiều cao, cao độ sàn tự tính) và cao độ chân cột – "
                 + "áp dụng thì cột, dầm, sàn, tường, cầu thang, ống điện nước dời theo cao độ mới, giữ nguyên mô hình; đổi tên tầng cập nhật mọi cấu kiện của tầng. Có hoàn tác Ctrl+Z.",

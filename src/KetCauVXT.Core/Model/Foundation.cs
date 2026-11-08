@@ -97,6 +97,13 @@ public class FoundationSettings
     public CuTramSettings CuTram { get; set; } = new();
     // ---- hết [CừTràm] ----
 
+    // ---- [MóngHìnhDạng] bố trí móng (lệch tâm / xoay theo mép cột / đa giác) + đường chuẩn ranh đất xiên (Model/FootingPlacement.cs) ----
+    /// <summary>Bố trí riêng từng móng đơn (NodeId); rỗng = móng chữ nhật đặt tâm cột như cũ</summary>
+    public List<FootingPlacement> Placements { get; set; } = new();
+    /// <summary>Đường chuẩn / ranh đất xiên: móng không vượt qua (cắt theo đường). Rỗng = không có</summary>
+    public List<LotLine> LotLines { get; set; } = new();
+    // ---- hết [MóngHìnhDạng] ----
+
     // ---- móng băng ----
     /// <summary>Phương dải móng băng: 0 = tự chọn (theo phương có nhiều cột thẳng hàng), 1 = dọc trục X, 2 = dọc trục Y, 3 = giao thoa 2 phương</summary>
     public int StripDirection { get; set; }

@@ -7,7 +7,7 @@ namespace KetCauVXT.Design.Concrete;
 /// <summary>Thiết kế móng đơn BTCT trên nền thiên nhiên dưới chân cột:
 /// sức chịu tải nền theo TCVN 9362:2012, kích thước đáy theo điều kiện áp lực, chiều cao theo chọc thủng
 /// (TCVN 5574:2018 mục 8.1.6) và cốt thép đáy theo mô men tại mép cột.</summary>
-public static class FootingDesigner
+public static partial class FootingDesigner
 {
     /// <summary>Chiều cao móng tối thiểu, m</summary>
     public const double MinHeight = 0.30;
@@ -59,6 +59,8 @@ public static class FootingDesigner
                     var d = epn != null && epn.CombinedWith != 0 && epn.Scheme == EccentricScheme.Combined
                         ? CombinedFootingDesigner.Design(p, r, plan, epn, combos)
                         : DesignOne(p, r, n, f, combos, plan);
+                    if (epn == null || epn.Scheme != EccentricScheme.Combined || epn.CombinedWith == 0)
+                        d = ShapedRedesign(p, r, n, f, combos, d);   // [MóngHìnhDạng] xoay / dóng mép cột / ranh đất xiên / đa giác
                     string sig = Signature(d);
                     int k = list.FindIndex(x => x.sig == sig);
                     if (k >= 0)
@@ -493,5 +495,6 @@ public static class FootingDesigner
     private static string Signature(FootingDesign d) =>
         Math.Round(d.L * 100) + "x" + Math.Round(d.B * 100) + "x" + Math.Round(d.H * 100) + "|" + Math.Round(d.ColumnB * 1000) + "x" + Math.Round(d.ColumnH * 1000)
         + "|" + d.BarsL + "|" + d.BarsB + "|" + RebarNumbering.Signature(d.Bars) + EccentricFooting.Sig(d.Eccentric)   // [MóngLệchTâm]
-        + (d.CuTram != null ? "|CT" + d.CuTram.Count : "");   // [CừTràm] móng có / không gia cố cừ tràm không gộp
+        + (d.CuTram != null ? "|CT" + d.CuTram.Count : "")   // [CừTràm] móng có / không gia cố cừ tràm không gộp
+        + ShapeSig(d);   // [MóngHìnhDạng]
 }

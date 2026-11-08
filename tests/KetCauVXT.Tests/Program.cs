@@ -663,6 +663,8 @@ Console.WriteLine("97. Lưới trục + lưới cột + chiều cao tầng trên
 GridColumnTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("98. Kiến trúc kiểu Revit: mái dốc, trần, lan can, phào chỉ, ốp, sao chép tầng; mô hình SketchUp → mặt bằng");
 ArchDetailTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("99. Bố trí móng: nhân bản, đồng nhất, lệch tâm / xoay dóng mép cột, đường chuẩn ranh đất xiên, móng đa giác");
+FootingShapeTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

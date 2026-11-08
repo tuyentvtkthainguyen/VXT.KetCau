@@ -50,6 +50,7 @@ public partial class MainWindow
         foreach (var f in _design.Footings.Where(f => f.L > 0 && f.B > 0))
         {
             h.Add(f.NodeId);
+            foreach (int nn in KetCauVXT.Design.Foundation.FootingLayout.AllNodes(_design, f)) h.Add(nn);   // móng gộp giống hệt
             if (f.Eccentric != null)   // [MóngLệchTâm] vị trí gộp + cột trong của móng kết hợp
             {
                 foreach (var l in f.Eccentric.Locations) h.Add(l.NodeId);

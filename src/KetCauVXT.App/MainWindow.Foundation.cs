@@ -65,8 +65,9 @@ public partial class MainWindow
         if (_p.Boreholes != null) foreach (var bh in _p.Boreholes) { xs.Add(bh.X); ys.Add(bh.Y); }
         if (_design != null)
         {
-            foreach (var f in _design.Footings)
+            foreach (var f in KetCauVXT.Design.Foundation.FootingLayout.AllInstances(_p, _design))
             {
+                if (f.Shaped) { foreach (var v in f.Outline) { xs.Add(v[0]); ys.Add(v[1]); } continue; }   // [MóngHìnhDạng]
                 if (f.Eccentric != null) { EccExtents(f, xs, ys); continue; }   // [MóngLệchTâm]
                 xs.Add(f.X - f.L / 2); xs.Add(f.X + f.L / 2); ys.Add(f.Y - f.B / 2); ys.Add(f.Y + f.B / 2);
             }
@@ -95,6 +96,7 @@ public partial class MainWindow
         SyncFoundationUi();
         EnsureEccentricUi();   // [MóngLệchTâm] nút "Ranh giới đất…", "Lệch tâm…"
         EnsureCuTramUi();   // [CừTràm] nút "Cừ tràm…" – MainWindow.CuTram.cs
+        EnsureShapeUi();   // [MóngHìnhDạng] bố trí / nhân bản / đồng nhất / đường chuẩn / móng đa giác
 
         DrawPlanGrids(fndCanvas, FW2S, true);
 
@@ -103,10 +105,11 @@ public partial class MainWindow
 
         // ---- móng ----
         var foots = _design?.Footings ?? new List<FootingDesign>();
-        foreach (var fd in foots)
+        foreach (var fd in KetCauVXT.Design.Foundation.FootingLayout.AllInstances(_p, _design))   // mọi vị trí của móng gộp giống hệt
         {
             if (fd.L <= 0 || fd.B <= 0) continue;
-            bool sel = _selFooting != 0 && (_selFooting == fd.NodeId || EccHasNode(fd, _selFooting));
+            bool sel = _selFooting != 0 && (_selFooting == fd.NodeId || fd.Eccentric != null && EccHasNode(fd, _selFooting));
+            if (DrawShapedFooting(fd, sel, labels)) continue;   // [MóngHìnhDạng] móng xoay / cắt ranh đất xiên / đa giác
             if (DrawEccentricFooting(fd, sel, labels)) continue;   // [MóngLệchTâm] móng lệch tâm / móng kết hợp
             bool ok = fd.Ok;
             var g = FootingGeom(fd, nodes);
@@ -168,8 +171,10 @@ public partial class MainWindow
             if (labels && nAll == 0) CText(fndCanvas, col.Label, new Point(c.X + rw / 2 + 2, c.Y + rh / 2 + 12), Brushes.Black, 9, false);
         }
         DrawBoundariesAndStraps();   // [MóngLệchTâm] ranh giới đất + dầm móng cân bằng – MainWindow.Eccentric.cs
+        DrawLotLines();   // [MóngHìnhDạng] đường chuẩn / ranh đất xiên – MainWindow.FootingShape.cs
         DrawGroundOverlays();   // [LùiCọcRanh] đường giới hạn tim cọc + [CừTràm] lưới cừ – MainWindow.CuTram.cs
         DrawBoreholeMarkers();   // hố khoan – MainWindow.Geotech.cs
+        DrawFndToolOverlay();   // [MóngHìnhDạng] công cụ vẽ đường chuẩn / móng đa giác / nhân bản
 
         int bad = foots.Count(f => !f.Ok) + badOther;
         CText(fndCanvas, $"Mặt bằng móng ({FoundationTypeName(_p.Foundation.Type).ToLowerInvariant()}) – cao độ chân cột {Elev(_p.BaseElevation)}" +
@@ -232,7 +237,7 @@ public partial class MainWindow
 
         // ---- thân móng + cổ móng + cột ----
         double cx = g.Cx, tx = g.TopX;
-        double co = fd.Eccentric?.Combined == null ? -(fd.Eccentric?.OffsetX ?? 0) : 0;   // [MóngLệchTâm] tim cột cách tâm móng −ex
+        double co = fd.Shaped ? fd.ColLocalX : fd.Eccentric?.Combined == null ? -(fd.Eccentric?.OffsetX ?? 0) : 0;   // [MóngHìnhDạng] tim cột trong hệ trục móng   // [MóngLệchTâm] tim cột cách tâm móng −ex
         var body = new Shapes.Polygon
         {
             Points = new PointCollection
@@ -301,7 +306,7 @@ public partial class MainWindow
 
         // ---- tiêu đề + thông tin ----
         string name = string.IsNullOrEmpty(fd.Name) ? "M" : fd.Name;
-        CText(fndSecCanvas, $"MẶT CẮT MÓNG {name} (theo phương X)", new Point(w / 2, 14), Brushes.Black, 12.5, true, true).FontWeight = FontWeights.Bold;
+        CText(fndSecCanvas, $"MẶT CẮT MÓNG {name} (theo phương {(fd.Shaped && Math.Abs(fd.Angle) > 0.05 ? "L, α = " + fd.Angle.ToString("0.#", Inv) + "°" : "X")})", new Point(w / 2, 14), Brushes.Black, 12.5, true, true).FontWeight = FontWeights.Bold;
         if (auto) CText(fndSecCanvas, "(chưa chọn móng – hiển thị móng đầu tiên)", new Point(w / 2, 31), Brushes.Gray, 10, true, true);
         double y = h - bottom + 8;
         void Info(string t, Brush br) { CText(fndSecCanvas, t, new Point(10, y), br, 10.5, false); y += 15; }
@@ -309,6 +314,8 @@ public partial class MainWindow
         Info($"N = {fd.N.ToString("0.0", Inv)} kN;  Mx = {fd.Mx.ToString("0.0", Inv)};  My = {fd.My.ToString("0.0", Inv)} kN.m  ({fd.Combo})", Brushes.Black);
         Info($"Pmax = {fd.Pmax.ToString("0.0", Inv)};  Ptb = {fd.Ptb.ToString("0.0", Inv)};  R = {fd.R.ToString("0.0", Inv)} kN/m²"
              + (fd.Eccentric != null ? $";  {EccentricOverride.SchemeName(fd.Eccentric.Scheme)}, e = {fd.Eccentric.E0 * 1000:0} mm" : ""), Brushes.Black);   // [MóngLệchTâm]
+        if (fd.Shaped)   // [MóngHìnhDạng]
+            Info($"Móng hình dạng: {fd.Outline.Count} đỉnh, A = {fd.Area.ToString("0.00", Inv)} m², góc {fd.Angle.ToString("0.#", Inv)}°, tiếp xúc nền {(fd.Contact * 100).ToString("0", Inv)}% – mặt cắt theo phương L của móng", Brushes.Black);
         string msg = fd.Messages.FirstOrDefault(m => m.StartsWith("LỖI")) ?? fd.Checks.Where(c => !c.Ok).Select(c => $"{c.Name}: {c.Ratio.ToString("0.00", Inv)}").FirstOrDefault();
         Info(fd.Ok ? "Kết quả: ĐẠT" : "Kết quả: KHÔNG ĐẠT" + (string.IsNullOrEmpty(msg) ? "" : " – " + msg), fd.Ok ? FootOkStroke : FootBadStroke);
     }
@@ -385,7 +392,7 @@ public partial class MainWindow
 
     private void FndHost_MouseMove(object sender, MouseEventArgs e)
     {
-        if (!_fPanning) return;
+        if (!_fPanning) { FndToolHover(e.GetPosition(fndHost)); return; }   // [MóngHìnhDạng]
         var p = e.GetPosition(fndHost);
         double dx = p.X - _fPanStart.X, dy = p.Y - _fPanStart.Y;
         if (!_fDragged && Math.Abs(dx) + Math.Abs(dy) < 4) return;
@@ -401,6 +408,7 @@ public partial class MainWindow
         fndHost.ReleaseMouseCapture();
         if (_fDragged) return;
         var s = e.GetPosition(fndHost);
+        if (FndToolClick(s)) return;   // [MóngHìnhDạng] đang vẽ đường chuẩn / móng đa giác / chọn chân cột nhân bản
         // ưu tiên ô nhỏ nhất chứa điểm bấm (cột nằm trong móng)
         var hit = _fndHits.Where(x => x.r.Contains(s)).OrderBy(x => x.r.Width * x.r.Height)
             .Select(x => ((int node, FrameElement col, object item)?)(x.node, x.col, x.item)).FirstOrDefault();

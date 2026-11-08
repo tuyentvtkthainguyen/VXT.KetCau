@@ -41,7 +41,7 @@ public static class FootingDrawing
                     first = false;
                     continue;
                 }
-                res.Add(new Figure(DetailPlan(p, f, g.Count(), SheetScale), f.Name, first));
+                res.Add(new Figure(f.Shaped ? ShapedFootingDrawing.DetailPlan(p, f, g.Count(), SheetScale) : DetailPlan(p, f, g.Count(), SheetScale), f.Name, first));   // [MóngHìnhDạng]
                 res.Add(new Figure(DetailSection(p, f, SheetScale), f.Name + " mc"));
             }
             catch (Exception ex) { res.Add(new Figure(DrawUtil.ErrorFigure(g.Key, ex, SheetScale), g.Key, true)); }
@@ -71,8 +71,9 @@ public static class FootingDrawing
         var w = new DxfWriter(S);
         double th = w.Th;
         var box = Rect2.Empty;
-        foreach (var f in s.Footings)
+        foreach (var f in KetCauVXT.Design.Foundation.FootingLayout.AllInstances(p, s))   // mọi vị trí của móng gộp giống hệt
         {
+            if (f.Shaped) { ShapedFootingDrawing.Plan(w, p, f, k, ref box); continue; }   // [MóngHìnhDạng] móng xoay / đa giác
             if (f.Eccentric != null) { EccentricDrawing.FootingPlan(w, f, k, ref box); continue; }   // [MóngLệchTâm] móng lệch tâm / kết hợp
             var (cox, coy) = ColumnOffsets.AtNode(p, f.NodeId);   // [Trục qua mép cột] móng đặt theo tâm cột thật
             double cx = (f.X + cox) * 1000 * k, cy = (f.Y + coy) * 1000 * k;
@@ -91,6 +92,7 @@ public static class FootingDrawing
                 w.DimChainV(new List<double> { cy - ch, ay, cy + ch }.Select(v => Math.Round(v, 2)).Distinct().OrderBy(v => v).ToList(), cx - cb, cx - cb - 1.4 * th, k);
         }
         FoundationDrawing.AddToLayout(w, s, k, ref box);
+        ShapedFootingDrawing.AddLotLines(w, p, k, ref box);   // [MóngHìnhDạng] đường chuẩn / ranh đất xiên
         EccentricDrawing.AddToLayout(w, p, s, k, ref box);   // [MóngLệchTâm] ranh giới đất + dầm cân bằng
         CuTramDrawing.AddToLayout(w, s, k, ref box);   // [CừTràm] ghi chú móng gia cố cừ tràm
         PileSetbackDrawing.AddToLayout(w, p, s, k, ref box);   // [LùiCọcRanh] đường giới hạn tim cọc + "≥ 500 (lùi ép cọc)"
@@ -222,7 +224,7 @@ public static class FootingDrawing
         bool rR = f.Eccentric?.Boundary == true && (f.Eccentric.Sides ?? "").Contains("phải");
         double lotL = rL ? 0 : lot, lotR = rR ? 0 : lot;
         double neck = Math.Max(300, (f.Depth > 0 ? f.Depth - f.H : 0.5) * 1000) * k;
-        double exS = (f.Eccentric?.OffsetX ?? 0) * 1000 * k;   // [MóngLệchTâm] tim cột tại L/2 − ex
+        double exS = (f.Shaped ? -f.ColLocalX : f.Eccentric?.OffsetX ?? 0) * 1000 * k;   // [MóngLệchTâm] tim cột tại L/2 − ex; [MóngHìnhDạng] theo hệ trục móng
         double xc1 = L / 2 - exS - cb / 2, xc2 = L / 2 - exS + cb / 2, ped = Math.Abs(exS) > 1e-6 ? 0 : 50 * k;
         // móng bậc: bậc trên StepL (thay mặt vát bằng bậc thẳng đứng)
         bool stepped = f.StepL > 1e-6 && Hb < H - 1e-6;

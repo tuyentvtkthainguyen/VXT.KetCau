@@ -351,6 +351,31 @@ public class FootingDesign : MemberDesignBase
     public KetCauVXT.Design.Foundation.EccentricInfo Eccentric { get; set; }
     /// <summary>[CừTràm] Gia cố nền bằng cừ tràm dưới móng (null = nền thiên nhiên) – Design/Foundation/CuTramCalc.cs</summary>
     public KetCauVXT.Design.Foundation.CuTramResult CuTram { get; set; }
+    // ---- [MóngHìnhDạng] móng xoay / lệch tâm dóng mép cột / cắt theo ranh đất xiên / đa giác (Design/Foundation/ShapedFooting.cs) ----
+    /// <summary>Đường bao đáy móng (x, y tuyệt đối, m, ngược chiều kim đồng hồ); null = chữ nhật L × B tâm tại tim cột (+ Eccentric)</summary>
+    public List<double[]> Outline { get; set; }
+    /// <summary>Góc phương L của móng so với trục X (độ)</summary>
+    public double Angle { get; set; }
+    /// <summary>Trọng tâm đáy móng (m) – móng hình dạng</summary>
+    public double Gx { get; set; }
+    public double Gy { get; set; }
+    /// <summary>Diện tích đáy móng (m²) – móng hình dạng</summary>
+    public double Area { get; set; }
+    /// <summary>Tỷ lệ vùng tiếp xúc nền (1 = toàn bộ đáy chịu nén)</summary>
+    public double Contact { get; set; } = 1;
+    /// <summary>Tim cột trong hệ địa phương của móng (x' theo L, y' theo B; gốc = tâm khung bao địa phương), m</summary>
+    public double ColLocalX { get; set; }
+    public double ColLocalY { get; set; }
+    /// <summary>Kích thước chữ nhật trước khi cắt theo đường chuẩn (m) – dùng khi nhân bản / đồng nhất móng; 0 = móng đa giác</summary>
+    public double RectL { get; set; }
+    public double RectB { get; set; }
+    /// <summary>Dầm móng cân bằng của móng hình dạng lệch tâm: nút chân cột đối diện (0 = không), nhịp (m), M = N·e (kN.m), Q = ΔR (kN)</summary>
+    public int StrapNode { get; set; }
+    public double StrapSpan { get; set; }
+    public double StrapMoment { get; set; }
+    public double StrapShear { get; set; }
+    public bool Shaped => Outline != null && Outline.Count >= 3;
+    // ---- hết [MóngHìnhDạng] ----
 }
 
 // ---------------------------------------------------------------------

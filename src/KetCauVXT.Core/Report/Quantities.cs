@@ -507,6 +507,21 @@ public static class QuantityCalculator
                 any = true;
                 int n = Math.Max(1, f.Quantity);
                 double V, fw; string dims, fwn;
+                if (f.Shaped)   // [MóngHìnhDạng] đế phẳng đa giác: V = A·H, ván khuôn = chu vi × H
+                {
+                    double per = 0;
+                    for (int i = 0; i < f.Outline.Count; i++)
+                    {
+                        var u = f.Outline[i]; var v = f.Outline[(i + 1) % f.Outline.Count];
+                        per += Math.Sqrt((v[0] - u[0]) * (v[0] - u[0]) + (v[1] - u[1]) * (v[1] - u[1]));
+                    }
+                    V = f.Area * f.H; fw = per * f.H;
+                    dims = $"đa giác A={F2(f.Area)} m² × {F2(f.H)}"; fwn = $"{F2(per)}×{F2(f.H)}";
+                    q.Concrete.Add(new ConcreteItem { Category = QtyCat.Footing, Story = FoundationStory, Member = f.Name, Grade = g, Count = n, Dims = dims, Volume = n * V, Formwork = n * fw, FormworkNote = (n > 1 ? n + "×" : "") + fwn });
+                    double eq = Math.Sqrt(f.Area);
+                    Lean(f.Name, eq, eq, n);
+                    continue;
+                }
                 if (f.Hb > 1e-6 && f.Hb < f.H - 1e-6)
                 {
                     double tx = Math.Min(f.L, Math.Max(f.ColumnB, 0.1) + 0.1), ty = Math.Min(f.B, Math.Max(f.ColumnH, 0.1) + 0.1);
