@@ -90,6 +90,13 @@
         close f
     )
 
+    -- mọi con cháu của nhóm (nhóm lồng nhau)
+    fn vxtDescendants o acc =
+    (
+        for c in o.children do ( append acc c; vxtDescendants c acc )
+        acc
+    )
+
     fn vxtExportLibrary =
     (
         local sel = for o in selection where (not isGroupMember o) or (isGroupHead o) collect o
@@ -99,7 +106,7 @@
         local n = 0
         for o in sel do
         (
-            local nodes = if isGroupHead o then (for c in o.children collect c) else #(o)
+            local nodes = if isGroupHead o then (vxtDescendants o #()) else #(o)
             local verts = #(); local faces = #()
             vxtCollect nodes verts faces
             if faces.count > 0 then

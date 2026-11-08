@@ -26,6 +26,16 @@ jobs:
             throw "build loi"
           }
 
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Kiem thu plugin SketchUp (chay that tren API gia lap)
+        shell: pwsh
+        run: |
+          ruby tools/SketchUp/test/run_mock.rb "$PWD\KetQuaMau\SketchUpPlugin"
+          if ($LASTEXITCODE -ne 0) { throw "plugin SketchUp loi" }
+
       - name: Chay bo kiem thu + quy trinh mau
         shell: pwsh
         run: |

@@ -261,6 +261,42 @@ public static class ArchDetailTests
         var pf = Library3D.Place(p, pl[0], "T2A", 6, 3);
         check("KT đặt mục thư viện: mang ký hiệu mặt bằng", B(pf.PlanSymbol != null && pf.PlanSymbol.Count == 1 && pf.Family == null), 1, 0);
 
+        // ================= 6c. File do plugin SketchUp xuất thật (CI: tools/SketchUp/test/run_mock.rb chạy trước) =================
+        string su = Path.Combine(outDir, "SketchUpPlugin");
+        string suModel = Path.Combine(su, "NhaMau.vxtmesh.json");
+        check("KT plugin SketchUp: có file mô hình xuất ra", B(File.Exists(suModel)), 1, 0);
+        if (File.Exists(suModel))
+        {
+            var sm = MeshToPlan.Read(suModel, new MeshPlanOptions());
+            var sp = MeshToPlan.Build(sm, new MeshPlanOptions());
+            check("KT plugin SketchUp → Việt Const: 3 cao độ sàn (0 / 3,6 / 6,9)", B(sp.Levels.Count == 3 && Math.Abs(sp.Levels[1] - sp.Levels[0] - 3.6) < 1e-3 && Math.Abs(sp.Levels[2] - sp.Levels[0] - 6.9) < 1e-3), 1, 0);
+            check("KT plugin SketchUp → Việt Const: cột component", sp.Columns, 1, 0);
+            check("KT plugin SketchUp → Việt Const: 1 cửa đi + 1 cửa sổ", sp.Doors * 10 + sp.Windows, 11, 0);
+            check("KT plugin SketchUp → Việt Const: cầu thang", sp.Stairs, 1, 0);
+            string sdx = Path.Combine(dir, "PluginSketchUp_DauVao.dxf");
+            MeshToPlan.WriteDxf(sp.Entities, sdx);
+            var sd = ArchPlanReader.Read(sdx, new ArchImportOptions());
+            check("KT plugin SketchUp → mặt bằng: 2 tầng, tường 220", B(sd.Floors.Count == 2 && sd.Floors[0].Walls.Count >= 4 && sd.Floors[0].Walls.Any(x => Math.Abs(x.Thickness - 0.22) < 0.02)), 1, 0);
+            check("KT plugin SketchUp → mặt bằng: cửa đi + cửa sổ", sd.Floors.Sum(fl => fl.Openings.Count), 2, 0);
+        }
+        string suLib = Path.Combine(su, "AppData", "VietConst", "ThuVien3D");
+        check("KT plugin SketchUp: có thư mục thư viện", B(Directory.Exists(suLib)), 1, 0);
+        if (Directory.Exists(suLib))
+        {
+            var sl = Library3D.LoadAll(suLib);
+            var ban = sl.FirstOrDefault(x => x.Name == "Bàn ăn 6 ghế");
+            check("KT plugin SketchUp → thư viện: 3 mục", sl.Count, 3, 0);
+            check("KT plugin SketchUp → thư viện: bàn ăn 1,6 × 0,9 × 0,75, nhóm Nội thất", B(ban != null && ban.Category == "Nội thất" && Math.Abs(ban.Width - 1.6) < 1e-3 && Math.Abs(ban.Depth - 0.9) < 1e-3 && Math.Abs(ban.Height - 0.75) < 1e-3), 1, 0);
+            check("KT plugin SketchUp → thư viện: ký hiệu mặt bằng bàn", B(ban?.PlanSymbol != null && ban.PlanSymbol.Count >= 1), 1, 0);
+            var wcI = sl.FirstOrDefault(x => x.Category == "Thiết bị vệ sinh");
+            check("KT plugin SketchUp → thư viện: bồn cầu thuộc điện nước", B(wcI != null && wcI.Discipline == Discipline.DienNuoc), 1, 0);
+            if (ban != null)
+            {
+                var pb = Library3D.Place(p, ban, "T2A", 4, 4);
+                check("KT đặt bàn từ thư viện SketchUp: đúng kích thước", B(Math.Abs(pb.Width - 1.6) < 1e-3 && pb.PlanSymbol != null), 1, 0);
+            }
+        }
+
         // ================= 6. Mô hình SketchUp → mặt bằng =================
         var m = HouseMesh();
         check("KT lưới: trục đứng Z", MeshToPlan.GuessUpAxis(m), 2, 0);

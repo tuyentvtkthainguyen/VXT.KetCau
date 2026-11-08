@@ -6,6 +6,7 @@
 # Không kết nối mạng, không thu thập dữ liệu: chỉ ghi file người dùng chọn.
 require 'sketchup.rb'
 require 'json'
+require 'fileutils'
 
 module VXT
   module VietConst
@@ -138,7 +139,10 @@ module VXT
         col = MeshCollector.new
         # theo hệ toạ độ của component (không áp dụng vị trí đặt) nhưng giữ tỷ lệ co giãn của instance
         tr = e.transformation
-        sc = Geom::Transformation.scaling(tr.xaxis.length, tr.yaxis.length, tr.zaxis.length)
+        sx = (tr * Geom::Vector3d.new(1, 0, 0)).length.to_f
+        sy = (tr * Geom::Vector3d.new(0, 1, 0)).length.to_f
+        sz = (tr * Geom::Vector3d.new(0, 0, 1)).length.to_f
+        sc = Geom::Transformation.scaling(sx, sy, sz)
         col.collect(e.respond_to?(:definition) ? e.definition.entities : e.entities, sc, '')
         next if col.faces.empty?
         xs = col.verts.map { |v| v[0] }; ys = col.verts.map { |v| v[1] }; zs = col.verts.map { |v| v[2] }
@@ -148,9 +152,7 @@ module VXT
         cat = tag.empty? ? guess_category(name) : tag
         disc = ['Thiết bị vệ sinh', 'Đèn', 'Điện'].include?(cat) ? 'DienNuoc' : 'KienTruc'
         dir = File.join(root, safe(cat))
-        Dir.mkdir(File.join(appdata, 'VietConst')) unless Dir.exist?(File.join(appdata, 'VietConst'))
-        Dir.mkdir(root) unless Dir.exist?(root)
-        Dir.mkdir(dir) unless Dir.exist?(dir)
+        FileUtils.mkdir_p(dir)
         data = { 'Id' => "#{safe(cat)}/#{safe(name)}", 'Name' => name, 'Category' => cat, 'Source' => 'SketchUp (plugin)',
                  'Vertices' => verts, 'Faces' => col.faces,
                  'Width' => (xs.max - xs.min).round(4), 'Depth' => (ys.max - ys.min).round(4), 'Height' => (zs.max - zs.min).round(4),
