@@ -16,11 +16,11 @@ namespace KetCauVXT.App;
 // =====================================================================
 public partial class MainWindow
 {
-    private bool _panning, _panOrbit;
-    private Point _panStart;
-    private Point3D _panTarget0;
-    private double _panYaw0, _panPitch0;
-    private FrameworkElement _panHost;
+    private bool _v3Panning, _v3PanOrbit;
+    private Point _v3PanStart;
+    private Point3D _v3PanTarget0;
+    private double _v3PanYaw0, _v3PanPitch0;
+    private FrameworkElement _v3PanHost;
     private DateTime _lastMiddleClick = DateTime.MinValue;
 
     private (Viewport3D Vp, PerspectiveCamera Cam) Vp3D(object sender) =>
@@ -39,47 +39,47 @@ public partial class MainWindow
             return;
         }
         if (e.ChangedButton == MouseButton.Middle) _lastMiddleClick = DateTime.Now;
-        _panning = true;
-        _panOrbit = e.ChangedButton == MouseButton.Middle && (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
-        _panHost = host;
-        _panStart = e.GetPosition(host);
-        _panTarget0 = _target; _panYaw0 = _yaw; _panPitch0 = _pitch;
+        _v3Panning = true;
+        _v3PanOrbit = e.ChangedButton == MouseButton.Middle && (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
+        _v3PanHost = host;
+        _v3PanStart = e.GetPosition(host);
+        _v3PanTarget0 = _target; _v3PanYaw0 = _yaw; _v3PanPitch0 = _pitch;
         host.CaptureMouse();
-        host.Cursor = _panOrbit ? Cursors.SizeAll : Cursors.Hand;
+        host.Cursor = _v3PanOrbit ? Cursors.SizeAll : Cursors.Hand;
         e.Handled = true;
     }
 
     private void View3D_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (!_panning || (e.ChangedButton != MouseButton.Middle && e.ChangedButton != MouseButton.Right)) return;
-        _panning = false;
-        _panHost?.ReleaseMouseCapture();
-        if (_panHost != null) _panHost.Cursor = null;
+        if (!_v3Panning || (e.ChangedButton != MouseButton.Middle && e.ChangedButton != MouseButton.Right)) return;
+        _v3Panning = false;
+        _v3PanHost?.ReleaseMouseCapture();
+        if (_v3PanHost != null) _v3PanHost.Cursor = null;
         // bấm chuột phải không kéo: để menu ngữ cảnh (nếu có) xử lý
-        var p = e.GetPosition(_panHost);
-        bool moved = Math.Abs(p.X - _panStart.X) + Math.Abs(p.Y - _panStart.Y) >= 4;
+        var p = e.GetPosition(_v3PanHost);
+        bool moved = Math.Abs(p.X - _v3PanStart.X) + Math.Abs(p.Y - _v3PanStart.Y) >= 4;
         if (moved || e.ChangedButton == MouseButton.Middle) e.Handled = true;
     }
 
     /// <summary>Kéo chuột giữa / phải đang di chuyển: pan hoặc xoay (gọi đầu View3D_MouseMove).</summary>
     private bool View3DPanMove(MouseEventArgs e)
     {
-        if (!_panning || _panHost == null) return false;
-        if (e.MiddleButton != MouseButtonState.Pressed && e.RightButton != MouseButtonState.Pressed) { _panning = false; _panHost.ReleaseMouseCapture(); _panHost.Cursor = null; return false; }
-        var p = e.GetPosition(_panHost);
-        double dx = p.X - _panStart.X, dy = p.Y - _panStart.Y;
-        if (_panOrbit)
+        if (!_v3Panning || _v3PanHost == null) return false;
+        if (e.MiddleButton != MouseButtonState.Pressed && e.RightButton != MouseButtonState.Pressed) { _v3Panning = false; _v3PanHost.ReleaseMouseCapture(); _v3PanHost.Cursor = null; return false; }
+        var p = e.GetPosition(_v3PanHost);
+        double dx = p.X - _v3PanStart.X, dy = p.Y - _v3PanStart.Y;
+        if (_v3PanOrbit)
         {
-            _yaw = _panYaw0 - dx * 0.4;
-            _pitch = Math.Clamp(_panPitch0 + dy * 0.4, -89, 89);
+            _yaw = _v3PanYaw0 - dx * 0.4;
+            _pitch = Math.Clamp(_v3PanPitch0 + dy * 0.4, -89, 89);
         }
         else
         {
             var (right, up) = CameraAxes();
-            double w = Math.Max(1, _panHost.ActualWidth);
+            double w = Math.Max(1, _v3PanHost.ActualWidth);
             double fov = (camera3D?.FieldOfView ?? 45) * Math.PI / 180;
             double k = 2 * _dist * Math.Tan(fov / 2) / w;   // m / điểm ảnh tại tâm xoay
-            _target = _panTarget0 - right * (dx * k) + up * (dy * k);
+            _target = _v3PanTarget0 - right * (dx * k) + up * (dy * k);
         }
         UpdateCamera();
         return true;
