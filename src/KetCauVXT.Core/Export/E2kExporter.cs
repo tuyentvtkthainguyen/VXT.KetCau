@@ -295,7 +295,7 @@ public static class E2kExporter
             }
             L("");
         }
-        var fls = p.FrameLoads.Where(l => !(slabsAsAreas && l.Source == SlabLoadDistributor.Source)).ToList();
+        var fls = p.FrameLoads.Where(l => !l.Moment && !(slabsAsAreas && l.Source == SlabLoadDistributor.Source)).ToList();   // xoắn phân bố: không xuất
         if (fls.Count > 0)
         {
             L("$ FRAME OBJECT LOADS");

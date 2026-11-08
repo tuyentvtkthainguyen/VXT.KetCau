@@ -36,6 +36,10 @@ public class FrameLoad
     public string Note { get; set; } = "";
     /// <summary>Nguồn sinh tải: "" = người dùng nhập, "SLAB" = dồn từ sàn (tự sinh lại mỗi lần phân tích)</summary>
     public string Source { get; set; } = "";
+    /// <summary>true: mômen phân bố (kN·m/m) / mômen tập trung (kN·m) quanh trục địa phương 1 của thanh (xoắn) – vd. tải ngang tay vịn
+    /// lan can đặt cao hơn trục dầm biên. Dir bỏ qua (luôn trục 1).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Moment { get; set; }
 
     public static FrameLoad Uniform(int elem, string pattern, double q, LoadDir dir = LoadDir.Gravity, string note = "") => new()
     {

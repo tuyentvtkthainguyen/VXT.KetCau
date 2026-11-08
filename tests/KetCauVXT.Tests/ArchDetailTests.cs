@@ -106,7 +106,12 @@ public static class ArchDetailTests
         var railLoads = p.FrameLoads.Where(l => l.Note.Contains("Lan can xây")).ToList();
         check("KT tải lan can lên dầm trục B tầng T2 (2 nhịp)", railLoads.Count, 2, 0);
         check("KT giá trị tải lan can", railLoads.Sum(l => l.Points[0][1]) / Math.Max(1, railLoads.Count), 2.52, 1e-9);
-        var hz = p.FrameLoads.Where(l => l.Note.Contains($"lan can #{rl.Id}")).ToList();
+        var hz = p.FrameLoads.Where(l => !l.Moment && l.Note.Contains($"lan can #{rl.Id}")).ToList();
+        var tq = p.FrameLoads.Where(l => l.Moment && l.Note.Contains($"lan can #{rl.Id}")).ToList();
+        var tqf = tq.Count > 0 ? p.Frames.FirstOrDefault(f => f.Id == tq[0].Element) : null;
+        double hb = tqf != null ? p.Section(tqf.Section)?.H ?? 0.3 : 0.3;
+        check("KT xoắn dầm biên do tải ngang tay vịn: 2 dầm", tq.Count, 2, 0);
+        check("KT xoắn dầm biên = 0,3 · (1,0 + h/2)", Math.Abs(tq.Count > 0 ? tq[0].Points[0][1] : 0), 0.3 * (1.0 + hb / 2), 1e-4);
         check("KT tải ngang tay vịn: 2 dầm, phương Y", B(hz.Count == 2 && hz.All(l => l.Dir == LoadDir.GlobalY && l.Pattern == "HT")), 1, 0);
         check("KT tải ngang hướng ra ngoài nhà (+Y) 0,3 kN/m", hz.Sum(l => l.Points[0][1]) / Math.Max(1, hz.Count), 0.3, 1e-9);
         WallLoadGenerator.Apply(p);
@@ -122,6 +127,33 @@ public static class ArchDetailTests
         solids = ModelSolids.Build(p, new[] { Discipline.KienTruc });
         check("KT khối lan can inox có trụ", B(solids.Count(s => s.Id.StartsWith($"LC-{ri.Id}-") && s.Name.EndsWith("trụ")) >= 4), 1, 0);
         check("KT lan can kiểu IfcRailing", B(solids.Where(s => s.Id.StartsWith("LC-")).All(s => s.IfcType == "IfcRailing")), 1, 0);
+
+        // ---- bộ giải: xoắn phân bố đều mt trên dầm ngàm 2 đầu → T đầu = mt·L/2, giữa nhịp = 0 ----
+        {
+            var pt = ModelBuilder.NewProject("Xoắn");
+            var ta = pt.GetOrAddNode(0, 0, 3); var tm = pt.GetOrAddNode(2, 0, 3); var tb = pt.GetOrAddNode(4, 0, 3);
+            ta.Restraint = new[] { true, true, true, true, true, true }; tb.Restraint = new[] { true, true, true, true, true, true };
+            string tsec = pt.Sections.First().Name;
+            pt.Frames.Add(new FrameElement { Id = 1, NodeI = ta.Id, NodeJ = tm.Id, Section = tsec, Kind = FrameKind.Beam });
+            pt.Frames.Add(new FrameElement { Id = 2, NodeI = tm.Id, NodeJ = tb.Id, Section = tsec, Kind = FrameKind.Beam });
+            pt.InvalidateIndex();
+            foreach (int fid in new[] { 1, 2 })
+            {
+                var lt = new FrameLoad { Element = fid, Pattern = "HT", Dir = LoadDir.Local1, Moment = true };
+                lt.Points.Add(new[] { 0.0, 1.5 }); lt.Points.Add(new[] { 1.0, 1.5 });
+                pt.FrameLoads.Add(lt);
+            }
+            var tres = KetCauVXT.Analysis.FrameAnalysis.Run(pt);
+            var tc = tres.Cases["HT"];
+            check("KT bộ giải xoắn: |T| đầu dầm = mt·L/2 = 3", Math.Abs(tc.Frames[1].F[0][3]), 3.0, 1e-6);
+            check("KT bộ giải xoắn: T giữa nhịp = 0", Math.Abs(tc.Frames[1].F[^1][3]), 0, 1e-6);
+            check("KT bộ giải xoắn: T giữa đoạn = mt·L/4", Math.Abs(tc.Frames[1].F[Array.FindIndex(tc.Frames[1].Stations, x => Math.Abs(x - 1) < 1e-6)][3]), 1.5, 1e-6);
+            check("KT bộ giải xoắn: phản lực Mx hai gối = mt·L", Math.Abs(tc.Reactions[ta.Id][3] + tc.Reactions[tb.Id][3]), 6.0, 1e-6);
+            check("KT bộ giải xoắn: không sinh uốn", Math.Abs(tc.Frames[1].F[0][5]) + Math.Abs(tc.Frames[1].F[0][4]), 0, 1e-9);
+            pt.Frames[1].ReleaseJ[3] = true;   // đầu b không giữ xoắn → toàn bộ về a
+            var tc2 = KetCauVXT.Analysis.FrameAnalysis.Run(pt).Cases["HT"];
+            check("KT bộ giải xoắn: giải phóng xoắn đầu b → T(a) = mt·L = 6", Math.Abs(tc2.Frames[1].F[0][3]), 6.0, 1e-6);
+        }
 
         // ================= 4. Trần theo phòng, sao chép tầng =================
         p.Arch.Rooms.Add(new Room { Id = 1, Story = "T2", Name = "Phòng khách", Outline = new() { new[] { 0.0, 0.0 }, new[] { 4.0, 0.0 }, new[] { 4.0, 5.0 }, new[] { 0.0, 5.0 } } });

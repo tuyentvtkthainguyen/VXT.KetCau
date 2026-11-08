@@ -164,6 +164,27 @@ public static class ElementMatrices
         return p;
     }
 
+    /// <summary>Tải nút tương đương của mômen xoắn phân bố (xa, xb, ta, tb) và tập trung (x, T) quanh trục 1 – hàm dạng tuyến tính như lực dọc.</summary>
+    public static void AddTorsion(double[] p, double L, IReadOnlyList<double[]> tsegs, IReadOnlyList<double[]> tpts)
+    {
+        double[] gx = { -Math.Sqrt(0.6), 0, Math.Sqrt(0.6) };
+        double[] gw = { 5.0 / 9, 8.0 / 9, 5.0 / 9 };
+        if (tsegs != null)
+            foreach (var sg in tsegs)
+            {
+                double len = sg[1] - sg[0];
+                if (len <= 1e-12) continue;
+                for (int g = 0; g < 3; g++)
+                {
+                    double t = (gx[g] + 1) / 2, x = sg[0] + t * len, w = gw[g] * len / 2;
+                    double m = (sg[2] + t * (sg[3] - sg[2])) * w, xi = Math.Clamp(x / L, 0, 1);
+                    p[3] += m * (1 - xi); p[9] += m * xi;
+                }
+            }
+        if (tpts != null)
+            foreach (var pt in tpts) { double xi = Math.Clamp(pt[0] / L, 0, 1); p[3] += pt[1] * (1 - xi); p[9] += pt[1] * xi; }
+    }
+
     private static void AddPoint(double[] p, double L, double x, double f1, double f2, double f3)
     {
         double xi = Math.Clamp(x / L, 0, 1);

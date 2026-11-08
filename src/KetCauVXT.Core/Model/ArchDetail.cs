@@ -806,6 +806,25 @@ public static class ArchDetailLoads
                             fh.Points.Add(new[] { r0, Math.Round(comp, 4) }); fh.Points.Add(new[] { r1, Math.Round(comp, 4) });
                             p.FrameLoads.Add(fh);
                         }
+                    // xoắn dầm đỡ: tải ngang đặt ở tay vịn cao hơn trọng tâm dầm e = chân lan can + H + h_dầm/2
+                    if (qh > 0 && p.Pattern("HT") != null)
+                    {
+                        var ni = p.Node(f.NodeI); var nj = p.Node(f.NodeJ);
+                        double lx = nj.X - ni.X, ly = nj.Y - ni.Y, ll = Math.Sqrt(lx * lx + ly * ly);
+                        if (ll > 1e-6)
+                        {
+                            double hb = p.Section(f.Section)?.H ?? 0.3;
+                            double e = Math.Max(0, r.BaseOffset) + r.Height + hb / 2;
+                            double mt = e * qh * (-ny * lx / ll + nx * ly / ll);   // (ẑ × n)·t
+                            if (Math.Abs(mt) > 1e-6)
+                            {
+                                var ft = new FrameLoad { Element = f.Id, Pattern = "HT", Dir = LoadDir.Local1, Moment = true, Source = WallLoadGenerator.WallSource,
+                                    Note = $"Xoắn do tải ngang tay vịn: {qh:0.##} kN/m × e = {e:0.00} m (lan can #{r.Id})" };
+                                ft.Points.Add(new[] { r0, Math.Round(mt, 4) }); ft.Points.Add(new[] { r1, Math.Round(mt, 4) });
+                                p.FrameLoads.Add(ft);
+                            }
+                        }
+                    }
                     covered += len;
                 }
                 double rest = L - covered;

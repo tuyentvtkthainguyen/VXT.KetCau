@@ -33,6 +33,9 @@ public partial class FrameAnalysis   // dao động riêng + phổ phản ứng:
         public Dictionary<string, List<double[]>> Segs = new();
         public Dictionary<string, List<double[]>> Pts = new();
         public Dictionary<string, double[]> Pstar = new();
+        // mômen xoắn phân bố (xa, xb, ta, tb) và tập trung (x, T) quanh trục địa phương 1
+        public Dictionary<string, List<double[]>> TSegs = new();
+        public Dictionary<string, List<double[]>> TPts = new();
     }
 
     private readonly List<Sub> _subs = new();
@@ -162,7 +165,7 @@ public partial class FrameAnalysis   // dao động riêng + phổ phản ứng:
         // tải trên thanh → tải địa phương trên từng đoạn
         foreach (var pat in _p.Patterns)
         {
-            foreach (var sub in _subs) { sub.Segs[pat.Name] = new List<double[]>(); sub.Pts[pat.Name] = new List<double[]>(); }
+            foreach (var sub in _subs) { sub.Segs[pat.Name] = new List<double[]>(); sub.Pts[pat.Name] = new List<double[]>(); sub.TSegs[pat.Name] = new List<double[]>(); sub.TPts[pat.Name] = new List<double[]>(); }
             if (pat.SelfWeight != 0)
                 foreach (var sub in _subs)
                 {
@@ -176,6 +179,28 @@ public partial class FrameAnalysis   // dao động riêng + phổ phản ứng:
             if (!_framesSubs.TryGetValue(fl.Element, out var subs)) continue;
             if (_p.Pattern(fl.Pattern) == null) continue;
             double Lp = subs[^1].S1;
+            if (fl.Moment)
+            {   // xoắn phân bố / tập trung quanh trục địa phương 1
+                for (int i = 0; i + 1 < fl.Points.Count; i++)
+                {
+                    double xa = fl.Points[i][0] * Lp, xb = fl.Points[i + 1][0] * Lp, qa = fl.Points[i][1], qb = fl.Points[i + 1][1];
+                    if (xb - xa <= 1e-9) continue;
+                    foreach (var sub in subs)
+                    {
+                        double a = Math.Max(xa, sub.S0), b = Math.Min(xb, sub.S1);
+                        if (b - a <= 1e-9) continue;
+                        double va = (qa + (qb - qa) * (a - xa) / (xb - xa)) / sub.Scale, vb = (qa + (qb - qa) * (b - xa) / (xb - xa)) / sub.Scale;
+                        sub.TSegs[fl.Pattern].Add(new[] { (a - sub.S0) * sub.Scale, (b - sub.S0) * sub.Scale, va, vb });
+                    }
+                }
+                foreach (var pl in fl.PointLoads)
+                {
+                    double x = pl[0] * Lp;
+                    var sub = subs.FirstOrDefault(s => x >= s.S0 - 1e-9 && x <= s.S1 + 1e-9) ?? subs[^1];
+                    sub.TPts[fl.Pattern].Add(new[] { (x - sub.S0) * sub.Scale, pl[1] });
+                }
+                continue;
+            }
             // các đoạn tuyến tính của tải (vị trí theo chiều dài thanh gốc – theo cung với dầm cong)
             for (int i = 0; i + 1 < fl.Points.Count; i++)
             {
@@ -210,6 +235,7 @@ public partial class FrameAnalysis   // dao động riêng + phổ phản ứng:
             foreach (var pat in _p.Patterns)
             {
                 var pe = ElementMatrices.EquivalentLoads(sub.L, sub.Segs[pat.Name], sub.Pts[pat.Name]);
+                ElementMatrices.AddTorsion(pe, sub.L, sub.TSegs[pat.Name], sub.TPts[pat.Name]);
                 var k = (double[,])sub.K0.Clone();
                 ElementMatrices.Condense(k, pe, sub.RelI, sub.RelJ);
                 sub.Pstar[pat.Name] = pe;
@@ -483,6 +509,16 @@ public partial class FrameAnalysis   // dao động riêng + phổ phản ứng:
     {
         double F1 = -fe[0], F2 = -fe[1], F3 = -fe[2];
         double M1 = -fe[3];
+        if (s.TSegs.TryGetValue(pat, out var tsg))
+            foreach (var t in tsg)
+            {
+                double xa = t[0], xb = Math.Min(t[1], x);
+                if (xb <= xa + 1e-12) continue;
+                double te = t[2] + (xb - xa) / (t[1] - t[0]) * (t[3] - t[2]);
+                M1 -= (t[2] + te) / 2 * (xb - xa);
+            }
+        if (s.TPts.TryGetValue(pat, out var tps))
+            foreach (var t in tps) if (t[0] < x - 1e-9) M1 -= t[1];
         double M2 = -(fe[4] + x * fe[2]);
         double M3 = -(fe[5] - x * fe[1]);
         foreach (var sg in s.Segs[pat])

@@ -228,7 +228,7 @@ public static class S2kExporter
             L($"   Case={Q(pat.Name)}   LoadType=\"Load pattern\"   LoadName={Q(pat.Name)}   LoadSF=1");
 
         T("FRAME LOADS - DISTRIBUTED");
-        foreach (var fl in p.FrameLoads)
+        foreach (var fl in p.FrameLoads.Where(l => !l.Moment))
         {
             var f = p.Frame(fl.Element);
             var mySegs = segs.Where(s => s.f.Id == f.Id).ToList();
@@ -260,7 +260,7 @@ public static class S2kExporter
         if (p.FrameLoads.Any(l => l.PointLoads.Count > 0))
         {
             T("FRAME LOADS - POINT");
-            foreach (var fl in p.FrameLoads)
+            foreach (var fl in p.FrameLoads.Where(l => !l.Moment))
                 foreach (var pl in fl.PointLoads)
                 {
                     var f = p.Frame(fl.Element);
