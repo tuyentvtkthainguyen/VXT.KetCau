@@ -44,10 +44,19 @@ public static class TakedownReport
             adv.Strips.Select(s => new[] { s.Line, s.Cols.ToString(Inv), N(s.Length, "0.0"), N(s.SumNtc, "0"), N(s.B, "0.00"), N(s.Hf, "0.00"), $"{N(s.RibB, "0.00")} × {N(s.RibH, "0.00")}" }), null, 9);
         d.Heading("4.3. Móng cọc ép", 2);
         d.Table(new[] { "Loại cọc", "L (m)", "[P] (kN)", "Nguồn [P]", "Tổng số cọc", "Bê tông cọc (m³)" },
-            adv.Piles.Select(x => new[] { x.Name, N(x.Length, "0.0"), N(x.Capacity, "0"), x.FromBorehole ? "Hố khoan (SPT), mũi " + x.TipLayer : "Nhập tay", x.Total.ToString(Inv), N(x.Volume, "0.0") }), null, 9);
-        if (adv.BestPile != null)
-            d.Table(new[] { "Cột", "Ntt (kN)", $"Số cọc ({adv.BestPile.Name})" },
-                adv.Columns.Select(c => new[] { c.T.Name, N(c.T.Ntt, "0"), c.Piles.ToString(Inv) }), null, 9);
+            adv.Piles.Select(x => new[] { x.Name, N(x.Length, "0.0"), N(x.Capacity, "0"), x.FromPress ? "Lực ép đầu cọc Pép/k" : x.FromBorehole ? "Hố khoan (SPT), mũi " + x.TipLayer : "Nhập tay", x.Total.ToString(Inv), N(x.Volume, "0.0") }), null, 9);
+        if (adv.Press != null)
+        {
+            d.Paragraph($"Sức chịu tải sơ bộ cọc ép theo lực ép đầu cọc Pép = {N(adv.Press.ForceT, "0")} t (TCVN 9394:2012):", true);
+            foreach (var t in adv.Press.Notes) d.Paragraph("– " + t);
+        }
+        if (adv.BestPile != null && adv.Pits.Count > 0)
+        {
+            d.Paragraph($"Số cọc từng hố móng ({adv.BestPile.Name}, [P] = {N(adv.BestPile.Capacity, "0")} kN): n = ⌈(1,1·ΣNtt·R1/N + Gđài)/[P]⌉; cột sát ranh – đài lệch tâm + dầm móng cân bằng R1/N = Ls/(Ls − e). Tổng {adv.PitPiles} cọc / {adv.Pits.Count} hố móng.");
+            d.Table(new[] { "Hố móng", "Cột", "Vị trí", "ΣNtt (kN)", "e (m)", "R1/N", "N tính cọc (kN)", "Số cọc", "Đài Lx × Ly (m)", "Ghi chú" },
+                adv.Pits.Select(x => new[] { x.Name, x.Names, x.EdgeText, N(x.Ntt, "0"), x.Ex > 0 || x.Ey > 0 ? $"{N(x.Ex, "0.00")} / {N(x.Ey, "0.00")}" : "0", N(x.Factor, "0.00"),
+                    N(x.Ndesign, "0"), x.Piles.ToString(Inv), $"{N(x.CapLx, "0.00")} × {N(x.CapLy, "0.00")}", x.Note }), null, 8);
+        }
         d.Paragraph("Kết quả là gợi ý sơ bộ để chọn phương án; thiết kế chi tiết móng, giằng móng theo nội lực và khảo sát địa chất.", false, true);
         return d;
     }

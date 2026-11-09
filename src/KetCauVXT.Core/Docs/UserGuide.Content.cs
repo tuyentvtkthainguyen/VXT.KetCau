@@ -729,6 +729,28 @@ public static partial class UserGuide
                 "Vì sao móng theo phân tích khung thường lớn: tổ hợp có gió, mô men chân cột ngàm, phân phối lại nội lực khung và lấy cột lớn nhất cho mọi cột. Truyền tải cho tải từng cột, tải đứng – dùng để chọn phương án và kiểm tra lại mô hình.",
                 "**Xuất thuyết minh Word**: tải từng sàn, tải chân cột, móng đơn / băng / cọc và đề xuất.");
 
+        c.Sec("khoi-tao.coc-ep-ho-mong", "Cọc ép theo lực ép đầu cọc – số cọc từng hố móng – cột sát 1 ranh / 2 ranh")
+            .P("Trong cửa sổ **Truyền tải & gợi ý móng**: nhập **lực ép đầu cọc Pép (tấn)** của máy ép thực tế (mặc định 50 t) và hệ số **k = Pép/[P]** (mặc định 2,0 theo TCVN 9394), bấm **Tính lại**.")
+            .Bullets("**[P] = Pép/k**: 50 t, k = 2 → [P] = 25 t = 250 kN/cọc. Tiết diện cọc tự chọn theo lực ép (≤ 40 t: 200×200; ≤ 70 t: 250×250; ≤ 110 t: 300×300), kiểm tra **độ bền vật liệu cọc Pvl = Rb·Ab + Rsc·As ≥ Pép** (cọc không vỡ khi ép). Có hố khoan: so sánh thêm [P]đn của đất ở chiều dài dự kiến.",
+                "**Tab Hố móng – số cọc**: tải truyền về **từng hố móng** (mỗi chân cột một đài; các đài chạm nhau – khe < 0,2 m – gộp thành đài chung), **n = ⌈(1,1·ΣNtt·R1/N + Gđài)/[P]⌉**, cách bố trí cọc (hàng × cột), kích thước đài.",
+                "**Cột sát ranh đất**: chương trình phân loại **giữa / sát 1 ranh (lệch tâm 1 phương) / sát 2 ranh – cột góc (lệch tâm 2 phương)**. Ranh lấy theo ranh đã khai báo; nếu chưa có, **Ranh đất: tự động** = hai cạnh dài nhà phố (giáp nhà bên). Bỏ chọn \"tự động\" để tự tích các cạnh trái / phải / trước / sau giáp nhà bên.",
+                "Cột sát ranh: đài (móng) **lệch tâm vào trong lô**, tim cọc cách ranh ≥ khoảng lùi ép cọc (mặc định 0,5 m); xếp cọc **một hàng dọc ranh** khi ≤ 3 cọc để giảm lệch tâm. **Dầm móng cân bằng** nối cột trong: **R1 = N·Ls/(Ls − e)** mỗi phương (cột góc nhân cả hai phương); không có cột trong trong phạm vi 6 m → đài tự cân bằng, tăng tải.",
+                "Móng đơn cột sát ranh: đáy b × b mép sát ranh, e = b/2 − khoảng cách tim cột tới ranh, b tính với R1.",
+                "**Áp dụng: Móng cọc**: ghi [P], loại cọc, lực ép; ghi ranh đất (theo trục ngoài cùng) và bật lùi cọc khỏi ranh để phần thiết kế đài tự lệch tâm. Thuyết minh Word có bảng hố móng.");
+
+        c.Sec("khoi-tao.kieu-bo-tri-thep-dam", "Kiểu bố trí thép dầm (A / B / C) và chọn số thanh thép")
+            .Bullets("**Kiểu A** (mặc định): 2 thanh góc chạy suốt; thép tăng cường dưới cắt cách mép gối 0,1·Lo; mũ gối giữa vươn Lo/3, gối biên Lo/4.",
+                "**Kiểu B**: toàn bộ thép dưới và thép trên **chạy suốt** dầm (thanh tăng cường lớn nhất các nhịp, mũ gối lớn nhất các gối), neo vào gối biên – thi công đơn giản, tốn thép hơn.",
+                "**Kiểu C**: như A nhưng **mũ gối vươn Lo/3 ở mọi gối** (kể cả gối biên); thép tăng cường dưới kéo vào gối ≥ 15d.",
+                "Chọn **kiểu cho từng dầm**: Thiết kế → Dầm → **Chọn bố trí thép…** → vùng \"Kiểu bố trí thép dọc (A / B / C)\" – mỗi kiểu có khối lượng thép (kg) để so sánh. **Kiểu mặc định cả công trình**: Thiết kế → Tuỳ chọn chọn thép & gia công.",
+                "**Số thanh thép** từng vùng (thép dưới từng nhịp, thép trên từng gối, thép chạy suốt, đai): chọn trong cùng hộp thoại – danh sách phương án đều thoả As yêu cầu và khoảng hở TCVN 5574; chương trình thiết kế lại và kiểm tra.");
+
+        c.Sec("khoi-tao.ban-ve-tung-dam", "Bản vẽ riêng từng dầm")
+            .Bullets("Thiết kế → tab **Dầm** → **Bản vẽ từng dầm…** (hoặc menu Thiết kế): danh sách dầm D1, D2… (tầng, tiết diện, số nhịp, SL).",
+                "Chọn một dầm → xem trước bản vẽ riêng: mặt đứng (dầm dài tự chia đoạn tại gối), các mặt cắt, **bảng thống kê cốt thép của riêng dầm đó**; phóng to / thu nhỏ.",
+                "**Chọn bố trí thép dầm này…**: đổi kiểu A / B / C, số thanh, đai – bản vẽ cập nhật sau khi thiết kế lại.",
+                "**Xuất bản vẽ dầm này…** (DXF / DWG, có khung tên \"CHI TIẾT DẦM D1 (SL=…)\"), hoặc **Xuất mỗi dầm một tệp…** vào một thư mục.");
+
         c.Sec("khoi-tao.esc-thoat-lenh", "Phím Esc thoát lệnh vẽ cấu kiện")
             .Bullets("Đang dùng lệnh vẽ (＋ Dầm, dầm cong, tường, ô sàn, ban công, cầu thang, cột, lan can, chi tiết kiến trúc, đặt cửa / đồ đạc, vẽ trục, mặt cắt, lệnh gõ ở dòng lệnh, sửa dầm, "
                 + "vẽ đường chuẩn / móng đa giác / nhân bản móng): bấm **Esc một lần** để thoát hẳn lệnh, trở về chế độ **Chọn** – kể cả khi con trỏ nhập đang ở ô chữ của thanh lệnh hoặc dòng lệnh.",

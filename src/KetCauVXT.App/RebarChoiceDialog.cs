@@ -353,6 +353,15 @@ internal sealed class RebarChoiceDialog : Window
             for (int i = 0; i <= n; i++) Dot(Math.Min(i * a.Spacing + 0.02, bw - 0.02), y, a.Dia, Brushes.Black);
             _sketchNote.Text = a.Text + $" – {n + 1} thanh/1 m, As = {DialogUi.F(a.AsProv * 1e4, "0.00")} cm²/m.";
         }
+        else if (a.BeamScheme != null)
+        {
+            _sketchNote.Text = a.Text + " – thép dọc + đai dầm " + DialogUi.F(a.WeightKg, "0.0") + " kg. " + a.BeamScheme switch
+            {
+                BeamRebarScheme.AllContinuous => "Mọi thanh dưới / trên chạy suốt dầm, neo vào gối biên – thi công đơn giản, tốn thép hơn.",
+                BeamRebarScheme.ExtendedSupport => "Mũ gối vươn Lo/3 ở mọi gối (cả gối biên), tăng cường dưới neo vào gối.",
+                _ => "2 thanh góc chạy suốt; tăng cường dưới cắt cách mép gối 0,1·Lo; mũ gối giữa Lo/3, gối biên Lo/4."
+            } + (a.Warning.Length > 0 ? " " + a.Warning : "");
+        }
         else if (a.Scheme != null)
         {
             _sketchNote.Text = a.Text + " – thép sàn cả tầng " + DialogUi.F(a.WeightKg, "0.0") + " kg (" + DialogUi.F(a.WeightPerM2, "0.00") + " kg/m²). "
@@ -362,7 +371,7 @@ internal sealed class RebarChoiceDialog : Window
         {
             _sketchNote.Text = "Đai " + a.Text + " (vùng gối / giữa nhịp) – " + a.Note;
         }
-        if (a.Warning.Length > 0 && a.Scheme == null) _sketchNote.Text += "\n⚠ " + a.Warning;
+        if (a.Warning.Length > 0 && a.Scheme == null && a.BeamScheme == null) _sketchNote.Text += "\n⚠ " + a.Warning;
     }
 
     /// <summary>Thứ tự vị trí trong hàng: 2 góc trước, sau đó từ giữa ra (giống BeamDrawing).</summary>
@@ -382,7 +391,7 @@ internal sealed class RebarPrefsDialog : Window
 {
     private readonly TextBox _tDias, _tMaxPer, _tStirDia, _tSMin, _tSMax, _tStock, _tReuse;
     private readonly CheckBox _chkSame, _chkTwo, _chkStagger;
-    private readonly ComboBox _cbScheme;
+    private readonly ComboBox _cbScheme, _cbBeamScheme;
     private readonly TextBox _tBeamK, _tBeamKS, _tColMin, _tColRatio, _tAlphaT, _tAlphaC, _tStagF, _tD90, _tD135, _tD180;
     private readonly CheckBox _chkCoupler, _chkNoLapFoot, _chkBend;
     public RebarPreferences Result { get; private set; }
@@ -414,6 +423,7 @@ internal sealed class RebarPrefsDialog : Window
         _chkNoLapFoot = new CheckBox { Content = "Không nối thép móng đơn / đài cọc (dùng thanh nguyên)", IsChecked = p.NoLapInFootings };
         _chkBend = new CheckBox { Content = "Trừ độ dãn dài khi uốn vào chiều dài cắt (bản vẽ gia công)", IsChecked = p.BendDeduction };
         _cbScheme = new ComboBox { Width = 200, ItemsSource = Enum.GetValues<SlabRebarScheme>().Select(RebarPreferences.SchemeName).ToList(), SelectedIndex = (int)p.SlabScheme };
+        _cbBeamScheme = new ComboBox { Width = 260, ItemsSource = Enum.GetValues<BeamRebarScheme>().Select(RebarPreferences.BeamSchemeName).ToList(), SelectedIndex = (int)p.BeamScheme };
         var root = new StackPanel { Margin = new Thickness(10) };
         StackPanel Line(string label, UIElement c) => DialogUi.Row(DialogUi.Label(label, 300), c);
         root.Children.Add(DialogUi.Label("Chọn thép", double.NaN, true));
@@ -425,6 +435,7 @@ internal sealed class RebarPrefsDialog : Window
         root.Children.Add(Line("Bước đai nhỏ nhất, mm (0 = không giới hạn)", _tSMin));
         root.Children.Add(Line("Bước đai lớn nhất, mm (0 = theo cấu tạo)", _tSMax));
         root.Children.Add(Line("Phương án thép sàn mặc định (từng ô chọn riêng được)", _cbScheme));
+        root.Children.Add(Line("Kiểu bố trí thép dầm mặc định (từng dầm chọn riêng được)", _cbBeamScheme));
         root.Children.Add(DialogUi.Label("Gia công thép (shop drawing)", double.NaN, true));
         root.Children.Add(Line("Chiều dài cây thép thương phẩm, m", _tStock));
         root.Children.Add(Line("Đầu thừa tái sử dụng khi ≥ (m)", _tReuse));
@@ -472,7 +483,8 @@ internal sealed class RebarPrefsDialog : Window
             LapAlphaTension = Math.Clamp(DialogUi.ParseNum(_tAlphaT.Text, 1.2), 0.5, 3), LapAlphaCompression = Math.Clamp(DialogUi.ParseNum(_tAlphaC.Text, 0.9), 0.5, 3),
             StaggerFactor = Math.Max(1.0, DialogUi.ParseNum(_tStagF.Text, 1.3)),
             AllowCoupler = _chkCoupler.IsChecked == true, NoLapInFootings = _chkNoLapFoot.IsChecked == true,
-            SlabScheme = _cbScheme.SelectedIndex >= 0 ? (SlabRebarScheme)_cbScheme.SelectedIndex : SlabRebarScheme.TopBarsBottomMesh
+            SlabScheme = _cbScheme.SelectedIndex >= 0 ? (SlabRebarScheme)_cbScheme.SelectedIndex : SlabRebarScheme.TopBarsBottomMesh,
+            BeamScheme = _cbBeamScheme.SelectedIndex >= 0 ? (BeamRebarScheme)_cbBeamScheme.SelectedIndex : BeamRebarScheme.CutExtras
         };
     }
 }

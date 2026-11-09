@@ -49,7 +49,7 @@ public static class TakedownTests
 
         // ---- gợi ý móng ----
         p.Foundation.Type = FoundationType.Isolated;
-        var adv = TakedownAdvisor.Advise(p, r, null, t);
+        var adv = TakedownAdvisor.Advise(p, r, null, t, new AdviseOptions { PressForce = 0, Sides = new BoundarySide[0] }); // [P] hố khoan / nhập tay, không ranh (test 102: cọc ép + sát ranh)
         Console.WriteLine("   · " + adv.Explanation);
         Console.WriteLine("     " + adv.SoilNote);
         foreach (var c in adv.Columns) Console.WriteLine($"     {c.T.Name}: móng đơn {c.B:0.0}×{c.B:0.0}×{c.H:0.00} m (R = {c.R:0}), cọc {c.Piles} {c.Note}");

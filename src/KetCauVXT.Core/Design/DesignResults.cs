@@ -170,6 +170,8 @@ public class BeamLineDesign : MemberDesignBase
     public string Section { get; set; } = "";
     /// <summary>Cao độ đỉnh dầm (m)</summary>
     public double TopElevation { get; set; }
+    /// <summary>Kiểu bố trí thép dọc (A / B / C)</summary>
+    public KetCauVXT.Model.BeamRebarScheme Scheme { get; set; }
     public List<BeamSpanResult> Spans { get; set; } = new();
     public List<StirrupZone> StirrupZones { get; set; } = new();
     /// <summary>Tổng chiều dài dầm tim trục đầu – tim trục cuối (m); dầm cong: theo chiều dài cung</summary>

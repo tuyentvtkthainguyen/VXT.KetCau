@@ -27,6 +27,89 @@ public sealed class ColumnFoundationSuggestion
     /// <summary>Số cọc của loại cọc đề xuất</summary>
     public int Piles { get; set; }
     public string Note { get; set; } = "";
+    // ---- [SátRanh] ----
+    /// <summary>Vị trí chân cột so với ranh đất: giữa / sát 1 ranh (1 phương) / sát 2 ranh (góc, 2 phương)</summary>
+    public EdgeKind Edge { get; set; }
+    public bool EdgeLeft { get; set; }
+    public bool EdgeRight { get; set; }
+    public bool EdgeFront { get; set; }
+    public bool EdgeBack { get; set; }
+    /// <summary>Khoảng cách tim cột tới ranh theo X / Y (m), NaN = không sát</summary>
+    public double DistX { get; set; } = double.NaN;
+    public double DistY { get; set; } = double.NaN;
+    /// <summary>Nhịp dầm móng cân bằng tới cột trong theo X / Y (m), NaN = không có</summary>
+    public double LsX { get; set; } = double.NaN;
+    public double LsY { get; set; } = double.NaN;
+    /// <summary>Móng đơn lệch tâm: độ lệch tâm ex, ey (m) và hệ số R1/N = Π Ls/(Ls − e)</summary>
+    public double Ex { get; set; }
+    public double Ey { get; set; }
+    public double StrapFactor { get; set; } = 1;
+    public string EdgeText => TakedownAdvisor.EdgeText(this);
+}
+
+public enum EdgeKind { Interior = 0, OneSide = 1, TwoSides = 2 }
+
+/// <summary>[Hố móng] Một hố móng (đài cọc) – một hoặc nhiều chân cột gần nhau dùng chung đài.</summary>
+public sealed class FoundationPit
+{
+    public string Name { get; set; } = "";
+    public List<ColumnFoundationSuggestion> Cols { get; } = new();
+    public double Ntc => Cols.Sum(c => c.T.Ntc);
+    public double Ntt => Cols.Sum(c => c.T.Ntt);
+    public EdgeKind Edge { get; set; }
+    public string EdgeText { get; set; } = "";
+    /// <summary>Độ lệch tâm đài so với tim cột (m) theo X / Y</summary>
+    public double Ex { get; set; }
+    public double Ey { get; set; }
+    /// <summary>Hệ số tăng tải do dầm móng cân bằng R1/N</summary>
+    public double Factor { get; set; } = 1;
+    /// <summary>Tải tính số cọc: k·Ntt·R1/N + trọng lượng đài (kN)</summary>
+    public double Ndesign { get; set; }
+    public int Piles { get; set; }
+    /// <summary>Số hàng cọc theo X × theo Y</summary>
+    public int Nx { get; set; }
+    public int Ny { get; set; }
+    /// <summary>Kích thước đài theo X × Y (m), tâm đài</summary>
+    public double CapLx { get; set; }
+    public double CapLy { get; set; }
+    public double Cx { get; set; }
+    public double Cy { get; set; }
+    public string Note { get; set; } = "";
+    public string Names => string.Join(", ", Cols.Select(c => c.T.Name));
+}
+
+/// <summary>[CọcÉp] Sức chịu tải sơ bộ của cọc ép theo lực ép đầu cọc.</summary>
+public sealed class PressPileInfo
+{
+    /// <summary>Lực ép đầu cọc (tấn) và (kN)</summary>
+    public double ForceT { get; set; }
+    public double Force => ForceT * 10;
+    public double K { get; set; }
+    public double Size { get; set; }
+    public string Concrete { get; set; } = "B25";
+    public int BarDia { get; set; }
+    public int Bars { get; set; } = 4;
+    /// <summary>Độ bền vật liệu cọc Pvl = Rb·Ab + Rsc·As (kN) – phải ≥ Pép</summary>
+    public double Pvl { get; set; }
+    /// <summary>[P] = Pép/k (kN)</summary>
+    public double P { get; set; }
+    public double Length { get; set; }
+    /// <summary>[P]đn theo đất nền (hố khoan) tại chiều dài L (kN), NaN = chưa có hố khoan</summary>
+    public double Psoil { get; set; } = double.NaN;
+    public List<string> Notes { get; } = new();
+}
+
+/// <summary>Tuỳ chọn gợi ý móng.</summary>
+public sealed class AdviseOptions
+{
+    /// <summary>Lực ép đầu cọc (tấn); NaN = theo FoundationSettings.PilePressForce; 0 = không dùng</summary>
+    public double PressForce { get; set; } = double.NaN;
+    /// <summary>Hệ số k = Pép/[P]; NaN = theo FoundationSettings.PilePressFactor</summary>
+    public double PressFactor { get; set; } = double.NaN;
+    /// <summary>Các cạnh lô đất giáp nhà bên (ranh đất). null = tự động: ranh đã khai báo, nếu chưa có thì hai cạnh dài của nhà phố.</summary>
+    public IList<BoundarySide> Sides { get; set; }
+    /// <summary>Ưu tiên cọc ép theo lực ép (thay vì [P] hố khoan / nhập tay)</summary>
+    public bool PreferPress { get; set; } = true;
 }
 
 public sealed class PileSuggestion
@@ -36,6 +119,8 @@ public sealed class PileSuggestion
     public double Length { get; set; }
     public double TipDepth { get; set; } = double.NaN;
     public bool FromBorehole { get; set; }
+    /// <summary>[P] theo lực ép đầu cọc Pép/k</summary>
+    public bool FromPress { get; set; }
     public string TipLayer { get; set; } = "";
     public List<int> PerColumn { get; } = new();
     public int Total => PerColumn.Sum();
@@ -65,6 +150,13 @@ public sealed class TakedownAdvice
     // cọc
     public List<PileSuggestion> Piles { get; } = new();
     public PileSuggestion BestPile { get; set; }
+    public PressPileInfo Press { get; set; }
+    /// <summary>Hố móng (đài cọc) theo loại cọc đề xuất</summary>
+    public List<FoundationPit> Pits { get; } = new();
+    /// <summary>Ranh đất dùng để nhận cột sát ranh; Virtual = suy ra từ cột ngoài cùng (chưa khai báo trong dự án)</summary>
+    public List<PropertyBoundary> Boundaries { get; } = new();
+    public bool VirtualBoundaries { get; set; }
+    public int PitPiles => Pits.Sum(x => x.Piles);
     /// <summary>"Isolated" | "Strip" | "Pile"</summary>
     public string Recommended { get; set; } = "";
     public string Explanation { get; set; } = "";
@@ -72,14 +164,14 @@ public sealed class TakedownAdvice
     public FoundationType RecommendedType => Recommended == "Strip" ? FoundationType.Strip : Recommended == "Pile" ? FoundationType.Pile : FoundationType.Isolated;
 }
 
-public static class TakedownAdvisor
+public static partial class TakedownAdvisor
 {
     /// <summary>Hệ số kể mô men nhỏ / lệch tâm khi chọn số cọc theo tải đứng</summary>
     public const double PileK = 1.1;
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private static string F(double v, string f = "0.##") => double.IsFinite(v) ? v.ToString(f, Inv) : "-";
 
-    public static TakedownAdvice Advise(Project p, AnalysisResults r = null, TakedownOptions opt = null, TakedownResult t = null)
+    public static TakedownAdvice Advise(Project p, AnalysisResults r = null, TakedownOptions opt = null, TakedownResult t = null, AdviseOptions ao = null)
     {
         var adv = new TakedownAdvice { T = t ?? LoadTakedown.Run(p, r, opt) };
         var cols = adv.T.Columns;
@@ -146,6 +238,11 @@ public static class TakedownAdvisor
             adv.Columns.Add(sg);
         }
         adv.Rmin = rmin;
+        // ---- cột sát ranh: móng lệch tâm 1 phương / 2 phương ----
+        ao ??= new AdviseOptions();
+        ClassifyEdges(p, adv, ao.Sides);
+        foreach (var sg in adv.Columns) EccentricIsolated(sg, sg.R - gtb * Df);
+        maxB = adv.Columns.Where(c => double.IsFinite(c.B)).Select(c => c.B).DefaultIfEmpty(0).Max();
         // chạm nhau: các cặp cột kề nhau cùng hàng / cùng cột
         foreach (var a in adv.Columns)
             foreach (var b in adv.Columns)
@@ -153,7 +250,7 @@ public static class TakedownAdvisor
                 if (ReferenceEquals(a, b) || !double.IsFinite(a.B) || !double.IsFinite(b.B)) continue;
                 double dx = Math.Abs(a.T.X - b.T.X), dy = Math.Abs(a.T.Y - b.T.Y);
                 double gap = Math.Max(dx, dy) - (a.B + b.B) / 2;
-                if (Math.Min(dx, dy) < (a.B + b.B) / 2 && gap < 0.2) { a.Overlap = true; a.Note = "chạm móng bên cạnh"; }
+                if (Math.Min(dx, dy) < (a.B + b.B) / 2 && gap < 0.2) { if (!a.Overlap) a.Note = a.Note.Length > 0 ? a.Note + "; chạm móng bên cạnh" : "chạm móng bên cạnh"; a.Overlap = true; }
             }
         var why = new List<string>();
         if (adv.Columns.Any(c => !double.IsFinite(c.B))) why.Add("nền không đủ chịu lực (R − γtb·Df ≤ 0)");
@@ -243,6 +340,28 @@ public static class TakedownAdvisor
         }
         if (adv.Piles.Count == 0 && fs.PileCapacity > 0)
             adv.Piles.Add(new PileSuggestion { Size = fs.PileSize, Capacity = fs.PileCapacity, Length = fs.PileLength, FromBorehole = false });
+        // cọc ép theo lực ép đầu cọc thực tế: [P] = Pép/k
+        double pressT = double.IsFinite(ao.PressForce) ? ao.PressForce : fs.PilePressForce;
+        double pressK = double.IsFinite(ao.PressFactor) && ao.PressFactor > 0 ? ao.PressFactor : fs.PilePressFactor;
+        PileSuggestion pressPile = null;
+        if (pressT > 0)
+        {
+            var pi = PressCapacity(pressT, pressK, 0, cs?.ConcreteFooting ?? "B25", cs?.RebarMain ?? "CB400-V");
+            var same = adv.Piles.FirstOrDefault(x => x.FromBorehole && Math.Abs(x.Size - pi.Size) < 1e-6);
+            pi.Length = same?.Length ?? (fs.PileLength > 0 ? fs.PileLength : 15);
+            if (same != null)
+            {
+                pi.Psoil = same.Capacity;
+                pi.Notes.Add(same.Capacity + 1e-6 >= pi.P
+                    ? $"Theo hố khoan: cọc {F(pi.Size * 1000, "0")} dài L ≈ {F(pi.Length, "0.0")} m (mũi trong lớp {same.TipLayer}) có [P]đn = {F(same.Capacity, "0")} kN ≥ [P] ép – đất đủ chịu, ép đạt lực."
+                    : $"Theo hố khoan: [P]đn = {F(same.Capacity, "0")} kN < [P] ép tại L ≈ {F(pi.Length, "0.0")} m – cọc phải dài hơn để ép đạt {F(pressT, "0")} t; lấy [P] = [P]đn.");
+                if (same.Capacity < pi.P) pi.P = same.Capacity;
+            }
+            else pi.Notes.Add($"Chiều dài cọc dự kiến L ≈ {F(pi.Length, "0.0")} m (chưa có hố khoan – chiều dài thực tế xác định khi ép đạt lực ép).");
+            adv.Press = pi;
+            pressPile = new PileSuggestion { Size = pi.Size, Capacity = pi.P, Length = pi.Length, FromPress = true, TipDepth = same?.TipDepth ?? double.NaN, TipLayer = same?.TipLayer ?? "" };
+            adv.Piles.Insert(0, pressPile);
+        }
         foreach (var ps in adv.Piles)
             foreach (var c in cols)
             {
@@ -253,8 +372,12 @@ public static class TakedownAdvisor
                 ps.PerColumn.Add(n);
             }
         adv.BestPile = adv.Piles.Where(x => x.PerColumn.All(n => n <= 9)).OrderBy(x => x.Volume).FirstOrDefault() ?? adv.Piles.OrderBy(x => x.Volume).FirstOrDefault();
+        if (pressPile != null && ao.PreferPress) adv.BestPile = pressPile;
         if (adv.BestPile != null)
+        {
             for (int i = 0; i < cols.Count; i++) adv.Columns[i].Piles = adv.BestPile.PerColumn[i];
+            PlanPits(p, adv, adv.BestPile);
+        }
 
         // ---- chọn ----
         if (adv.IsoFeasible) adv.Recommended = "Isolated";
@@ -269,14 +392,16 @@ public static class TakedownAdvisor
             _ => adv.BestPile == null
                 ? $"Móng nông không phù hợp ({adv.IsoReason}; móng băng: {adv.StripReason}) – cần móng cọc: khai báo [P] cọc hoặc hố khoan để tính số cọc."
                 : $"Đề xuất MÓNG CỌC {adv.BestPile.Name}, L ≈ {F(adv.BestPile.Length, "0.0")} m, [P] = {F(adv.BestPile.Capacity, "0")} kN"
-                  + (adv.BestPile.FromBorehole ? $" (mũi trong lớp {adv.BestPile.TipLayer})" : " (nhập tay)")
-                  + $": {adv.BestPile.Total} cọc cho {cols.Count} chân cột ({string.Join(", ", adv.BestPile.PerColumn.GroupBy(n => n).OrderBy(g => g.Key).Select(g => $"{g.Count()} đài {g.Key} cọc"))}); "
+                  + (adv.BestPile.FromPress ? $" (lực ép {F(adv.Press.ForceT, "0")} t/cọc, k = {F(adv.Press.K, "0.0#")})" : adv.BestPile.FromBorehole ? $" (mũi trong lớp {adv.BestPile.TipLayer})" : " (nhập tay)")
+                  + $": {adv.PitPiles} cọc cho {adv.Pits.Count} hố móng ({string.Join(", ", adv.Pits.GroupBy(x => x.Piles).OrderBy(g => g.Key).Select(g => $"{g.Count()} đài {g.Key} cọc"))}); "
                   + $"móng nông không phù hợp: {adv.IsoReason}."
         };
         if (bhC == null && !soil0.AssumeGoodSoil && string.IsNullOrEmpty(soil0.StdName))
             adv.Notes.Add("CHƯA CÓ KHẢO SÁT ĐỊA CHẤT – gợi ý chỉ để tham khảo; cần hố khoan / thí nghiệm trước khi thi công.");
-        if (cols.Count > 0 && (lenX > 0 && lenY > 0) && Math.Min(lenX, lenY) <= 6.5)
-            adv.Notes.Add("Nhà phố hẹp: cột biên thường sát ranh đất – móng biên dùng móng lệch tâm có dầm móng cân bằng (Bố trí móng… → dóng mép cột) hoặc đài cọc lùi khỏi ranh.");
+        int n1 = adv.Columns.Count(c => c.Edge == EdgeKind.OneSide), n2 = adv.Columns.Count(c => c.Edge == EdgeKind.TwoSides);
+        if (n1 + n2 > 0)
+            adv.Notes.Add($"Cột sát ranh đất ({(adv.VirtualBoundaries ? "ranh suy từ mép cột ngoài cùng: " : "ranh đã khai báo: ")}{string.Join(", ", adv.Boundaries.Select(b => PropertyBoundary.SideName(b.Side).Replace("Ranh giới ", "")))}): "
+                          + $"{n1} cột sát 1 ranh (lệch tâm 1 phương), {n2} cột sát 2 ranh – cột góc (lệch tâm 2 phương). Móng / đài lệch tâm vào trong lô, dầm móng cân bằng nối cột trong: R1 = N·Ls/(Ls − e) mỗi phương.");
         adv.Notes.Add($"Số cọc n = ⌈{F(PileK, "0.0")}·Ntt/[P]⌉ từng chân cột (tải đứng; mô men chân cột do giằng móng chịu). Móng đơn: b = √(Ntc/(R − γtb·Df)), H theo chọc thủng với Ntt (bê tông móng Rbt = {F(rbt, "0")} kPa).");
         return adv;
     }
@@ -290,17 +415,29 @@ public static class TakedownAdvisor
         var fs = p.Foundation;
         if (gravityDesign) { fs.BaseMomentFactor = 0; fs.GravityCombosOnly = true; }
         int n = 0;
+        // cột sát ranh: ghi ranh đất (ranh suy ra từ mép cột ngoài cùng) để móng / đài lệch tâm + dầm móng cân bằng
+        string edgeTxt = "";
+        bool anyEdge = adv.Columns.Any(c => c.Edge != EdgeKind.Interior);
+        if (anyEdge && adv.VirtualBoundaries && EccentricFooting.Lines(p).Count == 0)
+        {
+            fs.Boundaries ??= new List<PropertyBoundary>();
+            foreach (var b in adv.Boundaries) fs.Boundaries.Add(b.Clone());
+            edgeTxt = "; ghi ranh đất " + string.Join(", ", adv.Boundaries.Select(b => PropertyBoundary.SideName(b.Side).Replace("Ranh giới ", ""))) + " → móng cột biên lệch tâm";
+        }
+        if (anyEdge && choice == "Pile") fs.PileSetbackEnabled = true;
+        if (adv.Press != null && choice == "Pile" && ReferenceEquals(adv.BestPile, adv.Piles.FirstOrDefault(x => x.FromPress)))
+        { fs.PilePressForce = adv.Press.ForceT; fs.PilePressFactor = adv.Press.K; }
         switch (choice)
         {
             case "Isolated":
                 fs.Type = FoundationType.Isolated;
                 // bỏ loại móng / kích thước chốt riêng của từng chân cột → chương trình tự chọn kích thước theo nội lực (tải đứng khi gravityDesign)
                 foreach (var c in adv.Columns) { FoundationReset.Clear(p, null, new[] { c.T.Node }, false); n++; }
-                return $"Móng đơn cho {n} chân cột (kích thước tự chọn theo nội lực{(gravityDesign ? " tải đứng, giằng móng chịu mô men" : "")}; gợi ý lớn nhất {F(adv.Columns.Where(c => double.IsFinite(c.B)).Select(c => c.B).DefaultIfEmpty(0).Max(), "0.0")} m)";
+                return $"Móng đơn cho {n} chân cột (kích thước tự chọn theo nội lực{(gravityDesign ? " tải đứng, giằng móng chịu mô men" : "")}; gợi ý lớn nhất {F(adv.Columns.Where(c => double.IsFinite(c.B)).Select(c => c.B).DefaultIfEmpty(0).Max(), "0.0")} m)" + edgeTxt;
             case "Strip":
                 fs.Type = FoundationType.Strip;
                 fs.StripDirection = adv.StripAlongX ? 1 : 2;
-                return $"Móng băng dọc phương {(adv.StripAlongX ? "X" : "Y")}";
+                return $"Móng băng dọc phương {(adv.StripAlongX ? "X" : "Y")}" + edgeTxt;
             default:
                 var ps = adv.BestPile;
                 fs.Type = FoundationType.Pile;
@@ -309,7 +446,7 @@ public static class TakedownAdvisor
                 fs.PileCapacity = ps.Capacity; fs.PileLength = ps.Length;
                 if (ps.FromBorehole) { fs.PileCapacityFromBorehole = false; if (double.IsFinite(ps.TipDepth)) fs.PileTipDepth = ps.TipDepth; }
                 foreach (var c in adv.Columns) { FoundationReset.Clear(p, null, new[] { c.T.Node }, false); n++; }
-                return $"Móng cọc {ps.Name}, [P] = {F(ps.Capacity, "0")} kN, L = {F(ps.Length, "0.0")} m cho {n} chân cột (số cọc tự chọn theo nội lực{(gravityDesign ? " tải đứng" : "")}; gợi ý {ps.Total} cọc)";
+                return $"Móng cọc {ps.Name}, [P] = {F(ps.Capacity, "0")} kN, L = {F(ps.Length, "0.0")} m cho {n} chân cột (số cọc tự chọn theo nội lực{(gravityDesign ? " tải đứng" : "")}; gợi ý {(adv.Pits.Count > 0 ? adv.PitPiles : ps.Total)} cọc / {(adv.Pits.Count > 0 ? adv.Pits.Count : n)} hố móng)" + edgeTxt + (anyEdge ? $"; tim cọc lùi khỏi ranh ≥ {F(fs.PileSetback)} m" : "");
         }
     }
 }

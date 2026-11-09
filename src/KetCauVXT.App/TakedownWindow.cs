@@ -17,9 +17,11 @@ internal sealed class TakedownWindow : Window
     private readonly Project _p;
     private readonly AnalysisResults _r;
     private TakedownAdvice _adv;
-    private readonly CheckBox _chkPsi, _chkGravity;
+    private readonly CheckBox _chkPsi, _chkGravity, _chkAutoSides;
+    private readonly CheckBox[] _chkSide = new CheckBox[4];
+    private readonly TextBox _txtPress, _txtK;
     private readonly StackPanel _summary = new();
-    private readonly DataGrid _gStory, _gCol, _gIso, _gStrip, _gPile;
+    private readonly DataGrid _gStory, _gCol, _gIso, _gStrip, _gPile, _gPit;
 
     /// <summary>Phương án đã áp dụng ("" = không)</summary>
     public string Applied { get; private set; } = "";
@@ -59,6 +61,28 @@ internal sealed class TakedownWindow : Window
         var top = DialogUi.Row(_chkPsi, DialogUi.Btn("Tính lại", (s, e) => Compute(), true), DialogUi.Btn("Xuất thuyết minh Word…", (s, e) => ExportWord()));
         DockPanel.SetDock(top, Dock.Top);
         root.Children.Add(top);
+        // cọc ép theo lực ép + cột sát ranh
+        var fs = p.Foundation ?? new FoundationSettings();
+        _txtPress = new TextBox { Text = F(fs.PilePressForce, "0.#"), Width = 50, Margin = new Thickness(4, 0, 4, 0), VerticalContentAlignment = VerticalAlignment.Center };
+        _txtK = new TextBox { Text = F(fs.PilePressFactor, "0.0#"), Width = 40, Margin = new Thickness(4, 0, 12, 0), VerticalContentAlignment = VerticalAlignment.Center };
+        _chkAutoSides = new CheckBox { Content = "Ranh đất: tự động", IsChecked = true, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0),
+            ToolTip = "Dùng ranh đất đã khai báo; nếu chưa có thì hai cạnh dài của nhà phố (giáp nhà bên)" };
+        string[] sideNames = { "Trái", "Phải", "Trước", "Sau" };
+        var row2 = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
+        row2.Children.Add(new TextBlock { Text = "Cọc ép: lực ép đầu cọc Pép (tấn)", VerticalAlignment = VerticalAlignment.Center });
+        row2.Children.Add(_txtPress);
+        row2.Children.Add(new TextBlock { Text = "k = Pép/[P]", VerticalAlignment = VerticalAlignment.Center, ToolTip = "TCVN 9394: Pép,min = (1,5–2)·[P], thường lấy k = 2" });
+        row2.Children.Add(_txtK);
+        row2.Children.Add(_chkAutoSides);
+        for (int i = 0; i < 4; i++)
+        {
+            _chkSide[i] = new CheckBox { Content = "sát ranh " + sideNames[i], IsEnabled = false, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            row2.Children.Add(_chkSide[i]);
+        }
+        _chkAutoSides.Checked += (s, e) => { foreach (var c in _chkSide) c.IsEnabled = false; };
+        _chkAutoSides.Unchecked += (s, e) => { foreach (var c in _chkSide) c.IsEnabled = true; };
+        DockPanel.SetDock(row2, Dock.Top);
+        root.Children.Add(row2);
         var sv = new ScrollViewer { Content = _summary, MaxHeight = 210, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 6, 0, 6) };
         DockPanel.SetDock(sv, Dock.Top);
         root.Children.Add(sv);
@@ -91,12 +115,15 @@ internal sealed class TakedownWindow : Window
             ("Sườn b × h (m)", "G", 110));
         _gPile = Grid(("Loại cọc", "A", 120), ("Dài L (m)", "B", 70), ("[P] (kN)", "C", 70), ("Nguồn [P]", "D", 260), ("Tổng số cọc", "E", 85), ("Bê tông cọc (m³)", "Fv", 100),
             ("Số cọc từng chân cột", "G", 360));
+        _gPit = Grid(("Hố móng", "A", 70), ("Chân cột", "B", 90), ("Vị trí so với ranh", "C", 200), ("ΣNtt (kN)", "D", 75), ("e x / y (m)", "E", 85), ("R1/N", "Fv", 50),
+            ("N tính cọc (kN)", "G", 90), ("Số cọc", "H", 55), ("Bố trí", "I", 60), ("Đài Lx × Ly (m)", "J", 100), ("Ghi chú", "K", 330));
         var tabs = new TabControl();
         tabs.Items.Add(new TabItem { Header = "Tải từng sàn", Content = _gStory });
         tabs.Items.Add(new TabItem { Header = "Tải chân cột", Content = _gCol });
         tabs.Items.Add(new TabItem { Header = "Móng đơn / số cọc từng cột", Content = _gIso });
         tabs.Items.Add(new TabItem { Header = "Móng băng", Content = _gStrip });
         tabs.Items.Add(new TabItem { Header = "Móng cọc", Content = _gPile });
+        tabs.Items.Add(new TabItem { Header = "Hố móng – số cọc", Content = _gPit });
         tabs.SelectedIndex = 1;
         root.Children.Add(tabs);
         Content = root;
@@ -108,7 +135,18 @@ internal sealed class TakedownWindow : Window
         try
         {
             Cursor = System.Windows.Input.Cursors.Wait;
-            _adv = TakedownAdvisor.Advise(_p, _r, new TakedownOptions { LiveReduction = _chkPsi.IsChecked == true });
+            double pt = double.TryParse(_txtPress.Text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v1) ? v1 : 50;
+            double pk = double.TryParse(_txtK.Text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v2) && v2 > 1 ? v2 : 2;
+            List<BoundarySide> sides = null;
+            if (_chkAutoSides.IsChecked != true)
+            {
+                sides = new List<BoundarySide>();
+                for (int i = 0; i < 4; i++) if (_chkSide[i].IsChecked == true) sides.Add((BoundarySide)i);
+            }
+            _adv = TakedownAdvisor.Advise(_p, _r, new TakedownOptions { LiveReduction = _chkPsi.IsChecked == true }, null,
+                new AdviseOptions { PressForce = pt, PressFactor = pk, Sides = sides });
+            if (_chkAutoSides.IsChecked == true)
+                for (int i = 0; i < 4; i++) _chkSide[i].IsChecked = _adv.Boundaries.Any(b => (int)b.Side == i);
         }
         catch (Exception ex) { MessageBox.Show(this, "Không truyền tải được: " + ex.Message, "Việt Const", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
         finally { Cursor = null; }
@@ -118,6 +156,7 @@ internal sealed class TakedownWindow : Window
         ex1.Foreground = Brushes.DarkGreen;
         _summary.Children.Add(ex1);
         _summary.Children.Add(DialogUi.Hint(_adv.SoilNote));
+        if (_adv.Press != null) foreach (var n in _adv.Press.Notes) _summary.Children.Add(DialogUi.Hint("• Cọc ép: " + n));
         foreach (var n in t.Notes.Concat(_adv.Notes)) _summary.Children.Add(DialogUi.Hint("• " + n));
         foreach (var w in t.Warnings)
         {
@@ -141,7 +180,7 @@ internal sealed class TakedownWindow : Window
         _gIso.ItemsSource = _adv.Columns.Select(c => new Row
         {
             A = c.T.Name, B = F(c.T.Ntc, "0"), C = F(c.T.Ntt, "0"), D = F(c.R, "0"), E = double.IsFinite(c.B) ? $"{F(c.B, "0.0")} × {F(c.B, "0.0")}" : "–", Fv = F(c.H, "0.00"),
-            G = _adv.BestPile != null ? $"{c.Piles} ({pileName})" : "–", H = c.Note
+            G = _adv.BestPile != null ? $"{c.Piles} ({pileName})" : "–", H = c.Note.Length > 0 ? c.Note : c.EdgeText
         }).ToList();
         _gStrip.ItemsSource = _adv.Strips.Select(s => new Row
         {
@@ -150,8 +189,19 @@ internal sealed class TakedownWindow : Window
         _gPile.ItemsSource = _adv.Piles.Select(x => new Row
         {
             A = x.Name + (ReferenceEquals(x, _adv.BestPile) ? " ★" : ""), B = F(x.Length), C = F(x.Capacity, "0"),
-            D = x.FromBorehole ? "Hố khoan (SPT), mũi trong lớp " + x.TipLayer : "Nhập tay (Móng → thông số cọc)", E = x.Total.ToString(), Fv = F(x.Volume, "0.0"),
+            D = x.FromPress ? $"Lực ép đầu cọc {F(_adv.Press?.ForceT ?? 0, "0")} t / k = {F(_adv.Press?.K ?? 2, "0.0#")}" : x.FromBorehole ? "Hố khoan (SPT), mũi trong lớp " + x.TipLayer : "Nhập tay (Móng → thông số cọc)",
+            E = x.Total.ToString(), Fv = F(x.Volume, "0.0"),
             G = string.Join(", ", x.PerColumn.GroupBy(n => n).OrderBy(g => g.Key).Select(g => $"{g.Count()} đài × {g.Key} cọc"))
+        }).ToList();
+        FillPits();
+    }
+
+    private void FillPits()
+    {
+        _gPit.ItemsSource = _adv.Pits.Select(x => new Row
+        {
+            A = x.Name, B = x.Names, C = x.EdgeText, D = F(x.Ntt, "0"), E = x.Ex > 0 || x.Ey > 0 ? $"{F(x.Ex, "0.00")} / {F(x.Ey, "0.00")}" : "0",
+            Fv = F(x.Factor, "0.00"), G = F(x.Ndesign, "0"), H = x.Piles.ToString(), I = $"{x.Nx} × {x.Ny}", J = $"{F(x.CapLx, "0.00")} × {F(x.CapLy, "0.00")}", K = x.Note
         }).ToList();
     }
 

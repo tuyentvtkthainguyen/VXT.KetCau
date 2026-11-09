@@ -784,6 +784,7 @@ public static class BeamDesigner
                            + (h > 0.45 ? "; đặt thêm thép giá cạnh ≥ Ø12 a ≤ 300 mm." : "."));
 
         // ---- bố trí thép ----
+        d.Scheme = p.FindRebarChoice(key, RebarZones.BeamScheme, -1)?.BeamScheme ?? pref.BeamScheme;
         Detail(d, li, cs, b, h, c, dB, dT, extraBot, extraTop, shear, sdk, nodeX, nodeW, lcl, xEnd, Anchor, pref, conc, main);
         RebarNumbering.Renumber(d.Bars);
         foreach (var z in d.StirrupZones) z.Mark = RebarNumbering.StirrupMark(d.Bars, z.Dia);
@@ -980,6 +981,35 @@ public static class BeamDesigner
                            + " mm), so le ≥ 1,3·ll, không quá 50% số thanh tại một tiết diện – xem bản vẽ gia công thép");
         }
 
+        var scheme = d.Scheme;
+        if (scheme == BeamRebarScheme.AllContinuous)
+        {
+            // Kiểu B: thép tăng cường / mũ gối lớn nhất chạy suốt dầm, neo vào gối biên như thép góc
+            var bmax = extraBot.Where(x => !x.IsEmpty).OrderByDescending(x => x.Area).FirstOrDefault();
+            var tmax = extraTop.Where(x => !x.IsEmpty).OrderByDescending(x => x.Area).FirstOrDefault();
+            if (bmax != null)
+                foreach (var (dia, n) in bmax.Groups)
+                {
+                    if (n <= 0) continue;
+                    var (_, a0) = EndAnchor(supStart ? nodeW[0] : 0, dia, h, c, anchor(dia));
+                    var (_, a1) = EndAnchor(supEnd ? nodeW[ns] : 0, dia, h, c, anchor(dia));
+                    d.Bars.Add(Longitudinal("Tăng cường dưới", false, dia, n, xs, xe, a0, a1, -1));
+                }
+            if (tmax != null)
+                foreach (var (dia, n) in tmax.Groups)
+                {
+                    if (n <= 0) continue;
+                    var (_, a0) = EndAnchor(supStart ? nodeW[0] : 0, dia, h, c, anchor(dia));
+                    var (_, a1) = EndAnchor(supEnd ? nodeW[ns] : 0, dia, h, c, anchor(dia));
+                    d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, xs, xe, a0, a1, -1));
+                }
+            d.Messages.Add("Kiểu bố trí B: toàn bộ thép dọc chạy suốt dầm (thép tăng cường lớn nhất các nhịp, mũ gối lớn nhất các gối), neo vào gối biên.");
+            extraTop = extraTop.Select(_ => new BarSet()).ToArray();
+            extraBot = extraBot.Select(_ => new BarSet()).ToArray();
+        }
+        else if (scheme == BeamRebarScheme.ExtendedSupport)
+            d.Messages.Add("Kiểu bố trí C: mũ gối vươn Lo/3 tại mọi gối (kể cả gối biên); thép tăng cường dưới kéo vào gối.");
+
         // mũ gối (mỗi nhóm Ø một số hiệu)
         for (int j = 0; j <= ns; j++)
         {
@@ -991,14 +1021,14 @@ public static class BeamDesigner
                 if (j == 0)
                 {
                     var (_, leg) = EndAnchor(supStart ? nodeW[0] : 0, dia, h, c, anchor(dia));
-                    double x1 = li.Spans[0].X0 + li.Spans[0].FaceL + lcl[0] / 4;
+                    double x1 = li.Spans[0].X0 + li.Spans[0].FaceL + lcl[0] / (scheme == BeamRebarScheme.ExtendedSupport ? 3 : 4);
                     d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, xs, x1, leg, 0, 0));
                 }
                 else if (j == ns)
                 {
                     var (_, leg) = EndAnchor(supEnd ? nodeW[ns] : 0, dia, h, c, anchor(dia));
                     var sp = li.Spans[ns - 1];
-                    double x0 = sp.X0 + sp.FaceR - lcl[ns - 1] / 4;
+                    double x0 = sp.X0 + sp.FaceR - lcl[ns - 1] / (scheme == BeamRebarScheme.ExtendedSupport ? 3 : 4);
                     d.Bars.Add(Longitudinal("Mũ gối", true, dia, n, x0, xe, 0, leg, ns - 1));
                 }
                 else
@@ -1020,6 +1050,15 @@ public static class BeamDesigner
             foreach (var (dia, n) in ex.Groups)
             {
                 if (n <= 0) continue;
+                if (scheme == BeamRebarScheme.ExtendedSupport)
+                {
+                    // kéo vào gối ≥ 15d (thép chịu nén / cấu tạo tại gối, TCVN 5574:2018 10.3.5.5)
+                    double ld = Math.Max(15 * dia / 1000.0, 0.2);
+                    double x0e = k == 0 ? Math.Max(xs, sp.X0 + sp.FaceL - ld) : sp.X0 + sp.FaceL - Math.Min(ld, nodeW[k] / 2);
+                    double x1e = k == ns - 1 ? Math.Min(xe, sp.X0 + sp.FaceR + ld) : sp.X0 + sp.FaceR + Math.Min(ld, nodeW[k + 1] / 2);
+                    d.Bars.Add(Longitudinal("Tăng cường dưới", false, dia, n, x0e, x1e, 0, 0, k));
+                    continue;
+                }
                 double x0 = sp.X0 + sp.FaceL + 0.1 * lcl[k];
                 double x1 = sp.X0 + sp.FaceR - 0.1 * lcl[k];
                 d.Bars.Add(Longitudinal("Tăng cường dưới", false, dia, n, x0, x1, 0, 0, k));

@@ -171,6 +171,7 @@
                 <MenuItem Header="Thiết kế móng…" Click="MnuDesignFoundation_Click"/>
                 <Separator/>
                 <MenuItem Header="Chọn bố trí thép…" Click="BtnRebarChoice_Click"/>
+                <MenuItem Header="Bản vẽ từng dầm…" Click="BtnBeamSheet_Click"/>
                 <MenuItem Header="Tuỳ chọn chọn thép &amp; gia công…" Click="MnuRebarPrefs_Click"/>
             </MenuItem>
             <MenuItem Header="Triển _khai hồ sơ">
@@ -483,6 +484,7 @@
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,2,0,0">
                                     <Button Content="Chọn bố trí thép…" Tag="Dầm" Click="BtnRebarChoice_Click" Style="{StaticResource SmallButton}" ToolTip="Chọn phương án thép cho dầm đang chọn (thép dưới, mũ gối, chạy suốt, đai)"/>
+                                    <Button Content="Bản vẽ từng dầm…" Click="BtnBeamSheet_Click" Style="{StaticResource SmallButton}" Margin="4,0,0,0" ToolTip="Xem / xuất bản vẽ chi tiết riêng từng dầm (D1, D2…): mặt đứng, mặt cắt, thống kê thép"/>
                                 </StackPanel>
                                 <DataGrid x:Name="dgBeams" IsReadOnly="True" RowStyle="{StaticResource OkRowStyle}" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
                             </DockPanel>

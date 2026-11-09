@@ -43,6 +43,8 @@ public class RebarAlternative
     public string Note { get; set; } = "";
     /// <summary>Sàn: phương án bố trí (vùng RebarZones.SlabScheme / SlabSchemeStory)</summary>
     public SlabRebarScheme? Scheme { get; set; }
+    /// <summary>Dầm: kiểu bố trí thép dọc (vùng RebarZones.BeamScheme)</summary>
+    public BeamRebarScheme? BeamScheme { get; set; }
     /// <summary>Khối lượng thép của vùng (kg; phương án sàn: cả tầng) – để so sánh giữa các phương án</summary>
     public double WeightKg { get; set; }
     /// <summary>Khối lượng trên 1 m² sàn / móng (kg/m²); 0 = không áp dụng</summary>
@@ -61,7 +63,7 @@ public class RebarAlternative
     {
         Member = member, Zone = Zone, Index = Index, Dia = Dia, NB = NB, NH = NH, Spacing = Spacing, Spacing2 = Spacing2,
         Bars = Bars.Select(g => new RebarGroup(g.Dia, g.Count)).ToList(), Basis = basis ?? "", Label = label ?? "",
-        Scheme = Scheme ?? SlabRebarScheme.TopBarsBottomMesh
+        Scheme = Scheme ?? SlabRebarScheme.TopBarsBottomMesh, BeamScheme = BeamScheme ?? BeamRebarScheme.CutExtras
     };
 
     public override string ToString() => Text;
@@ -239,6 +241,11 @@ public static class RebarOptions
                 }
                 Add(RebarZones.BeamTopCont, -1, "Thép trên chạy suốt (giữa nhịp)", b.ContTopAsReq, top != null ? "2Ø" + top.Dia : "", true);
                 Add(RebarZones.BeamBotCont, -1, "Thép dưới chạy suốt", b.ContBotAsReq, bot != null ? "2Ø" + bot.Dia : "", false);
+                z.Add(new RebarZoneInfo
+                {
+                    Kind = "Dầm", Zone = RebarZones.BeamScheme, Index = -1, Label = "Kiểu bố trí thép dọc (A / B / C)", Current = RebarPreferences.BeamSchemeName(b.Scheme),
+                    User = p.FindRebarChoice(key, RebarZones.BeamScheme, -1) != null, B = b.B, H = b.H, Cover = cs.CoverBeam
+                });
                 // dầm cong: đai chọn được kiểm tra lại cắt + xoắn
                 for (int k = 0; k < ns; k++)
                     {
@@ -352,6 +359,7 @@ public static class RebarOptions
             {
                 int[] dias = pref.Filter(DesignUtil.Sorted(cs.BeamBars, new[] { 14, 16, 18, 20, 22, 25 }));
                 if (z.Zone == RebarZones.Stirrup) { list.AddRange(BeamStirrups(p, b, z.Index)); break; }
+                if (z.Zone == RebarZones.BeamScheme) { list.AddRange(BeamSchemeAlternatives(p, r, b)); break; }
                 bool cont = z.Zone == RebarZones.BeamTopCont || z.Zone == RebarZones.BeamBotCont;
                 list.AddRange(BeamCombos(z.AsReq, b.B, cs.CoverBeam, z.Top, dias, pref, 2, cont ? 2 : 0, max));
                 if (!cont)
@@ -544,6 +552,8 @@ public static class RebarOptions
                 a.WeightPerM2 = area > 0 ? Math.Round(a.WeightKg / area, 2) : 0;
                 break;
             }
+            case BeamLineDesign when z.Zone == RebarZones.BeamScheme:
+                break;
             case BeamLineDesign b:
             {
                 double c = p.Concrete.CoverBeam;
@@ -617,6 +627,45 @@ public static class RebarOptions
         return res;
     }
 
+    /// <summary>So sánh kiểu bố trí thép dọc dầm A / B / C: thiết kế lại dầm này (bản sao dự án), khối lượng thép dọc + đai (kg).</summary>
+    private static List<RebarAlternative> BeamSchemeAlternatives(Project p, AnalysisResults r, BeamLineDesign b)
+    {
+        var res = new List<RebarAlternative>();
+        var keys = b.RebarKeys.Distinct().ToList();
+        foreach (var sc in Enum.GetValues<BeamRebarScheme>())
+        {
+            double w = double.NaN; bool ok = true; string note = "";
+            try
+            {
+                var q = p.Clone();
+                foreach (var k in keys) q.SetRebarChoice(new RebarChoice { Member = k, Zone = RebarZones.BeamScheme, Index = -1, BeamScheme = sc });
+                var nb = r == null ? null : BeamDesigner.Design(q, r, new List<string>()).FirstOrDefault(x => x.RebarKeys.Intersect(keys).Any());
+                if (nb != null)
+                {
+                    w = nb.Bars.Sum(x => x.Count * x.WeightPerBar);
+                    ok = nb.Ok;
+                    int nLong = nb.Bars.Where(x => x.Role != "Đai").Select(x => x.Mark).Distinct().Count();
+                    note = nLong + " số hiệu thép dọc";
+                }
+            }
+            catch (Exception ex) { note = ex.Message; }
+            res.Add(new RebarAlternative
+            {
+                Kind = "Dầm", Index = -1, BeamScheme = sc, Text = RebarPreferences.BeamSchemeName(sc), Fits = ok, IsCurrent = b.Scheme == sc,
+                WeightKg = double.IsFinite(w) ? Math.Round(w, 2) : 0, Note = note
+            });
+        }
+        double best = res.Where(a => a.WeightKg > 0).Select(a => a.WeightKg).DefaultIfEmpty(0).Min();
+        double cur = res.FirstOrDefault(a => a.IsCurrent)?.WeightKg ?? 0;
+        foreach (var a in res.Where(a => a.WeightKg > 0))
+        {
+            a.DeltaVsBestKg = a.WeightKg - best;
+            a.DeltaVsCurrentKg = cur > 0 ? a.WeightKg - cur : double.NaN;
+            if (a.DeltaVsBestKg > 0.05) { a.Warning = $"Nhiều hơn +{DesignUtil.F(a.DeltaVsBestKg, "0.0")} kg so với kiểu tiết kiệm nhất"; a.WarnLevel = 1; }
+        }
+        return res;
+    }
+
     /// <summary>Phương án đai dầm cho nhịp k: mỗi Ø đai một phương án bước theo tính toán (gối/giữa nhịp) và một phương án dày hơn 50 mm.</summary>
     private static List<RebarAlternative> BeamStirrups(Project p, BeamLineDesign b, int k)
     {
@@ -685,12 +734,12 @@ public static class RebarOptions
     {
         if (p == null || m == null || z == null || a == null) return 0;
         int n = 0;
-        bool scheme = z.Zone == RebarZones.SlabScheme || z.Zone == RebarZones.SlabSchemeStory;
+        bool scheme = z.Zone == RebarZones.SlabScheme || z.Zone == RebarZones.SlabSchemeStory || z.Zone == RebarZones.BeamScheme;
         var keys = z.Zone == RebarZones.SlabSchemeStory && m is SlabDesign sd ? StoryKeys(p, sd.Story) : m.RebarKeys.Distinct().ToList();
         foreach (string key in keys)
         {
             var ch = a.ToChoice(key, scheme ? "" : z.Basis, m.Name);
-            ch.Zone = scheme ? RebarZones.SlabScheme : z.Zone; ch.Index = z.Index;
+            ch.Zone = z.Zone == RebarZones.SlabSchemeStory ? RebarZones.SlabScheme : z.Zone; ch.Index = z.Index;
             p.SetRebarChoice(ch);
             n++;
         }

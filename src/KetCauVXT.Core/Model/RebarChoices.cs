@@ -29,8 +29,21 @@ public enum SlabRebarScheme
 }
 
 /// <summary>Tên vùng bố trí thép dùng trong RebarChoice.Zone.</summary>
+/// <summary>Kiểu bố trí thép dọc dầm.</summary>
+public enum BeamRebarScheme
+{
+    /// <summary>Kiểu A: 2 thanh góc chạy suốt, thép tăng cường dưới cắt cách mép gối 0,1·Lo, mũ gối giữa vươn Lo/3, gối biên Lo/4</summary>
+    CutExtras = 0,
+    /// <summary>Kiểu B: toàn bộ thép dưới và thép trên chạy suốt dầm (thanh lớn nhất các nhịp / gối)</summary>
+    AllContinuous = 1,
+    /// <summary>Kiểu C: như A nhưng mũ gối vươn Lo/3 ở mọi gối (kể cả gối biên), tăng cường dưới neo vào gối</summary>
+    ExtendedSupport = 2
+}
+
 public static class RebarZones
 {
+    /// <summary>Kiểu bố trí thép dọc dầm (BeamRebarScheme)</summary>
+    public const string BeamScheme = "Kiểu bố trí dầm";
     // dầm
     /// <summary>Thép dưới giữa nhịp (Index = số thứ tự nhịp, từ 0) – tổng số thanh tại tiết diện, kể cả 2 thanh góc chạy suốt.</summary>
     public const string BeamBottom = "Dưới nhịp";
@@ -87,6 +100,8 @@ public class RebarChoice
     public double Spacing { get; set; }
     /// <summary>Đai: bước giữa nhịp / giữa cột (m).</summary>
     public double Spacing2 { get; set; }
+    /// <summary>Dầm: kiểu bố trí thép dọc (Zone = RebarZones.BeamScheme)</summary>
+    public BeamRebarScheme BeamScheme { get; set; }
     /// <summary>Sàn: phương án bố trí (Zone = RebarZones.SlabScheme)</summary>
     public SlabRebarScheme Scheme { get; set; }
     /// <summary>Kích thước tiết diện lúc chọn ("220x400", "t=120", "1.6x1.4x0.5"); khác hiện tại → bỏ qua lựa chọn.</summary>
@@ -146,6 +161,16 @@ public class RebarPreferences
     public double Deduct180 { get; set; } = 4.0;
     /// <summary>Phương án bố trí thép sàn mặc định cho cả công trình (từng ô có thể chọn riêng).</summary>
     public SlabRebarScheme SlabScheme { get; set; } = SlabRebarScheme.TopBarsBottomMesh;
+
+    /// <summary>Kiểu bố trí thép dọc dầm mặc định cho cả công trình (từng dầm chọn riêng được).</summary>
+    public BeamRebarScheme BeamScheme { get; set; } = BeamRebarScheme.CutExtras;
+
+    public static string BeamSchemeName(BeamRebarScheme s) => s switch
+    {
+        BeamRebarScheme.AllContinuous => "Kiểu B – toàn bộ thép chạy suốt",
+        BeamRebarScheme.ExtendedSupport => "Kiểu C – mũ gối vươn Lo/3 mọi gối",
+        _ => "Kiểu A – 2 thanh góc chạy suốt, tăng cường cắt"
+    };
 
     /// <summary>Tên hiển thị phương án sàn.</summary>
     public static string SchemeName(SlabRebarScheme s) => s switch

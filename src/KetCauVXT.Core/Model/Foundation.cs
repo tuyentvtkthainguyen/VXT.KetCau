@@ -86,6 +86,12 @@ public class FoundationSettings
     public double PileSetback { get; set; } = 0.5;
     /// <summary>true = khoảng lùi đo tới MÉP cọc (thay vì tim cọc)</summary>
     public bool PileSetbackToFace { get; set; }
+
+    // ---- [CọcÉp] sức chịu tải sơ bộ theo lực ép đầu cọc (TCVN 9394:2012): [P] = Pép/k ----
+    /// <summary>Lực ép đầu cọc thực tế của máy ép (tấn), mặc định 50 t</summary>
+    public double PilePressForce { get; set; } = 50;
+    /// <summary>Hệ số k = Pép/[P] (TCVN 9394: Pép,min ≈ 1,5–2·[P], Pép,max ≈ 2–3·[P]); mặc định 2,0</summary>
+    public double PilePressFactor { get; set; } = 2.0;
     /// <summary>Phương pháp ép cọc (ghi chú – robot cần khoảng lùi lớn hơn)</summary>
     public PilePressMethod PilePressMethod { get; set; } = PilePressMethod.Anchor;
     /// <summary>true = "Đài vươn ra sát ranh" (phần đài công xôn ngoài hàng cọc tới ranh giới); false = "Mép đài theo cọc" (mép đài = mép cọc + khoảng mép, tối thiểu phủ cột)</summary>
