@@ -24,6 +24,7 @@ internal sealed class FoundationDialog : Window
     private readonly TextBox _tLat;
     private readonly CheckBox _chkPyr, _chkMom;
     private readonly CheckBox _chkCuTram;   // [CừTràm]
+    private readonly CheckBox _chkNoMoment, _chkGravityOnly;   // [Truyền tải]
     // cọc khoan nhồi TCVN 10304:2014 (BoredPileAdvanced)
     private readonly ComboBox _cbBoredMethod, _cbBoredDrill, _cbPileConc;
     private readonly CheckBox _chkAutoLen, _chkGroupEff;
@@ -119,6 +120,13 @@ internal sealed class FoundationDialog : Window
         // [CừTràm] gia cố nền cừ tràm (thông số chi tiết: tab 'Mô hình móng' → 'Cừ tràm…')
         _chkCuTram = new CheckBox { Content = "Gia cố nền bằng cừ tràm dưới móng đơn / móng băng (cả công trình)", IsChecked = f.CuTram?.Enabled == true, Margin = new Thickness(0, 6, 0, 0) };
         root.Children.Add(_chkCuTram);
+        // [Truyền tải] tải dùng thiết kế móng
+        _chkNoMoment = new CheckBox { Content = "Bỏ mô men + lực cắt chân cột (giằng móng chịu) – móng tính theo lực dọc", IsChecked = f.BaseMomentFactor < 0.5, Margin = new Thickness(0, 6, 0, 0) };
+        _chkGravityOnly = new CheckBox { Content = "Chỉ dùng tổ hợp tải đứng (bỏ tổ hợp có gió / động đất) khi thiết kế móng", IsChecked = f.GravityCombosOnly, Margin = new Thickness(0, 2, 0, 0) };
+        root.Children.Add(_chkNoMoment);
+        root.Children.Add(_chkGravityOnly);
+        root.Children.Add(DialogUi.Hint("Nhà phố thấp tầng có hệ giằng móng hai phương: thường thiết kế móng theo tải đứng (mô men chân cột do giằng chịu). "
+                                        + "Xem tải từng chân cột và gợi ý móng: tab 'Mô hình móng' → 'Truyền tải & gợi ý móng…'."));
         root.Children.Add(DialogUi.Hint("Thông số cừ tràm (chiều dài, Ø, mật độ, MNN thấp nhất, phương pháp tính) và chọn riêng từng chân cột: tab 'Mô hình móng' → 'Cừ tràm…'."));
 
         root.Children.Add(DialogUi.Hint("Móng lệch tâm (cột sát ranh giới đất): khai báo ở tab 'Mô hình móng' → 'Ranh giới đất…'; phương án từng chân cột (dầm cân bằng / tự cân bằng / móng kết hợp) → 'Lệch tâm…'"   // [MóngLệchTâm]
@@ -189,6 +197,7 @@ internal sealed class FoundationDialog : Window
             return false;
         }
         _f.Type = (FoundationType)Math.Clamp(_cbType.SelectedIndex, 0, 2);
+        _f.BaseMomentFactor = _chkNoMoment.IsChecked == true ? 0 : 1; _f.GravityCombosOnly = _chkGravityOnly.IsChecked == true;   // [Truyền tải]
         _f.PileRound = _cbPileShape.SelectedIndex == 1;
         _f.PileCapacityFromBorehole = _chkGeo.IsChecked == true; _f.PileBored = _chkBored.IsChecked == true;
         _f.PileTipDepth = tip; _f.PileSafetyFactor = fsf;

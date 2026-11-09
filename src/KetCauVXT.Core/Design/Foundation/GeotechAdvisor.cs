@@ -165,6 +165,21 @@ public static class FoundationAdvisor
         }
         else adv.Notes.Add($"Tải chân cột lớn nhất theo kết quả phân tích (TTGH I): Nmax = {F(nmax, "0")} kN");
         adv.NMax = nmax; adv.NtcMax = nmax / kt;
+        // [Truyền tải] tải đứng truyền xuống từng chân cột theo diện chịu tải (sát thực tế hơn phản lực tổ hợp có gió + mô men chân cột ngàm)
+        try
+        {
+            var td = LoadTakedown.Run(p, r);
+            if (td.Columns.Count > 0 && td.Columns.Max(c => c.Ntt) > 1)
+            {
+                double feMax = nmax;
+                adv.NMax = nmax = td.Columns.Max(c => c.Ntt);
+                adv.NtcMax = td.Columns.Max(c => c.Ntc);
+                adv.Notes.Add($"Tải dùng gợi ý: truyền tải đứng theo diện chịu tải (tĩnh tải + hoạt tải đã giảm) – Ntt lớn nhất = {F(adv.NMax, "0")} kN, Ntc = {F(adv.NtcMax, "0")} kN"
+                              + (adv.LoadsFromAnalysis ? $" (phản lực tổ hợp TTGH I của khung: {F(feMax, "0")} kN – gồm gió, phân phối lại nội lực)" : "")
+                              + ". Chi tiết từng chân cột: Móng → Truyền tải & gợi ý móng.");
+            }
+        }
+        catch (Exception ex) { adv.Notes.Add("Không truyền tải được: " + ex.Message); }
         double ntc = adv.NtcMax;
         adv.Notes.Add($"Ntc = Nmax/{F(kt)} = {F(ntc, "0")} kN; bước cột nhỏ nhất sx = {F(adv.SpacingX)} m, sy = {F(adv.SpacingY)} m; Df = {F(Df)} m");
 

@@ -169,7 +169,8 @@ public static partial class FootingDesigner
         {
             var cr = r.Get(cn);
             if (!cr.Reactions.TryGetValue(n.Id, out var R)) continue;
-            loads.Add(new Load { Combo = cn, N = R[2], Mx = R[3], My = R[4], Qx = R[0], Qy = R[1] });
+            double km = FoundationUtil.MomentFactor(p);
+            loads.Add(new Load { Combo = cn, N = R[2], Mx = R[3] * km, My = R[4] * km, Qx = R[0] * km, Qy = R[1] * km });
         }
         if (loads.Count == 0) return d;
         double kt = Math.Max(soil.LoadFactorAvg, 1.0), gtb = soil.GammaAvg, Df = soil.Depth;

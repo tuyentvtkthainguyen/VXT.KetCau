@@ -27,7 +27,7 @@ public static class PileCapDesigner
         var res = new List<PileCapDesign>();
         if (p == null || r == null) return res;
         var fs = p.Foundation ?? new FoundationSettings();
-        var combos = r.DesignCombos();
+        var combos = FoundationUtil.Combos(p, r);
         var all = new List<(PileCapDesign d, string sig)>();
         // [MóngLệchTâm] đài lệch tâm do ranh giới đất: kế hoạch lệch tâm, đài biên có dầm cân bằng thiết kế trước (null = như cũ)
         var bcols = FoundationUtil.BaseColumns(p).Where(x => FoundationUtil.TypeOf(p, x.Node.Id) == FoundationType.Pile).ToList();
@@ -530,7 +530,7 @@ public static class PileCapDesigner
         if (p == null || r == null) throw new ArgumentNullException(p == null ? nameof(p) : nameof(r));
         var bc = FoundationUtil.BaseColumns(p).FirstOrDefault(x => x.Node.Id == nodeId);
         if (bc.Node == null) throw new InvalidOperationException("nút " + nodeId + " không phải chân cột BTCT");
-        var plan = EccentricFooting.Plan(p, r, r.DesignCombos(), FoundationUtil.BaseColumns(p).Where(x => FoundationUtil.TypeOf(p, x.Node.Id) == FoundationType.Pile || x.Node.Id == nodeId));   // [MóngLệchTâm]
+        var plan = EccentricFooting.Plan(p, r, FoundationUtil.Combos(p, r), FoundationUtil.BaseColumns(p).Where(x => FoundationUtil.TypeOf(p, x.Node.Id) == FoundationType.Pile || x.Node.Id == nodeId));   // [MóngLệchTâm]
         var fsT = fs ?? p.Foundation ?? new FoundationSettings();
         // [CặpĐàiBiên] đài biên đối diện: thiết kế trước đài đối diện để có e2 thật (không dùng ước lượng)
         var en = plan?.Get(nodeId);
@@ -541,12 +541,12 @@ public static class PileCapDesigner
                 {
                     var pc = FoundationUtil.BaseColumns(p).FirstOrDefault(x => x.Node.Id == pid);
                     if (pc.Node == null) continue;
-                    try { DesignOne(p, r, pc.Node, pc.Column, r.DesignCombos(), p.Foundation ?? fsT, plan); } catch (Exception) { }
+                    try { DesignOne(p, r, pc.Node, pc.Column, FoundationUtil.Combos(p, r), p.Foundation ?? fsT, plan); } catch (Exception) { }
                 }
-                try { DesignOne(p, r, bc.Node, bc.Column, r.DesignCombos(), fsT, plan); } catch (Exception) { }
+                try { DesignOne(p, r, bc.Node, bc.Column, FoundationUtil.Combos(p, r), fsT, plan); } catch (Exception) { }
                 if (!EccentricPairs.Sync(plan)) break;
             }
-        var d = DesignOne(p, r, bc.Node, bc.Column, r.DesignCombos(), fsT, plan);
+        var d = DesignOne(p, r, bc.Node, bc.Column, FoundationUtil.Combos(p, r), fsT, plan);
         d.Name = "ĐC";
         return d;
     }

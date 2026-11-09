@@ -97,6 +97,12 @@ public class FoundationSettings
     public CuTramSettings CuTram { get; set; } = new();
     // ---- hết [CừTràm] ----
 
+    // ---- [Truyền tải] tải dùng thiết kế móng (Design/Foundation/LoadTakedown.cs, FoundationUtil.Combos / MomentFactor) ----
+    /// <summary>Hệ số mô men + lực cắt chân cột truyền vào móng: 1 = toàn bộ (mặc định, file cũ giữ nguyên); 0 = giằng móng chịu mô men (nhà phố thường dùng)</summary>
+    public double BaseMomentFactor { get; set; } = 1.0;
+    /// <summary>Chỉ dùng tổ hợp tải đứng (bỏ tổ hợp có gió / động đất) khi thiết kế móng</summary>
+    public bool GravityCombosOnly { get; set; }
+    // ---- hết [Truyền tải] ----
     // ---- [MóngHìnhDạng] bố trí móng (lệch tâm / xoay theo mép cột / đa giác) + đường chuẩn ranh đất xiên (Model/FootingPlacement.cs) ----
     /// <summary>Bố trí riêng từng móng đơn (NodeId); rỗng = móng chữ nhật đặt tâm cột như cũ</summary>
     public List<FootingPlacement> Placements { get; set; } = new();

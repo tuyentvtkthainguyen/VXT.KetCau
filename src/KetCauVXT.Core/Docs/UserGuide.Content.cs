@@ -719,6 +719,16 @@ public static partial class UserGuide
             .P("Tab Công trình → Địa điểm: chọn tỉnh / thành (gõ được tên tỉnh cũ, vd Bắc Kạn → Thái Nguyên), ô **Xã/phường/đặc khu** liệt kê đủ đơn vị hành chính cấp xã sau sắp xếp từ 01/7/2025 "
                + "(danh mục theo QĐ 19/2025/QĐ-TTg và các nghị quyết sau đó). Địa danh chưa có số liệu gió: tra Bảng 5.1 QCVN 02:2022 rồi chọn vùng gió – chương trình lưu lại cho lần sau.");
 
+        c.Sec("khoi-tao.truyen-tai-goi-y-mong", "Truyền tải trọng xuống chân cột và gợi ý phương án móng (sau khi chất tải)")
+            .P("Tab **Mô hình móng** (hoặc ribbon Móng) → **Truyền tải & gợi ý móng…**. Không cần chạy phân tích trước (có kết quả phân tích thì so sánh thêm).")
+            .Bullets("**Tải lấy đúng như đã chất**: TLBT sàn, dầm, cột; lớp hoàn thiện; tường (tự sinh từ tường kiến trúc); cầu thang; hoạt tải. Mỗi phần tải dồn về **cột gần nhất đỡ sàn** (diện chịu tải), cộng dồn từ mái xuống chân cột; cột đặt trên dầm dồn xuống cột dưới gần nhất.",
+                "**Tab Tải từng sàn**: diện tích, G, P, (G + P)/m² và thành phần (kN/m²) – nhà phố BTCT thường 9–13 kN/m²/sàn; > 16 kN/m² chương trình cảnh báo chất tải trùng.",
+                "**Tab Tải chân cột**: diện chịu tải, G, P, hệ số giảm hoạt tải ψ (ψA1 = 0,4 + 0,6/√(A/9), ψn1 = 0,4 + (ψA1 − 0,4)/√n), Ntc, Ntt; so với phản lực tổ hợp TTGH I của khung (cột Khung/truyền tải).",
+                "**Gợi ý móng từng cột**: móng đơn b × b (R theo TCVN 9362 tại chân cột, H theo chọc thủng), móng băng theo dãy cột dọc phương dài nhà (B, bản móng, sườn), móng cọc ép 200/250/300 ([P] theo hố khoan SPT hoặc nhập tay, n = ⌈1,1·Ntt/[P]⌉ kể trọng lượng đài) – thứ tự ưu tiên móng đơn → băng → cọc; nền yếu → cọc.",
+                "**Áp dụng**: chọn phương án; mặc định bật \"thiết kế móng theo tải đứng\" (mô men chân cột do giằng móng chịu, bỏ tổ hợp gió) rồi thiết kế lại móng – kết quả móng sát thực tế nhà phố. Hai tuỳ chọn này cũng có trong hộp thoại Móng.",
+                "Vì sao móng theo phân tích khung thường lớn: tổ hợp có gió, mô men chân cột ngàm, phân phối lại nội lực khung và lấy cột lớn nhất cho mọi cột. Truyền tải cho tải từng cột, tải đứng – dùng để chọn phương án và kiểm tra lại mô hình.",
+                "**Xuất thuyết minh Word**: tải từng sàn, tải chân cột, móng đơn / băng / cọc và đề xuất.");
+
         c.Sec("khoi-tao.esc-thoat-lenh", "Phím Esc thoát lệnh vẽ cấu kiện")
             .Bullets("Đang dùng lệnh vẽ (＋ Dầm, dầm cong, tường, ô sàn, ban công, cầu thang, cột, lan can, chi tiết kiến trúc, đặt cửa / đồ đạc, vẽ trục, mặt cắt, lệnh gõ ở dòng lệnh, sửa dầm, "
                 + "vẽ đường chuẩn / móng đa giác / nhân bản móng): bấm **Esc một lần** để thoát hẳn lệnh, trở về chế độ **Chọn** – kể cả khi con trỏ nhập đang ở ô chữ của thanh lệnh hoặc dòng lệnh.",

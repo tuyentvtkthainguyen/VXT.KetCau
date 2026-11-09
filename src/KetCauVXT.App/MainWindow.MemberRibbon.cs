@@ -244,6 +244,7 @@ public partial class MainWindow
         w.Children.Add(SmallBtn("Thiết kế móng…", () => MnuDesignFoundation_Click(this, new RoutedEventArgs()), "Thông số móng, đất nền (sức chịu tải), loại móng – tải chân cột lấy từ phân tích", out _));
         w.Children.Add(SmallBtn("Xoá móng đã thiết kế…", FndDeleteAll, "Xoá toàn bộ móng đã thiết kế (kích thước đã chốt, bố trí cọc, thép) để thiết kế lại – xoá từng móng: tab Mô hình móng, chọn móng, Delete", out _));
         w.Children.Add(SmallBtn("Thiết kế lại móng", FndRedesign, "Xoá toàn bộ móng đã thiết kế rồi thiết kế lại từ đầu", out _));
+        w.Children.Add(SmallBtn("Truyền tải & gợi ý móng…", ShowTakedownUi, "Tải đứng dồn xuống từng chân cột (diện chịu tải) → gợi ý móng đơn / băng / cọc theo từng cột", out _));
         w.Children.Add(SmallBtn("Bố trí móng…", FndPlacementUi, "Móng chọn: xoay theo mép cột, mép móng thẳng mép cột, lệch tâm (dầm cân bằng) – mặt bằng móng", out _));
         w.Children.Add(SmallBtn("Nhân bản móng…", FndCopyUi, "Chép kích thước + bố trí móng chọn sang nhiều chân cột", out _));
         w.Children.Add(SmallBtn("Gán đài cọc giống nhau", FndCapCopyUi, "Mô hình móng: Ctrl + bấm chọn nhiều đài / chân cột, bấm đài nguồn sau cùng → cùng sơ đồ cọc, kích thước đài", out _));

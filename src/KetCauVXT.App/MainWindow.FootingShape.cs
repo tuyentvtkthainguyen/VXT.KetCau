@@ -46,6 +46,7 @@ public partial class MainWindow
         if (at < 0) at = bar.Children.Count;
         var items = new (string Text, string Tip, RoutedEventHandler H)[]
         {
+            ("Truyền tải & gợi ý móng…", "Tải đứng dồn xuống từng chân cột theo diện chịu tải (G, P, Ntc, Ntt; so sánh phân tích khung) → gợi ý móng đơn / băng / cọc từng cột, áp dụng, xuất Word", (s, e) => ShowTakedownUi()),
             ("Bố trí móng…", "Móng chọn: xoay theo mép cột / góc nhập / đường chuẩn; mép móng thẳng mép cột hoặc lệch tâm nhập tay; cắt theo ranh đất", (s, e) => FndPlacementUi()),
             ("Nhân bản móng…", "Chép kích thước + bố trí của móng chọn sang nhiều chân cột (bấm chọn trên mặt bằng, cùng tiết diện cột, danh sách nút)", (s, e) => FndCopyUi()),
             ("Gán đài cọc giống nhau", "Chép sơ đồ cọc + kích thước đài của đài bấm sau cùng cho mọi đài / chân cột đang chọn (Ctrl + bấm để chọn nhiều, Ctrl + A chọn mọi đài)", (s, e) => FndCapCopyUi()),

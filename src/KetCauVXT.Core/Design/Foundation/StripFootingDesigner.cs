@@ -67,8 +67,8 @@ public static class StripFootingDesigner
         foreach (var s in strips)
             foreach (var m in s.Members) count[m.Node.Id] = (count.TryGetValue(m.Node.Id, out int k) ? k : 0) + 1;
 
-        var uls = r.DesignCombos();
-        var sls = FoundationUtil.ServiceCombosStrict(r);
+        var uls = FoundationUtil.Combos(p, r);   // [Truyền tải]
+        var sls = FoundationUtil.Combos(p, r, FoundationUtil.ServiceCombosStrict(r));
         int no = 1;
         foreach (var s in strips)
         {

@@ -25,7 +25,7 @@ public static partial class FootingDesigner
     {
         warnings ??= new List<string>();
         var list = new List<(FootingDesign d, string sig)>();
-        var combos = r.DesignCombos();
+        var combos = FoundationUtil.Combos(p, r);   // [Truyền tải] tuỳ chọn chỉ tổ hợp tải đứng
 
         // cột chân: cột BTCT có nút dưới là gối
         var baseCols = new List<(Node n, FrameElement f)>();
@@ -125,7 +125,8 @@ public static partial class FootingDesigner
             var cr = r.Get(cn);
             if (!cr.Reactions.TryGetValue(n.Id, out var R)) continue;
             // phản lực tác dụng lên kết cấu; lực tác dụng xuống móng = ngược dấu → N = Fz (phản lực hướng lên = nén)
-            loads.Add(new Load { Combo = cn, N = R[2], Mx = R[3], My = R[4], Qx = R[0], Qy = R[1] });
+            double km = FoundationUtil.MomentFactor(p);   // [Truyền tải] giằng móng chịu mô men
+            loads.Add(new Load { Combo = cn, N = R[2], Mx = R[3] * km, My = R[4] * km, Qx = R[0] * km, Qy = R[1] * km });
         }
         if (loads.Count == 0) throw new InvalidOperationException("không có phản lực tại nút " + n.Id);
 
