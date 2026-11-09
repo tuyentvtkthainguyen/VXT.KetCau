@@ -155,6 +155,7 @@ public partial class MainWindow
             await SelfTestResultImport(tag);
             await SelfTestCrossCheck(tag); // so sánh ETABS/SAP – MainWindow.SelfTestCrossCheck.cs // nhập kết quả ETABS/SAP – MainWindow.SelfTestResultImport.cs
             await SelfTestRebar(tag); // chọn bố trí thép, shop drawing – MainWindow.SelfTestRebar.cs
+            await SelfTestPressPit(tag); // cọc ép theo lực ép, hố móng, cột sát ranh, kiểu bố trí thép dầm, bản vẽ từng dầm – MainWindow.SelfTestPressPit.cs
             await SelfTestStair(tag); // cầu thang – MainWindow.SelfTestStair.cs
             await SelfTestQuantity(tag); // khối lượng vật tư, thuyết minh tự động – MainWindow.SelfTestQuantity.cs
             await SelfTestCadStandard(tag);

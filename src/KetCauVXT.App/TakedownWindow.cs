@@ -17,6 +17,16 @@ internal sealed class TakedownWindow : Window
     private readonly Project _p;
     private readonly AnalysisResults _r;
     private TakedownAdvice _adv;
+    private readonly TabControl _tabs = new();
+    /// <summary>Kết quả gợi ý hiện tại (tự kiểm tra / hướng dẫn)</summary>
+    internal TakedownAdvice Advice => _adv;
+    /// <summary>Chọn tab theo tiêu đề (bắt đầu bằng)</summary>
+    internal bool SelectTab(string header)
+    {
+        foreach (TabItem t in _tabs.Items)
+            if ((t.Header as string ?? "").StartsWith(header, StringComparison.OrdinalIgnoreCase)) { _tabs.SelectedItem = t; return true; }
+        return false;
+    }
     private readonly CheckBox _chkPsi, _chkGravity, _chkAutoSides;
     private readonly CheckBox[] _chkSide = new CheckBox[4];
     private readonly TextBox _txtPress, _txtK;
@@ -117,7 +127,7 @@ internal sealed class TakedownWindow : Window
             ("Số cọc từng chân cột", "G", 360));
         _gPit = Grid(("Hố móng", "A", 70), ("Chân cột", "B", 90), ("Vị trí so với ranh", "C", 200), ("ΣNtt (kN)", "D", 75), ("e x / y (m)", "E", 85), ("R1/N", "Fv", 50),
             ("N tính cọc (kN)", "G", 90), ("Số cọc", "H", 55), ("Bố trí", "I", 60), ("Đài Lx × Ly (m)", "J", 100), ("Ghi chú", "K", 330));
-        var tabs = new TabControl();
+        var tabs = _tabs;
         tabs.Items.Add(new TabItem { Header = "Tải từng sàn", Content = _gStory });
         tabs.Items.Add(new TabItem { Header = "Tải chân cột", Content = _gCol });
         tabs.Items.Add(new TabItem { Header = "Móng đơn / số cọc từng cột", Content = _gIso });
