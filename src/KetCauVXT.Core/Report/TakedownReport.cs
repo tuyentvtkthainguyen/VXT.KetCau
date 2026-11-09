@@ -48,7 +48,7 @@ public static class TakedownReport
         if (adv.Press != null)
         {
             d.Paragraph($"Sức chịu tải sơ bộ cọc ép theo lực ép đầu cọc Pép = {N(adv.Press.ForceT, "0")} t (TCVN 9394:2012):", true);
-            foreach (var t in adv.Press.Notes) d.Paragraph("– " + t);
+            foreach (var pn in adv.Press.Notes) d.Paragraph("– " + pn);
         }
         if (adv.BestPile != null && adv.Pits.Count > 0)
         {
