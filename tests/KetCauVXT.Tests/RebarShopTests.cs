@@ -120,9 +120,9 @@ public static class RebarShopTests
         // ---------------- phương án thép ----------------
         var beam = ds.Beams.Where(b => !b.IsCurved).OrderByDescending(b => b.Spans.Count).ThenByDescending(b => b.Spans.Max(s => s.AsBotReq)).First();
         var zones = RebarOptions.Zones(p, beam);
-        check("Dầm: số vùng thép = nhịp + gối + 2 chạy suốt + đai", zones.Count, beam.Spans.Count * 2 + 1 + 2 + beam.Spans.Count, 0);
+        check("Dầm: số vùng thép = nhịp + gối + 2 chạy suốt + đai + kiểu bố trí", zones.Count, beam.Spans.Count * 2 + 1 + 2 + beam.Spans.Count + 1, 0);
         int nAlt = 0, badAs = 0, badFit = 0;
-        foreach (var z in zones.Where(q => q.Zone != RebarZones.Stirrup))
+        foreach (var z in zones.Where(q => q.Zone != RebarZones.Stirrup && q.Zone != RebarZones.BeamScheme))
             foreach (var a in RebarOptions.Alternatives(p, r, beam, z))
             {
                 nAlt++;
