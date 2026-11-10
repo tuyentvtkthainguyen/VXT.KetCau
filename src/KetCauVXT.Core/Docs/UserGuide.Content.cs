@@ -578,9 +578,9 @@ public static partial class UserGuide
                 "Giữ ô **thiết kế móng theo tải đứng** → **Áp dụng: Móng cọc** → {m:designFnd}: các đài lệch tâm có dầm móng cân bằng, Pmax ≤ [P].");
 
         ex.Sec("quy-trinh.vi-du.thep-dam", "Bước 6c – Kiểu bố trí thép dầm và bản vẽ từng dầm")
-            .Steps("Chọn dầm dọc D2-4 (D22x40, 3 nhịp) → **Chọn bố trí thép…** → vùng **Kiểu bố trí thép dọc (A / B / C)**: so sánh khối lượng; kiểu B (toàn bộ chạy suốt) tốn hơn kiểu A khoảng 9 %.",
+            .Steps("Chọn dầm dọc tầng 2 D22x40, 3 nhịp (D2-5 trong dự án mẫu) → **Chọn bố trí thép…** → vùng **Kiểu bố trí thép dọc (A / B / C)**: so sánh khối lượng; kiểu B (toàn bộ chạy suốt) tốn hơn kiểu A khoảng 9 %.",
                 "Vùng **Nhịp 1 – thép dưới**: chọn số thanh / Ø trong danh sách (mọi phương án đã thoả As và khe hở) → **Áp dụng phương án**.",
-                "Thiết kế → **Bản vẽ từng dầm…** → chọn D2-4: mặt đứng, mặt cắt, bảng thống kê thép riêng dầm này → **Xuất bản vẽ dầm này…** (khung tên \"CHI TIẾT DẦM D2-4 (SL=2)\").");
+                "Thiết kế → **Bản vẽ từng dầm…** → chọn D2-5: mặt đứng, mặt cắt, bảng thống kê thép riêng dầm này → **Xuất bản vẽ dầm này…** (khung tên \"CHI TIẾT DẦM D2-5 (SL=2)\").");
 
         ex.Sec("quy-trinh.vi-du.ho-so", "Bước 7 – Triển khai hồ sơ")
             .Steps("{m:drawStyle} và {m:cadStd}: chọn tỷ lệ, cỡ chữ, kiểu kích thước, tên layer theo chuẩn của đơn vị (một lần, dùng cho mọi dự án).",
