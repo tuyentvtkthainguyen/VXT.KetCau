@@ -220,7 +220,7 @@ public partial class MainWindow
             case "tai-trong": SelectLeft("Tải trọng"); break;
             case "mong": SelectLeft("Địa chất"); SelectView("Mô hình móng"); break;
             case "phan-tich": MnuRun_Click(this, e); break;
-            case "kiem-tra": SelectLeft("Kết quả"); SelectView("Biểu đồ nội lực"); break;
+            case "kiem-tra": SelectLeft("Kiểm tra"); SelectView("Biểu đồ nội lực"); break;
             case "thiet-ke": MnuDesignConcrete_Click(this, e); break;
             case "ho-so": MnuExpAll_Click(this, e); break;
         }

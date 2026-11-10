@@ -22,7 +22,9 @@ public static class HelpContext
         ["Tiết diện"] = "mo-hinh.tiet-dien",
         ["Tải trọng"] = "tai-trong.truong-hop",
         ["Kết quả"] = "phan-tich.ket-qua",
+        ["Kiểm tra"] = "phan-tich.ket-qua",
         ["Thiết kế"] = "thiet-ke.btct",
+        ["Triển khai"] = "ho-so.xuat",
     };
 
     /// <summary>Tab con của tab "Thiết kế".</summary>

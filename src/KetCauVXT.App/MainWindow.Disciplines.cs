@@ -86,7 +86,7 @@ public partial class MainWindow
         return d switch
         {
             Discipline.KienTruc => h == "Kiến trúc",
-            Discipline.KetCau => h is "Kết cấu" or "Tải trọng" or "Phân tích",
+            Discipline.KetCau => h is "Kết cấu" or "Tải trọng" or "Phân tích" or "Kiểm tra" or "Triển khai",
             _ => h.Contains("Điện") || h.Contains("Nước") || h.Contains("nước") || h.Contains("MEP")
         };
     }

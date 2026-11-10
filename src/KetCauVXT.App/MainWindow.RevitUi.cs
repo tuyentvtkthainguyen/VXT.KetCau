@@ -45,6 +45,7 @@ public partial class MainWindow
     {
         try
         {
+            BuildClassicCommandTabs();
             BuildRevitRibbon();
             BuildRevitLeft();
             BuildRevitOptions();
@@ -208,23 +209,16 @@ public partial class MainWindow
                 RvBtn("Giếng trời", "", "Bấm ô để làm giếng trời / thông tầng", () => RvMode("Void")),
                 RvBtn("Sàn vệ sinh", "", "Bấm ô sàn để đổi thành sàn vệ sinh", () => RvMode("WC")),
                 RvBtn("Hạ cốt sàn", "", "Hạ cốt ô sàn (vệ sinh, ban công)", () => RvMode("SlabDropMode"))));
-        RvTab("Tải trọng",
-            RvGroup("Gán tải theo cấu kiện",
-                RvBtn("Tải dầm", "", "Gán tải phân bố / tập trung cho các dầm đang chọn", () => RvShowMemberRibbon(RtDam)),
-                RvBtn("Tải sàn", "", "Gán tải ô sàn / theo công năng", () => RvShowMemberRibbon(RtSan)),
-                RvBtn("Tải cột", "", "Gán tải đầu cột", () => RvShowMemberRibbon(RtCot)),
-                RvBtn("Tải móng", "", "Tải chân cột / móng", () => RvShowMemberRibbon(RtMong)),
-                RvBtn("Tải tường", "", "Tải tường lên dầm (tự trừ diện tích cửa đã đặt)", () => RvShowMemberRibbon(RtTuong))),
-            RvGroup("Tự động",
-                RvBtn("Tường CAD → tải dầm", "", "Tường trên bản vẽ CAD liên kết nằm trên dầm → tạo tường, tải dồn vào dầm", CadWallsToBeams),
-                RvBtn("Cấu tạo sàn…", "", "Cấu tạo sàn (lớp hoàn thiện + hoạt tải)", () => MnuBuildUps_Click(this, new RoutedEventArgs())),
-                RvBtn("Gợi ý lanh tô", "", "Lanh tô đề xuất cho mọi cửa đã đặt (gối, chiều cao, cảnh báo tường 110)", ShowLintelProposals)));
+        // [Gom lệnh theo tab] mọi lệnh gán tải → "Tải trọng"; kiểm tra → "Kiểm tra"; triển khai hồ sơ → "Triển khai" – MainWindow.CommandTabs.cs
+        RvTab("Tải trọng", LoadCommandGroups());
         RvTab("Phân tích",
             RvGroup("Tính toán",
-                RvBtn("Phân tích (F5)", "", "Chạy phân tích kết cấu", () => MnuRun_Click(this, new RoutedEventArgs())),
-                RvBtn("Bảng kết quả", "", "Chuyển vị, phản lực, nội lực… (Ctrl+T)", () => MnuTables_Click(this, new RoutedEventArgs())),
-                RvBtn("Thiết kế BTCT", "", "Thiết kế thép dầm, cột, sàn, móng", () => MnuDesignConcrete_Click(this, new RoutedEventArgs())),
-                RvBtn("Khối lượng", "", "Bảng khối lượng vật tư (xây, trát trừ cửa thật)", () => MnuQuantities_Click(this, new RoutedEventArgs()))));
+                RvBtn("Phân tích (F5)", "", "Chạy phân tích kết cấu", () => MnuRun_Click(this, new RoutedEventArgs())),
+                RvBtn("Thiết kế BTCT", "", "Thiết kế thép dầm, cột, sàn, móng", () => MnuDesignConcrete_Click(this, new RoutedEventArgs())),
+                RvBtn("Thiết kế móng…", "", "Thiết kế móng đơn / băng / cọc theo loại móng đã chọn", () => MnuDesignFoundation_Click(this, new RoutedEventArgs())),
+                RvBtn("Truyền tải & gợi ý móng…", "", "Tải chân cột theo diện chịu tải → gợi ý móng, cọc ép, số cọc từng hố móng", ShowTakedownUi)));
+        RvTab("Kiểm tra", CheckCommandGroups());
+        RvTab("Triển khai", DeliverCommandGroups());
         RvTab("Xem",
             RvGroup("Khung nhìn",
                 RvBtn("Mặt bằng", "", "Mặt bằng tầng đang xem", () => RvViewTab("Mặt bằng")),

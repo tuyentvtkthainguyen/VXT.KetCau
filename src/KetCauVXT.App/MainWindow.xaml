@@ -315,14 +315,7 @@
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Sàn" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbSlabSec"/></DockPanel>
                                 </StackPanel>
                             </GroupBox>
-                            <GroupBox Header="Tải trọng (giá trị tiêu chuẩn)">
-                                <StackPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoàn thiện sàn (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtFinish"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoạt tải sàn (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtLive"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoạt tải mái (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtRoofLive"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tường biên trên dầm (kN/m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtWall"/></DockPanel>
-                                </StackPanel>
-                            </GroupBox>
+                            <TextBlock Margin="4,2,4,4" TextWrapping="Wrap" Foreground="DimGray" Text="Tải sàn mặc định, gió, động đất: xem tab Tải trọng (mọi lệnh gán tải ở cùng một tab)."/>
                             <GroupBox Header="Địa điểm xây dựng – vùng gió, động đất (QCVN 02:2022/BXD)">
                                 <StackPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tỉnh/Thành phố (từ 01/7/2025)" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbLocProvince" IsEditable="True" IsTextSearchEnabled="True" StaysOpenOnEdit="True" ToolTip="34 tỉnh/thành sau sắp xếp; gõ được tên tỉnh cũ (vd Bắc Kạn → Thái Nguyên), không dấu cũng được" SelectionChanged="CbLocProvince_SelectionChanged" LostKeyboardFocus="CbLocProvince_LostFocus"/></DockPanel>
@@ -334,23 +327,6 @@
                                         <Button Content="Lưu địa danh" Style="{StaticResource SmallButton}" Click="BtnLocSave_Click" ToolTip="Lưu tỉnh, địa danh, vùng gió, agR, loại nền đang nhập vào danh mục của bạn để dùng lại"/>
                                         <Button Content="Danh mục địa danh…" Style="{StaticResource SmallButton}" Click="BtnLocDb_Click" ToolTip="Xem/sửa danh mục, nhập Bảng 5.1 QCVN 02:2022 từ Excel/CSV"/>
                                     </StackPanel>
-                                </StackPanel>
-                            </GroupBox>
-                            <GroupBox Header="Gió (TCVN 2737:2023)">
-                                <StackPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tính tải gió" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkWind" Content="Bật" VerticalAlignment="Center"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Áp lực gió W0 (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtW0"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Dạng địa hình" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbTerrain" SelectionChanged="CbTerrain_SelectionChanged"/></DockPanel>
-                                    <TextBlock x:Name="txtTerrainInfo" Margin="208,0,2,2" TextWrapping="Wrap" Foreground="DimGray"/>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hệ số khí động tổng Cp" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtCp"/></DockPanel>
-                                </StackPanel>
-                            </GroupBox>
-                            <GroupBox Header="Động đất (TCVN 9386-1:2025)">
-                                <StackPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tính động đất" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkSeismic" Content="Bật (thêm trường hợp DDX, DDY)" VerticalAlignment="Center"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Gia tốc nền agR (g)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtAgR"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Loại nền đất" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbSeisSoil"/></DockPanel>
-                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hệ số ứng xử q" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtQ"/></DockPanel>
                                 </StackPanel>
                             </GroupBox>
                             <GroupBox Header="Vật liệu">
@@ -419,6 +395,32 @@
                 <TabItem Header="Tải trọng">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="6">
+                            <ContentControl x:Name="ccLoadCommands"/>
+                            <GroupBox Header="Tải mặc định khi tạo mô hình (giá trị tiêu chuẩn)">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoàn thiện sàn (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtFinish"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoạt tải sàn (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtLive"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hoạt tải mái (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtRoofLive"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tường biên trên dầm (kN/m)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtWall"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Gió (TCVN 2737:2023)">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tính tải gió" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkWind" Content="Bật" VerticalAlignment="Center"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Áp lực gió W0 (kN/m²)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtW0"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Dạng địa hình" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbTerrain" SelectionChanged="CbTerrain_SelectionChanged"/></DockPanel>
+                                    <TextBlock x:Name="txtTerrainInfo" Margin="208,0,2,2" TextWrapping="Wrap" Foreground="DimGray"/>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hệ số khí động tổng Cp" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtCp"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Động đất (TCVN 9386-1:2025)">
+                                <StackPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tính động đất" Style="{StaticResource FieldLabel}"/><CheckBox x:Name="chkSeismic" Content="Bật (thêm trường hợp DDX, DDY)" VerticalAlignment="Center"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Gia tốc nền agR (g)" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtAgR"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Loại nền đất" Style="{StaticResource FieldLabel}"/><ComboBox x:Name="cbSeisSoil"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Hệ số ứng xử q" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtQ"/></DockPanel>
+                                </StackPanel>
+                            </GroupBox>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Trường hợp tải" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
                                 <Button Content="+ Thêm" Click="BtnAddPattern_Click" Style="{StaticResource SmallButton}"/>
@@ -452,9 +454,10 @@
                 </TabItem>
 
                 <!-- ===== KẾT QUẢ ===== -->
-                <TabItem Header="Kết quả">
+                <TabItem Header="Kiểm tra">
                     <Grid Margin="6">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="3*"/>
                             <RowDefinition Height="Auto"/>
@@ -462,18 +465,19 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <StackPanel Grid.Row="0" Orientation="Horizontal">
+                        <ContentControl Grid.Row="0" x:Name="ccCheckCommands"/>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal">
                             <TextBlock Text="Trường hợp / tổ hợp:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <ComboBox x:Name="cbCase" Width="140" SelectionChanged="CbCase_SelectionChanged"/>
                             <TextBlock Text="Tầng:" VerticalAlignment="Center" Margin="12,0,6,0"/>
                             <ComboBox x:Name="cbResStory" Width="120" SelectionChanged="CbResStory_SelectionChanged"/>
                         </StackPanel>
-                        <DataGrid Grid.Row="1" x:Name="dgForces" IsReadOnly="True" AutoGeneratingColumn="Grid_AutoGeneratingColumn"
+                        <DataGrid Grid.Row="2" x:Name="dgForces" IsReadOnly="True" AutoGeneratingColumn="Grid_AutoGeneratingColumn"
                                   EnableRowVirtualization="True"/>
-                        <TextBlock Grid.Row="2" Text="Phản lực chân cột (kN, kN.m)" FontWeight="Bold" Margin="0,4,0,0"/>
-                        <DataGrid Grid.Row="3" x:Name="dgReactions" IsReadOnly="True" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
-                        <TextBlock Grid.Row="4" Text="Cảnh báo / thông tin" FontWeight="Bold" Margin="0,4,0,0"/>
-                        <ListBox Grid.Row="5" x:Name="lstWarnings"/>
+                        <TextBlock Grid.Row="3" Text="Phản lực chân cột (kN, kN.m)" FontWeight="Bold" Margin="0,4,0,0"/>
+                        <DataGrid Grid.Row="4" x:Name="dgReactions" IsReadOnly="True" AutoGeneratingColumn="Grid_AutoGeneratingColumn"/>
+                        <TextBlock Grid.Row="5" Text="Cảnh báo / thông tin" FontWeight="Bold" Margin="0,4,0,0"/>
+                        <ListBox Grid.Row="6" x:Name="lstWarnings"/>
                     </Grid>
                 </TabItem>
 
@@ -526,6 +530,13 @@
                             </DockPanel>
                         </TabItem>
                     </TabControl>
+                </TabItem>
+
+                <!-- ===== TRIỂN KHAI HỒ SƠ (lệnh gom một tab) ===== -->
+                <TabItem Header="Triển khai">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ContentControl x:Name="ccDeliverCommands" Margin="6"/>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
 

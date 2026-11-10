@@ -190,12 +190,13 @@ public static partial class UserGuide
 
         c.Sec("giao-dien.tab-trai", "Các tab nhập liệu (cột trái)")
             .Table(new[] { "Tab", "Nội dung", "Xem mục" },
-                new[] { "Công trình", "Thông tin công trình; lưới trục và tầng; tiết diện mặc định; tải trọng tiêu chuẩn; địa điểm xây dựng (vùng gió, động đất); gió; động đất; vật liệu; nền đất dưới móng đơn; nút **Tạo mô hình**, **Áp dụng thông số**.", "{s:khoi-tao.luoi-truc}" },
+                new[] { "Công trình", "Thông tin công trình; lưới trục và tầng; tiết diện mặc định; địa điểm xây dựng (vùng gió, động đất); vật liệu; nền đất dưới móng đơn; nút **Tạo mô hình**, **Áp dụng thông số**.", "{s:khoi-tao.luoi-truc}" },
                 new[] { "Địa chất", "Hố khoan khảo sát, các lớp đất, hình trụ hố khoan, áp dụng cho thiết kế móng, gợi ý phương án móng.", "{s:mong.dia-chat}" },
                 new[] { "Tiết diện", "Bảng tiết diện thanh (chữ nhật BTCT, chữ I tổ hợp) và tiết diện sàn.", "{s:mo-hinh.tiet-dien}" },
-                new[] { "Tải trọng", "Trường hợp tải, tổ hợp tải trọng, tải trên thanh, tải trên sàn.", "{s:tai-trong.truong-hop}" },
-                new[] { "Kết quả", "Nội lực theo trường hợp/tổ hợp và tầng, phản lực chân cột, cảnh báo / thông tin.", "{s:phan-tich.ket-qua}" },
-                new[] { "Thiết kế", "Các tab con Dầm, Cột, Sàn, Móng, Cầu thang, Thép; cấu kiện không đạt tô đỏ.", "{s:thiet-ke.btct}" });
+                new[] { "Tải trọng", "Mọi lệnh gán tải ở một chỗ: gán tải theo cấu kiện, tải thanh / sàn / nút, tường, cấu tạo sàn, sàn vệ sinh; trường hợp tải, tổ hợp, phổ động đất; tải mặc định, gió, động đất; bảng tải trên thanh, trên sàn.", "{s:tai-trong.truong-hop}" },
+                new[] { "Kiểm tra", "Mọi lệnh kiểm tra (kiểm tra mô hình, phân tích, biến dạng, biểu đồ, phản lực, bảng kết quả, kiểm tra BTCT / thép / an toàn móng, so sánh ETABS); nội lực theo trường hợp/tổ hợp và tầng, phản lực chân cột, cảnh báo.", "{s:phan-tich.ket-qua}" },
+                new[] { "Thiết kế", "Các tab con Dầm, Cột, Sàn, Móng, Cầu thang, Thép; cấu kiện không đạt tô đỏ.", "{s:thiet-ke.btct}" },
+                new[] { "Triển khai", "Mọi lệnh triển khai hồ sơ: dàn trang & in, bản vẽ DXF, bản vẽ từng dầm, hiệu chỉnh bản vẽ, chọn bố trí thép, shop drawing, thuyết minh Word, bảng tính Excel, khối lượng, xuất tất cả, chuẩn layer CAD. Ribbon kiểu Revit có cùng ba tab Tải trọng, Kiểm tra, Triển khai.", "{s:ho-so.xuat}" });
 
         c.Sec("giao-dien.khung-nhin", "Khung nhìn: Mặt bằng, 3D, Biểu đồ nội lực, Mô hình móng, Dao động")
             .Bullets(
@@ -534,7 +535,7 @@ public static partial class UserGuide
             .Steps("{m:new} (Ctrl+N). Ở tab **Công trình**, nhóm **Thông tin công trình**: Tên công trình \"Nhà phố mẫu 4 tầng\", Địa điểm xây dựng \"Thái Nguyên\", Chủ đầu tư, Người thiết kế.",
                 "Nhóm **Lưới trục và tầng (m)**: Bước cột theo X = **5**; Bước cột theo Y = **4.5 4.5 4.5** (hoặc 3*4.5); Chiều cao các tầng = **3.9 3.3 3.3 3.3**; Cao độ chân cột = **-0.6**; giữ **Ngàm** cho liên kết chân cột.",
                 "Nhóm **Tiết diện mặc định**: Cột **C22x30**, Dầm phương X **D22x30**, Dầm phương Y **D22x40**, Sàn **S100**.",
-                "Nhóm **Tải trọng (giá trị tiêu chuẩn)**: Hoàn thiện sàn 1.2; Hoạt tải sàn 1.5; Hoạt tải mái 0.75; Tường biên trên dầm **7.5** kN/m.",
+                "Tab **Tải trọng**, nhóm **Tải mặc định khi tạo mô hình**: Hoàn thiện sàn 1.2; Hoạt tải sàn 1.5; Hoạt tải mái 0.75; Tường biên trên dầm **7.5** kN/m.",
                 "Nhóm **Địa điểm xây dựng**: Tỉnh/Thành phố gõ \"Thái Nguyên\" → chọn xã/phường → **Vùng áp lực gió** tự điền, W0 điền vào nhóm Gió. Kiểm tra lại với QCVN 02:2022 cho địa danh cụ thể.",
                 "Bấm **Tạo mô hình** và xác nhận. Thanh trạng thái báo số nút, thanh, ô sàn và tổ hợp đã tạo. Lưu dự án ({m:saveAs}).")
             .Note("Mô hình gồm 2 trục X (1, 2) × 4 trục Y (A…D), 4 tầng: cột tại mọi giao trục, dầm trên mọi đường trục, sàn trong mọi ô; tải hoàn thiện, hoạt tải sàn dồn 45° về dầm; tải tường biên 7,5 kN/m trên dầm biên.");
@@ -550,7 +551,7 @@ public static partial class UserGuide
         ex.Sec("quy-trinh.vi-du.tai-trong", "Bước 3 – Tải trọng và tổ hợp")
             .Steps("Tab **Tải trọng**: kiểm tra trường hợp tải TT (trọng lượng bản thân, γf 1,1), HTHT (hoàn thiện, 1,3), HT (hoạt tải, 1,3), GX, GY (gió, 1,2).",
                 "Bật **Hiện tải tự sinh (sàn)** để xem tải sàn đã dồn lên dầm; thêm tải tập trung / phân bố riêng nếu cần (**+ Cho thanh đang chọn**).",
-                "Tab Công trình → nhóm **Gió**: bật **Tính tải gió**, dạng địa hình B (hoặc theo thực tế), Cp. Nhóm **Động đất**: nếu agR đáng kể, bật **Tính động đất**, nhập agR, loại nền, q → **Áp dụng thông số**.",
+                "Tab **Tải trọng** → nhóm **Gió**: bật **Tính tải gió**, dạng địa hình B (hoặc theo thực tế), Cp. Nhóm **Động đất**: nếu agR đáng kể, bật **Tính động đất**, nhập agR, loại nền, q → **Áp dụng thông số**.",
                 "{m:combos}: chương trình sinh tổ hợp TTGH I (TH1, TH2…), TTGH II (TC1…) và tổ hợp bao **BAO**.");
 
         ex.Sec("quy-trinh.vi-du.mong", "Bước 4 – Địa chất và móng")
