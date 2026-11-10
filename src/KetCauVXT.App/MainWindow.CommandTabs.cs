@@ -119,6 +119,7 @@ public partial class MainWindow
         RvStack("Cốt thép",
             RvBtn("Chọn bố trí thép…", "\uE8EF", "Chọn số thanh, Ø, kiểu bố trí A/B/C cho cấu kiện đang chọn", () => Do(BtnRebarChoice_Click)),
             RvBtn("Shop drawing thép…", "\uE719", "Bảng gia công, cắt cây thép theo chiều dài thương phẩm", () => Do(MnuExpShop_Click)),
+            RvBtn("Đặt tên cấu kiện…", "\uE8EC", "Gán một tên cho cột / dầm / móng cùng tiết diện + chiều dài – thiết kế chung một phương án thép", MemberMarksUi),
             RvBtn("Tuỳ chọn thép…", "\uE713", "Tuỳ chọn chọn thép & gia công (kiểu bố trí dầm mặc định, chiều dài cây thép…)", () => Do(MnuRebarPrefs_Click))),
         RvStack("Thuyết minh & khối lượng",
             RvBtn("Thuyết minh Word…", "\uE8A5", "Thuyết minh tính toán (.docx)", () => Do(MnuExpWord_Click)),

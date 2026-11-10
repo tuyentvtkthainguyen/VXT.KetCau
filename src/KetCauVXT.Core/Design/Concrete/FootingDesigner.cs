@@ -83,8 +83,16 @@ public static partial class FootingDesigner
             if (pass == 3 || plan == null || !EccentricPairs.Sync(plan)) { warnings.AddRange(passWarn); break; }
         }
         if (plan != null) list = list.OrderBy(x => rank.TryGetValue(x.d.NodeId, out int k) ? k : 0).ToList();   // [MóngLệchTâm] giữ thứ tự đặt tên như cũ
-        int no = 1;
-        foreach (var (d, _) in list) d.Name = "M" + no++;
+        // [Tên cấu kiện] móng đã gán tên (cùng kích thước) → tên đã gán; còn lại M1, M2… không trùng
+        var marks = p.Footings.Where(f => !string.IsNullOrEmpty(f.Mark)).GroupBy(f => f.NodeId).ToDictionary(g => g.Key, g => g.First().Mark);
+        var next = MemberMarks.Namer("M", marks.Values);
+        var usedMk = new HashSet<string>();
+        foreach (var (d, _) in list)
+        {
+            if (marks.TryGetValue(d.NodeId, out var mk) && usedMk.Add(mk)) d.Name = mk;
+            else if (marks.TryGetValue(d.NodeId, out mk)) { d.Name = mk + "'" ; d.Messages.Add($"Cảnh báo: móng cùng tên {mk} nhưng khác phương án thép / kích thước – kiểm tra lại (đặt tên lại hoặc chốt kích thước)."); }
+            else d.Name = next();
+        }
         var outList = list.Select(x => x.d).ToList();
         CuTramCalc.DifferentialSettlement(outList);   // [CừTràm] lún lệch giữa các móng cừ tràm kề nhau
         return outList;

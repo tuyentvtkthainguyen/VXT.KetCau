@@ -764,6 +764,14 @@ public static partial class UserGuide
                 "**Chọn bố trí thép dầm này…**: đổi kiểu A / B / C, số thanh, đai – bản vẽ cập nhật sau khi thiết kế lại.",
                 "**Xuất bản vẽ dầm này…** (DXF / DWG, có khung tên \"CHI TIẾT DẦM D1 (SL=…)\"), hoặc **Xuất mỗi dầm một tệp…** vào một thư mục.");
 
+        c.Sec("khoi-tao.chi-chon-dat-ten", "Nút Chỉ chọn, Esc, quét chọn và đặt tên cấu kiện cùng loại")
+            .Bullets("**Chỉ chọn** (nút đầu tiên bên trái ribbon, và trên thanh công cụ mặt bằng cạnh nút Chọn): thoát mọi lệnh vẽ / đặt đang chạy, về chế độ Chọn và **khoá kéo dời** – bấm / quét chỉ để chọn, không di chuyển, không tạo đối tượng. Bấm lần nữa để mở khoá (kéo tay nắm sửa đối tượng).",
+                "**Esc**: đang vẽ dầm, cột, sàn, tường, cửa… một lần Esc là thoát hẳn lệnh, về ngay chế độ Chọn.",
+                "**Quét chọn** ở chế độ Chọn: kéo khung **trái → phải** chọn đối tượng nằm trọn trong khung; **phải → trái** chọn đối tượng chạm khung; Ctrl + kéo thêm, Shift + kéo bỏ. Di chuyển khung nhìn bằng nút giữa chuột.",
+                "**Đặt tên cấu kiện…** (ribbon Kết cấu → Khung, tab Triển khai → Cốt thép, menu Thiết kế): gán **một tên** (C1, D1, M1…) cho các cấu kiện **cùng tiết diện và cùng chiều dài** – cột so cả chồng cột (tiết diện, chiều cao từng tầng); dầm so cả dải dầm (tiết diện, chiều dài từng nhịp, sai số 10 mm); móng đơn so L × B × H.",
+                "**Tự đặt tên theo nhóm**: chương trình tự gom và đặt tên cả công trình (tuỳ chọn dầm đặt tên riêng từng tầng, giữ tên đã gán tay). **Gán tên cho đối tượng đang chọn**: chọn (bấm / quét) trên mặt bằng, nhập tên – khác tiết diện hoặc chiều dài thì chương trình báo và hỏi trước khi gán. Móng: chọn ở tab Mô hình móng; gán chung tên → đồng nhất kích thước theo móng lớn nhất.",
+                "Khi thiết kế, các cấu kiện cùng tên dùng chung **một phương án thép** – phương án nhẹ nhất bao được As yêu cầu của mọi cấu kiện trong nhóm (có dòng kiểm tra \"Nhóm tên …\"); bản vẽ một hình, SL = số cấu kiện. Sửa mô hình làm một tên lẫn tiết diện / chiều dài → hộp thoại cảnh báo để đặt tên lại.");
+
         c.Sec("khoi-tao.esc-thoat-lenh", "Phím Esc thoát lệnh vẽ cấu kiện")
             .Bullets("Đang dùng lệnh vẽ (＋ Dầm, dầm cong, tường, ô sàn, ban công, cầu thang, cột, lan can, chi tiết kiến trúc, đặt cửa / đồ đạc, vẽ trục, mặt cắt, lệnh gõ ở dòng lệnh, sửa dầm, "
                 + "vẽ đường chuẩn / móng đa giác / nhân bản móng): bấm **Esc một lần** để thoát hẳn lệnh, trở về chế độ **Chọn** – kể cả khi con trỏ nhập đang ở ô chữ của thanh lệnh hoặc dòng lệnh.",

@@ -61,6 +61,7 @@ public partial class MainWindow
         if (planHost != null && _mode == PlanEditMode.Select) planHost.Cursor = null;
         DrawHover();
         SetStatus("Đã thoát lệnh (Esc) – chế độ Chọn. " + ModeHint(PlanEditMode.Select));
+        UpdateSelectOnlyButtons();
         return true;
     }
 

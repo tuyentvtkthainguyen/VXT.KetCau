@@ -671,6 +671,8 @@ Console.WriteLine("101. Truyền tải đứng xuống chân cột (nhà phố 3
 TakedownTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("102. Cọc ép [P] = Pép/k, số cọc từng hố móng, cột sát 1 ranh / 2 ranh, kiểu bố trí thép dầm A/B/C, bản vẽ từng dầm");
 PressPitBeamTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("103. Đặt tên cấu kiện: cột / dầm / móng cùng tiết diện + chiều dài → một tên, thiết kế chung một phương án thép");
+MemberMarkTests.Run(Check);
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

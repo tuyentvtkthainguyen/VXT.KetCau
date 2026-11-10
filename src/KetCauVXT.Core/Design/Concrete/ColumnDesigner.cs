@@ -36,11 +36,14 @@ public static class ColumnDesigner
 
         var combos = r.DesignCombos();
         var designed = new List<(ColumnDesign d, string sig)>();
+        var marked = new List<(ColumnDesign d, string mark)>();   // [Tên cấu kiện]
         foreach (var st in stacks)
         {
             try
             {
                 var d = DesignStack(p, r, st, combos);
+                string mk = MemberMarks.CommonMark(st);
+                if (mk.Length > 0) { marked.Add((d, mk)); continue; }
                 string sig = Signature(d);
                 int k = designed.FindIndex(x => x.sig == sig);
                 if (k >= 0)
@@ -68,9 +71,48 @@ public static class ColumnDesigner
                 warnings.Add("LỖI thiết kế cột tại " + DesignUtil.GridName(p, n.X, n.Y) + ": " + ex.Message);
             }
         }
-        int no = 1;
-        foreach (var (d, _) in designed) d.Name = "C" + no++;
-        return designed.Select(x => x.d).ToList();
+        var outList = new List<ColumnDesign>();
+        foreach (var g in marked.GroupBy(x => x.mark).OrderBy(g => g.Key, NaturalComparer.Instance))
+            outList.Add(MergeMarked(g.Key, g.Select(x => x.d).ToList()));
+        var next = MemberMarks.Namer("C", marked.Select(x => x.mark));
+        foreach (var (d, _) in designed) { d.Name = next(); outList.Add(d); }
+        return outList;
+    }
+
+    /// <summary>[Tên cấu kiện] Gộp các chồng cột cùng tên: phương án thép bao As yêu cầu của mọi cột (từng tầng) – ưu tiên nhẹ nhất trong
+    /// các phương án đủ; không có → nặng nhất + kiểm tra không đạt.</summary>
+    private static ColumnDesign MergeMarked(string mark, List<ColumnDesign> ds)
+    {
+        static double Deficit(ColumnDesign g, ColumnDesign o)
+        {
+            double w = 0;
+            for (int i = 0; i < Math.Min(g.Stories.Count, o.Stories.Count); i++) w = Math.Max(w, o.Stories[i].AsReq - g.Stories[i].AsProv);
+            return w;
+        }
+        var order = ds.OrderBy(d => MemberMarks.SteelKg(d)).ToList();
+        var gov = order.FirstOrDefault(c => c.Ok && ds.All(o => ReferenceEquals(o, c) || Deficit(c, o) <= 1e-7)) ?? order.Last();
+        double def = ds.Where(o => !ReferenceEquals(o, gov)).Select(o => Deficit(gov, o)).DefaultIfEmpty(0).Max();
+        foreach (var o in ds.Where(o => !ReferenceEquals(o, gov)))
+        {
+            gov.Quantity += Math.Max(1, o.Quantity);
+            gov.GridName += ", " + o.GridName;
+            gov.RebarKeys.AddRange(o.RebarKeys.Where(x => !gov.RebarKeys.Contains(x)));
+            for (int i = 0; i < gov.Stories.Count && i < o.Stories.Count; i++)
+                if (o.Stories[i].Utilization > gov.Stories[i].Utilization)
+                {
+                    var a = gov.Stories[i]; var b = o.Stories[i];
+                    a.N = b.N; a.M2 = b.M2; a.M3 = b.M3; a.Combo = b.Combo; a.Eta2 = b.Eta2; a.Eta3 = b.Eta3; a.AsReq = Math.Max(a.AsReq, b.AsReq);
+                }
+            foreach (var m in o.Messages.Where(x => x.StartsWith("LỖI") && !gov.Messages.Contains(x))) gov.Messages.Add(m);
+        }
+        if (ds.Count > 1)
+            gov.Checks.Add(new CheckItem
+            {
+                Name = $"Nhóm tên {mark}: As bố trí bao As yêu cầu của {ds.Count} cột cùng tên", Demand = def > 1e-7 ? def * 1e4 : 0, Capacity = 0, Unit = "cm² thiếu",
+                Note = def > 1e-7 ? "thiếu " + DesignUtil.F(def * 1e4, "0.00") + " cm² – chọn thép tay hoặc tách tên" : "đạt"
+            });
+        gov.Name = mark;
+        return gov;
     }
 
     private static ColumnDesign DesignStack(Project p, AnalysisResults r, List<FrameElement> stack, List<string> combos)

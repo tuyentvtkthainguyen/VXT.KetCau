@@ -172,6 +172,7 @@
                 <Separator/>
                 <MenuItem Header="Chọn bố trí thép…" Click="BtnRebarChoice_Click"/>
                 <MenuItem Header="Bản vẽ từng dầm…" Click="BtnBeamSheet_Click"/>
+                <MenuItem Header="Đặt tên cấu kiện (cùng tiết diện + chiều dài)…" Click="MnuMemberMarks_Click"/>
                 <MenuItem Header="Tuỳ chọn chọn thép &amp; gia công…" Click="MnuRebarPrefs_Click"/>
             </MenuItem>
             <MenuItem Header="Triển _khai hồ sơ">
@@ -573,6 +574,7 @@
                                         </Style>
                                     </WrapPanel.Resources>
                                     <RadioButton x:Name="rbModeSelect" Content="Chọn" Tag="Select" IsChecked="True" Checked="PlanMode_Checked" ToolTip="Chọn cột, dầm, lỗ sàn, ô sàn (Esc)"/>
+                                    <ToggleButton x:Name="tbSelectOnly" Content="⬚ Chỉ chọn" Click="TbSelectOnly_Click" Margin="2,1,6,1" Padding="6,1,6,1" ToolTip="Chỉ chọn đối tượng: bấm / quét khung để chọn, không kéo dời, không vẽ, không tạo đối tượng (Esc cũng về chế độ này)"/>
                                     <RadioButton Content="＋ Ô sàn" Tag="AddSlab" Checked="PlanMode_Checked" ToolTip="Bấm vào ô kín bởi dầm để thêm ô sàn"/>
                                     <RadioButton Content="＋ Ban công" Tag="Balcony" Checked="PlanMode_Checked" ToolTip="Bấm vào dầm biên để thêm ban công công xôn"/>
                                     <RadioButton Content="＋ Cầu thang" Tag="Stair" Checked="PlanMode_Checked" ToolTip="Bấm vào ô để biến thành ô cầu thang"/>

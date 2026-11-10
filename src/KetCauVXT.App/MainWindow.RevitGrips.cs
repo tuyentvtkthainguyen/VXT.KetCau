@@ -44,7 +44,7 @@ public partial class MainWindow
     // ==================================================================
     // Tay nắm
     // ==================================================================
-    private bool GripsEnabled => _p != null && _mode == PlanEditMode.Select && _cmdStage == CmdStage.None && !_busy;
+    private bool GripsEnabled => _p != null && _mode == PlanEditMode.Select && _cmdStage == CmdStage.None && !_busy && !_selectOnly;   // [Chỉ chọn] khoá kéo dời
 
     private FrameElement SelectedBeamForGrip()
     {

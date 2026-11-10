@@ -99,6 +99,11 @@ public class FrameElement
     public bool[] ReleaseJ { get; set; } = new bool[6];
     /// <summary>Nhóm thiết kế (các phần tử cùng nhóm được bố trí thép giống nhau, gộp SL trong bản vẽ).</summary>
     public string DesignGroup { get; set; } = "";
+    /// <summary>[Tên cấu kiện] Ký hiệu do người dùng / "Đặt tên theo nhóm" gán (C1, D1…): các cột (cả chồng cột) / dải dầm cùng ký hiệu
+    /// có cùng tiết diện + chiều dài, được thiết kế chung một phương án thép (lấy phương án bất lợi nhất), bản vẽ một hình, SL = số cấu kiện.
+    /// Rỗng = tự đặt tên như cũ. Xem Model/MemberMarks.cs.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public string Mark { get; set; } = "";
     /// <summary>Chiều dài tính toán ngoài mặt phẳng (thép) – khoảng cách giằng/xà gồ, m. 0 = lấy chiều dài thanh.</summary>
     public double UnbracedLength22 { get; set; }
     /// <summary>Dầm cong trên mặt bằng: độ vồng (mũi tên cung) f tại giữa dây cung I–J, m. Dương = cung vồng về bên trái
@@ -180,6 +185,9 @@ public class Footing
 {
     public string Label { get; set; } = "M1";
     public int NodeId { get; set; }
+    /// <summary>[Tên cấu kiện] Ký hiệu móng do người dùng / "Đặt tên theo nhóm" gán (M1, M2…); rỗng = tự đặt tên.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public string Mark { get; set; } = "";
     /// <summary>Kích thước đáy móng đã chọn (0 = để chương trình tự chọn), m</summary>
     public double L { get; set; }
     public double B { get; set; }

@@ -86,6 +86,13 @@ public static class BeamDesigner
             }
         }
 
+        // [Tên cấu kiện] dải dầm cùng tên (cùng tiết diện + chiều dài) → một phương án thép bất lợi nhất, tên = tên đã gán
+        var marked = designed.Select(x => (x.d, x.li, m: MemberMarks.CommonMark(x.li.Segs.Select(sg => sg.F)))).Where(x => x.m.Length > 0).ToList();
+        foreach (var g in marked.GroupBy(x => x.m).OrderBy(g => g.Key, NaturalComparer.Instance))
+            result.Add(MergeMarked(g.Key, g.Select(x => x.d).ToList()));
+        var markedSet = new HashSet<BeamLineDesign>(marked.Select(x => x.d));
+        designed = designed.Where(x => !markedSet.Contains(x.d)).ToList();
+
         // gộp dầm giống hệt nhau trong cùng tầng, đặt tên D{tầng}-{n}
         foreach (var st in designed.GroupBy(x => x.d.Story).OrderBy(g => DesignUtil.StoryOrder(p, g.Key)))
         {
@@ -117,6 +124,51 @@ public static class BeamDesigner
             }
         }
         return result;
+    }
+
+    /// <summary>[Tên cấu kiện] Gộp các dải dầm cùng tên: chọn phương án thép bao được As yêu cầu của mọi dầm trong nhóm
+    /// (ưu tiên nhẹ nhất trong các phương án đủ; không có → nặng nhất + kiểm tra không đạt).</summary>
+    private static BeamLineDesign MergeMarked(string mark, List<BeamLineDesign> ds)
+    {
+        static double Need(BeamSpanResult s, int which) => which switch { 0 => s.AsBotReq, 1 => s.AsTopLeftReq, _ => s.AsTopRightReq };
+        static double Have(BeamSpanResult s, int which) => which switch { 0 => s.AsBotProv, 1 => s.AsTopLeftProv, _ => s.AsTopRightProv };
+        // độ thiếu lớn nhất khi dùng thép của g cho dầm o (so cả chiều xuôi và ngược – dầm đối xứng)
+        static double Deficit(BeamLineDesign g, BeamLineDesign o)
+        {
+            if (g.Spans.Count != o.Spans.Count) return 0;
+            int n = g.Spans.Count;
+            double Run(bool rev)
+            {
+                double worst = 0;
+                for (int k = 0; k < n; k++)
+                {
+                    var gs = g.Spans[k]; var os = o.Spans[rev ? n - 1 - k : k];
+                    worst = Math.Max(worst, Need(os, 0) - Have(gs, 0));
+                    worst = Math.Max(worst, (rev ? Need(os, 2) : Need(os, 1)) - Have(gs, 1));
+                    worst = Math.Max(worst, (rev ? Need(os, 1) : Need(os, 2)) - Have(gs, 2));
+                }
+                return worst;
+            }
+            return Math.Min(Run(false), Run(true));
+        }
+        var order = ds.OrderBy(d => MemberMarks.SteelKg(d)).ToList();
+        var gov = order.FirstOrDefault(c => c.Ok && ds.All(o => ReferenceEquals(o, c) || Deficit(c, o) <= 1e-7)) ?? order.Last();
+        double def = ds.Where(o => !ReferenceEquals(o, gov)).Select(o => Deficit(gov, o)).DefaultIfEmpty(0).Max();
+        foreach (var o in ds.Where(o => !ReferenceEquals(o, gov)))
+        {
+            gov.Quantity += Math.Max(1, o.Quantity);
+            gov.RebarKeys.AddRange(o.RebarKeys.Where(x => !gov.RebarKeys.Contains(x)));
+            gov.Messages.Add($"Cùng tên {mark}: dầm tầng {o.Story} (phần tử {string.Join(",", o.Frames)}) dùng chung phương án thép.");
+            foreach (var m in o.Messages.Where(x => x.StartsWith("LỖI") && !gov.Messages.Contains(x))) gov.Messages.Add(m);
+        }
+        if (ds.Count > 1)
+            gov.Checks.Add(new CheckItem
+            {
+                Name = $"Nhóm tên {mark}: As bố trí bao As yêu cầu của {ds.Count} dầm cùng tên", Demand = def > 1e-7 ? def * 1e4 : 0, Capacity = 0, Unit = "cm² thiếu",
+                Note = def > 1e-7 ? "thiếu " + DesignUtil.F(def * 1e4, "0.00") + " cm² – chọn thép tay cho dầm này hoặc tách tên" : "đạt"
+            });
+        gov.Name = mark;
+        return gov;
     }
 
     // ------------------------------------------------------------------

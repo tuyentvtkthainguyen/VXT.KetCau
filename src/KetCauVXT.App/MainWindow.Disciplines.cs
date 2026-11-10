@@ -48,6 +48,7 @@ public partial class MainWindow
             if (_rvTabs != null && _rvRibbon != null)
             {
                 _dsSwitch = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(4, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center };
+                _dsSwitch.Children.Add(SelectOnlyRibbonButton());   // [Chỉ chọn] luôn hiện bên trái ribbon – MainWindow.MemberMarks.cs
                 _dsSwitch.Children.Add(new TextBlock { Text = "BỘ MÔN", FontSize = 10, Foreground = Brushes.DimGray, HorizontalAlignment = HorizontalAlignment.Center });
                 foreach (var d in DisciplineView.All)
                 {
