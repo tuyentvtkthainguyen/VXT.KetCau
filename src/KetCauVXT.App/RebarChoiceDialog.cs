@@ -235,6 +235,10 @@ internal sealed class RebarChoiceDialog : Window
         string unit = z.Kind is "Sàn" or "Móng" ? "cm²/m" : z.Kind == "Dầm" && z.Zone == RebarZones.Stirrup ? "kN (Q / Qu)" : "cm²";
         _grid.Columns[1].Header = "As yêu cầu (" + unit + ")";
         _grid.Columns[2].Header = "As bố trí (" + unit + ")";
+        // kiểu bố trí thép dầm: chỉ so sánh khối lượng – ẩn các cột diện tích / hàng / khe hở / tỷ số
+        bool schemeOnly = z.Zone == RebarZones.BeamScheme;
+        for (int i = 1; i <= 6; i++) _grid.Columns[i].Visibility = schemeOnly ? Visibility.Collapsed : Visibility.Visible;
+        _grid.Columns[0].Width = schemeOnly ? 330 : 150;
         DrawSketch();
     }
 

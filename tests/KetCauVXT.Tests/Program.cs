@@ -688,6 +688,13 @@ void Step(string name, Action a)
     catch (Exception ex) { Console.WriteLine($"  ✗ {name}: {ex.GetType().Name}: {ex.Message}"); fail++; }
 }
 
+// Dự án mẫu giao kèm bộ cài (NhaPho.kcvxt): tự tăng tiết diện để mọi dầm, cột, sàn đạt trước khi lưu
+{
+    var rzh = AutoResize.Run(house, 10);
+    foreach (var l in rzh.Log) Console.WriteLine("   · mẫu nhà phố: " + l);
+    Check("Dự án mẫu nhà phố: mọi cấu kiện đạt sau tự tăng tiết diện", rzh.AllOk ? 1 : 0, 1, 0);
+    if (rzh.Analysis != null) hr = rzh.Analysis;
+}
 foreach (var (proj, res, tag) in new[] { (house, hr, "NhaPho"), (tall, tr, "Nha7Tang"), (archProj, ar, "TuBanVeKienTruc"), (shed, sr, "NhaXuong") })
 {
     Console.WriteLine($"\n== {proj.Name} → {outDir}");

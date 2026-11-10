@@ -570,6 +570,18 @@ public static partial class UserGuide
                 "Chọn một dầm trên mặt bằng → **Chọn bố trí thép…** để chọn phương án thép dưới, mũ gối, chạy suốt, đai theo ý muốn.",
                 "{m:designFnd}: xem kích thước móng, thép đáy, kiểm tra áp lực đáy, chọc thủng, lún ở tab Mô hình móng → **Kiểm tra an toàn…**.");
 
+        ex.Sec("quy-trinh.vi-du.coc-ep", "Bước 6b – Truyền tải, cọc ép theo lực ép, số cọc từng hố móng")
+            .Steps("Tab **Mô hình móng** → **Truyền tải & gợi ý móng…**: tab **Tải chân cột** cho diện chịu tải, G, P, ψ, Ntc, Ntt từng cột, so với phản lực khung (cột Khung/truyền thường 1,1–1,25 vì khung có gió và mô men).",
+                "Dòng **Cọc ép**: lực ép đầu cọc Pép = **50** tấn, k = **2,0** → **Tính lại**: [P] = 500/2 = 250 kN/cọc, cọc 250×250 (Pvl = 1188 kN ≥ Pép – cọc không vỡ khi ép).",
+                "Ô **Ranh đất: tự động**: nhà 1 nhịp rộng 5 m → cả 8 cột sát 1 ranh (trái hoặc phải). Bỏ chọn để tự tích thêm ranh trước/sau → cột góc sát 2 ranh (lệch tâm 2 phương).",
+                "Tab **Hố móng – số cọc**: mỗi cột một đài, tim cọc cách ranh ≥ 0,5 m, cọc xếp 1 hàng dọc ranh, R1/N = Ls/(Ls − e) ≈ 1,08 (Ls = 5 m); số cọc n = ⌈(1,1·ΣNtt·R1/N + Gđài)/[P]⌉ – nhà mẫu 2–3 cọc mỗi hố.",
+                "Giữ ô **thiết kế móng theo tải đứng** → **Áp dụng: Móng cọc** → {m:designFnd}: các đài lệch tâm có dầm móng cân bằng, Pmax ≤ [P].");
+
+        ex.Sec("quy-trinh.vi-du.thep-dam", "Bước 6c – Kiểu bố trí thép dầm và bản vẽ từng dầm")
+            .Steps("Chọn dầm dọc D2-4 (D22x40, 3 nhịp) → **Chọn bố trí thép…** → vùng **Kiểu bố trí thép dọc (A / B / C)**: so sánh khối lượng; kiểu B (toàn bộ chạy suốt) tốn hơn kiểu A khoảng 9 %.",
+                "Vùng **Nhịp 1 – thép dưới**: chọn số thanh / Ø trong danh sách (mọi phương án đã thoả As và khe hở) → **Áp dụng phương án**.",
+                "Thiết kế → **Bản vẽ từng dầm…** → chọn D2-4: mặt đứng, mặt cắt, bảng thống kê thép riêng dầm này → **Xuất bản vẽ dầm này…** (khung tên \"CHI TIẾT DẦM D2-4 (SL=2)\").");
+
         ex.Sec("quy-trinh.vi-du.ho-so", "Bước 7 – Triển khai hồ sơ")
             .Steps("{m:drawStyle} và {m:cadStd}: chọn tỷ lệ, cỡ chữ, kiểu kích thước, tên layer theo chuẩn của đơn vị (một lần, dùng cho mọi dự án).",
                 "{m:expAll}: chọn thư mục → chọn Gộp 1 file / Tách rời → xem/đổi tên layer → chương trình tạo thư mục <tên công trình>_<ngày giờ> gồm MoHinh.kcvxt, BanVe (KC-01…KC-08), GiaCongThep, ThuyetMinh.docx, BangTinh.xlsx, bảng khối lượng, NoiLuc (CSV), MoHinh.e2k, MoHinh.s2k.",
