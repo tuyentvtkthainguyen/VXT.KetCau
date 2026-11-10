@@ -221,7 +221,7 @@ public class CadStandard
 
     /// <summary>Tên layer nội bộ chương trình đang dùng khi vẽ (KetCauVXT.Drawing.Lay) – theo thứ tự bảng LAYER.</summary>
     public static readonly string[] InternalLayerKeys =
-        { "0", KetCauVXT.Drawing.Lay.BeTong, KetCauVXT.Drawing.Lay.Thep, KetCauVXT.Drawing.Lay.Dai, KetCauVXT.Drawing.Lay.KichThuoc, KetCauVXT.Drawing.Lay.Chu, KetCauVXT.Drawing.Lay.KyHieu, KetCauVXT.Drawing.Lay.Truc, KetCauVXT.Drawing.Lay.KhungTen };
+        { "0", KetCauVXT.Drawing.Lay.BeTong, KetCauVXT.Drawing.Lay.Thep, KetCauVXT.Drawing.Lay.Dai, KetCauVXT.Drawing.Lay.KichThuoc, KetCauVXT.Drawing.Lay.Chu, KetCauVXT.Drawing.Lay.KyHieu, KetCauVXT.Drawing.Lay.Truc, KetCauVXT.Drawing.Lay.KhungTen, KetCauVXT.Drawing.Lay.KhungChiTiet };
 
     public static readonly string[] PresetNames = { PresetVxtName, PresetTcvnName };
     public static readonly string[] Linetypes = { "CONTINUOUS", "DASHED", "CENTER", "HIDDEN", "DASHDOT" };
@@ -239,6 +239,7 @@ public class CadStandard
         new(KetCauVXT.Drawing.Lay.KyHieu, "KY_HIEU", 6, "CONTINUOUS", 0.18, "Ký hiệu, nhãn thép, đường dẫn"),
         new(KetCauVXT.Drawing.Lay.Truc, "TRUC", 8, "CENTER", 0.13, "Trục định vị"),
         new(KetCauVXT.Drawing.Lay.KhungTen, "KHUNG_TEN", 7, "CONTINUOUS", 0.25, "Khung tên, khung bản vẽ"),
+        new(KetCauVXT.Drawing.Lay.KhungChiTiet, "KHUNG_CHI_TIET", 5, "CONTINUOUS", 0.18, "Khung bao từng chi tiết (xuất chi tiết rời)"),
     };
 
     /// <summary>Mẫu "TCVN/Văn phòng": tiền tố KC-, màu theo thói quen in nét theo màu (CTB).</summary>
@@ -253,6 +254,7 @@ public class CadStandard
         new(KetCauVXT.Drawing.Lay.KyHieu, "KC-KYHIEU", 6, "CONTINUOUS", 0.18, "Ký hiệu, nhãn thép"),
         new(KetCauVXT.Drawing.Lay.Truc, "KC-TRUC", 1, "CENTER", 0.13, "Trục định vị"),
         new(KetCauVXT.Drawing.Lay.KhungTen, "KC-KHUNGTEN", 7, "CONTINUOUS", 0.30, "Khung tên"),
+        new(KetCauVXT.Drawing.Lay.KhungChiTiet, "KC-KHUNGCT", 5, "CONTINUOUS", 0.18, "Khung bao chi tiết"),
     };
 
     public static List<OutputLayer> Preset(string name) => name == PresetTcvnName ? PresetTcvn() : PresetVxt();

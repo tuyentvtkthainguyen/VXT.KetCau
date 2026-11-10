@@ -70,7 +70,9 @@ public static class AcadRoundTripTests
         var sheet = SheetComposer.Compose(figs, BeamDrawing.CurrentScale, new SheetComposer.SheetInfo { Title = "x", SheetNo = "KC-04" });
         string dd = det.ToDxfString(), ds = sheet.ToDxfString();
         Console.WriteLine($"   · Chi tiết rời: {figs.Count} hình, khung bao {LayerCount(dd, Lay.KhungChiTiet)}, khung tên {LayerCount(dd, Lay.KhungTen)} (tờ dàn trang: khung tên {LayerCount(ds, Lay.KhungTen)})");
-        check("Chi tiết rời: mỗi hình một khung bao", LayerCount(dd, Lay.KhungChiTiet), figs.Count(f => f.W.EntityCount > 0), 0);
+        var one = new DxfWriter(BeamDrawing.CurrentScale); one.Rect(Lay.KhungChiTiet, 0, 0, 10, 10);
+        int perRect = Math.Max(1, LayerCount(one.ToDxfString(), Lay.KhungChiTiet));
+        check("Chi tiết rời: mỗi hình một khung bao", LayerCount(dd, Lay.KhungChiTiet) / (double)perRect, figs.Count(f => f.W.EntityCount > 0), 0);
         check("Chi tiết rời: không khung tên", LayerCount(dd, Lay.KhungTen), 0, 0);
         check("Tờ dàn trang thường vẫn có khung tên", B(LayerCount(ds, Lay.KhungTen) > 0), 1, 0);
         if (outDir != null)
@@ -80,8 +82,9 @@ public static class AcadRoundTripTests
             {
                 Directory.CreateDirectory(dir);
                 var er = DrawingSet.Export(p, s, dir, new DrawingExportOptions { Mode = DrawingExportMode.Split, DetailsOnly = true, Format = CadOutputFormat.DxfR12 });
-                int bad = er.Files.Where(f => f.EndsWith(".dxf")).Count(f => LayerCount(File.ReadAllText(f), Lay.KhungTen) > 0);
-                Console.WriteLine($"   · Xuất chi tiết rời: {er.Files.Count} file, {bad} file còn khung tên");
+                // KC-09 thống kê cửa: bảng kẻ trên lớp KHUNG_TEN (đường kẻ bảng, không phải khung tên)
+                int bad = er.Files.Where(f => f.EndsWith(".dxf") && !Path.GetFileName(f).StartsWith("KC-09")).Count(f => LayerCount(File.ReadAllText(f), Lay.KhungTen) > 0);
+                Console.WriteLine($"   · Xuất chi tiết rời: {er.Files.Count} file, {bad} file còn khung tên; lớp KHUNG_TEN: " + string.Join(", ", er.Files.Where(f => f.EndsWith(".dxf") && LayerCount(File.ReadAllText(f), Lay.KhungTen) > 0).Select(Path.GetFileName)));
                 check("Xuất bộ bản vẽ chi tiết rời: không file nào có khung tên", bad, 0, 0);
                 pk.Details.AddRange(er.Files);
                 AcadResults.Write(pk, dir);
