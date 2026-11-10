@@ -17,7 +17,7 @@ public partial class MainWindow
     // ------------------------------------------------------------------
     private FrameworkElement[] LoadCommandGroups() => new[]
     {
-        RvGroup("Gán tải theo cấu kiện",
+        RvStack("Gán tải theo cấu kiện",
             RvBtn("Tải dầm", "\uE896", "Gán tải phân bố / tập trung cho các dầm đang chọn", () => RvShowMemberRibbon(RtDam)),
             RvBtn("Tải sàn", "\uE896", "Gán tải ô sàn / theo công năng", () => RvShowMemberRibbon(RtSan)),
             RvBtn("Tải cột", "\uE896", "Gán tải đầu cột", () => RvShowMemberRibbon(RtCot)),
@@ -68,7 +68,7 @@ public partial class MainWindow
             });
             row.Children.Add(new TextBlock { Text = label, FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center });
             b.Content = row;
-            b.MinHeight = 0; b.Height = 24; b.MinWidth = 150; b.HorizontalContentAlignment = HorizontalAlignment.Left;
+            b.MinHeight = 0; b.Height = 24; b.HorizontalContentAlignment = HorizontalAlignment.Left;
             b.Padding = new Thickness(3, 0, 6, 0); b.Margin = new Thickness(1, 0, 1, 1);
             col.Children.Add(b);
         }
