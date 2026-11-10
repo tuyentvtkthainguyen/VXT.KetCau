@@ -74,7 +74,7 @@ public static class ArchPlanReader
     /// <summary>Hàm đọc file dùng thay cho DxfReader/ODA (vd. bộ đọc DWG riêng). null = mặc định. Trả null kèm lỗi nếu không đọc được.</summary>
     public static Func<string, double, (DxfReader reader, string error)> CustomReader { get; set; }
 
-    private static DxfReader ReadFile(string f, double scale, ArchDrawing d)
+    internal static DxfReader ReadFile(string f, double scale, ArchDrawing d)
     {
         DxfReader dxf = null; string err = null;
         if (CustomReader != null) { var r = CustomReader(f, scale); dxf = r.reader; err = r.error; }

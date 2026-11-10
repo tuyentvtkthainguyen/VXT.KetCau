@@ -14,6 +14,7 @@ internal sealed class ExportOptionsDialog : Window
     private readonly TextBox _tbSingle = new() { Width = 260 };
     private readonly ComboBox _cbFormat = new() { Width = 260 };
     private readonly bool _pdf;
+    private readonly CheckBox _chkDetails = new() { Content = "Chi tiết rời – không lồng khung tên (tự dàn trang in trong AutoCAD); mỗi chi tiết một khung bao", Margin = new Thickness(0, 6, 0, 0) };
     private readonly CheckBox _chkRemember = new() { Content = "Ghi nhớ lựa chọn cho lần sau", IsChecked = true, Margin = new Thickness(0, 6, 0, 0) };
     private readonly TextBlock _lblPattern, _lblSingle;
     public DrawingExportOptions Result { get; private set; }
@@ -29,6 +30,8 @@ internal sealed class ExportOptionsDialog : Window
         _cbMode.Items.Add(new ComboBoxItem { Content = pdf ? "Tách rời từng tờ (mỗi tờ một PDF)" : "Tách rời từng bản vẽ (mỗi bản một file)", Tag = DrawingExportMode.Split });
         _cbMode.SelectedIndex = start.Mode == DrawingExportMode.Single ? 0 : 1;
         _tbPattern.Text = start.FilePattern ?? "";
+        _chkDetails.IsChecked = start.DetailsOnly;
+        _chkDetails.ToolTip = "Không vẽ khung tờ, khung tên: các chi tiết (mặt bằng, mặt đứng dầm, mặt cắt, bảng thép…) đặt cạnh nhau, mỗi chi tiết trong một khung chữ nhật lớp KHUNG_CHI_TIET để phân biệt; người dùng tự dàn trang in (Layout/viewport) trong AutoCAD.";
         _tbSingle.Text = string.IsNullOrWhiteSpace(start.SingleFileName) ? "{duan}_BoBanVe" : start.SingleFileName;
         _tbPattern.ToolTip = "Để trống = tên mặc định (KC-01_MatBangKetCau…). Ví dụ: {so}_{ten} hoặc {duan}_{stt}_{so}";
         _tbSingle.ToolTip = "Tên file gộp (không cần .dxf/.pdf)";
@@ -53,6 +56,7 @@ internal sealed class ExportOptionsDialog : Window
         sp.Children.Add(DialogUi.Row(_lblPattern, _tbPattern));
         sp.Children.Add(DialogUi.Hint("Mẫu tên: {so} số hiệu bản vẽ, {ten} tên bản vẽ, {duan} tên công trình, {stt} thứ tự 01, 02…, {ngay} ngày xuất. " +
                                       (pdf ? "" : "Gộp 1 file: mỗi bản vẽ giữ nguyên tỷ lệ, đặt trong khung bao riêng có tên ở phía trên, cạnh nhau theo phương X.")));
+        if (!pdf) sp.Children.Add(_chkDetails);
         sp.Children.Add(_chkRemember);
         var ok = DialogUi.Btn("Xuất", (s, e) => Accept(), true);
         ok.IsDefault = true;
@@ -79,6 +83,7 @@ internal sealed class ExportOptionsDialog : Window
     {
         Result = new DrawingExportOptions { Mode = Mode, FilePattern = _tbPattern.Text.Trim(), SingleFileName = _tbSingle.Text.Trim() };
         if (!_pdf && (_cbFormat.SelectedItem as ComboBoxItem)?.Tag is CadOutputFormat f) Result.Format = f;
+        if (!_pdf) Result.DetailsOnly = _chkDetails.IsChecked == true;
         if (_chkRemember.IsChecked == true) Result.SaveUser();
         DialogResult = true;
     }

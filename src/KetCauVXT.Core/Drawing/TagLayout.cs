@@ -147,6 +147,33 @@ public static class SheetComposer
         return outW;
     }
 
+    /// <summary>[Chi tiết rời] Xếp các hình KHÔNG lồng khung tờ / khung tên: mỗi chi tiết một khung bao chữ nhật (lớp KHUNG_CHI_TIET,
+    /// cách hình 5 mm giấy) để phân biệt, xếp hàng trái → phải (bề rộng hàng ≈ khổ giấy), tên bản vẽ ghi phía trên. Người dùng tự dàn trang
+    /// in trong AutoCAD (Layout / viewport). Hình ở tỷ lệ riêng được phóng như Compose để in đúng tỷ lệ.</summary>
+    public static DxfWriter ComposeDetails(IList<Figure> figs, double scale, string title, string paper = "A1")
+    {
+        var outW = new DxfWriter(scale);
+        double S = scale;
+        var (pw, _) = Paper(paper);
+        double maxW = Math.Max(pw, 420) * S, gap = 15 * S, pad = 5 * S;
+        double cx = 0, rowTop = 0, rowH = 0;
+        if (!string.IsNullOrWhiteSpace(title)) outW.Text(Lay.Chu, 0, 10 * S, 1.6 * outW.Th, title, 0, 0, 0);
+        foreach (var f in figs.Where(f => f != null && f.W != null && f.W.EntityCount > 0))
+        {
+            double kf = Math.Abs(f.W.Scale - S) < 1e-9 || f.W.Scale <= 0 ? 1 : S / f.W.Scale;
+            var e0 = f.W.Extents;
+            var e = new Rect2(e0.X1 * kf, e0.Y1 * kf, e0.X2 * kf, e0.Y2 * kf);
+            double w = e.W + 2 * pad, h = e.H + 2 * pad;
+            if (cx > 1e-6 && (f.NewRow || cx + w > maxW)) { rowTop -= rowH + gap; cx = 0; rowH = 0; }
+            double dx = cx + pad - e.X1, dy = rowTop - pad - e.Y2;
+            if (kf == 1) outW.Append(f.W, dx, dy); else outW.AppendScaled(f.W, kf, dx, dy);
+            outW.Rect(Lay.KhungChiTiet, cx, rowTop - h, cx + w, rowTop);
+            cx += w + gap;
+            rowH = Math.Max(rowH, h);
+        }
+        return outW;
+    }
+
     /// <summary>Khung tờ + khung tên tại gốc (0, 0) cho tờ pw × ph (mm giấy) ở tỷ lệ w.Scale (dàn trang in – Detailing/SheetLayout.cs);
     /// ghi thêm tỷ lệ các hình và ngày (nếu người dùng nhập).</summary>
     public static void Frame(DxfWriter w, double pw, double ph, SheetInfo info, string scaleText = "", string date = "")

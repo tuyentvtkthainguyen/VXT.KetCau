@@ -127,6 +127,7 @@ public partial class MainWindow
             RvBtn("Bảng tính Excel…", "\uE8EF", "Bảng tính kết quả (.xlsx)", () => Do(MnuExpExcel_Click)),
             RvBtn("Khối lượng vật tư…", "\uE8FD", "Bê tông, ván khuôn, thép theo nhóm Ø, xây, trát", () => Do(MnuQuantities_Click))),
         RvStack("Xuất & chuẩn",
+            RvBtn("Kết quả về AutoCAD…", "\uE8AB", "Gửi tên cấu kiện, tiết diện, thép, khung móng về bản vẽ AutoCAD (VXT_NHAN) + chi tiết rời không khung tên (VXT_CHEN)", () => MnuAcadResults_Click(this, NoArgs)),
             RvBtn("Xuất tất cả…", "\uEDE1", "Mô hình, bản vẽ, thuyết minh, bảng tính vào một thư mục", () => Do(MnuExpAll_Click)),
             RvBtn("Chuẩn layer CAD…", "\uE713", "Tên layer, màu, nét theo chuẩn đơn vị", () => Do(MnuCadStandard_Click)),
             RvBtn("Thiết lập bản vẽ…", "\uE713", "Tỷ lệ, cỡ chữ, kiểu kích thước", () => Do(MnuDrawingStyle_Click)),

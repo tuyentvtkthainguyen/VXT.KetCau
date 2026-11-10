@@ -64,7 +64,10 @@ namespace KetCauVXT.AcadLink
             flow.Controls.Add(Btn("Xoá gán nhóm", "VXT_XOA", false));
             flow.Controls.Add(Btn("Tạo / chuyển đổi layer kết cấu", "VXT_LAYER", false));
             flow.Controls.Add(Btn("Chuẩn hoá layer bản vẽ → VXT-… (đọc trong Việt Const)", "VXT_CHUANLAYER", false));
+            flow.Controls.Add(Btn("Đọc cao độ tầng từ mặt đứng / mặt cắt", "VXT_MATDUNG", false));
             flow.Controls.Add(Btn("GỬI SANG VIỆT CONST", "VXT_GUI", true));
+            flow.Controls.Add(Btn("NHẬN KẾT QUẢ từ Việt Const (tên, tiết diện, thép, móng)", "VXT_NHAN", true));
+            flow.Controls.Add(Btn("Chèn bản vẽ chi tiết (không khung tên) – tự dàn trang", "VXT_CHEN", false));
             flow.Controls.Add(Btn("Lấy kích thước → Triển khai hồ sơ", "VXT_KT", false));
             flow.Controls.Add(Btn("Gửi mặt bằng kết cấu → Triển khai hồ sơ", "VXT_MB_KC", false));
             var refresh = new Button { Text = "Làm mới số liệu", Width = 230, Height = 26, Margin = new Padding(3, 10, 3, 3) };

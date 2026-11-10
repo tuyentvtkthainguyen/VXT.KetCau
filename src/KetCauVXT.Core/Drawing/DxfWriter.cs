@@ -15,6 +15,8 @@ public static class Lay
     public const string KyHieu = "KY_HIEU";
     public const string Truc = "TRUC";
     public const string KhungTen = "KHUNG_TEN";
+    /// <summary>[Chi tiết rời] khung bao từng chi tiết khi xuất không lồng khung tên (người dùng tự dàn trang trong AutoCAD)</summary>
+    public const string KhungChiTiet = "KHUNG_CHI_TIET";
     /// <summary>Tô vật liệu mặt cắt (HATCH) – không nằm trong bảng layer mặc định; ghi khi có dùng (màu 8, đổi tên/màu bằng layer thêm khoá "HATCH").</summary>
     public const string Hatch = "HATCH";
 }
@@ -142,6 +144,7 @@ public sealed partial class DxfWriter
         (Lay.KyHieu, 6, "CONTINUOUS"),
         (Lay.Truc, 8, "CENTER"),
         (Lay.KhungTen, 7, "CONTINUOUS"),
+        (Lay.KhungChiTiet, 5, "CONTINUOUS"),
     };
 
     // ------------------------------------------------------------------

@@ -26,11 +26,13 @@ public sealed class DrawingExportOptions
     public string SingleFileName { get; set; } = "{duan}_BoBanVe";
     /// <summary>Định dạng file (DXF R12 / DXF 2018 / DWG 2018); null = theo Chuẩn layer CAD (CadStandard.OutputFormat).</summary>
     public CadOutputFormat? Format { get; set; }
+    /// <summary>[Chi tiết rời] true = không lồng khung tờ / khung tên: mỗi chi tiết một khung bao để người dùng tự dàn trang in trong AutoCAD.</summary>
+    public bool DetailsOnly { get; set; }
 
     public static DrawingExportOptions Split => new() { Mode = DrawingExportMode.Split };
     public static DrawingExportOptions SingleFile(string name = null) => new() { Mode = DrawingExportMode.Single, SingleFileName = string.IsNullOrWhiteSpace(name) ? "{duan}_BoBanVe" : name };
 
-    public DrawingExportOptions Clone() => new() { Mode = Mode, FilePattern = FilePattern, SingleFileName = SingleFileName, Format = Format };
+    public DrawingExportOptions Clone() => new() { Mode = Mode, FilePattern = FilePattern, SingleFileName = SingleFileName, Format = Format, DetailsOnly = DetailsOnly };
 
     private static readonly JsonSerializerOptions Opts = new()
     {

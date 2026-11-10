@@ -9,6 +9,13 @@ public static class DrawingSet
     /// <summary>Khổ giấy dùng cho bản vẽ (mặc định A1).</summary>
     public static string Paper { get; set; } = "A1";
 
+    [ThreadStatic] private static bool _detailsOnly;
+    /// <summary>[Chi tiết rời] đang dựng bản vẽ không lồng khung tên (mỗi chi tiết một khung bao).</summary>
+    public static bool DetailsOnly => _detailsOnly;
+    private sealed class DetailsScope : IDisposable { private readonly bool _old; public DetailsScope(bool on) { _old = _detailsOnly; _detailsOnly = on; } public void Dispose() => _detailsOnly = _old; }
+    /// <summary>Phạm vi dựng bản vẽ chi tiết rời (using).</summary>
+    public static IDisposable UseDetailsOnly(bool on) => new DetailsScope(on);
+
     /// <summary>Ghi các file KC-01..KC-06 vào thư mục, trả về danh sách đường dẫn đã ghi.</summary>
     public static List<string> ExportAll(Project p, DesignSummary s, string folder) => Export(p, s, folder, null).Files;
 
@@ -20,6 +27,7 @@ public static class DrawingSet
         var res = new DrawingExportResult();
         List<DrawingItem> items;
         using var fmtScope = CadFileWriters.UseFormat(o?.Format);   // tô vật liệu "tự động" theo định dạng chọn khi xuất
+        using (UseDetailsOnly(o?.DetailsOnly == true))
         using (DrawingOverlay.Collect(res.Report)) items = BuildDrawings(p, s);
         DrawingExport.Write(items, folder, o, p.Name, res);
         foreach (var m in res.Report.Messages()) if (!res.Messages.Contains(m)) res.Messages.Add(m);
@@ -64,6 +72,13 @@ public static class DrawingSet
                 if (nf != null) { nf.W.OwnerKey ??= "NOTE:" + notes.Value; figs.Add(nf); }
             }
             DrawingOverlay.AssignOwners(figs, kind);   // khoá hình: chỉnh sửa dùng chung với tờ dàn trang (DrawingOverlay.cs)
+            if (_detailsOnly)
+            {
+                // [Chi tiết rời] không khung tên; chỉnh sửa vị trí theo tờ (lớp chỉnh sửa) không áp – toạ độ khác tờ dàn trang
+                it.W = SheetComposer.ComposeDetails(figs, scale, $"{no} – {title}", Paper);
+                items.Add(it);
+                return;
+            }
             var w = SheetComposer.Compose(figs, scale, Info(title, no), Paper);
             if (!DrawingOverlay.Bypassed)
             {

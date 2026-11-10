@@ -32,8 +32,7 @@ public partial class MainWindow
             MessageBox.Show(this, rep.ToString(), "Kết quả triển khai kết cấu từ bản vẽ kiến trúc", MessageBoxButton.OK,
                 rep.Warnings.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
             try { after?.Invoke(); } catch (Exception ex2) { ShowError("Bước bổ sung sau khi triển khai", ex2); }
-            if (MessageBox.Show(this, "Tiết diện hiện là kích thước sơ bộ.\n\nChạy phân tích + thiết kế và TỰ TĂNG tiết diện các dầm, cột, sàn không đạt (lặp tới khi đạt)?",
-                    AppTitle, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (AskSiteData())   // [Số liệu khu đất] gió, địa chất → tính ngay – MainWindow.SiteData.cs
                 await RunAutoResize();
         }
         catch (NotImplementedException)

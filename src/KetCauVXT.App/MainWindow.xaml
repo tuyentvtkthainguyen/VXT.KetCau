@@ -46,6 +46,7 @@
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
                 <MenuItem Header="Nhập mô hình _ETABS/SAP (.e2k/.s2k)…" Click="MnuImportCsiModel_Click"/>
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
+                <MenuItem Header="Gửi kết quả về AutoCAD (VXT_NHAN / VXT_CHEN)…" Click="MnuAcadResults_Click" ToolTip="Tên cấu kiện, tiết diện, thép, khung móng theo đúng vị trí bản vẽ gốc + bản vẽ chi tiết rời không khung tên"/>
                 <MenuItem Header="Liên kết bản vẽ AutoCAD (DWG/DXF)…" Click="MnuCadLinks_Click" ToolTip="Bản vẽ liên kết – MainWindow.CadLink.cs"/>
                 <Separator/>
                 <MenuItem Header="_Xuất mô hình">

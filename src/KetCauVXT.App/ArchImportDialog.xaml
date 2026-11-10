@@ -42,6 +42,7 @@
                                 <StackPanel Orientation="Horizontal" Margin="2">
                                     <Button Content="Chọn file DXF/DWG..." Click="BtnBrowse_Click" Style="{StaticResource SmallButton}"/>
                                     <Button Content="Xoá danh sách" Click="BtnClearFiles_Click" Style="{StaticResource SmallButton}"/>
+                                    <Button Content="Đọc mặt đứng..." Click="BtnElevation_Click" Style="{StaticResource SmallButton}" ToolTip="Chọn bản vẽ MẶT ĐỨNG / MẶT CẮT (DXF/DWG): đọc các cao độ (+3.600, ±0.000…) → chiều cao từng tầng cho các mặt bằng"/>
                                 </StackPanel>
                                 <ListBox x:Name="lstFiles" Height="72" Margin="2"/>
                                 <DockPanel Style="{StaticResource Field}">

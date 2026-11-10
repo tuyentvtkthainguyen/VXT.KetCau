@@ -25,7 +25,7 @@ namespace KetCauVXT.AcadLink
             try
             {
                 var ed = AcApp.DocumentManager.MdiActiveDocument?.Editor;
-                ed?.WriteMessage("\nViệt Const: đã nạp liên kết AutoCAD – gõ VXT để mở bảng lệnh (VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI; VXT_KT = lấy kích thước cho chế độ Triển khai hồ sơ; VXT_CHUANLAYER / VXT_CL = chuẩn hoá layer bản vẽ về layer VXT-… để Việt Const đọc).\n");
+                ed?.WriteMessage("\nViệt Const: đã nạp liên kết AutoCAD – gõ VXT để mở bảng lệnh (VXT_TUONG, VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG, VXT_TENPHONG, VXT_TANG, VXT_XEM, VXT_XOA, VXT_LAYER, VXT_GUI; VXT_KT = lấy kích thước cho chế độ Triển khai hồ sơ; VXT_MATDUNG = đọc cao độ tầng từ mặt đứng; VXT_NHAN = nhận kết quả từ Việt Const; VXT_CHEN = chèn bản vẽ chi tiết rời; VXT_CHUANLAYER / VXT_CL = chuẩn hoá layer bản vẽ về layer VXT-… để Việt Const đọc).\n");
             }
             catch (Exception) { }
         }
@@ -567,6 +567,18 @@ namespace KetCauVXT.AcadLink
                         if (si < 0) { outside++; continue; }
                         cols[si].Add(e, cat);
                         total++;
+                        // [Tầng điển hình] các tầng dùng chung đúng khung mặt bằng (VXT_MATDUNG) → đối tượng thuộc mọi tầng đó
+                        if (!wholeDrawing)
+                        {
+                            var sb = storeys[si];
+                            for (int i = 0; i < storeys.Count; i++)
+                            {
+                                if (i == si) continue;
+                                var s2 = storeys[i];
+                                if (Math.Abs(s2.X0 - sb.X0) < 1e-6 && Math.Abs(s2.Y0 - sb.Y0) < 1e-6 && Math.Abs(s2.X1 - sb.X1) < 1e-6 && Math.Abs(s2.Y1 - sb.Y1) < 1e-6)
+                                    cols[i].Add(e, cat);
+                            }
+                        }
                     }
                     skipped = cols.Sum(c => c.Skipped);
                     tr.Commit();

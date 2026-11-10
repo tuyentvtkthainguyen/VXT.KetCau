@@ -216,6 +216,7 @@ public partial class ArchImportDialog : Window
         if (!ok || d == null) return;
         Drawing = d;
         Proposal = null;
+        ApplyLevels(false);   // [Mặt đứng] chiều cao tầng theo cao độ đã đọc – ArchImportDialog.Elevation.cs
         dgFloors.ItemsSource = null;
         dgFloors.ItemsSource = d.Floors;
         btnPropose.IsEnabled = d.Floors.Count > 0;

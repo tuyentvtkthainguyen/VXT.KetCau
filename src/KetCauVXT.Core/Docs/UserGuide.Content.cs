@@ -764,6 +764,15 @@ public static partial class UserGuide
                 "**Chọn bố trí thép dầm này…**: đổi kiểu A / B / C, số thanh, đai – bản vẽ cập nhật sau khi thiết kế lại.",
                 "**Xuất bản vẽ dầm này…** (DXF / DWG, có khung tên \"CHI TIẾT DẦM D1 (SL=…)\"), hoặc **Xuất mỗi dầm một tệp…** vào một thư mục.");
 
+        c.Sec("khoi-tao.autocad-hai-chieu", "AutoCAD hai chiều: mặt bằng + mặt đứng → mô hình, tự gán tải, tính toán → kết quả và bản vẽ về AutoCAD")
+            .Steps("**Trong AutoCAD** (add-in Việt Const, gõ VXT mở bảng lệnh): chuẩn hoá layer (VXT_CHUANLAYER) hoặc tích nhóm đối tượng: VXT_TUONG (tường), VXT_COT, VXT_DAM, VXT_SAN, VXT_TRUC, VXT_CUA, VXT_THANG. Có thể vẽ trước MẶT BẰNG KẾT CẤU (cột, dầm, sàn) – chương trình dùng đúng vị trí đó.",
+                "**VXT_MATDUNG**: quét chọn mặt đứng / mặt cắt (chữ cao độ +3.600, ±0.000, COS +7.200 và tên tầng) → cao độ, chiều cao các tầng đã khai báo (VXT_TANG). Chưa khai báo tầng: tạo các tầng điển hình dùng chung một mặt bằng (chọn khung + điểm gốc).",
+                "**VXT_GUI**: gửi dữ liệu sang Việt Const (file cục bộ %AppData%\\KetCauVXT\\Link). Việt Const tự hỏi mở hộp thoại triển khai kết cấu: xem lưới trục, cột, dầm, ô sàn đề xuất → Tạo mô hình. Tải tường (theo vị trí tường, chiều cao tầng, trừ cửa), tải hoàn thiện + hoạt tải sàn tự gán.",
+                "Hộp **Số liệu tính toán – gió, địa chất**: chọn vùng gió (QCVN 02:2022), dạng địa hình, nền đất theo bảng tra TCVN 9362 (hoặc hố khoan ở tab Địa chất) → chương trình chạy phân tích nội lực, thiết kế thép, móng, tự tăng tiết diện cấu kiện không đạt.",
+                "Không dùng AutoCAD: Tệp → Nhập bản vẽ kiến trúc → chọn file DXF/DWG mặt bằng, nút **Đọc mặt đứng...** chọn file mặt đứng / mặt cắt → chiều cao tầng gán cho các mặt bằng.",
+                "**Kết quả về AutoCAD**: Tệp → *Gửi kết quả về AutoCAD* (hoặc tab Triển khai → *Kết quả về AutoCAD…*). Trong AutoCAD gõ **VXT_NHAN**: vẽ tên cấu kiện, tiết diện, thép dầm / cột / sàn, khung móng / đài cọc lên lớp VXT-KQ-COT, -DAM, -SAN, -MONG đúng vị trí trên bản vẽ gốc (có bản vẽ liên kết) hoặc tại điểm chèn.",
+                "**VXT_CHEN**: chèn bản vẽ triển khai dạng **chi tiết rời** – không lồng khung tờ, khung tên; mỗi chi tiết (mặt bằng, mặt đứng dầm, mặt cắt, bảng thép…) nằm trong một khung chữ nhật lớp KHUNG_CHI_TIET để phân biệt. Người dùng tự dàn trang in (Layout / viewport). Xuất bản vẽ DXF trong chương trình cũng có tuỳ chọn \"Chi tiết rời – không lồng khung tên\".");
+
         c.Sec("khoi-tao.chi-chon-dat-ten", "Nút Chỉ chọn, Esc, quét chọn và đặt tên cấu kiện cùng loại")
             .Bullets("**Chỉ chọn** (nút đầu tiên bên trái ribbon, và trên thanh công cụ mặt bằng cạnh nút Chọn): thoát mọi lệnh vẽ / đặt đang chạy, về chế độ Chọn và **khoá kéo dời** – bấm / quét chỉ để chọn, không di chuyển, không tạo đối tượng. Bấm lần nữa để mở khoá (kéo tay nắm sửa đối tượng).",
                 "**Esc**: đang vẽ dầm, cột, sàn, tường, cửa… một lần Esc là thoát hẳn lệnh, về ngay chế độ Chọn.",
