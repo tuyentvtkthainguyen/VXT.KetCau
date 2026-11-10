@@ -82,9 +82,10 @@ public static class AcadRoundTripTests
             {
                 Directory.CreateDirectory(dir);
                 var er = DrawingSet.Export(p, s, dir, new DrawingExportOptions { Mode = DrawingExportMode.Split, DetailsOnly = true, Format = CadOutputFormat.DxfR12 });
-                // KC-09 thống kê cửa: bảng kẻ trên lớp KHUNG_TEN (đường kẻ bảng, không phải khung tên)
-                int bad = er.Files.Where(f => f.EndsWith(".dxf") && !Path.GetFileName(f).StartsWith("KC-09")).Count(f => LayerCount(File.ReadAllText(f), Lay.KhungTen) > 0);
-                Console.WriteLine($"   · Xuất chi tiết rời: {er.Files.Count} file, {bad} file còn khung tên; lớp KHUNG_TEN: " + string.Join(", ", er.Files.Where(f => f.EndsWith(".dxf") && LayerCount(File.ReadAllText(f), Lay.KhungTen) > 0).Select(Path.GetFileName)));
+                // mỗi file chi tiết rời: có khung bao chi tiết, không có khung tên (ô "THIẾT KẾ" của khung tên)
+                string tb = DxfWriter.Encode("THIẾT KẾ");
+                int bad = er.Files.Where(f => f.EndsWith(".dxf")).Count(f => { var t = File.ReadAllText(f); return LayerCount(t, Lay.KhungChiTiet) == 0 || t.Contains("\n" + tb + "\r") || t.Contains("\n" + tb + "\n"); });
+                Console.WriteLine($"   · Xuất chi tiết rời: {er.Files.Count} file, {bad} file không đạt (thiếu khung bao chi tiết hoặc còn khung tên)");
                 check("Xuất bộ bản vẽ chi tiết rời: không file nào có khung tên", bad, 0, 0);
                 pk.Details.AddRange(er.Files);
                 AcadResults.Write(pk, dir);

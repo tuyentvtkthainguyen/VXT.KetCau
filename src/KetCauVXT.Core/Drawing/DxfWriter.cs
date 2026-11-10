@@ -144,7 +144,6 @@ public sealed partial class DxfWriter
         (Lay.KyHieu, 6, "CONTINUOUS"),
         (Lay.Truc, 8, "CENTER"),
         (Lay.KhungTen, 7, "CONTINUOUS"),
-        (Lay.KhungChiTiet, 5, "CONTINUOUS"),
     };
 
     // ------------------------------------------------------------------
