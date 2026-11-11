@@ -175,6 +175,49 @@ internal static class DialogUi
         return sp;
     }
 
+    /// <summary>Hàng nút tự xuống dòng khi khung hẹp (không bị cắt).</summary>
+    public static WrapPanel Wrap(params UIElement[] items)
+    {
+        var wp = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+        foreach (var i in items)
+        {
+            if (i is FrameworkElement fe) fe.Margin = new Thickness(fe.Margin.Left, fe.Margin.Top, fe.Margin.Right, Math.Max(fe.Margin.Bottom, 3));
+            wp.Children.Add(i);
+        }
+        return wp;
+    }
+
+    /// <summary>Bảng nhiều cột: thanh trượt ngang luôn hiện để kéo xem / chọn cột, cố định cột đầu,
+    /// Shift + lăn chuột (hoặc lăn ngang của chuột / touchpad) để cuộn ngang.</summary>
+    public static void HScroll(DataGrid g, int frozen = 1)
+    {
+        g.HorizontalScrollBarVisibility = ScrollBarVisibility.Visible;
+        g.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+        g.FrozenColumnCount = frozen;
+        g.HorizontalAlignment = HorizontalAlignment.Stretch;
+        g.PreviewMouseWheel += (s, e) =>
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) == 0) return;
+            var sv = FindChild<ScrollViewer>(g);
+            if (sv == null) return;
+            sv.ScrollToHorizontalOffset(sv.HorizontalOffset - e.Delta / 2.0);
+            e.Handled = true;
+        };
+    }
+
+    private static T FindChild<T>(DependencyObject d) where T : DependencyObject
+    {
+        if (d == null) return null;
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(d); i++)
+        {
+            var c = VisualTreeHelper.GetChild(d, i);
+            if (c is T t) return t;
+            var r = FindChild<T>(c);
+            if (r != null) return r;
+        }
+        return null;
+    }
+
     public static TextBlock Label(string text, double width = double.NaN, bool bold = false)
     {
         var t = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0), TextWrapping = TextWrapping.Wrap };

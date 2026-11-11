@@ -84,6 +84,17 @@ public partial class MainWindow
         catch (Exception ex) { StLog("bản vẽ link: so sánh lỗi – " + ex.Message); }
         CadLinkRemove(l);
         StLog($"bản vẽ link: đã bỏ liên kết – còn {_p.CadLinks.Count} bản vẽ");
+
+        // [Xref] gắn như XREF bằng kéo thả: góc trái-dưới bản vẽ đặt tại điểm thả
+        var xl = await XrefAttach(path, (-20.0, -20.0));
+        var xg = xl != null ? CadLinkCache.Get(xl) : null;
+        if (xl == null || xg == null) throw new Exception("Xref: không gắn được bản vẽ");
+        var xv = xg.View(xl);
+        StLog($"xref: gắn {xl.DisplayName} tại điểm thả (-20; -20) → góc bản vẽ ({xv.X0:0.00}; {xv.Y0:0.00})");
+        if (Math.Abs(xv.X0 + 20) > 0.5 || Math.Abs(xv.Y0 + 20) > 0.5) throw new Exception($"Xref: góc bản vẽ không ở điểm thả ({xv.X0:0.00}; {xv.Y0:0.00})");
+        CadLinkZoom(null); await Pause(1000);
+        Shot($"{tag}_55_Xref");
+        CadLinkRemove(xl);
         FitPlan();
     }
 }

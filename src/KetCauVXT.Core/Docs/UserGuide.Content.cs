@@ -866,7 +866,8 @@ public static partial class UserGuide
 
         c.Sec("khoi-tao.lien-ket-autocad", "Liên kết bản vẽ AutoCAD (DWG/DXF) làm nền mặt bằng")
             .P("Như Xref / \"Import DXF as background\" của ETABS: bản vẽ kiến trúc được gắn vào dự án làm **nền mờ** cho mặt bằng từng tầng, bắt điểm vào nét bản vẽ, tự cập nhật khi bản vẽ được lưu trong AutoCAD.")
-            .Steps("{m:cadLinks}: cửa sổ **Bản vẽ liên kết (AutoCAD DWG/DXF)** (không chặn) → **Thêm bản vẽ…**.",
+            .Steps("Nhanh như XREF: **kéo thả file .dwg / .dxf** từ Explorer vào khung nhìn mặt bằng (góc trái-dưới bản vẽ đặt tại điểm thả; nếu toạ độ bản vẽ đã trùng vùng mô hình thì giữ nguyên gốc toạ độ), hoặc bấm **Gắn bản vẽ (Xref)…** trên thanh khung nhìn (cạnh **Vừa màn hình**); **Quản lý Xref…** mở cửa sổ quản lý. Bản vẽ gắn cho tầng đang xem (đang xem \"(Tất cả)\" → mọi tầng).",
+                "{m:cadLinks}: cửa sổ **Bản vẽ liên kết (AutoCAD DWG/DXF)** (không chặn) → **Thêm bản vẽ…**.",
                 "Thuộc tính từng bản vẽ: tầng, điểm gốc, điểm chèn, góc xoay, **Tỷ lệ ×**, đơn vị, độ đậm, màu, chữ, bắt điểm, tự cập nhật. **Căn theo 2 điểm** để khớp bản vẽ với lưới trục; **Đặt lại vị trí**; **Phóng tới bản vẽ**, **Vừa mô hình + bản vẽ**.",
                 "Bảng layer của bản vẽ: ẩn / hiện (**Ẩn layer đã chọn**, **Chỉ hiện layer đã chọn**, **Hiện tất cả**) và gán nhóm cấu kiện.",
                 "Bật **Bắt điểm bản vẽ link (đầu nét, trung điểm, giao nét, tâm)** – dùng cho ＋ Dầm, công cụ dầm kiểu ETABS, tường.",

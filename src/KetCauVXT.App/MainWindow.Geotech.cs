@@ -239,6 +239,7 @@ public partial class MainWindow
         // ---- lớp đất ----
         _geoGrid = DialogUi.NewGrid();
         _geoGrid.Height = 230;
+        DialogUi.HScroll(_geoGrid);   // thanh trượt ngang luôn hiện, cột "Tên lớp" cố định, Shift + lăn chuột cuộn ngang
         _geoGrid.ItemsSource = _geoRows;
         _geoGrid.Columns.Add(DialogUi.Text("Tên lớp", "Name", false, 120));
         _geoGrid.Columns.Add(DialogUi.Num("Từ (m)", "Top", "0.0#"));
@@ -260,7 +261,7 @@ public partial class MainWindow
         _geoGrid.SelectionChanged += (s, e) => UpdateGeoHint();
         _geoHint = DialogUi.Hint("");
         var layers = new StackPanel();
-        layers.Children.Add(DialogUi.Row(
+        layers.Children.Add(DialogUi.Wrap(
             DialogUi.Btn("+ Lớp", (s, e) => GeoAddLayer()),
             DialogUi.Btn("Xoá lớp", (s, e) => GeoDeleteLayer()),
             DialogUi.Btn("Sắp xếp / nối liền", (s, e) => GeoSortLayers()),
@@ -317,7 +318,7 @@ public partial class MainWindow
         apply.Children.Add(DialogUi.Row(adv));
         root.Children.Add(new GroupBox { Header = "Áp dụng cho thiết kế móng", Content = apply });
 
-        tabGeo.Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = root };
+        tabGeo.Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = root };
     }
 
     /// <summary>Nạp dữ liệu địa chất của dự án lên tab (gọi từ LoadUiFromProject).</summary>

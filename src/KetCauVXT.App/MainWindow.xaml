@@ -556,6 +556,10 @@
                     <TextBlock Text="Tầng đang xem:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <ComboBox x:Name="cbStory" Width="140" SelectionChanged="CbStory_SelectionChanged"/>
                     <Button Content="Vừa màn hình" Click="BtnFit_Click" Style="{StaticResource SmallButton}" Margin="8,0,6,0"/>
+                    <Button Content="Gắn bản vẽ (Xref)…" Click="BtnXrefAttach_Click" Style="{StaticResource SmallButton}" Margin="0,0,4,0"
+                            ToolTip="Gắn bản vẽ AutoCAD DWG / DXF làm nền mặt bằng giống XREF (có thể kéo thả file vào khung nhìn). Tự đọc lại khi file thay đổi."/>
+                    <Button Content="Quản lý Xref…" Click="BtnXrefManage_Click" Style="{StaticResource SmallButton}" Margin="0,0,8,0"
+                            ToolTip="Bản vẽ liên kết: ẩn/hiện, layer, căn theo 2 điểm, đọc lại, gỡ"/>
                     <CheckBox x:Name="chkLabels" Content="Tên cấu kiện" IsChecked="True" VerticalAlignment="Center" Margin="0,0,10,0"
                               Checked="ChkLabels_Changed" Unchecked="ChkLabels_Changed"/>
                     <TextBlock Text="Biểu đồ M3 theo:" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -630,6 +634,7 @@
                                     MouseMove="PlanHost_MouseMove"
                                     MouseLeftButtonUp="PlanHost_MouseLeftButtonUp"
                                     MouseLeave="PlanHost_MouseLeave"
+                                    AllowDrop="True" DragOver="PlanHost_DragOver" Drop="PlanHost_Drop"
                                     SizeChanged="PlanHost_SizeChanged">
                                 <Grid>
                                     <Canvas x:Name="planCanvas"/>

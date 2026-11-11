@@ -34,6 +34,7 @@ public partial class MainWindow
         tabLeft.SelectedItem = tabGeo; await Pause(1200);
         StLog($"hố khoan: {_p.Boreholes.Count} hố, {bh.Layers.Count} lớp, sâu {bh.Depth:0.0} m");
         Shot($"{tag}_13_DiaChat");
+        StLog($"lớp đất: thanh trượt ngang {_geoGrid.HorizontalScrollBarVisibility}, cố định {_geoGrid.FrozenColumnCount} cột");
 
         var adv = FoundationAdvisor.Recommend(_p, _res, bh);
         StLog($"gợi ý móng: {adv.Options.Count} phương án, chọn: {adv.Recommended?.Name}");
