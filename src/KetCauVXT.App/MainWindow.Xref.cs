@@ -75,7 +75,10 @@ public partial class MainWindow
         double mx1 = hasModel ? _p.Nodes.Max(n => n.X) : 0, my1 = hasModel ? _p.Nodes.Max(n => n.Y) : 0;
         var a = l.ToModel(g.X0, g.Y0); var b = l.ToModel(g.X1, g.Y1);
         double dx0 = Math.Min(a.X, b.X), dx1 = Math.Max(a.X, b.X), dy0 = Math.Min(a.Y, b.Y), dy1 = Math.Max(a.Y, b.Y);
-        bool overlap = hasModel && dx0 <= mx1 + 1 && dx1 >= mx0 - 1 && dy0 <= my1 + 1 && dy1 >= my0 - 1
+        // trùng vùng mô hình: phần giao của khung bản vẽ và khung mô hình ≥ 30 % khung mô hình (bản vẽ đã vẽ đúng toạ độ)
+        double ix = Math.Min(dx1, mx1) - Math.Max(dx0, mx0), iy = Math.Min(dy1, my1) - Math.Max(dy0, my0);
+        double mArea = Math.Max(mx1 - mx0, 0.5) * Math.Max(my1 - my0, 0.5);
+        bool overlap = hasModel && ix > 0 && iy > 0 && ix * iy >= 0.3 * mArea
                        && (dx1 - dx0) < 50 * Math.Max(mx1 - mx0 + 1, my1 - my0 + 1);
         string how;
         if (overlap)
