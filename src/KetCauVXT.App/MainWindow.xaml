@@ -203,6 +203,7 @@
                 <MenuItem Header="Văn bản pháp lý &amp; tiêu chuẩn áp dụng…" Click="MnuRegulations_Click"/>
                 <MenuItem Header="Kiểm chứng phần mềm…" Click="MnuVerification_Click"/>
                 <Separator/>
+                <MenuItem Header="Kiểm tra &amp; tải bản _cập nhật…" Click="MnuUpdate_Click" ToolTip="Kiểm tra bản mới trên GitHub, tải về và chạy bộ cài – UpdateService.cs"/>
                 <MenuItem Header="Giới thiệu" Click="MnuAbout_Click"/>
             </MenuItem>
         </Menu>

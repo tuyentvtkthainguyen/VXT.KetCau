@@ -33,6 +33,7 @@ public partial class App : Application
         DialogUi.RegisterFitToScreen();   // hộp thoại dài hơn màn hình → cuộn bằng chuột giữa, không tràn màn
         base.OnStartup(e);
         StartWindows(e.Args ?? Array.Empty<string>());
+        UpdateService.StartAutoCheck(e.Args ?? Array.Empty<string>());   // kiểm tra ngầm bản mới → hiện nút "Có bản mới" (tắt được)
     }
 
     /// <summary>Chọn cửa sổ mở đầu: tham số "--…" (tự kiểm tra, AutoCAD) hoặc file .kcvxt → chế độ Thiết kế – chạy nội lực;

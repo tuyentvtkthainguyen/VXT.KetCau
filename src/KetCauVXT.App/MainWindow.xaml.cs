@@ -67,6 +67,7 @@ public partial class MainWindow : Window
         InitSlabDropUi();    // [Sàn hạ cốt] nút "Hạ cốt sàn", ô "Hạ cốt (mm)", hộp thoại – MainWindow.SlabDrop.cs
         InitWorkflowUi();    // [Workflow ETABS] cây mô hình, thanh trạng thái, phím tắt – MainWindow.Workflow.cs
         InitMemberRibbon();  // [Thanh lệnh cấu kiện] tab Lưới/Móng/Cột/Dầm/Sàn/Tường/Link CAD + gán tải – MainWindow.MemberRibbon.cs
+        InitUpdateUi();      // [Cập nhật] nút "Cập nhật" trên thanh công cụ, tham số --update – MainWindow.Update.cs
         InitCadCommandLine(); // [Dòng lệnh] kiểu AutoCAD dưới mặt bằng, F3/F8/F10 – MainWindow.CadCommandLine.cs
         InitMepUi();         // [Điện nước] menu Thiết kế → Môi trường Điện nước – MainWindow.Mep.cs, MepWindow.cs
         SetProject(ModelBuilder.NewProject(), null);
@@ -203,7 +204,7 @@ public partial class MainWindow : Window
     private void MnuExit_Click(object sender, RoutedEventArgs e) => Close();
 
     private void MnuAbout_Click(object sender, RoutedEventArgs e) =>
-        MessageBox.Show("Việt Const\nPhân tích, thiết kế kết cấu nhà dân dụng BTCT (≤ 7 tầng) và khung thép tiền chế.\n" +
+        MessageBox.Show($"Việt Const – phiên bản {UpdateService.Current}\nPhân tích, thiết kế kết cấu nhà dân dụng BTCT (≤ 7 tầng) và khung thép tiền chế.\n" +
                         $"Tiêu chuẩn: {Std.Loads}, {Std.Concrete}, {Std.Steel}, {Std.Seismic}, {Std.Soil}, {Std.Piles}.\n" +
                         $"Căn cứ pháp lý: {Std.Law}, {Std.Decree}, {Std.Grade} (xem Trợ giúp → Văn bản pháp lý & tiêu chuẩn áp dụng).\n\n" +
                         "Đơn vị: kN, m. Kích thước tiết diện nhập bằng mm.\n\nTác giả: Vũ Xuân Tuyến",

@@ -130,7 +130,11 @@ public static partial class UserGuide
             .P("Giải nén **KetCauVXT-win-x64.zip** vào một thư mục bất kỳ (không cần quyền quản trị) và chạy **KetCauVXT.exe**. Bản zip có kèm thư mục AutoCAD (add-in + CaiDatAutoCAD.cmd) và HuongDan.md. Bản này không tạo liên kết file .kcvxt và không có mục gỡ cài đặt – xoá thư mục là gỡ.");
 
         c.Sec("cai-dat.cap-nhat", "Cập nhật phiên bản")
-            .Bullets("Tải bộ cài mới và chạy đè lên bản cũ: bộ cài nhớ thư mục và các tuỳ chọn đã chọn lần trước.",
+            .Bullets("Nút **⟳ Cập nhật** (cuối thanh công cụ, màn hình chọn chế độ) hoặc **Trợ giúp → Kiểm tra & tải bản cập nhật…**: so phiên bản đang dùng với bản mới nhất trên GitHub, "
+                + "bấm **TẢI VỀ & CÀI ĐẶT** để tải bộ cài (có thanh tiến trình, kiểm tra SHA-256) rồi chạy. Khi có bản mới, nút đổi thành **⬆ Có bản mới …** màu cam. "
+                + "Chỉ tải file công khai, không gửi dữ liệu người dùng; bỏ tích **Tự kiểm tra bản mới mỗi khi mở chương trình** để tắt kiểm tra tự động.",
+                "Trong AutoCAD: nút **⟳ Cập nhật Việt Const** trên bảng lệnh VXT (lệnh VXT_CAPNHAT) mở cửa sổ cập nhật. Lưu bản vẽ và đóng AutoCAD trước khi chạy bộ cài để thay được add-in.",
+                "Tải bộ cài mới và chạy đè lên bản cũ: bộ cài nhớ thư mục và các tuỳ chọn đã chọn lần trước.",
                 "Dữ liệu dự án (.kcvxt) và thiết lập cá nhân (%AppData%\\KetCauVXT) **không bị xoá** khi cài đè hoặc gỡ cài đặt.",
                 "Sau khi cập nhật nên mở {m:regs} để xem danh mục văn bản mới và bấm **Kiểm tra dự án** với các dự án cũ.");
 
@@ -147,7 +151,8 @@ public static partial class UserGuide
                 new[] { "XuatBanVe.json", "Lựa chọn xuất bản vẽ gần nhất (gộp / tách, mẫu tên file)." },
                 new[] { "Link\\acad_*.json", "Dữ liệu gửi từ AutoCAD (lệnh VXT_GUI)." },
                 new[] { "app_path.txt", "Đường dẫn KetCauVXT.exe cho add-in AutoCAD." },
-                new[] { "BatDauNhanh.json", "Tuỳ chọn \"Không hiện lại\" của bảng Bắt đầu nhanh." })
+                new[] { "BatDauNhanh.json", "Tuỳ chọn \"Không hiện lại\" của bảng Bắt đầu nhanh." },
+                new[] { "TuKiemTraCapNhat.txt", "Bật / tắt tự kiểm tra bản mới khi mở chương trình (0 = tắt)." })
             .Tip("Sao lưu thư mục này khi chuyển máy để giữ chuẩn layer, mẫu định dạng, danh mục địa danh và văn bản pháp lý của bạn.");
         return c;
     }

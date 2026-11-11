@@ -148,7 +148,8 @@ jobs:
       - name: Publish App (exe tu chua, khong can cai .NET)
         shell: pwsh
         run: |
-          dotnet publish src/KetCauVXT.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+          # số phiên bản 1.0.<lần build> (trùng số trong bộ cài) – nút "Cập nhật" so với version.txt trên trang phát hành
+          dotnet publish src/KetCauVXT.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:Version=1.0.${{ github.run_number }} -o publish
           Get-ChildItem publish
 
       # Add-in AutoCAD (KetCauVXT.AcadLink – không nằm trong .sln): build cho từng phiên bản (gói NuGet AutoCAD.NET đã xác nhận
@@ -163,7 +164,7 @@ jobs:
           New-Item -ItemType Directory (Join-Path $bundle 'Contents') -Force | Out-Null
           foreach ($v in $vers) {
             $out = "acadout\$v"
-            dotnet build src/KetCauVXT.AcadLink -c Release --no-incremental -p:AcadVersion=$v -p:UseAcadNuGet=true -o $out 2>&1 | Tee-Object "acad_$v.log"
+            dotnet build src/KetCauVXT.AcadLink -c Release --no-incremental -p:AcadVersion=$v -p:UseAcadNuGet=true -p:Version=1.0.${{ github.run_number }} -o $out 2>&1 | Tee-Object "acad_$v.log"
             if ($LASTEXITCODE -ne 0) {
               Select-String -Path "acad_$v.log" -Pattern 'error' | ForEach-Object { Write-Host "::error::AutoCAD $v $($_.Line)" }
               throw "build add-in AutoCAD $v loi"
@@ -273,11 +274,13 @@ jobs:
           New-Item -ItemType Directory dist -Force | Out-Null
           if (Test-Path KetQuaMau\HuongDan\HuongDanSuDung.md) { Copy-Item KetQuaMau\HuongDan\HuongDanSuDung.md publish\HuongDan.md -Force } else { Copy-Item README.md publish\HuongDan.md -Force }
           Compress-Archive -Path publish\* -DestinationPath dist\KetCauVXT-win-x64.zip -Force
+          # số phiên bản cho nút "Cập nhật" trong chương trình (UpdateService.cs)
+          Set-Content -Path dist\version.txt -Value "1.0.${{ github.run_number }}" -NoNewline -Encoding ascii
           Get-ChildItem dist
           $tag = "ketcau-vxt-latest"
           gh release delete $tag -y --cleanup-tag 2>$null
-          $assets = @("dist\KetCauVXT-win-x64.zip") + (Get-ChildItem dist\setup -File | ForEach-Object { $_.FullName })
-          gh release create $tag @assets --target $env:GITHUB_SHA --title "Việt Const – bản Windows mới nhất" --notes "Bộ cài chuẩn: tải một file VietConst-Setup.exe và chạy. Bản không cần cài: giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Add-in AutoCAD 2021–2026 (tích chọn tường, cột, dầm, sàn, trục gửi sang chương trình): chạy AutoCAD\CaiDatAutoCAD.cmd. Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
+          $assets = @("dist\KetCauVXT-win-x64.zip", "dist\version.txt") + (Get-ChildItem dist\setup -File | ForEach-Object { $_.FullName })
+          gh release create $tag @assets --target $env:GITHUB_SHA --title "Việt Const 1.0.${{ github.run_number }} – bản Windows mới nhất" --notes "Bộ cài chuẩn: tải một file VietConst-Setup.exe và chạy. Bản không cần cài: giải nén KetCauVXT-win-x64.zip, chạy KetCauVXT.exe (Windows 10/11 64-bit, không cần cài .NET). Add-in AutoCAD 2021–2026 (tích chọn tường, cột, dầm, sàn, trục gửi sang chương trình): chạy AutoCAD\CaiDatAutoCAD.cmd. Build tự động từ commit $env:GITHUB_SHA, đã qua toàn bộ kiểm thử."
           # nhánh chỉ chứa file phát hành (để tải bằng git)
           git config user.name "github-actions"; git config user.email "actions@github.com"
           git checkout --orphan ketcau-vxt-dist

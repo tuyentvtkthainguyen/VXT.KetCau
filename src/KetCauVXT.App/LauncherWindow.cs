@@ -47,7 +47,17 @@ public sealed class LauncherWindow : Window
 
         var root = new DockPanel { Margin = new Thickness(28, 22, 28, 18) };
         var head = new StackPanel();
-        head.Children.Add(new TextBlock { Text = "VIỆT CONST", FontSize = 26, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x3A, 0x5F)) });
+        // tiêu đề + phiên bản + nút "Cập nhật" (UpdateService.cs) ở góc phải
+        var title = new DockPanel();
+        var upd = UpdateService.MakeToolbarButton(() => null);   // không gắn Owner: cửa sổ cập nhật không đóng theo màn hình chọn chế độ
+        upd.VerticalAlignment = VerticalAlignment.Center;
+        DockPanel.SetDock(upd, Dock.Right);
+        title.Children.Add(upd);
+        var ver = new TextBlock { Text = "phiên bản " + UpdateService.Current, Foreground = Brushes.Gray, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
+        DockPanel.SetDock(ver, Dock.Right);
+        title.Children.Add(ver);
+        title.Children.Add(new TextBlock { Text = "VIỆT CONST", FontSize = 26, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(0x1F, 0x3A, 0x5F)) });
+        head.Children.Add(title);
         head.Children.Add(new TextBlock { Text = "Phần mềm thiết kế kết cấu nhà dưới 7 tầng và nhà thép tiền chế – chọn cách làm việc:", FontSize = 14, Margin = new Thickness(0, 4, 0, 16), Foreground = Brushes.DimGray });
         DockPanel.SetDock(head, Dock.Top);
         root.Children.Add(head);

@@ -117,7 +117,8 @@ public sealed partial class DetailingWindow : Window
             I("Bảng _khối lượng Excel…", ExportExcel), I("_Thuyết minh tính toán Word…", ExportWord), new Separator(),
             I("Xuất _tất cả vào thư mục…", ExportAll)));
         menu.Items.Add(M("Tuỳ _chọn", I("_Vật liệu, lớp bảo vệ…", EditSettings), I("Thông tin _công trình…", EditInfo)));
-        menu.Items.Add(M("Trợ _giúp", I("Hướng dẫn chế độ Triển khai hồ sơ", () => OpenGuide(HelpId), "F1")));
+        menu.Items.Add(M("Trợ _giúp", I("Hướng dẫn chế độ Triển khai hồ sơ", () => OpenGuide(HelpId), "F1"), new Separator(),
+            I("Kiểm tra & tải bản _cập nhật…", () => UpdateService.ShowWindow(this))));
         DockPanel.SetDock(menu, Dock.Top);
         dock.Children.Add(menu);
 
@@ -136,6 +137,7 @@ public sealed partial class DetailingWindow : Window
         B("Tính toàn bộ (F5)", RecalcAll, "Tính lại mọi cấu kiện");
         B("🖨 Dàn trang in", OpenSheetLayout, "Tự dàn trang / dàn trang tay các tờ in, xuất PDF toàn bộ hồ sơ, in trực tiếp qua máy in đã cài");
         B("Xuất tất cả…", ExportAll, "Bản vẽ AutoCAD (gộp + tách: mặt bằng kết cấu, chi tiết cấu kiện, thống kê thép – vật liệu), Excel khối lượng, Word thuyết minh vào một thư mục");
+        bar.Items.Add(UpdateService.MakeToolbarButton(() => this));   // nút "Cập nhật" – UpdateService.cs
         bar.Items.Add(new TextBlock { Text = " Định dạng xuất: ", VerticalAlignment = VerticalAlignment.Center });
         _fmt.ItemsSource = Formats.Select(f => f.Label).ToList();
         _fmt.SelectedIndex = Math.Max(0, Array.FindIndex(Formats, f => f.F == DetailingExport.DefaultFormat));

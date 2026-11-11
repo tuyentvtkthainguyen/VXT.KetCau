@@ -70,6 +70,7 @@ namespace KetCauVXT.AcadLink
             flow.Controls.Add(Btn("Chèn bản vẽ chi tiết (không khung tên) – tự dàn trang", "VXT_CHEN", false));
             flow.Controls.Add(Btn("Lấy kích thước → Triển khai hồ sơ", "VXT_KT", false));
             flow.Controls.Add(Btn("Gửi mặt bằng kết cấu → Triển khai hồ sơ", "VXT_MB_KC", false));
+            flow.Controls.Add(Btn("⟳ Cập nhật Việt Const (tải bản mới)", "VXT_CAPNHAT", false));
             var refresh = new Button { Text = "Làm mới số liệu", Width = 230, Height = 26, Margin = new Padding(3, 10, 3, 3) };
             refresh.Click += (s, e) => RefreshCounts();
             flow.Controls.Add(refresh);
