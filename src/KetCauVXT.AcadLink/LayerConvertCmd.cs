@@ -35,6 +35,8 @@ namespace KetCauVXT.AcadLink
         internal static bool BindXref = true;   // bản sao: bind xref đã nạp trước khi chuyển
         internal static bool SaveDxf = true;    // lưu thêm DXF để mở bằng "Mở mặt bằng CAD"
         internal static bool SendAfter;         // gọi VXT_GUI sau khi chuẩn hoá (chỉ khi sửa trực tiếp bản vẽ)
+        /// <summary>Cách xử lý layer gốc sau khi chuyển (giữ / xoá / đổi tên) – từ bảng XÁC NHẬN CHUYỂN ĐỔI (LayerConvertConfirm.cs).</summary>
+        internal static Dictionary<string, OldLayerPlan> OldPlans = new Dictionary<string, OldLayerPlan>(StringComparer.OrdinalIgnoreCase);
         internal static LayerProfile Profile;
 
         [CommandMethod("VXT_CHUANLAYER", CommandFlags.Modal)]
@@ -275,6 +277,7 @@ namespace KetCauVXT.AcadLink
             var ed = doc.Editor; var db = doc.Database;
             var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             int renamed = 0;
+            string oldInfo = "";
             if (Mode == 0)
             {
                 // ---- bản sao chuẩn hoá, bản vẽ gốc giữ nguyên ----
@@ -309,11 +312,12 @@ namespace KetCauVXT.AcadLink
                         MoveEntities(copy, tr, keyOf, true, counts);
                         tr.Commit();
                     }
+                    oldInfo = ProcessOldLayers(copy, OldPlans);
                     copy.SaveAs(dwg, DwgVersion.Current);
                     if (SaveDxf) { try { copy.DxfOut(dxf, 16, DwgVersion.Current); } catch (Exception ex) { ed.WriteMessage("\nKhông lưu được DXF: " + ex.Message); dxf = ""; } }
                     else dxf = "";
                 }
-                Report(ed, counts, renamed, "Đã tạo bản sao chuẩn hoá (bản vẽ gốc KHÔNG đổi):\n  " + dwg + (dxf.Length > 0 ? "\n  " + dxf + "  ← mở file này trong Việt Const (Tải mặt bằng để lấy kích thước… / Mở mặt bằng CAD)" : ""));
+                Report(ed, counts, renamed, oldInfo, "Đã tạo bản sao chuẩn hoá (bản vẽ gốc KHÔNG đổi):\n  " + dwg + (dxf.Length > 0 ? "\n  " + dxf + "  ← mở file này trong Việt Const (Tải mặt bằng để lấy kích thước… / Mở mặt bằng CAD)" : ""));
                 return;
             }
 
@@ -325,6 +329,7 @@ namespace KetCauVXT.AcadLink
                 MoveEntities(db, tr, keyOf, InBlocks, counts);
                 tr.Commit();
             }
+            using (doc.LockDocument()) oldInfo = ProcessOldLayers(db, OldPlans);
             string extra = "";
             if (SaveDxf)
             {
@@ -338,20 +343,75 @@ namespace KetCauVXT.AcadLink
                 }
                 catch (Exception ex) { extra = "\n  Không lưu được DXF: " + ex.Message; }
             }
-            Report(ed, counts, renamed, "Đã chuẩn hoá layer trong bản vẽ đang mở (gõ U để hoàn tác)." + extra);
+            Report(ed, counts, renamed, oldInfo, "Đã chuẩn hoá layer trong bản vẽ đang mở (gõ U để hoàn tác)." + extra);
             VxtPalette.RefreshCounts();
             if (SendAfter) doc.SendStringToExecute("VXT_GUI ", true, false, true);
         }
 
-        private static void Report(Editor ed, Dictionary<string, int> counts, int renamed, string head)
+        private static void Report(Editor ed, Dictionary<string, int> counts, int renamed, string oldInfo, string head)
         {
             var sb = new StringBuilder(head);
             if (renamed > 0) sb.Append($"\n  Đổi tên {renamed} layer.");
+            if (!string.IsNullOrEmpty(oldInfo)) sb.Append(oldInfo);
             sb.Append($"\n  Chuyển {counts.Values.Sum()} đối tượng:");
             foreach (var kv in counts.OrderBy(q => q.Key, StringComparer.Ordinal)) sb.Append($"\n    {kv.Key}: {kv.Value}");
             ed.WriteMessage("\n" + sb);
             try { System.Windows.Forms.MessageBox.Show(sb.ToString(), "Việt Const – chuẩn hoá layer", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information); }
             catch (Exception) { }
+        }
+
+        /// <summary>Xử lý layer gốc sau khi chuyển: xoá (chỉ khi không còn đối tượng – dùng Purge), đổi tên (tên mới chưa có).
+        /// Không động tới layer 0, DEFPOINTS, layer hiện hành, layer xref. Trả về đoạn báo cáo.</summary>
+        private static string ProcessOldLayers(Database db, Dictionary<string, OldLayerPlan> plans)
+        {
+            if (plans == null || plans.Count == 0) return "";
+            int del = 0, ren = 0;
+            var kept = new List<string>();
+            using (var tr = db.TransactionManager.StartTransaction())
+            {
+                var table = (LayerTable)tr.GetObject(db.LayerTableId, OpenMode.ForRead);
+                bool Protected(string n, LayerTableRecord rec) =>
+                    n == "0" || n.Equals("DEFPOINTS", StringComparison.OrdinalIgnoreCase) || rec.IsDependent || rec.ObjectId == db.Clayer;
+
+                // xoá: lọc qua Purge – chỉ còn layer không được đối tượng / block nào tham chiếu
+                var delIds = new ObjectIdCollection();
+                foreach (var kv in plans.Where(p => p.Value.Action == OldLayerAction.Delete))
+                {
+                    if (!table.Has(kv.Key)) continue;
+                    var rec = (LayerTableRecord)tr.GetObject(table[kv.Key], OpenMode.ForRead);
+                    if (rec.ObjectId == db.Clayer) db.Clayer = table["0"];   // layer cũ đang là hiện hành → chuyển hiện hành về 0 rồi mới xoá
+                    if (Protected(kv.Key, rec)) { kept.Add(kv.Key + " (layer hệ thống / xref)"); continue; }
+                    delIds.Add(rec.ObjectId);
+                }
+                var wanted = delIds.Cast<ObjectId>().ToList();
+                if (delIds.Count > 0) db.Purge(delIds);
+                var purgeable = new HashSet<ObjectId>(delIds.Cast<ObjectId>());
+                foreach (var id in wanted)
+                {
+                    var rec = (LayerTableRecord)tr.GetObject(id, OpenMode.ForRead);
+                    if (!purgeable.Contains(id)) { kept.Add(rec.Name + " (còn đối tượng)"); continue; }
+                    try { rec.UpgradeOpen(); rec.Erase(); del++; }
+                    catch (Exception ex) { kept.Add(rec.Name + " (" + ex.Message + ")"); }
+                }
+
+                // đổi tên
+                foreach (var kv in plans.Where(p => p.Value.Action == OldLayerAction.Rename))
+                {
+                    if (!table.Has(kv.Key)) continue;   // đã đổi tên 1:1 sang layer chuẩn (cách áp dụng ③)
+                    var rec = (LayerTableRecord)tr.GetObject(table[kv.Key], OpenMode.ForRead);
+                    string nn = kv.Value.NewName ?? "";
+                    if (kv.Key == "0" || kv.Key.Equals("DEFPOINTS", StringComparison.OrdinalIgnoreCase) || rec.IsDependent) { kept.Add(kv.Key + " (không đổi tên được layer hệ thống / xref)"); continue; }
+                    if (table.Has(nn)) { kept.Add(kv.Key + " (tên \"" + nn + "\" đã có)"); continue; }
+                    try { SymbolUtilityServices.ValidateSymbolName(nn, false); rec.UpgradeOpen(); rec.Name = nn; ren++; }
+                    catch (Exception ex) { kept.Add(kv.Key + " (tên mới không hợp lệ: " + ex.Message + ")"); }
+                }
+                tr.Commit();
+            }
+            var sb = new StringBuilder();
+            if (del > 0) sb.Append($"\n  Xoá {del} layer cũ.");
+            if (ren > 0) sb.Append($"\n  Đổi tên {ren} layer cũ.");
+            if (kept.Count > 0) sb.Append("\n  Giữ lại layer cũ: " + string.Join("; ", kept.Take(15)) + (kept.Count > 15 ? $"; … (+{kept.Count - 15})" : ""));
+            return sb.ToString();
         }
 
         /// <summary>Đổi tên layer khi một layer gốc ↔ một layer chuẩn và tên chuẩn chưa có (không đổi layer 0, DEFPOINTS, layer xref).</summary>
@@ -633,18 +693,15 @@ namespace KetCauVXT.AcadLink
             }
             string how = _mMove.Checked ? "chuyển đối tượng ngay trong bản vẽ này (gõ U để hoàn tác)"
                        : _mRename.Checked ? "đổi tên layer / chuyển đối tượng ngay trong bản vẽ này (gõ U để hoàn tác)"
-                       : "tạo bản sao <tên>_VXT.dwg, bản vẽ gốc giữ nguyên";
-            var sb = new StringBuilder();
-            sb.AppendLine($"Sẽ chuyển {todo.Count} layer ({todo.Sum(r => r.Count)} đối tượng) – cách áp dụng: {how}.");
+                       : "tạo bản sao <tên>_VXT.dwg, bản vẽ gốc giữ nguyên (xoá / đổi tên layer cũ làm trong bản sao)";
             int skipped = Rows.Count(r => r.Key.Length > 0 && !r.Convert);
-            if (skipped > 0) sb.AppendLine($"Giữ nguyên {skipped} layer đã bỏ tích.");
-            sb.AppendLine();
-            foreach (var r in todo.Take(20)) sb.AppendLine($"  {r.Layer}  →  {Display(r.Key)}");
-            if (todo.Count > 20) sb.AppendLine($"  … và {todo.Count - 20} layer khác");
-            sb.AppendLine();
-            sb.Append("Bạn có muốn chuyển đổi không?");
-            return MessageBox.Show(this, sb.ToString(), "Xác nhận chuyển đổi layer", MessageBoxButtons.YesNo,
-                                   MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+            var items = todo.Select(r => new LayerConvertConfirmForm.Item { Layer = r.Layer, Target = Display(r.Key), Count = r.Count }).ToList();
+            using (var f = new LayerConvertConfirmForm(items, how, skipped))
+            {
+                if (f.ShowDialog(this) != DialogResult.OK || f.Plans == null) return false;
+                LayerConvertCmd.OldPlans = f.Plans;
+                return true;
+            }
         }
 
         private void CommitGrid()
