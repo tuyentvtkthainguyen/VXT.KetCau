@@ -77,6 +77,7 @@ namespace KetCauVXT.AcadLink
                 if (info.Count == 0) { ed.WriteMessage("\nBản vẽ không có đối tượng trong model space."); return; }
 
                 var overrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var skip = new HashSet<string>(StringComparer.OrdinalIgnoreCase);   // layer người dùng bỏ tích "Chuyển" → giữ nguyên
                 Func<string, string> userRule = l => std.Classify(l);
                 void Resuggest()
                 {
@@ -93,16 +94,21 @@ namespace KetCauVXT.AcadLink
                             Layer = q.Stats.Name, Count = q.Ids.Count, Swatch = q.Swatch, Dependent = q.Dependent,
                             Key = overrides.ContainsKey(q.Stats.Name) ? overrides[q.Stats.Name] : q.Sugg.Key,
                             Confidence = overrides.ContainsKey(q.Stats.Name) ? 1 : q.Sugg.Confidence,
-                            Reason = overrides.ContainsKey(q.Stats.Name) ? "người dùng chọn" : q.Sugg.Reason
+                            Reason = overrides.ContainsKey(q.Stats.Name) ? "người dùng chọn" : q.Sugg.Reason,
+                            Convert = !skip.Contains(q.Stats.Name)
                         }).ToList();
                     LayerConvertForm.Result res;
                     using (var f = new LayerConvertForm(rows, Profile))
                     {
                         AcApp.ShowModalDialog(f);
                         res = f.Outcome;
-                        foreach (var r in f.Rows) if (r.UserSet) overrides[r.Layer] = r.Key;
+                        foreach (var r in f.Rows)
+                        {
+                            if (r.UserSet) overrides[r.Layer] = r.Key;
+                            if (r.Convert) skip.Remove(r.Layer); else skip.Add(r.Layer);
+                        }
                         if (f.LoadedProfile != null) { Profile = f.LoadedProfile; overrides.Clear(); Resuggest(); }
-                        if (f.ResetRequested) { overrides.Clear(); Resuggest(); }
+                        if (f.ResetRequested) { overrides.Clear(); skip.Clear(); Resuggest(); }
                     }
                     if (res.Action == LayerConvertForm.ActionKind.Cancel) { ed.WriteMessage("\nĐã huỷ chuẩn hoá layer."); return; }
                     if (res.Action == LayerConvertForm.ActionKind.Again) continue;
@@ -116,7 +122,7 @@ namespace KetCauVXT.AcadLink
                                 foreach (var id in sel.Value.GetObjectIds())
                                 {
                                     var e = tr.GetObject(id, OpenMode.ForRead) as Entity;
-                                    if (e != null) overrides[e.Layer] = res.Key;
+                                    if (e != null) { overrides[e.Layer] = res.Key; if (res.Key.Length > 0) skip.Remove(e.Layer); }
                                 }
                                 tr.Commit();
                             }
@@ -138,7 +144,7 @@ namespace KetCauVXT.AcadLink
 
                 Func<string, string> keyOf = l =>
                 {
-                    if (l == null) return "";
+                    if (l == null || skip.Contains(l)) return "";   // bỏ tích "Chuyển" → giữ nguyên layer
                     string v;
                     if (overrides.TryGetValue(l, out v)) return v ?? "";
                     LayerInfo li;
@@ -465,6 +471,7 @@ namespace KetCauVXT.AcadLink
             public double Confidence;
             public Drawing.Color Swatch = Drawing.Color.White;
             public bool Dependent, UserSet;
+            public bool Convert = true;   // cột "Chuyển": người dùng xác nhận có chuyển layer này hay không
         }
 
         public readonly List<Row> Rows;
@@ -501,6 +508,8 @@ namespace KetCauVXT.AcadLink
             top.Controls.Add(new Label { Text = "Lọc:", AutoSize = true, Margin = new Padding(3, 7, 3, 3) });
             _filter.Width = 160; top.Controls.Add(_filter);
             _onlyUnknown.Margin = new Padding(8, 6, 8, 3); top.Controls.Add(_onlyUnknown);
+            top.Controls.Add(Btn("Tích chuyển tất cả", (s, e) => SetAllConvert(true)));
+            top.Controls.Add(Btn("Bỏ tích tất cả", (s, e) => SetAllConvert(false)));
             top.Controls.Add(Btn("Tự nhận lại", (s, e) => { ResetRequested = true; Close2(ActionKind.Again); }));
             top.Controls.Add(Btn("Tô sáng layer đang chọn", (s, e) => { var r = Current(); if (r != null) { Outcome.Layer = r.Layer; Close2(ActionKind.Highlight); } }));
             top.Controls.Add(new Label { Text = "Gán vào:", AutoSize = true, Margin = new Padding(12, 7, 3, 3) });
@@ -515,7 +524,9 @@ namespace KetCauVXT.AcadLink
             bottom.Controls.Add(new Label { Text = "CÁCH ÁP DỤNG", AutoSize = true, Font = new Drawing.Font(Font, Drawing.FontStyle.Bold) });
             foreach (Control c in new Control[] { _mCopy, _mMove, _mRename, _cDoor, _cBlocks, _cXref, _cDxf, _cSend }) bottom.Controls.Add(c);
             var btns = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-            var ok = Btn("ÁP DỤNG", (s, e) => { SaveOptions(); Close2(ActionKind.Apply); }); ok.Font = new Drawing.Font(Font, Drawing.FontStyle.Bold); ok.Width = 160;
+            var ok = Btn("CHUYỂN ĐỔI", (s, e) => { SaveOptions(); if (ConfirmConvert()) Close2(ActionKind.Apply); });
+            ok.Font = new Drawing.Font(Font, Drawing.FontStyle.Bold); ok.Width = 160;
+            AcceptButton = null;   // không chuyển khi lỡ nhấn Enter – phải bấm nút CHUYỂN ĐỔI và xác nhận
             btns.Controls.Add(ok);
             btns.Controls.Add(Btn("Huỷ", (s, e) => Close2(ActionKind.Cancel)));
             bottom.Controls.Add(btns);
@@ -553,6 +564,7 @@ namespace KetCauVXT.AcadLink
             _grid.Dock = DockStyle.Fill; _grid.AllowUserToAddRows = false; _grid.AllowUserToDeleteRows = false; _grid.RowHeadersVisible = false;
             _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect; _grid.MultiSelect = false; _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             _grid.DataError += (s, e) => { e.ThrowException = false; };
+            _grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "Chuyen", HeaderText = "Chuyển", FillWeight = 6 });
             _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Layer", HeaderText = "Layer gốc", ReadOnly = true, FillWeight = 26 });
             _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Mau", HeaderText = "Màu", ReadOnly = true, FillWeight = 5 });
             _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "SL", HeaderText = "Số đối tượng", ReadOnly = true, FillWeight = 8 });
@@ -563,24 +575,75 @@ namespace KetCauVXT.AcadLink
             _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Ly", HeaderText = "Căn cứ", ReadOnly = true, FillWeight = 36 });
             foreach (var r in Rows)
             {
-                int i = _grid.Rows.Add(r.Layer + (r.Dependent ? "  (xref)" : ""), "", r.Count.ToString(CultureInfo.InvariantCulture), Display(r.Key),
+                int i = _grid.Rows.Add(r.Convert && r.Key.Length > 0, r.Layer + (r.Dependent ? "  (xref)" : ""), "", r.Count.ToString(CultureInfo.InvariantCulture), Display(r.Key),
                                        Math.Round(r.Confidence * 100).ToString(CultureInfo.InvariantCulture) + "%", r.Reason);
                 var row = _grid.Rows[i];
                 row.Tag = r;
-                row.Cells[1].Style.BackColor = r.Swatch;
-                row.Cells[1].Style.SelectionBackColor = r.Swatch;
+                row.Cells["Mau"].Style.BackColor = r.Swatch;
+                row.Cells["Mau"].Style.SelectionBackColor = r.Swatch;
                 if (r.Key.Length == 0) row.DefaultCellStyle.ForeColor = Drawing.Color.DimGray;
-                else if (r.Confidence < 0.6) row.Cells[3].Style.BackColor = Drawing.Color.FromArgb(255, 245, 205);
+                else if (r.Confidence < 0.6) row.Cells["Key"].Style.BackColor = Drawing.Color.FromArgb(255, 245, 205);
             }
             _grid.CellValueChanged += (s, e) =>
             {
-                if (e.RowIndex < 0 || e.ColumnIndex != 3) return;
-                var r = _grid.Rows[e.RowIndex].Tag as Row;
+                if (e.RowIndex < 0) return;
+                var gr = _grid.Rows[e.RowIndex];
+                var r = gr.Tag as Row;
                 if (r == null) return;
-                r.Key = KeyOf(_grid.Rows[e.RowIndex].Cells[3].Value as string); r.UserSet = true;
-                _grid.Rows[e.RowIndex].Cells[5].Value = "người dùng chọn";
+                if (e.ColumnIndex == _grid.Columns["Chuyen"].Index)
+                {
+                    r.Convert = gr.Cells["Chuyen"].Value is bool b && b;
+                    gr.DefaultCellStyle.ForeColor = r.Convert && r.Key.Length > 0 ? _grid.DefaultCellStyle.ForeColor : Drawing.Color.DimGray;
+                    return;
+                }
+                if (e.ColumnIndex != _grid.Columns["Key"].Index) return;
+                r.Key = KeyOf(gr.Cells["Key"].Value as string); r.UserSet = true;
+                gr.Cells["Ly"].Value = "người dùng chọn";
+                // chọn layer chuẩn → tự tích "Chuyển"; chọn (giữ nguyên) → bỏ tích
+                r.Convert = r.Key.Length > 0;
+                gr.Cells["Chuyen"].Value = r.Convert;
             };
             _grid.CurrentCellDirtyStateChanged += (s, e) => { if (_grid.IsCurrentCellDirty) _grid.CommitEdit(DataGridViewDataErrorContexts.Commit); };
+        }
+
+        private void SetAllConvert(bool on)
+        {
+            CommitGrid();
+            foreach (DataGridViewRow gr in _grid.Rows)
+            {
+                var r = gr.Tag as Row;
+                if (r == null || !gr.Visible) continue;          // chỉ tác động các dòng đang hiện (theo bộ lọc)
+                r.Convert = on && r.Key.Length > 0;
+                gr.Cells["Chuyen"].Value = r.Convert;
+                gr.DefaultCellStyle.ForeColor = r.Convert ? _grid.DefaultCellStyle.ForeColor : Drawing.Color.DimGray;
+            }
+        }
+
+        /// <summary>Hỏi xác nhận trước khi chuyển: liệt kê các layer được tích "Chuyển" → layer chuẩn. Trả về true nếu người dùng đồng ý.</summary>
+        private bool ConfirmConvert()
+        {
+            CommitGrid();
+            var todo = Rows.Where(r => r.Convert && r.Key.Length > 0).ToList();
+            if (todo.Count == 0)
+            {
+                MessageBox.Show(this, "Chưa có layer nào được tích \"Chuyển\" (và có layer chuẩn).\nHãy tích các layer cần chuyển rồi bấm CHUYỂN ĐỔI.",
+                                Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
+            }
+            string how = _mMove.Checked ? "chuyển đối tượng ngay trong bản vẽ này (gõ U để hoàn tác)"
+                       : _mRename.Checked ? "đổi tên layer / chuyển đối tượng ngay trong bản vẽ này (gõ U để hoàn tác)"
+                       : "tạo bản sao <tên>_VXT.dwg, bản vẽ gốc giữ nguyên";
+            var sb = new StringBuilder();
+            sb.AppendLine($"Sẽ chuyển {todo.Count} layer ({todo.Sum(r => r.Count)} đối tượng) – cách áp dụng: {how}.");
+            int skipped = Rows.Count(r => r.Key.Length > 0 && !r.Convert);
+            if (skipped > 0) sb.AppendLine($"Giữ nguyên {skipped} layer đã bỏ tích.");
+            sb.AppendLine();
+            foreach (var r in todo.Take(20)) sb.AppendLine($"  {r.Layer}  →  {Display(r.Key)}");
+            if (todo.Count > 20) sb.AppendLine($"  … và {todo.Count - 20} layer khác");
+            sb.AppendLine();
+            sb.Append("Bạn có muốn chuyển đổi không?");
+            return MessageBox.Show(this, sb.ToString(), "Xác nhận chuyển đổi layer", MessageBoxButtons.YesNo,
+                                   MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
         }
 
         private void CommitGrid()

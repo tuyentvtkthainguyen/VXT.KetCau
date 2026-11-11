@@ -683,7 +683,9 @@ public static partial class UserGuide
                 + "nhiều chữ nhật kín 0,1–1,2 m → cột; nét gạch chấm dài + vòng tròn + chữ 1–2 ký tự → trục; block CUA*, DOOR*, D1… → cửa đi, WINDOW*, S1… → cửa sổ; chữ \"Phòng ngủ\", \"WC\", \"Bếp\"… → tên phòng; "
                 + "chữ toàn số, đường kích thước → kích thước; nét bậc cách đều 0,24–0,34 m → cầu thang. Mỗi dòng có độ tin cậy và căn cứ; ô vàng = tin cậy thấp, nên xem lại.",
                 "**Trong AutoCAD – lệnh VXT_CHUANLAYER (VXT_CL)** hoặc nút **Chuẩn hoá layer bản vẽ → VXT-…** trên bảng lệnh VXT: bảng layer gốc → layer chuẩn (sửa cột **Layer chuẩn**), **Lọc**, "
-                + "**Chỉ hiện layer chưa nhận**, **Tô sáng layer đang chọn**, **Chọn đối tượng trên bản vẽ…** (layer của các đối tượng chọn được gán vào layer chuẩn đang chọn ở ô **Gán vào**), **Tự nhận lại**.",
+                + "**Chỉ hiện layer chưa nhận**, **Tô sáng layer đang chọn**, **Chọn đối tượng trên bản vẽ…** (layer của các đối tượng chọn được gán vào layer chuẩn đang chọn ở ô **Gán vào**), **Tự nhận lại**. "
+                + "Cột **Chuyển**: tích = chuyển layer đó, bỏ tích = giữ nguyên (**Tích chuyển tất cả** / **Bỏ tích tất cả** cho các dòng đang hiện). "
+                + "Bấm **CHUYỂN ĐỔI** → bảng xác nhận liệt kê các layer sẽ chuyển; chọn **Có** mới thực hiện, **Không** để quay lại bảng.",
                 "**Cách áp dụng** (AutoCAD): ① **Tạo bản sao chuẩn hoá <tên>_VXT.dwg** cạnh file – bản vẽ gốc giữ nguyên (mặc định, khuyên dùng; có thể bind xref đã nạp trong bản sao); "
                 + "② **Chuyển đối tượng sang layer chuẩn** ngay trong bản vẽ đang mở; ③ **Đổi tên layer** khi một layer gốc ứng với một layer chuẩn, phần còn lại chuyển đối tượng. "
                 + "② và ③ là một lệnh – gõ **U** để hoàn tác. Tuỳ chọn: sửa cả đối tượng trong định nghĩa block, block cửa → layer cửa, lưu thêm DXF (<tên>_VXT.dxf) để mở trong Việt Const, gửi sang Việt Const (VXT_GUI) sau khi chuẩn hoá. "
