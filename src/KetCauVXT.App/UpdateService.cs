@@ -186,7 +186,14 @@ public static class UpdateService
             if (w is UpdateWindow uw) { uw.Activate(); return; }
         var win = new UpdateWindow();
         if (owner != null && owner.IsLoaded) win.Owner = owner;
+        else
+        {
+            // không có cửa sổ chủ (màn hình chọn chế độ đang mở dạng hộp thoại): giữa màn hình, nổi trên cùng để không bị che
+            win.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            win.Topmost = true;
+        }
         win.Show();
+        win.Activate();
     }
 
     /// <summary>Nút "Cập nhật" cho thanh công cụ: tự đổi thành "Có bản mới …" (màu cam) khi kiểm tra thấy bản mới.</summary>

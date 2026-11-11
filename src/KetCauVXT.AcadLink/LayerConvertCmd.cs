@@ -520,17 +520,18 @@ namespace KetCauVXT.AcadLink
             top.Controls.Add(Btn("Lưu bộ ánh xạ…", (s, e) => SaveProfile()));
             Controls.Add(_grid);
 
-            var bottom = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 200, FlowDirection = FlowDirection.TopDown, Padding = new Padding(8), WrapContents = false };
+            // phần tuỳ chọn tự co giãn theo nội dung; nút CHUYỂN ĐỔI / Huỷ nằm thanh riêng dưới cùng – luôn hiện (trước đây bị che khi nhiều tuỳ chọn)
+            var bottom = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, Padding = new Padding(8, 4, 8, 0), WrapContents = false };
             bottom.Controls.Add(new Label { Text = "CÁCH ÁP DỤNG", AutoSize = true, Font = new Drawing.Font(Font, Drawing.FontStyle.Bold) });
             foreach (Control c in new Control[] { _mCopy, _mMove, _mRename, _cDoor, _cBlocks, _cXref, _cDxf, _cSend }) bottom.Controls.Add(c);
-            var btns = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
+            var btns = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(8, 4, 8, 8) };
             var ok = Btn("CHUYỂN ĐỔI", (s, e) => { SaveOptions(); if (ConfirmConvert()) Close2(ActionKind.Apply); });
             ok.Font = new Drawing.Font(Font, Drawing.FontStyle.Bold); ok.Width = 160;
             AcceptButton = null;   // không chuyển khi lỡ nhấn Enter – phải bấm nút CHUYỂN ĐỔI và xác nhận
             btns.Controls.Add(ok);
             btns.Controls.Add(Btn("Huỷ", (s, e) => Close2(ActionKind.Cancel)));
-            bottom.Controls.Add(btns);
             Controls.Add(bottom);
+            Controls.Add(btns);     // thêm sau → nằm dưới cùng
             Controls.Add(top);
 
             _mCopy.Checked = LayerConvertCmd.Mode == 0; _mMove.Checked = LayerConvertCmd.Mode == 1; _mRename.Checked = LayerConvertCmd.Mode == 2;

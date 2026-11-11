@@ -67,13 +67,13 @@ public partial class MainWindow : Window
         InitSlabDropUi();    // [Sàn hạ cốt] nút "Hạ cốt sàn", ô "Hạ cốt (mm)", hộp thoại – MainWindow.SlabDrop.cs
         InitWorkflowUi();    // [Workflow ETABS] cây mô hình, thanh trạng thái, phím tắt – MainWindow.Workflow.cs
         InitMemberRibbon();  // [Thanh lệnh cấu kiện] tab Lưới/Móng/Cột/Dầm/Sàn/Tường/Link CAD + gán tải – MainWindow.MemberRibbon.cs
-        InitUpdateUi();      // [Cập nhật] nút "Cập nhật" trên thanh công cụ, tham số --update – MainWindow.Update.cs
         InitCadCommandLine(); // [Dòng lệnh] kiểu AutoCAD dưới mặt bằng, F3/F8/F10 – MainWindow.CadCommandLine.cs
         InitMepUi();         // [Điện nước] menu Thiết kế → Môi trường Điện nước – MainWindow.Mep.cs, MepWindow.cs
         SetProject(ModelBuilder.NewProject(), null);
         SetStatus("Sẵn sàng – nhập lưới trục, chiều cao tầng rồi bấm 'Tạo mô hình', hoặc mở/nhập mô hình có sẵn.");
         HandleCommandLine();
         InitCompactUi();     // [Giao diện gọn] menu + thanh công cụ 1 hàng, F11, Ctrl+Q – MainWindow.CompactUi.cs
+        InitUpdateUi();      // [Cập nhật] nút "Cập nhật" (góc phải hàng công cụ), tham số --update – MainWindow.Update.cs
         InitRevitUi();       // [Kiểu Revit] ribbon Kiến trúc/Kết cấu/…, Thuộc tính, Trình duyệt dự án, thanh tuỳ chọn – MainWindow.RevitUi.cs
         InitDisciplines();   // [Bộ môn] công tắc Kiến trúc | Kết cấu | Điện nước, tab + menu BIM – MainWindow.Disciplines.cs
         InitFurnish();       // [Đặt & xem] đặt đồ đạc bắt điểm, kích thước tạm, 3D, mặt cắt – MainWindow.Furnish.cs

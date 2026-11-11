@@ -61,12 +61,21 @@ public sealed class CompactShell
     private readonly List<(FrameworkElement El, Visibility V)> _fullSaved = new();
     private readonly List<CompactPanel> _fullCollapsed = new();
     private Border _mini;
+    private StackPanel _right;   // nút góc phải hàng công cụ (🔍 ⛶ ⋯) – AddRightElement thêm nút (vd. "Cập nhật")
     private bool _full, _menuTemp;
     /// <summary>Lệnh không nằm trên menu / thanh công cụ (vd. nút "＋ …" đã gộp) – vẫn tìm được bằng Ctrl+Q.</summary>
     private readonly List<CommandEntry> _extraCommands = new();
     /// <summary>Gọi khi bật / tắt chế độ mở rộng vùng làm việc (MainWindow dùng để ẩn cây mô hình…).</summary>
     public event Action<bool> FullModeChanged;
     public bool IsFull => _full;
+
+    /// <summary>Thêm phần tử vào đầu cụm nút góc phải của hàng công cụ (luôn hiện, không bị đẩy vào ô tràn). Trả về false nếu chưa có hàng gọn.</summary>
+    public bool AddRightElement(UIElement e)
+    {
+        if (_right == null || e == null) return false;
+        _right.Children.Insert(0, e);
+        return true;
+    }
     private WindowLayout L => Settings.For(_key);
 
     private CompactShell(Window w, string key) { _w = w; _key = key; }
@@ -126,6 +135,7 @@ public sealed class CompactShell
             more.Click += (s, e) => { var cm = BuildViewMenu(); cm.PlacementTarget = more; cm.Placement = PlacementMode.Bottom; cm.IsOpen = true; };
             right.Children.Add(more);
             DockPanel.SetDock(right, Dock.Right); _row.Children.Add(right);
+            _right = right;
             if (toolbar != null)
             {
                 if (toolbar is ToolBarTray tt) { tt.Background = Brushes.Transparent; tt.IsLocked = true; }

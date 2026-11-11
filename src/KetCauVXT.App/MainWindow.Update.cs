@@ -15,16 +15,22 @@ public partial class MainWindow
 
     private void InitUpdateUi()
     {
-        try
+        // giao diện gọn (CompactShell): nút đặt ở cụm góc phải hàng công cụ – luôn hiện; giao diện cổ điển: cuối thanh công cụ chính
+        bool placed = false;
+        try { placed = _shell != null && _shell.AddRightElement(UpdateService.MakeToolbarButton(() => this)); } catch (Exception) { }
+        if (!placed)
         {
-            if (mainToolTray.ToolBars.Count > 0)
+            try
             {
-                var bar = mainToolTray.ToolBars[0];
-                bar.Items.Add(new Separator());
-                bar.Items.Add(UpdateService.MakeToolbarButton(() => this));
+                if (mainToolTray.ToolBars.Count > 0)
+                {
+                    var bar = mainToolTray.ToolBars[0];
+                    bar.Items.Add(new Separator());
+                    bar.Items.Add(UpdateService.MakeToolbarButton(() => this));
+                }
             }
+            catch (Exception) { /* bỏ qua */ }
         }
-        catch (Exception) { /* bỏ qua */ }
         if (SelfTestOut == null && Environment.GetCommandLineArgs().Any(a => a.Equals("--update", StringComparison.OrdinalIgnoreCase)))
             Dispatcher.BeginInvoke(new Action(() => UpdateService.ShowWindow(this)), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
     }
