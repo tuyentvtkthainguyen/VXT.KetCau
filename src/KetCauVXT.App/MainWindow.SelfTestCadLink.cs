@@ -40,6 +40,63 @@ public partial class MainWindow
         return sb.ToString();
     }
 
+    /// <summary>DXF lưới trục của mô hình (mm, có vòng tròn + tên trục) dời (ox, oy) m – giống mặt bằng kết cấu do phần mềm xuất.</summary>
+    internal static string GridSampleDxf(Project p, double ox, double oy)
+    {
+        var c = CultureInfo.InvariantCulture;
+        var sb = new StringBuilder();
+        void P(int code, object v) { sb.Append(code.ToString(c)).Append('\n').Append(Convert.ToString(v, c)).Append('\n'); }
+        void Line(double x1, double y1, double x2, double y2) { P(0, "LINE"); P(8, "TRUC"); P(10, x1); P(20, y1); P(30, 0.0); P(11, x2); P(21, y2); P(31, 0.0); }
+        void Bubble(double x, double y, string n) { P(0, "CIRCLE"); P(8, "TRUC"); P(10, x); P(20, y); P(30, 0.0); P(40, 400.0); P(0, "TEXT"); P(8, "TRUC"); P(10, x - 120); P(20, y - 175); P(30, 0.0); P(40, 350.0); P(1, n); }
+        var gx = p.Grids.Where(g => g.Dir == GridDir.X).ToList(); var gy = p.Grids.Where(g => g.Dir == GridDir.Y).ToList();
+        double x0 = gx.Select(g => g.Coord).DefaultIfEmpty(0).Min() - 2, x1 = gx.Select(g => g.Coord).DefaultIfEmpty(0).Max() + 2;
+        double y0 = gy.Select(g => g.Coord).DefaultIfEmpty(0).Min() - 2, y1 = gy.Select(g => g.Coord).DefaultIfEmpty(0).Max() + 2;
+        P(0, "SECTION"); P(2, "HEADER"); P(9, "$ACADVER"); P(1, "AC1009"); P(9, "$INSUNITS"); P(70, 4); P(0, "ENDSEC");
+        P(0, "SECTION"); P(2, "ENTITIES");
+        foreach (var g in gx) { double x = (g.Coord + ox) * 1000; Line(x, (y0 + oy) * 1000, x, (y1 + oy) * 1000); Bubble(x, (y1 + oy) * 1000 + 400, g.Name); }
+        foreach (var g in gy) { double y = (g.Coord + oy) * 1000; Line((x0 + ox) * 1000, y, (x1 + ox) * 1000, y); Bubble((x0 + ox) * 1000 - 400, y, g.Name); }
+        P(0, "ENDSEC"); P(0, "EOF");
+        return sb.ToString();
+    }
+
+    /// <summary>[Ánh xạ Xref] tự khớp theo tên trục: dời Xref → kết cấu, rồi dời mặt bằng kết cấu → Xref (hoàn tác lại).</summary>
+    private async Task SelfTestXrefMap(string tag)
+    {
+        var gx = _p.Grids.Where(g => g.Dir == GridDir.X).ToList(); var gy = _p.Grids.Where(g => g.Dir == GridDir.Y).ToList();
+        if (gx.Count == 0 || gy.Count == 0) { StLog("ánh xạ xref: mô hình không có trục – bỏ qua"); return; }
+        string path = Path.Combine(SelfTestOut, tag + "_XrefTruc.dxf");
+        File.WriteAllText(path, GridSampleDxf(_p, 37.5, -12.25), new UTF8Encoding(false));
+        var l = await XrefAttach(path, (-15.0, -15.0));
+        if (l == null || CadLinkCache.Get(l) == null) throw new Exception("Ánh xạ xref: không gắn được bản vẽ trục");
+        double Err(CadLink k) => gx.Max(g => Math.Abs(k.ToModel(g.Coord + 37.5, 0).X - g.Coord)) + gy.Max(g => Math.Abs(k.ToModel(0, g.Coord - 12.25).Y - g.Coord));
+        StLog($"ánh xạ xref: trước khớp sai lệch {Err(l):0.###} m");
+        var r = CadLinkAutoMatch(l, false);
+        StLog($"ánh xạ xref (dời Xref): {r?.Message}; sai lệch còn {Err(l):0.####} m");
+        if (r == null || !r.Ok || Err(l) > 0.002) throw new Exception("Ánh xạ xref: tự khớp theo trục không đúng – " + r?.Message);
+        CadLinkZoom(null); await Pause(1000);
+        Shot($"{tag}_56_AnhXaXref");
+
+        // dời Xref lệch đi rồi dời MẶT BẰNG KẾT CẤU đến Xref
+        bool hadRes = _res != null, hadDesign = _design != null;
+        CadLinkMoveLink(l, 3.0, 2.0);
+        double nx = _p.Nodes.Count > 0 ? _p.Nodes[0].X : 0, ny = _p.Nodes.Count > 0 ? _p.Nodes[0].Y : 0;
+        double g0 = gx[0].Coord;
+        var r2 = CadLinkAutoMatch(l, true);
+        double moved = gx[0].Coord - g0;
+        StLog($"ánh xạ xref (dời kết cấu): {r2?.Message}; trục {gx[0].Name} dời {moved:0.###} m, nút đầu dời ({(_p.Nodes.Count > 0 ? _p.Nodes[0].X - nx : 0):0.###}; {(_p.Nodes.Count > 0 ? _p.Nodes[0].Y - ny : 0):0.###}), sai lệch {Err(l):0.####} m");
+        if (r2 == null || !r2.Ok || Math.Abs(moved - 3.0) > 0.002) throw new Exception("Ánh xạ xref: dời mặt bằng kết cấu không đúng");
+        var w = OpenXrefMap(l);
+        if (w != null) { await Pause(800); ShotWindow(w, $"{tag}_57_AnhXaXrefHop"); w.Close(); }
+        Undo(); Undo();
+        StLog($"ánh xạ xref: hoàn tác – trục {gx[0].Name} về {_p.Grids.First(g => g.Dir == GridDir.X).Coord:0.###} (ban đầu {g0:0.###})");
+        if (Math.Abs(_p.Grids.First(g => g.Dir == GridDir.X).Coord - g0) > 1e-6) throw new Exception("Ánh xạ xref: hoàn tác không khôi phục toạ độ mô hình");
+        var lk = _p.CadLinks.FirstOrDefault(q => q.Id == l.Id) ?? _p.CadLinks.LastOrDefault();
+        if (lk != null) CadLinkRemove(lk);
+        FitPlan();
+        if (hadRes && _res == null) { if (!await RunAnalysis()) throw new Exception("Ánh xạ xref: phân tích lại lỗi"); }
+        if (hadDesign && _design == null) await EnsureDesign();
+    }
+
     private async Task SelfTestCadLink(string tag)
     {
         if (_p == null || SelfTestOut == null) return;
@@ -95,6 +152,7 @@ public partial class MainWindow
         CadLinkZoom(null); await Pause(1000);
         Shot($"{tag}_55_Xref");
         CadLinkRemove(xl);
+        await SelfTestXrefMap(tag);
         FitPlan();
     }
 }

@@ -91,7 +91,7 @@ public partial class MainWindow
             CadLinkEdited(l);
         }
         _clWin?.Reload();
-        SetStatus($"Đã gắn bản vẽ {l.DisplayName} (Xref) – tầng {l.Story}; {how}. Dùng \"Căn theo 2 điểm\" trong \"Bản vẽ liên kết…\" để căn đúng trục.");
+        SetStatus($"Đã gắn bản vẽ {l.DisplayName} (Xref) – tầng {l.Story}; {how}. Bấm \"Ánh xạ Xref…\" để đặt trùng mặt bằng kết cấu (tự động theo tên trục, bấm điểm hoặc nhập vector).");
         return l;
     }
 }

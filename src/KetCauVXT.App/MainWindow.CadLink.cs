@@ -42,6 +42,7 @@ public partial class MainWindow
     private string _clAlignLink;
     private (double X, double Y) _clAlignFrom;
     private bool _clPromptingMissing;
+    private bool _clAlignModel, _clAlignMoveLinks = true;
 
     private const int ClMaxTexts = 800;
     private static readonly Brush ClGrey = Frozen(Color.FromRgb(105, 105, 110));
@@ -666,9 +667,21 @@ public partial class MainWindow
     // ==================================================================
     // Căn theo 2 điểm: điểm trên bản vẽ → giao trục / nút của mô hình
     // ==================================================================
-    internal void CadLinkStartAlign(CadLink l)
+    internal void CadLinkStartAlign(CadLink l, bool moveModel = false, bool moveOtherLinks = true)
     {
         if (l == null) return;
+        _clAlignModel = moveModel; _clAlignMoveLinks = moveOtherLinks;
+        if (moveModel)
+        {
+            if (CadLinkCache.Get(l) == null) { SetStatus("Bản vẽ link chưa đọc được – không ánh xạ được."); return; }
+            _clAlignStep = 1; _clAlignLink = l.Id;
+            try { tabView.SelectedItem = ViewTab("Mặt bằng"); } catch (Exception) { }
+            if (planHost != null) planHost.Cursor = Cursors.Cross;
+            Activate();
+            SetStatus($"Dời mặt bằng kết cấu đến {l.DisplayName} (1/2): bấm giao trục / nút trên mặt bằng kết cấu; Esc để huỷ.");
+            DrawHover();
+            return;
+        }
         if (l.Locked) { SetStatus($"Bản vẽ {l.DisplayName} đang khoá vị trí – bỏ khoá (tab Link CAD / Quản lý) trước khi căn."); return; }
         if (CadLinkCache.Get(l) == null) { SetStatus("Bản vẽ link chưa đọc được – không căn được."); return; }
         _clAlignStep = 1; _clAlignLink = l.Id;
@@ -724,6 +737,22 @@ public partial class MainWindow
         if (l == null) { _clAlignStep = 0; return false; }
         var (x, y) = S2W(s);
         double tol = SnapTol();
+        if (_clAlignModel)
+        {
+            if (_clAlignStep == 1)
+            {
+                _clAlignFrom = CadAlignTarget(x, y, tol);
+                _clAlignStep = 2;
+                SetStatus($"Dời mặt bằng kết cấu (2/2): điểm kết cấu ({_clAlignFrom.X:0.000}; {_clAlignFrom.Y:0.000}) – bấm điểm tương ứng trên bản vẽ link (ký hiệu tím); Esc để huỷ.");
+                DrawHover();
+                return true;
+            }
+            var dst = CadAlignSource(l, x, y, tol);
+            _clAlignStep = 0;
+            if (planHost != null) planHost.Cursor = _mode == PlanEditMode.Select ? null : Cursors.Cross;
+            CadLinkMoveModel(l, dst.X - _clAlignFrom.X, dst.Y - _clAlignFrom.Y, _clAlignMoveLinks);
+            return true;
+        }
         if (_clAlignStep == 1)
         {
             _clAlignFrom = CadAlignSource(l, x, y, tol);
@@ -757,14 +786,14 @@ public partial class MainWindow
         double tol = SnapTol();
         if (_clAlignStep == 1)
         {
-            var src = CadAlignSource(l, x, y, tol);
+            var src = _clAlignModel ? CadAlignTarget(x, y, tol) : CadAlignSource(l, x, y, tol);
             var c = W2S(src.X, src.Y);
             planOverlay.Children.Add(MakeCircle(c, 7, ClGlyph));
-            AddText($"Điểm bản vẽ ({src.X:0.000}; {src.Y:0.000})", new Point(c.X + 10, c.Y + 7), ClGlyph, 10, false, false, planOverlay);
+            AddText($"{(_clAlignModel ? "Điểm kết cấu" : "Điểm bản vẽ")} ({src.X:0.000}; {src.Y:0.000})", new Point(c.X + 10, c.Y + 7), ClGlyph, 10, false, false, planOverlay);
             return true;
         }
         var a = W2S(_clAlignFrom.X, _clAlignFrom.Y);
-        var t = CadAlignTarget(x, y, tol);
+        var t = _clAlignModel ? CadAlignSource(l, x, y, tol) : CadAlignTarget(x, y, tol);
         var b = W2S(t.X, t.Y);
         planOverlay.Children.Add(MakeCircle(a, 6, ClGlyph));
         CLine(planOverlay, a, b, ClGlyph, 1.5, true);

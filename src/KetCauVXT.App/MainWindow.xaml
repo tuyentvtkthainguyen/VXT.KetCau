@@ -558,6 +558,8 @@
                     <Button Content="Vừa màn hình" Click="BtnFit_Click" Style="{StaticResource SmallButton}" Margin="8,0,6,0"/>
                     <Button Content="Gắn bản vẽ (Xref)…" Click="BtnXrefAttach_Click" Style="{StaticResource SmallButton}" Margin="0,0,4,0"
                             ToolTip="Gắn bản vẽ AutoCAD DWG / DXF làm nền mặt bằng giống XREF (có thể kéo thả file vào khung nhìn). Tự đọc lại khi file thay đổi."/>
+                    <Button Content="Ánh xạ Xref…" Click="BtnXrefMap_Click" Style="{StaticResource SmallButton}" Margin="0,0,4,0"
+                            ToolTip="Cho Xref và mặt bằng kết cấu trùng nhau: dời Xref đến kết cấu hoặc dời mặt bằng kết cấu đến Xref – tự động theo tên trục, bấm điểm hoặc nhập vector"/>
                     <Button Content="Quản lý Xref…" Click="BtnXrefManage_Click" Style="{StaticResource SmallButton}" Margin="0,0,8,0"
                             ToolTip="Bản vẽ liên kết: ẩn/hiện, layer, căn theo 2 điểm, đọc lại, gỡ"/>
                     <CheckBox x:Name="chkLabels" Content="Tên cấu kiện" IsChecked="True" VerticalAlignment="Center" Margin="0,0,10,0"
