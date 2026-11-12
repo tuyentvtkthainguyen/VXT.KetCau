@@ -24,9 +24,9 @@ public partial class MainWindow
         }
         _xmWin?.Close();
         var w = new Window { Owner = this, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize };
-        DialogUi.Setup(w, "Ánh xạ Xref ↔ mặt bằng kết cấu", 560, 420);
+        DialogUi.Setup(w, "Ánh xạ Xref ↔ mặt bằng kết cấu", 640, 460);
         w.MinHeight = 0;
-        var root = new StackPanel { Margin = new Thickness(12) };
+        var root = new StackPanel { Margin = new Thickness(12, 12, 12, 16) };
 
         var cbLink = new ComboBox { Width = 380 };
         foreach (var l in _p.CadLinks) cbLink.Items.Add(new ComboBoxItem { Content = $"{l.DisplayName}  (tầng {l.Story})", Tag = l });
@@ -43,17 +43,22 @@ public partial class MainWindow
         root.Children.Add(new GroupBox { Header = "Đối tượng di chuyển", Content = what, Margin = new Thickness(0, 6, 0, 0) });
 
         var rbAuto = new RadioButton { Content = "Tự động theo tên trục – đặt Xref trùng mặt bằng kết cấu do phần mềm tạo (bản vẽ Việt Const xuất, hoặc có ký hiệu trục 1, 2…, A, B… giống mô hình)", IsChecked = true, Margin = new Thickness(0, 2, 0, 2), GroupName = "xmHow" };
-        ((RadioButton)rbAuto).Content = new TextBlock { Text = (string)rbAuto.Content, TextWrapping = TextWrapping.Wrap, MaxWidth = 480 };
+        foreach (var rb in new[] { rbAuto })
+            rb.Content = new TextBlock { Text = (string)rb.Content, TextWrapping = TextWrapping.Wrap, MaxWidth = 570 };
         var rbPick = new RadioButton { Content = "Bấm điểm: một điểm trên Xref và điểm tương ứng trên kết cấu (giao trục, nút – có bắt điểm)", Margin = new Thickness(0, 2, 0, 2), GroupName = "xmHow" };
         var rbVec = new RadioButton { Content = "Nhập vector dời", Margin = new Thickness(0, 2, 0, 2), GroupName = "xmHow" };
         var txDx = new TextBox { Width = 70, Text = "0", Margin = new Thickness(0, 0, 8, 0) };
         var txDy = new TextBox { Width = 70, Text = "0" };
+        foreach (var rb in new[] { rbMoveX, rbMoveM, rbPick })
+            rb.Content = new TextBlock { Text = (string)rb.Content, TextWrapping = TextWrapping.Wrap, MaxWidth = 570 };
+        chkLinks.Content = new TextBlock { Text = (string)chkLinks.Content, TextWrapping = TextWrapping.Wrap, MaxWidth = 550 };
         var how = new StackPanel();
         how.Children.Add(rbAuto); how.Children.Add(rbPick);
         how.Children.Add(DialogUi.Row(rbVec, DialogUi.Label("  dx (m)"), txDx, DialogUi.Label("dy (m)"), txDy));
         root.Children.Add(new GroupBox { Header = "Cách khớp", Content = how, Margin = new Thickness(0, 6, 0, 0) });
 
         var info = DialogUi.Hint("Có hoàn tác (Ctrl+Z). Dời mặt bằng kết cấu dời mọi toạ độ tuyệt đối: trục, nút, tường, lỗ sàn, cầu thang, kiến trúc, điện nước, hố khoan – cần chạy lại phân tích.");
+        info.TextWrapping = TextWrapping.Wrap; info.MaxWidth = 590;
         root.Children.Add(info);
 
         CadLink Sel() => (cbLink.SelectedItem as ComboBoxItem)?.Tag as CadLink;
