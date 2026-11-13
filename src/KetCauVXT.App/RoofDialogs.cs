@@ -185,7 +185,7 @@ internal sealed class SheetProfileDialog : Window
         DialogUi.HScroll(g);
         var prev = new Canvas { Height = 120, Background = new SolidColorBrush(Color.FromRgb(248, 248, 244)), Margin = new Thickness(0, 6, 0, 6) };
         var lb = DialogUi.Hint("Chọn một dòng để xem mặt cắt sóng (một khổ tôn). Thêm dòng cuối để tạo profile mới.");
-        void Draw() { if (g.SelectedItem is SheetProfile pf) { lb.Text = $"{pf.Name}: {Math.Round(pf.CoverWidth / Math.Max(0.01, pf.RibPitch))} sóng / khổ {pf.CoverWidth:0.###} m, cao sóng {pf.RibHeight * 1000:0} mm, {pf.Weight:0.#} kg/m²"; DrawSection(prev, pf, 1); } }
+        void Draw() { if (g.SelectedItem is SheetProfile pf) { lb.Text = $"{pf.Name}: bước sóng {pf.RibPitch * 1000:0} mm, khổ hữu dụng {pf.CoverWidth:0.###} m, cao sóng {pf.RibHeight * 1000:0} mm, {pf.Weight:0.#} kg/m²"; DrawSection(prev, pf, 1); } }
         g.SelectionChanged += (s, e) => Draw();
         g.CellEditEnding += (s, e) => Dispatcher.BeginInvoke(new Action(Draw));
         prev.SizeChanged += (s, e) => Draw();
