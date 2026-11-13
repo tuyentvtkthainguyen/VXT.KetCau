@@ -58,11 +58,15 @@ public partial class MainWindow
         if (!cardVisible) throw new Exception("Thẻ thông tin không hiện khi chọn hệ mái");
         Shot($"{tag}_61_TheThongTin_MatBang");
 
-        // 3D: mái + thẻ thông tin
+        // 3D: mái (bỏ chọn để thấy màu thật, tắt thẻ), rồi chọn lại + thẻ thông tin
         tabView.SelectedItem = ViewTab("3D");
+        _selRoof = null; OnSelectionChanged();
         await Pause(1500);
         Zoom3DExtents(); await Pause(800);
         Shot($"{tag}_62_MaiChongNong_3D");
+        SelectObject(cn); await Pause(800);
+        StLog($"3D chọn hệ mái: {(_selRoof == cn ? "đúng" : "SAI")}, thẻ {(_infoCards.Any(c => c.Card.IsVisible) ? "hiện" : "ẩn")}");
+        Shot($"{tag}_62b_3D_TheMai");
         // ẩn tường + cửa
         SetCategoryVisible("Tường", false); SetCategoryVisible("Cửa", false);
         await Pause(1000);

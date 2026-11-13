@@ -418,7 +418,7 @@ public static class RoofFramingBuilder
         {
             RoofFramingKind.MaiTonTienChe => new RoofFraming { Kind = k, Story = story, BaseOffset = h, SlopePercent = 10, Overhang = 0.5, PurlinSection = "Z200x62x20x2.0", PurlinSpacing = 1.2, IncludeTrusses = false, TrussSpacing = 6, Profile = "Tôn 5 sóng vuông dày 0.45", PostSection = "" },
             RoofFramingKind.ThungTuong => new RoofFraming { Kind = k, Story = story, BaseOffset = 0.2, TopOffset = h, PurlinSection = "C150x50x20x1.8", PurlinSpacing = 1.4, IncludeTrusses = false, TrussSpacing = 6, ChordSection = "□100x100x2.0", Profile = "Tôn 9 sóng vuông dày 0.45", PostSection = "" },
-            _ => new RoofFraming { Kind = k, Story = story, BaseOffset = 0.6, SlopePercent = 20, Overhang = 0.4, PurlinSection = "□40x80x1.4", PurlinSpacing = 0.9, IncludeTrusses = true, TrussSpacing = 3.0, ChordSection = "□40x80x1.4", WebSection = "□30x30x1.2", PostSection = "□100x100x2.0", Profile = "Tôn sóng tròn 13 sóng dày 0.35" },
+            _ => new RoofFraming { Kind = k, Story = story, BaseOffset = 0.6, SlopePercent = 20, Overhang = 0.4, PurlinSection = "□40x80x1.4", PurlinSpacing = 0.8, IncludeTrusses = true, TrussSpacing = 3.0, ChordSection = "□40x80x1.4", WebSection = "□30x30x1.2", PostSection = "□100x100x2.0", Profile = "Tôn sóng tròn 13 sóng dày 0.35" },
         };
     }
 }

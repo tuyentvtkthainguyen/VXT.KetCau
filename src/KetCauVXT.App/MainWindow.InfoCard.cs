@@ -28,7 +28,7 @@ public partial class MainWindow
 
     private Border MakeInfoCard()
     {
-        var text = new TextBlock { TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Consolas"), FontSize = 11.5, Foreground = new SolidColorBrush(Color.FromRgb(30, 35, 45)) };
+        var text = new TextBlock { TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Consolas"), FontSize = 11, Foreground = new SolidColorBrush(Color.FromRgb(30, 35, 45)) };
         var close = new Button { Content = "✕", Padding = new Thickness(5, 0, 5, 0), BorderThickness = new Thickness(0), Background = Brushes.Transparent, ToolTip = "Đóng thẻ (bấm đối tượng khác để hiện lại)", Cursor = Cursors.Hand };
         var title = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
         DockPanel.SetDock(close, Dock.Right);
@@ -37,10 +37,10 @@ public partial class MainWindow
         var body = new DockPanel();
         DockPanel.SetDock(title, Dock.Top);
         body.Children.Add(title);
-        body.Children.Add(new ScrollViewer { Content = text, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 280 });
+        body.Children.Add(new ScrollViewer { Content = text, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 210 });
         var card = new Border
         {
-            Child = body, Width = 330, Padding = new Thickness(8, 6, 8, 8), Margin = new Thickness(0, 34, 10, 0),
+            Child = body, Width = 300, Padding = new Thickness(8, 6, 8, 8), Margin = new Thickness(0, 34, 10, 0),
             HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
             Background = new SolidColorBrush(Color.FromArgb(238, 255, 255, 252)), BorderBrush = new SolidColorBrush(Color.FromRgb(120, 150, 190)),
             BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Visibility = Visibility.Collapsed,
