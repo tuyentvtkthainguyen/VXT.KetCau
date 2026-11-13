@@ -113,6 +113,10 @@ public partial class Project
     public List<Footing> Footings { get; set; } = new();
     /// <summary>Lỗ sàn: cầu thang, giếng trời (ô không có sàn)</summary>
     public List<FloorOpening> Openings { get; set; } = new();
+    // ---- [Hệ mái tôn – Model/RoofFraming.cs] mái tôn nhà tiền chế, thưng tường, mái chống nóng vẽ theo diện kéo chọn ----
+    public List<RoofFraming> RoofFramings { get; set; } = new();
+    /// <summary>Thư viện profile tôn của dự án</summary>
+    public List<SheetProfile> SheetProfiles { get; set; } = SheetProfile.Defaults();
     // ---- [Cầu thang bộ – Model/Stair.cs] ----
     /// <summary>Cầu thang bộ khai báo (gắn lỗ sàn cầu thang hoặc độc lập); file cũ không có mục này → rỗng (dùng cầu thang mặc định theo lỗ sàn)</summary>
     public List<Stair> Stairs { get; set; } = new();

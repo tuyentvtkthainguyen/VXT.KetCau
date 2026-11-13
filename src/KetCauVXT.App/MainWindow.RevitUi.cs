@@ -194,7 +194,13 @@ public partial class MainWindow
                 RvBtn("Kiểu tường…", "", "Sửa kiểu tường nhiều lớp: lõi gạch / BT, vữa trát, ốp đá, gạch men – tải 1 m² tự tính", () => OpenWallTypeEditor(null)),
                 RvBtn("Kiểu cửa…", "", "Kiểu cửa đi / cửa sổ / ô thoáng: rộng, cao, bậu, cách mở", OpenOpeningTypes),
                 RvBtn("Vật liệu…", "", "Thư viện vật liệu tường (γ)", OpenMaterials),
-                RvBtn("Danh sách tường…", "", "Bảng các đoạn tường đã vẽ", () => MnuWallList_Click(this, new RoutedEventArgs()))));
+                RvBtn("Danh sách tường…", "", "Bảng các đoạn tường đã vẽ", () => MnuWallList_Click(this, new RoutedEventArgs()))),
+            RvGroup("Mái tôn – xà gồ",   // [Hệ mái tôn] – MainWindow.RoofFraming.cs
+                RvBtn("Mái tiền chế", "\uE80F", "Lợp mái tôn nhà thép tiền chế: xà gồ trên kèo khung + tôn – kéo khung chọn diện trên mặt bằng", () => StartRoofFraming(RoofFramingKind.MaiTonTienChe)),
+                RvBtn("Thưng tường", "\uE8A0", "Thưng bịt tường tôn: xà gồ tường + tôn thưng (+ cột sườn) – kéo khung bao đoạn tường", () => StartRoofFraming(RoofFramingKind.ThungTuong)),
+                RvBtn("Chống nóng", "\uE706", "Mái chống nóng nhà dân dụng: trụ đỡ, vì kèo thép hộp, xà gồ, tôn – kéo khung chọn diện trên sàn mái", () => StartRoofFraming(RoofFramingKind.ChongNong)),
+                RvBtn("Profile tôn…", "\uE9D2", "Thư viện profile tôn: bước sóng, cao sóng, khổ, dày, kg/m² – xem mặt cắt sóng", OpenSheetProfiles),
+                RvBtn("Sửa hệ mái…", "\uE70F", "Sửa hệ mái đang chọn: profile, bước xà gồ, vì kèo, độ dốc…", EditSelectedRoof)));
         RvTab("Kết cấu",
             RvGroup("Khung",
                 RvBtn("Cột", "", "Đặt cột: bấm điểm / giao trục (lệnh C)", () => { StopPlaceOpening(); ShowPlanTab(); RunCmd(CadCmd.Column, ""); }),

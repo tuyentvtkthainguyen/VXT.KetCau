@@ -155,7 +155,7 @@ public partial class MainWindow
         if (outline != null)
             planCanvas.Children.Add(new Shapes.Path { Data = outline, Stroke = WallStroke, StrokeThickness = _revitOn ? 1.4 : 1, StrokeLineJoin = PenLineJoin.Miter, IsHitTestVisible = false });
 
-        foreach (var w in straight)
+        foreach (var w in straight.Where(_ => !_hideDoors))
             foreach (var o in w.Openings ?? new List<WallOpening>())
                 DrawHostedOpening(planCanvas, w, o, WallAssembly.TypeOf(_p, o), o.Offset, o.Flip, o.FlipHand, false, labels && (!_revitOn || _vg.DoorTags));
 

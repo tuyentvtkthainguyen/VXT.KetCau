@@ -65,6 +65,7 @@ public partial class MainWindow
 
     private void DrawWalls(bool labels)
     {
+        if (_hideWalls) return;   // [Ẩn/hiện] tường – MainWindow.RoofFraming.cs
         if (DrawWallsRevit(labels)) return;   // [Kiểu Revit] tường nhiều lớp, nối góc, cửa gắn tường – MainWindow.RevitDraw.cs
         foreach (var w in PlanWalls())
         {
@@ -82,7 +83,7 @@ public partial class MainWindow
 
             double lenPx = (b - a).Length;
             // ký hiệu cửa: khe cửa + cánh mở + cung quét
-            if (WallMath.HasDoor(_p, w))
+            if (!_hideDoors && WallMath.HasDoor(_p, w))
             {
                 double g = Math.Min(0.9 * _scale, 0.45 * lenPx);
                 if (g >= 6)

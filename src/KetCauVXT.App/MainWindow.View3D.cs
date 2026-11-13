@@ -105,9 +105,17 @@ public partial class MainWindow
                 HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
                 ToolTip = "Hiện tường xây trong 3D: tường tự khoét ô cửa đi / cửa sổ đã đặt (phần dưới bậu, trên đầu cửa giữ lại)"
             };
-            _chkWall3D.Checked += (s, e) => BuildMain3D(false);
-            _chkWall3D.Unchecked += (s, e) => BuildMain3D(false);
+            _chkWall3D.Checked += (s, e) => { if (!_catSyncing) SetCategoryVisible("Tường", true); };
+            _chkWall3D.Unchecked += (s, e) => { if (!_catSyncing) SetCategoryVisible("Tường", false); };
+            _chkWall3D.IsChecked = !_hideWalls;
             g.Children.Add(_chkWall3D);
+            // [Ẩn/hiện] cửa, mái tôn; [Thẻ thông tin] – MainWindow.RoofFraming.cs, MainWindow.InfoCard.cs
+            var bar3 = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(300, 6, 8, 6), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            bar3.Children.Add(CategoryCheck("Cửa", "Cửa", Brushes.WhiteSmoke, "Ẩn / hiện cửa đi, cửa sổ"));
+            bar3.Children.Add(CategoryCheck("Mái", "Mái tôn", Brushes.WhiteSmoke, "Ẩn / hiện mái tôn, xà gồ, vì kèo, thưng tường"));
+            bar3.Children.Add(InfoCardCheck(Brushes.WhiteSmoke));
+            g.Children.Add(bar3);
+            SyncCategoryChecks();
             var hint = new TextBlock
             {
                 Text = "Trái: xoay / bấm chọn  •  Giữa hoặc phải: di chuyển  •  Shift + giữa: xoay  •  Con lăn: thu phóng vào con trỏ  •  F / đúp giữa: vừa màn hình  •  Q: quét chọn",
@@ -116,6 +124,7 @@ public partial class MainWindow
             };
             g.Children.Add(hint);
             view3DHost.Child = g;
+            EnsureInfoCards();
         }
     }
 
@@ -220,20 +229,23 @@ public partial class MainWindow
             AddPickModel(group, pick, footMesh, Diffuse(Color.FromArgb(a, 150, 150, 150)), true);
         }
         AddPickModel(group, pick, slabMesh, Diffuse(Color.FromArgb((byte)(dim ? 30 : 110), 150, 210, 150)), true);
-        if (_chkWall3D == null || _chkWall3D.IsChecked == true)
+        if (!_hideWalls)
         {
-            var wallMesh = new MeshGeometry3D();
+            var wallMesh = new PickMesh();   // tường bấm chọn được → thẻ thông tin
             AddWalls3D(wallMesh);
-            AddModel(group, wallMesh, Color.FromArgb((byte)(dim ? 40 : 150), 214, 168, 130), true);
+            AddPickModel(group, pick, wallMesh, Diffuse(Color.FromArgb((byte)(dim ? 40 : 150), 214, 168, 130)), true);
         }
+        AddDoors3D(group, pick, dim);          // cửa đi / cửa sổ trong ô cửa – MainWindow.RoofFraming.cs
+        AddRoofFramings3D(group, pick, dim);   // mái tôn, xà gồ, vì kèo, thưng tường
         AddExtras3D(group, pick, dim);   // đồ đạc + thiết bị điện nước (chọn, kéo) – MainWindow.Furnish.cs
         if (overlay != null) group.Children.Add(overlay);
         return group;
     }
 
     /// <summary>Tường xây: mỗi đoạn tường tách thành các khối quanh ô cửa (WallSolid3D.Pieces) – ô cửa đi / cửa sổ hiện là lỗ thật.</summary>
-    private void AddWalls3D(MeshGeometry3D m)
+    private void AddWalls3D(PickMesh pm)
     {
+        var m = pm.Mesh;
         if (_p?.Walls == null) return;
         foreach (var w in _p.Walls)
         {
@@ -245,6 +257,7 @@ public partial class MainWindow
             double H = WallSolid3D.DefaultHeight(_p, w);
             double dx = w.X2 - w.X1, dy = w.Y2 - w.Y1, L = Math.Sqrt(dx * dx + dy * dy);
             double ux = dx / L, uy = dy / L, nx = -uy * t / 2, ny = ux * t / 2;
+            pm.Begin(w);
             foreach (var pc in WallSolid3D.Pieces(_p, w, H))
             {
                 double z0 = st.Elevation + pc.Z0, z1 = st.Elevation + pc.Z1;
@@ -463,13 +476,18 @@ public partial class MainWindow
     private void SelectObject(object o)
     {
         if (o is not Solid) _v3SelId = null;   // bỏ chọn đồ đạc 3D khi chọn cấu kiện khác
+        if (o is not RoofFraming) _selRoof = null;
+        if (o is not HostedRef) ClearHostedSelection(false);
         switch (o)
         {
+            case WallLine w: Select(wall: w); break;
+            case HostedRef hr: if (HasSelection) Select(); SelectHostedOpening(hr.Wall, hr.Opening); txtInfo.Text = DoorInfo(hr.Wall, hr.Opening); _need3DRebuild = true; BuildMain3D(false); break;
+            case RoofFraming rf: SelectRoof(rf); break;
             case FrameElement f: Select(frame: f); break;
             case Slab s: Select(slab: s); break;
             case FootingDesign fd: Select(footingNode: fd.NodeId); break;
             case Solid so: Select3DSolid(so); return;
-            default: if (HasSelection) ClearSelection(); break;
+            default: if (HasSelection) ClearSelection(); else OnSelectionChanged(); break;
         }
     }
 

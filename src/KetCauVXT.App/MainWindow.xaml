@@ -97,6 +97,15 @@
                 <MenuItem Header="Chiều cao tầng (giữ mô hình)…" Click="MnuStoryHeights_Click"/>
                 <MenuItem Header="Tạo khung BTCT từ lưới trục" Click="MnuBuildGrid_Click"/>
                 <MenuItem Header="Tạo khung thép tiền chế..." Click="MnuBuildPortal_Click"/>
+                <MenuItem Header="Mái tôn / xà gồ / vì kèo">
+                    <MenuItem Header="Lợp mái tôn nhà thép tiền chế (kéo chọn diện)…" Click="MnuRoofPeb_Click"/>
+                    <MenuItem Header="Thưng bịt tường tôn (kéo chọn đoạn tường)…" Click="MnuRoofWall_Click"/>
+                    <MenuItem Header="Mái chống nóng nhà dân dụng (kéo chọn diện)…" Click="MnuRoofHeat_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Sửa hệ mái đang chọn…" Click="MnuRoofEdit_Click"/>
+                    <MenuItem Header="Profile mái tôn…" Click="MnuSheetProfile_Click"/>
+                    <MenuItem Header="Bảng khối lượng hệ mái…" Click="MnuRoofList_Click"/>
+                </MenuItem>
                 <Separator/>
                 <MenuItem Header="Dầm (2 điểm)" Tag="AddBeam" Click="MnuDrawMode_Click"/>
                 <MenuItem Header="Dầm cong" Tag="AddCurvedBeam" Click="MnuDrawMode_Click"/>

@@ -114,6 +114,7 @@ public partial class MainWindow
         if (CadLinkAlignClick(s)) return;   // [CadLink] căn bản vẽ liên kết theo 2 điểm – MainWindow.CadLink.cs
         if (RevitPlanClick(s)) return;   // [Kiểu Revit] đặt cửa, chọn cửa, tường theo đường định vị – MainWindow.RevitDraw.cs
         if (CmdPlanClick(s)) return;   // [Dòng lệnh] cột, đo khoảng cách… – MainWindow.CadCommandLine.cs
+        if (_mode == PlanEditMode.Select && RoofFramingClick(s)) return;   // [Hệ mái tôn] chọn mái / xà gồ / vì kèo
         if (_mode == PlanEditMode.Select) { _multiSel.Clear(); _multiSlab.Clear(); _mixSel.Clear(); SelectAt(s); return; }
         if (_mode == PlanEditMode.MultiSelect) { MultiSelectClick(s); return; }   // [BeamTools]
         if (_busy) { SetStatus("Chương trình đang tính toán – chờ xong rồi sửa mô hình."); return; }
@@ -320,6 +321,7 @@ public partial class MainWindow
     {
         if (_p == null) return false;
         if (key == Key.Tab && !ctrl && !IsTextInputFocused() && TabCycle()) return true;   // [Kiểu Revit] Tab chuyển vòng đối tượng chồng nhau – MainWindow.RevitGrips.cs
+        if (!ctrl && !IsTextInputFocused() && HandleRoofKey(key)) return true;   // [Hệ mái tôn] Esc kết thúc vẽ, Delete xoá hệ mái đang chọn
         if (MixedSelKey(key, ctrl)) return true;   // [Quét chọn] Delete / Esc với nhóm đối tượng đã quét – MainWindow.SelectGridLevel.cs
         if (!ctrl && RevitPlanKey(key)) return true;   // [Kiểu Revit] Esc / Delete khi đặt / chọn cửa – MainWindow.RevitDraw.cs
         if (key == Key.Enter && !ctrl && !IsTextInputFocused() && BeamEditAuto()) return true;   // [Sửa dầm] Extend tự động

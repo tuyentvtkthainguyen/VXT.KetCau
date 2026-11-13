@@ -143,6 +143,7 @@ public partial class MainWindow
         if (_p == null) return;
         if (_fitPending) { FitPlan(); if (_fitPending) return; }
         RefreshEditCombos();
+        EnsurePlanCategoryChecks(); EnsureInfoCards();   // [Ẩn/hiện tường, cửa, mái] [Thẻ thông tin]
         BeginLabelLayout();   // [Kiểu Revit] tránh chồng nhãn – MainWindow.RevitDraw.cs
         bool labels = chkLabels.IsChecked == true;
         double w = planHost.ActualWidth, h = planHost.ActualHeight;
@@ -229,6 +230,7 @@ public partial class MainWindow
         // ---- tường (MainWindow.Walls.cs) ----
         DrawWalls(labels);
         DrawArchExtras(labels);   // [Bộ môn] phòng, đồ đạc, thiết bị điện nước – MainWindow.Disciplines.cs
+        DrawRoofFramings(labels);   // [Hệ mái tôn] mái tôn, xà gồ, vì kèo, thưng tường – MainWindow.RoofFraming.cs
         int dsE = planCanvas.Children.Count;
 
         // ---- cột ----
@@ -381,6 +383,7 @@ public partial class MainWindow
     private void DrawHover()
     {
         planOverlay.Children.Clear();
+        if (DrawRoofDragOverlay()) return;   // [Hệ mái tôn] khung đang kéo
         if (DrawArchDetailOverlay()) return;   // dây chun vẽ lan can – MainWindow.ArchDetail.cs
         if (DrawGripOrEditOverlay()) return;   // [Kiểu Revit] kéo tay nắm, bóng đối tượng khi CO / M / MI / AR / O – MainWindow.RevitGrips.cs
         if (DrawCadAlignOverlay()) return;   // [CadLink] căn bản vẽ theo 2 điểm – MainWindow.CadLink.cs
@@ -530,6 +533,7 @@ public partial class MainWindow
     private void PlanHost_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         planHost.Focus(); // để Delete / Esc / Ctrl+Z tác động lên mặt bằng
+        if (RoofDragDown(e.GetPosition(planHost))) return;   // [Hệ mái tôn] kéo khung chọn diện – MainWindow.RoofFraming.cs
         if (GridDragDown(e.GetPosition(planHost))) return;   // kéo trục bằng bong bóng – MainWindow.GridDrag.cs
         if (GripMouseDown(e.GetPosition(planHost))) return;   // [Kiểu Revit] kéo tay nắm – MainWindow.RevitGrips.cs
         _panning = true; _dragged = false;
@@ -541,6 +545,7 @@ public partial class MainWindow
 
     private void PlanHost_MouseMove(object sender, MouseEventArgs e)
     {
+        if (RoofDragMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // [Hệ mái tôn]
         if (GridDragMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // kéo trục
         if (GripMouseMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // [Kiểu Revit] tay nắm
         if (!_panning)
@@ -564,6 +569,7 @@ public partial class MainWindow
 
     private void PlanHost_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (RoofDragUp(e.GetPosition(planHost))) return;   // [Hệ mái tôn] thả khung → tạo hệ mái
         if (GridDragUp(e.GetPosition(planHost))) return;   // thả trục → 1 bước hoàn tác
         if (GripMouseUp(e.GetPosition(planHost))) return;   // [Kiểu Revit] thả tay nắm → 1 bước hoàn tác
         if (!_panning) return;
@@ -704,6 +710,7 @@ public partial class MainWindow
     // ------------------------------------------------------------------
     private void ShowSelection()
     {
+        if (ShowRoofSelection()) { DrawDiagram(); return; }   // [Hệ mái tôn]
         if (_p != null && _selWall != null && _p.Walls.Contains(_selWall)) { txtInfo.Text = WallInfo(_selWall); DrawDiagram(); return; }
         if (_p != null && _selOpening != null && _p.Openings.Contains(_selOpening)) { txtInfo.Text = OpeningInfo(_selOpening); DrawDiagram(); return; }
         if (_p != null && _selSlab != null && _p.Slabs.Contains(_selSlab)) { txtInfo.Text = SlabInfo(_selSlab); DrawDiagram(); return; }

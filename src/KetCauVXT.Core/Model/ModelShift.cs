@@ -20,6 +20,7 @@ public static class ModelShift
         foreach (var w in p.Walls) { w.X1 = R(w.X1 + dx); w.Y1 = R(w.Y1 + dy); w.X2 = R(w.X2 + dx); w.Y2 = R(w.Y2 + dy); nW++; }
         foreach (var o in p.Openings) { o.X0 = R(o.X0 + dx); o.Y0 = R(o.Y0 + dy); o.X1 = R(o.X1 + dx); o.Y1 = R(o.Y1 + dy); nO++; }
         foreach (var s in p.Stairs) { s.X0 = R(s.X0 + dx); s.Y0 = R(s.Y0 + dy); s.X1 = R(s.X1 + dx); s.Y1 = R(s.Y1 + dy); nO++; }
+        foreach (var r in p.RoofFramings) { r.X0 = R(r.X0 + dx); r.Y0 = R(r.Y0 + dy); r.X1 = R(r.X1 + dx); r.Y1 = R(r.Y1 + dy); nO++; }
         foreach (var b in p.Boreholes) { b.X = R(b.X + dx); b.Y = R(b.Y + dy); nO++; }
         if (p.Foundation?.Boundaries != null)
             foreach (var b in p.Foundation.Boundaries)
