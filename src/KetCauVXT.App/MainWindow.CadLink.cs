@@ -413,13 +413,13 @@ public partial class MainWindow
         var (vx1, vy0) = S2W(new Point(w, h));
         foreach (var l in _p.CadLinks)
         {
-            if (l == null || !l.Visible || !(all || l.AppliesTo(st))) continue;
+            if (l == null || !l.ShownOn(all ? null : st)) continue;   // [Xref theo tầng] chế độ riêng của tầng đang xem
             var g = CadLinkCache.Get(l);
             if (g == null) continue;
             CadLinkView v;
             try { v = g.View(l); } catch (Exception) { continue; }
             if (v.X1 < vx0 || v.X0 > vx1 || v.Y1 < vy0 || v.Y0 > vy1) continue;   // ngoài khung nhìn
-            double op = Math.Clamp(l.Opacity, 0.05, 1.0);
+            double op = Math.Clamp(all ? l.Opacity : l.OpacityOn(st), 0.03, 1.0);
             foreach (var (br, geo) in CadLinkParts(l, g, v))
             {
                 var gg = new GeometryGroup { Transform = mt };
@@ -567,7 +567,7 @@ public partial class MainWindow
         string st = CurrentStory;
         foreach (var l in _p.CadLinks)
         {
-            if (l == null || !l.Visible || !(st == AllStories || l.AppliesTo(st))) continue;
+            if (l == null || !l.ShownOn(st == AllStories ? null : st)) continue;
             var g = CadLinkCache.Get(l);
             if (g == null || g.SegmentCount == 0) continue;
             var v = g.View(l);

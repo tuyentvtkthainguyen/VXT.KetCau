@@ -567,6 +567,8 @@
                     <Button Content="Vừa màn hình" Click="BtnFit_Click" Style="{StaticResource SmallButton}" Margin="8,0,6,0"/>
                     <Button Content="Gắn bản vẽ (Xref)…" Click="BtnXrefAttach_Click" Style="{StaticResource SmallButton}" Margin="0,0,4,0"
                             ToolTip="Gắn bản vẽ AutoCAD DWG / DXF làm nền mặt bằng giống XREF (có thể kéo thả file vào khung nhìn). Tự đọc lại khi file thay đổi."/>
+                    <Button Content="Xref theo tầng…" Click="BtnXrefStory_Click" Style="{StaticResource SmallButton}" Margin="0,0,4,0"
+                            ToolTip="Mỗi tầng một chế độ hiển thị Xref riêng: hiện / mờ (tham chiếu, không bắt điểm) / ẩn"/>
                     <Button Content="Di chuyển Xref" Click="BtnXrefMove_Click" Style="{StaticResource SmallButton}" Margin="0,0,4,0"
                             ToolTip="Dời Xref bằng chuột để trùng trục thực tế: bấm điểm trên Xref (bắt điểm tím) → kéo / bấm điểm đích (bắt giao trục, nút, trục). Mũi tên nhích 10 mm (Shift 100, Ctrl 1). Esc kết thúc."/>
                     <Button Content="Ánh xạ Xref…" Click="BtnXrefMap_Click" Style="{StaticResource SmallButton}" Margin="0,0,4,0"

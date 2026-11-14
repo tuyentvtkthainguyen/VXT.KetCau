@@ -508,7 +508,7 @@ public static class CadLinkSnap
         foreach (var l in links)
         {
             if (l == null) continue;
-            if (!ignoreFlags && (!l.Visible || !l.Snap || !l.AppliesTo(story))) continue;
+            if (!ignoreFlags && (!l.Snap || !l.ShownOn(story) || l.HalftoneOn(story))) continue;   // [Xref theo tầng] mờ = chỉ tham chiếu, không bắt điểm
             var g = CadLinkCache.Get(l);
             if (g != null) yield return (l, g);
         }

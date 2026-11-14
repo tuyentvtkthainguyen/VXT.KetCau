@@ -63,7 +63,7 @@ public partial class MainWindow
     private IEnumerable<CadLink> VisibleLinks()
     {
         string st = CurrentStory; bool all = st == AllStories;
-        return _p?.CadLinks?.Where(l => l != null && l.Visible && (all || l.AppliesTo(st)) && CadLinkCache.Get(l) != null) ?? Enumerable.Empty<CadLink>();
+        return _p?.CadLinks?.Where(l => l != null && l.ShownOn(all ? null : st) && CadLinkCache.Get(l) != null) ?? Enumerable.Empty<CadLink>();
     }
 
     private void XrefMoveEnd(string msg = null)

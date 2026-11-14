@@ -300,10 +300,17 @@ public partial class MainWindow
         Ins(SmallBtn("📎 Liên kết DWG/DXF…", async () => { try { await CadLinkAddInteractive(); RedrawPlan(); } catch (Exception ex) { ShowError("Liên kết bản vẽ", ex); } },
             "Gắn bản vẽ AutoCAD làm nền mặt bằng (như xref) cho tầng đang xem – bắt điểm vào nét bản vẽ khi vẽ dầm, cột, tường, sàn", out _));
         Ins(SmallBtn("Quản lý…", () => OpenCadLinkManager(), "Danh sách bản vẽ liên kết: tầng, layer bật/tắt, màu, dời / xoay / tỷ lệ, gỡ liên kết", out _));
-        Ins(SmallBtn("Ẩn / hiện", () => ForStoryLinks(l => l.Visible = !l.Visible, "Đã ẩn / hiện bản vẽ nền."), "Ẩn hoặc hiện bản vẽ nền của tầng đang xem", out _));
+        Ins(SmallBtn("Ẩn / hiện", () => ToggleStoryLinks(), "Ẩn hoặc hiện bản vẽ nền của RIÊNG tầng đang xem (tầng khác giữ nguyên)", out _));
+        Ins(SmallBtn("Xref theo tầng…", () => OpenXrefStoryViews(), "Mỗi tầng một chế độ hiển thị Xref riêng: hiện / mờ (tham chiếu) / ẩn, độ đậm riêng", out _));
         Ins(RLab("Độ mờ:"));
         _clOpacity = new Slider { Minimum = 0.1, Maximum = 1, Value = 0.55, Width = 70, Margin = new Thickness(0, 0, 6, 2), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Độ đậm nét bản vẽ nền" };
-        _clOpacity.ValueChanged += (s, e) => { if (!_clSyncing) ForStoryLinks(l => l.Opacity = Math.Round(_clOpacity.Value, 2), null); };
+        _clOpacity.ValueChanged += (s, e) =>
+        {
+            if (_clSyncing) return;
+            string cs = CurrentStory == AllStories ? null : CurrentStory;
+            // [Xref theo tầng] đang xem một tầng: độ đậm riêng của tầng đó
+            ForStoryLinks(l => { if (cs == null) l.Opacity = Math.Round(_clOpacity.Value, 2); else l.SetStoryMode(cs, l.ViewOn(cs)?.Mode ?? CadLinkStoryView.Show, Math.Round(_clOpacity.Value, 2)); }, null);
+        };
         Ins(_clOpacity);
         Ins(SmallBtn("Đọc lại", async () =>
         {
@@ -342,7 +349,8 @@ public partial class MainWindow
         _clSyncing = true;
         try
         {
-            if (_clOpacity != null && l != null) _clOpacity.Value = Math.Clamp(l.Opacity, _clOpacity.Minimum, _clOpacity.Maximum);
+            string cs = CurrentStory == AllStories ? null : CurrentStory;
+            if (_clOpacity != null && l != null) _clOpacity.Value = Math.Clamp(cs == null ? l.Opacity : (l.ViewOn(cs)?.Opacity > 0 ? l.ViewOn(cs).Opacity : l.Opacity), _clOpacity.Minimum, _clOpacity.Maximum);
             if (_clLockBtn != null) _clLockBtn.IsChecked = l != null && l.Locked;
         }
         finally { _clSyncing = false; }
@@ -352,7 +360,7 @@ public partial class MainWindow
     {
         if (_p?.CadLinks == null) return Enumerable.Empty<CadLink>();
         string st = CurrentStory == AllStories ? null : CurrentStory;
-        return _p.CadLinks.Where(l => l.AppliesTo(st));
+        return _p.CadLinks.Where(l => st == null ? l.Visible : l.ShownOn(st) || l.AppliesTo(st));
     }
 
     private void ForStoryLinks(Action<CadLink> change, string msg)

@@ -71,6 +71,45 @@ public class CadLink
     [JsonIgnore]
     public bool IsAllStories => string.IsNullOrWhiteSpace(Story) || Story == AllStories;
 
+    // ---- [Xref theo tầng] mỗi tầng một chế độ hiển thị riêng ----
+    /// <summary>Chế độ hiển thị riêng từng tầng (tên tầng → chế độ). Tầng không có trong bảng: theo <see cref="Story"/> + <see cref="Visible"/>.</summary>
+    public Dictionary<string, CadLinkStoryView> StoryViews { get; set; } = new();
+
+    /// <summary>Chế độ riêng của tầng (null = mặc định).</summary>
+    public CadLinkStoryView ViewOn(string story) =>
+        story != null && StoryViews != null && StoryViews.TryGetValue(story, out var v) && v != null && v.Mode != CadLinkStoryView.Default ? v : null;
+
+    /// <summary>Bản vẽ có hiện trên mặt bằng tầng story không (story = null: xem mọi tầng → theo Visible).</summary>
+    public bool ShownOn(string story)
+    {
+        if (story == null) return Visible;
+        var v = ViewOn(story);
+        if (v != null) return v.Mode != CadLinkStoryView.Hide;
+        return Visible && AppliesTo(story);
+    }
+
+    /// <summary>Hiện dạng mờ (tham chiếu, không bắt điểm) trên tầng story.</summary>
+    public bool HalftoneOn(string story) => ViewOn(story)?.Mode == CadLinkStoryView.Halftone;
+
+    /// <summary>Độ đậm nét trên tầng story: độ đậm riêng của tầng (nếu có), mờ = 35 %.</summary>
+    public double OpacityOn(string story)
+    {
+        var v = ViewOn(story);
+        double o = v != null && v.Opacity > 0 ? v.Opacity : Opacity;
+        return v?.Mode == CadLinkStoryView.Halftone ? o * 0.35 : o;
+    }
+
+    /// <summary>Đặt chế độ riêng cho tầng (Default = xoá chế độ riêng).</summary>
+    public void SetStoryMode(string story, string mode, double opacity = 0)
+    {
+        if (string.IsNullOrEmpty(story)) return;
+        StoryViews ??= new();
+        if (mode == CadLinkStoryView.Default && opacity <= 0) { StoryViews.Remove(story); return; }
+        if (!StoryViews.TryGetValue(story, out var v) || v == null) StoryViews[story] = v = new CadLinkStoryView();
+        v.Mode = mode;
+        if (opacity > 0) v.Opacity = opacity;
+    }
+
     /// <summary>Bản vẽ hiện trên tầng story ("(Tất cả)" của mặt bằng → mọi bản vẽ).</summary>
     public bool AppliesTo(string story) => IsAllStories || string.Equals(Story, story, StringComparison.Ordinal) || story == null;
 
@@ -179,4 +218,15 @@ public partial class Project
     {
         foreach (var l in CadLinks ?? new List<CadLink>()) l?.UpdateRelative(projectPath);
     }
+}
+
+/// <summary>[Xref theo tầng] Chế độ hiển thị bản vẽ liên kết trên một tầng.</summary>
+public class CadLinkStoryView
+{
+    public const string Default = "Mặc định", Show = "Hiện", Halftone = "Mờ (tham chiếu)", Hide = "Ẩn";
+    public static readonly string[] Modes = { Default, Show, Halftone, Hide };
+    /// <summary>Mặc định | Hiện | Mờ (tham chiếu) | Ẩn</summary>
+    public string Mode { get; set; } = Default;
+    /// <summary>Độ đậm riêng của tầng (0 = theo bản vẽ)</summary>
+    public double Opacity { get; set; }
 }

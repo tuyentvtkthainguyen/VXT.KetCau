@@ -156,6 +156,7 @@ public partial class MainWindow
         await Pause(300);
         Shot($"{tag}_59_DiChuyenXref_Xong");
         CadLinkRemove(l);
+        await SelfTestXrefStory(tag);
 
         // 2) đo tốc độ với Xref lớn
         string big = Path.Combine(SelfTestOut, tag + "_XrefLon.dxf");
@@ -192,6 +193,42 @@ public partial class MainWindow
         CadLinkRemove(lb);
         Width = w0; Height = h0; WindowState = ws0; UpdateLayout(); await Pause(300);
         FitPlan();
+    }
+
+    /// <summary>[Xref theo tầng] hai bản vẽ gắn cho hai tầng; tầng trên xem bản vẽ tầng dưới dạng mờ (không bắt điểm); ẩn riêng một tầng.</summary>
+    private async Task SelfTestXrefStory(string tag)
+    {
+        var sts = _p.Stories.OrderBy(s => s.Elevation).Select(s => s.Name).ToList();
+        if (sts.Count < 2) return;
+        string s0 = sts[0], s1 = sts[1];
+        string pa = Path.Combine(SelfTestOut, tag + "_XrefTang1.dxf"), pb = Path.Combine(SelfTestOut, tag + "_XrefTang2.dxf");
+        File.WriteAllText(pa, GridSampleDxf(_p, 0, 0), new UTF8Encoding(false));
+        File.WriteAllText(pb, GridSampleDxf(_p, 0.5, 0.5), new UTF8Encoding(false));
+        cbStory.SelectedItem = s0; await Pause(200);
+        var a = await XrefAttach(pa, null);
+        cbStory.SelectedItem = s1; await Pause(200);
+        var b = await XrefAttach(pb, null);
+        if (a == null || b == null || a.Story != s0 || b.Story != s1) throw new Exception("Xref theo tầng: gắn bản vẽ cho tầng sai");
+        string snap = Snapshot();
+        a.SetStoryMode(s1, CadLinkStoryView.Halftone);     // tầng trên xem tầng dưới dạng mờ
+        b.SetStoryMode(s0, CadLinkStoryView.Hide);
+        PushUndo(snap);
+        bool ok = a.ShownOn(s0) && a.ShownOn(s1) && a.HalftoneOn(s1) && b.ShownOn(s1) && !b.ShownOn(s0);
+        var snapLinks = CadLinkSnap.Active(_p, s1).Select(q => q.link.Id).ToList();
+        StLog($"xref theo tầng: {a.DisplayName} ở {s0} {(a.ShownOn(s0) ? "hiện" : "ẩn")}, ở {s1} {(a.HalftoneOn(s1) ? "mờ" : a.ShownOn(s1) ? "hiện" : "ẩn")} (độ đậm {a.OpacityOn(s1):0.##}); " +
+              $"{b.DisplayName} ở {s0} {(b.ShownOn(s0) ? "hiện" : "ẩn")}; bắt điểm tầng {s1}: {snapLinks.Count} bản vẽ");
+        if (!ok || snapLinks.Contains(a.Id) || !snapLinks.Contains(b.Id)) throw new Exception("Xref theo tầng: chế độ hiển thị / bắt điểm sai");
+        RedrawPlan(); await Pause(400);
+        Shot($"{tag}_59c_XrefTheoTang");
+        // ẩn / hiện riêng tầng đang xem
+        ToggleStoryLinks();
+        bool hid = !a.ShownOn(s1) && !b.ShownOn(s1) && a.ShownOn(s0);
+        ToggleStoryLinks();
+        StLog($"xref theo tầng: Ẩn/hiện tầng {s1} → {(hid ? "ẩn đúng tầng, tầng khác giữ" : "SAI")}");
+        if (!hid) throw new Exception("Xref theo tầng: ẩn / hiện tác động sai tầng");
+        var w = OpenXrefStoryViews();
+        if (w != null) { await Pause(700); ShotWindow(w, $"{tag}_59d_XrefTheoTangBang"); w.Close(); }
+        CadLinkRemove(a); CadLinkRemove(b);
     }
 
     private async Task SelfTestCadLink(string tag)
