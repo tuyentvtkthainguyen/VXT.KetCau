@@ -693,6 +693,9 @@ public static partial class UserGuide
                 + "Bấm **CHUYỂN ĐỔI** → bảng **Xác nhận chuyển đổi layer** liệt kê layer gốc → layer chuẩn, số đối tượng và cột **Layer cũ sau khi chuyển**: "
                 + "**Giữ nguyên**, **Xoá layer cũ** (chỉ xoá khi không còn đối tượng, kể cả trong block; layer 0, Defpoints, xref luôn giữ) hoặc **Đổi tên layer cũ** (sửa ô **Tên mới**; "
                 + "**Áp dụng cho tất cả** + hậu tố, mặc định _CU). Bấm **XÁC NHẬN CHUYỂN ĐỔI** mới thực hiện, **Quay lại** (Esc) để sửa bảng. Báo cáo cuối ghi số layer đã xoá / đổi tên và layer giữ lại kèm lý do.",
+                "**Dọn layer rác** (nút trên bảng lệnh VXT, lệnh VXT_DONLAYER / VXT_DL): liệt kê layer **trống** (không còn đối tượng, kể cả trong block – tích sẵn) và layer **tên rác** "
+                + "(XREF$0$…, Layer1, New Layer…, Copy of…, …(2), …_copy, A$C…, tên chỉ gồm chữ số – tự tích). Layer tên rác còn đối tượng: đối tượng được chuyển sang layer chọn (mặc định 0) trước khi xoá. "
+                + "Bấm **XOÁ LAYER ĐÃ CHỌN** → bảng **Xác nhận xoá layer** → **XÁC NHẬN XOÁ** mới thực hiện; layer 0, Defpoints, xref luôn giữ; gõ U để hoàn tác.",
                 "**Cách áp dụng** (AutoCAD): ① **Tạo bản sao chuẩn hoá <tên>_VXT.dwg** cạnh file – bản vẽ gốc giữ nguyên (mặc định, khuyên dùng; có thể bind xref đã nạp trong bản sao); "
                 + "② **Chuyển đối tượng sang layer chuẩn** ngay trong bản vẽ đang mở; ③ **Đổi tên layer** khi một layer gốc ứng với một layer chuẩn, phần còn lại chuyển đối tượng. "
                 + "② và ③ là một lệnh – gõ **U** để hoàn tác. Tuỳ chọn: sửa cả đối tượng trong định nghĩa block, block cửa → layer cửa, lưu thêm DXF (<tên>_VXT.dxf) để mở trong Việt Const, gửi sang Việt Const (VXT_GUI) sau khi chuẩn hoá. "
