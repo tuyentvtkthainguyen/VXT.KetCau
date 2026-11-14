@@ -23,6 +23,17 @@ public partial class MainWindow
     internal bool XrefMoveActive => _xmvStep > 0;
     private static string XrefTag(CadLink l) => "XREF:" + l?.Id;
 
+    /// <summary>Điểm bắt bản vẽ GẦN CON TRỎ NHẤT: ưu tiên loại điểm (đầu mút, giao, giữa) chỉ cộng thêm vài pixel – trước đây sắp theo
+    /// loại trước rồi mới khoảng cách nên khi thu nhỏ (bán kính bắt lớn) điểm bắt nhảy sang đầu nét ở xa → không đặt được đúng vị trí.</summary>
+    private double SnapScore(SnapCandidate c) => c.Dist + Math.Min(c.Priority, 6) * 2.5 / Math.Max(_scale, 1e-6);
+
+    private SnapCandidate NearestXrefSnap(IEnumerable<SnapCandidate> cands)
+    {
+        var list = cands?.ToList() ?? new List<SnapCandidate>();
+        var pts = list.Where(q => q.Kind is SnapKind.End or SnapKind.Intersection or SnapKind.Midpoint or SnapKind.Node or SnapKind.GridIntersection or SnapKind.CadEnd or SnapKind.CadMid or SnapKind.CadIntersection or SnapKind.CadCenter).ToList();
+        return (pts.Count > 0 ? pts : list).OrderBy(SnapScore).FirstOrDefault();
+    }
+
     private void BtnXrefMove_Click(object sender, RoutedEventArgs e) => XrefMoveStart();
 
     /// <summary>Bật chế độ di chuyển Xref. linkId = null: chọn bản vẽ theo điểm bấm đầu tiên.</summary>
@@ -73,9 +84,8 @@ public partial class MainWindow
         SnapCandidate best = null; CadLink bl = null;
         foreach (var l in links)
         {
-            var c = CadLinkSnap.Candidates(CadLinkSnap.Active(new[] { l }, null, true), x, y, tol, SnapMask.All)
-                               .OrderBy(q => q.Priority).ThenBy(q => q.Dist).FirstOrDefault();
-            if (c != null && (best == null || c.Priority < best.Priority || (c.Priority == best.Priority && c.Dist < best.Dist))) { best = c; bl = l; }
+            var c = NearestXrefSnap(CadLinkSnap.Candidates(CadLinkSnap.Active(new[] { l }, null, true), x, y, tol, SnapMask.All));
+            if (c != null && (best == null || SnapScore(c) < SnapScore(best))) { best = c; bl = l; }
         }
         if (best != null) return (bl, best.X, best.Y, true);
         return (links.FirstOrDefault(), x, y, false);

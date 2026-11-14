@@ -724,8 +724,7 @@ public partial class MainWindow
     private (double X, double Y) CadAlignSource(CadLink l, double x, double y, double tol)
     {
         if (CadLinkCache.Get(l) == null) return (x, y);
-        var c = CadLinkSnap.Candidates(CadLinkSnap.Active(new[] { l }, null, true), x, y, tol, SnapMask.All)
-            .OrderBy(q => q.Priority).ThenBy(q => q.Dist).FirstOrDefault();
+        var c = NearestXrefSnap(CadLinkSnap.Candidates(CadLinkSnap.Active(new[] { l }, null, true), x, y, tol, SnapMask.All));   // gần con trỏ nhất
         return c != null ? (c.X, c.Y) : (x, y);
     }
 
