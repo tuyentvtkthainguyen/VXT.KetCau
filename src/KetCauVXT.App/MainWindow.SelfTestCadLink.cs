@@ -163,6 +163,9 @@ public partial class MainWindow
         File.WriteAllText(big, HeavyDxf(60000, 1500, W, H), new UTF8Encoding(false));
         var lb = await XrefAttach(big, null);
         if (lb == null) throw new Exception("Xref lớn: không gắn được");
+        // cửa sổ CI nhỏ: phóng to tạm để khung mặt bằng có diện tích thật khi đo
+        var ws0 = WindowState; double w0 = Width, h0 = Height;
+        WindowState = WindowState.Normal; Width = 1900; Height = 1250; UpdateLayout();
         ShowPlanTab(); tabView.SelectedItem = ViewTab("Mặt bằng"); cbStory.SelectedItem = _p.Stories.OrderBy(q => q.Elevation).First().Name;
         await Pause(600); FitPlan(); RedrawPlan(); await Pause(500);
         StLog($"xref lớn: khung vẽ {planHost.ActualWidth:0}×{planHost.ActualHeight:0}, {planCanvas.Children.Count} hình, chờ vừa màn hình {_fitPending}, tầng {CurrentStory}, áp dụng tầng {lb.AppliesTo(CurrentStory)}");
@@ -184,8 +187,10 @@ public partial class MainWindow
         await Pause(500);
         StLog($"tốc độ mặt bằng (Xref 60000 nét + 1500 chữ): vẽ lại {tRedraw:0} ms/lần, di chuột khi vẽ dầm {tMove:0.0} ms/lần, kéo dời {tPan:0.00} ms/lần ({redrawsDuringPan} lần vẽ lại trong 30 bước kéo; sau khi ngừng: {PlanRedrawCount - n0} lần)");
         if (redrawsDuringPan > 0 && planCanvas.Children.Count > 0) throw new Exception("Mượt khi vẽ: kéo dời vẫn vẽ lại toàn bộ mặt bằng");
+        Shot($"{tag}_59b_XrefLon");
         rbModeSelect.IsChecked = true;
         CadLinkRemove(lb);
+        Width = w0; Height = h0; WindowState = ws0; UpdateLayout(); await Pause(300);
         FitPlan();
     }
 
