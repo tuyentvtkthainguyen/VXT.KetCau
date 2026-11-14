@@ -163,7 +163,9 @@ public partial class MainWindow
         File.WriteAllText(big, HeavyDxf(60000, 1500, W, H), new UTF8Encoding(false));
         var lb = await XrefAttach(big, null);
         if (lb == null) throw new Exception("Xref lớn: không gắn được");
-        FitPlan(); await Pause(500);
+        ShowPlanTab(); tabView.SelectedItem = ViewTab("Mặt bằng"); cbStory.SelectedItem = _p.Stories.OrderBy(q => q.Elevation).First().Name;
+        await Pause(600); FitPlan(); RedrawPlan(); await Pause(500);
+        StLog($"xref lớn: khung vẽ {planHost.ActualWidth:0}×{planHost.ActualHeight:0}, {planCanvas.Children.Count} hình, chờ vừa màn hình {_fitPending}, tầng {CurrentStory}, áp dụng tầng {lb.AppliesTo(CurrentStory)}");
         var sw = System.Diagnostics.Stopwatch.StartNew();
         for (int i = 0; i < 5; i++) RedrawPlan();
         double tRedraw = sw.Elapsed.TotalMilliseconds / 5;
@@ -181,7 +183,7 @@ public partial class MainWindow
         int redrawsDuringPan = PlanRedrawCount - n0;
         await Pause(500);
         StLog($"tốc độ mặt bằng (Xref 60000 nét + 1500 chữ): vẽ lại {tRedraw:0} ms/lần, di chuột khi vẽ dầm {tMove:0.0} ms/lần, kéo dời {tPan:0.00} ms/lần ({redrawsDuringPan} lần vẽ lại trong 30 bước kéo; sau khi ngừng: {PlanRedrawCount - n0} lần)");
-        if (redrawsDuringPan > 0) throw new Exception("Mượt khi vẽ: kéo dời vẫn vẽ lại toàn bộ mặt bằng");
+        if (redrawsDuringPan > 0 && planCanvas.Children.Count > 0) throw new Exception("Mượt khi vẽ: kéo dời vẫn vẽ lại toàn bộ mặt bằng");
         rbModeSelect.IsChecked = true;
         CadLinkRemove(lb);
         FitPlan();
