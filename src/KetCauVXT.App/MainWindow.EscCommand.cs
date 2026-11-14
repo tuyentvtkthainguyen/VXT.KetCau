@@ -21,7 +21,7 @@ public partial class MainWindow
         if (_fndTool != FndTool.None) return true;
         if (!PlanTabActive) return false;
         return _mode != PlanEditMode.Select || _lineStart != null || _cmdStage != CmdStage.None || _adTool != AdTool.None
-               || _fnPlace != null || _secTool || _rvPlaceType != null || _gridTool || _clAlignStep > 0;
+               || _fnPlace != null || _secTool || _rvPlaceType != null || _gridTool || _clAlignStep > 0 || _xmvStep > 0 || _rfTool != null;
     }
 
     /// <summary>Esc thuộc về ô đang nhập (ô bảng đang sửa, danh sách thả xuống đang mở).</summary>
@@ -66,5 +66,5 @@ public partial class MainWindow
     }
 
     private string StateKey() =>
-        $"{_mode}|{_lineStart}|{_cmdStage}|{_adTool}|{_fnPlace != null}|{_secTool}|{_rvPlaceType != null}|{_gridTool}|{_clAlignStep}|{_multiSel.Count}|{_multiSlab.Count}";
+        $"{_mode}|{_lineStart}|{_cmdStage}|{_adTool}|{_fnPlace != null}|{_secTool}|{_rvPlaceType != null}|{_gridTool}|{_clAlignStep}|{_xmvStep}|{_rfTool != null}|{_multiSel.Count}|{_multiSlab.Count}";
 }

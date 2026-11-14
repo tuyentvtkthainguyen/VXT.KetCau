@@ -137,6 +137,7 @@ public partial class MainWindow
 
     private void RedrawPlan()
     {
+        PlanRedrawBegin();   // [Mượt khi vẽ] bỏ phép dời / phóng tạm – MainWindow.PlanPerf.cs
         planCanvas.Children.Clear();
         planOverlay.Children.Clear();
         UpdateUndoButton();
@@ -383,6 +384,7 @@ public partial class MainWindow
     private void DrawHover()
     {
         planOverlay.Children.Clear();
+        if (DrawXrefMoveOverlay()) return;   // [Di chuyển Xref]
         if (DrawRoofDragOverlay()) return;   // [Hệ mái tôn] khung đang kéo
         if (DrawArchDetailOverlay()) return;   // dây chun vẽ lan can – MainWindow.ArchDetail.cs
         if (DrawGripOrEditOverlay()) return;   // [Kiểu Revit] kéo tay nắm, bóng đối tượng khi CO / M / MI / AR / O – MainWindow.RevitGrips.cs
@@ -526,13 +528,14 @@ public partial class MainWindow
         _planUserZoom = true;   // [Vừa màn hình] người dùng phóng tay → không tự vừa lại khi đổi cỡ vùng vẽ
         _ox = m.X - wx * _scale;
         _oy = m.Y + wy * _scale;
-        RedrawPlan();
+        PlanQuickView(160);   // [Mượt khi vẽ] phóng tức thời, dựng lại khi ngừng lăn
         e.Handled = true;
     }
 
     private void PlanHost_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         planHost.Focus(); // để Delete / Esc / Ctrl+Z tác động lên mặt bằng
+        if (XrefMoveDown(e.GetPosition(planHost))) return;   // [Di chuyển Xref] – MainWindow.XrefMove.cs
         if (RoofDragDown(e.GetPosition(planHost))) return;   // [Hệ mái tôn] kéo khung chọn diện – MainWindow.RoofFraming.cs
         if (GridDragDown(e.GetPosition(planHost))) return;   // kéo trục bằng bong bóng – MainWindow.GridDrag.cs
         if (GripMouseDown(e.GetPosition(planHost))) return;   // [Kiểu Revit] kéo tay nắm – MainWindow.RevitGrips.cs
@@ -545,26 +548,41 @@ public partial class MainWindow
 
     private void PlanHost_MouseMove(object sender, MouseEventArgs e)
     {
-        if (RoofDragMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // [Hệ mái tôn]
-        if (GridDragMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // kéo trục
-        if (GripMouseMove(e.GetPosition(planHost))) { _lastMouse = e.GetPosition(planHost); return; }   // [Kiểu Revit] tay nắm
+        var mp = e.GetPosition(planHost);
+        if (_panning && _dragged && !_winDrag)
+        {
+            // kéo dời khung nhìn: xử lý ngay bằng phép dời tức thời (rẻ)
+            _ox = _panOx + mp.X - _panStart.X; _oy = _panOy + mp.Y - _panStart.Y;
+            _planUserZoom = true;
+            PlanQuickView();
+            return;
+        }
+        QueuePlanMove(mp);   // [Mượt khi vẽ] gộp sự kiện di chuột dồn dập – MainWindow.PlanPerf.cs
+    }
+
+    private void ProcessPlanMove(Point mp)
+    {
+        if (XrefMoveMove(mp)) { _lastMouse = mp; return; }   // [Di chuyển Xref] – MainWindow.XrefMove.cs
+        if (RoofDragMove(mp)) { _lastMouse = mp; return; }   // [Hệ mái tôn]
+        if (GridDragMove(mp)) { _lastMouse = mp; return; }   // kéo trục
+        if (GripMouseMove(mp)) { _lastMouse = mp; return; }   // [Kiểu Revit] tay nắm
         if (!_panning)
         {
-            _lastMouse = e.GetPosition(planHost);
+            _lastMouse = mp;
             if (MouseEditMove(_lastMouse.Value)) return;   // [Kiểu Revit] CO / M / MI / AR / O: dây chun + bóng đối tượng
             if (RevitPlanMove(_lastMouse.Value)) return;   // [Kiểu Revit] đặt cửa, kích thước tạm khi vẽ – MainWindow.RevitDraw.cs
             if (IsLineMode || IsBeamToolMode || IsBeamEditMode || CadAlignActive || _gridTool) { DrawHover(); return; }   // [CadLink] CadAlignActive   // dây chun + điểm bắt (MainWindow.Edit.cs), công cụ dầm (MainWindow.BeamTools.cs)
             UpdateHover(_lastMouse.Value);
             return;
         }
-        var p = e.GetPosition(planHost);
+        var p = mp;
         double dx = p.X - _panStart.X, dy = p.Y - _panStart.Y;
         if (!_dragged && Math.Abs(dx) + Math.Abs(dy) < 4) return;
         _dragged = true;
         if (_winDrag) { _winEnd = p; DrawHover(); return; }   // [BeamTools] kéo khung chọn thay vì di chuyển
         _ox = _panOx + dx; _oy = _panOy + dy;
         _planUserZoom = true;
-        RedrawPlan();
+        PlanQuickView();
     }
 
     private void PlanHost_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -572,9 +590,11 @@ public partial class MainWindow
         if (RoofDragUp(e.GetPosition(planHost))) return;   // [Hệ mái tôn] thả khung → tạo hệ mái
         if (GridDragUp(e.GetPosition(planHost))) return;   // thả trục → 1 bước hoàn tác
         if (GripMouseUp(e.GetPosition(planHost))) return;   // [Kiểu Revit] thả tay nắm → 1 bước hoàn tác
+        if (XrefMoveUp(e.GetPosition(planHost))) return;   // [Di chuyển Xref]
         if (!_panning) return;
         _panning = false;
         planHost.ReleaseMouseCapture();
+        PlanQuickFlush();   // [Mượt khi vẽ] dựng lại sau khi kéo
         if (EndBeamWindow(e.GetPosition(planHost))) return;   // [BeamTools]
         if (!_dragged) PlanClick(e.GetPosition(planHost));
     }

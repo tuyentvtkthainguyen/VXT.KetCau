@@ -28,7 +28,7 @@ public partial class MainWindow
 
     internal RoofFramingGeom RoofGeom(RoofFraming r)
     {
-        string key = System.Text.Json.JsonSerializer.Serialize(r) + "|" + RoofFramingBuilder.StoryElevation(_p, r.Story) + "|" + (RoofFramingBuilder.ProfileOf(_p, r)?.Weight ?? 0);
+        string key = $"{r.Kind}|{r.Story}|{r.X0}|{r.Y0}|{r.X1}|{r.Y1}|{r.RidgeAlongX}|{r.TwoSlopes}|{r.LowAtStart}|{r.SlopePercent}|{r.BaseOffset}|{r.TopOffset}|{r.Overhang}|{r.Profile}|{r.PurlinSection}|{r.PurlinSpacing}|{r.IncludeTrusses}|{r.TrussSpacing}|{r.ChordSection}|{r.WebSection}|{r.PostSection}|{r.LiveLoad}" + "|" + RoofFramingBuilder.StoryElevation(_p, r.Story) + "|" + (RoofFramingBuilder.ProfileOf(_p, r)?.Weight ?? 0);
         if (_rfGeo.TryGetValue(r.Id, out var c) && c.Key == key) return c.G;
         var g = RoofFramingBuilder.Build(_p, r);
         _rfGeo[r.Id] = (key, g);

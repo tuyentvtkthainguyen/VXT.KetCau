@@ -746,6 +746,7 @@ public partial class MainWindow
         _panning = false; _dragged = false;
         planHost.ReleaseMouseCapture();
         e.Handled = true;
+        PlanQuickFlush();   // [Mượt khi vẽ]
         DrawHover();
     }
 

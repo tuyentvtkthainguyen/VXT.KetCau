@@ -89,7 +89,9 @@ public partial class MainWindow
             info.Text = r.Message;
             if (r.Ok) w.Close();
         }, true);
-        root.Children.Add(DialogUi.Row(btnRun, DialogUi.Btn("Đóng", (s, e) => w.Close())));
+        root.Children.Add(DialogUi.Row(btnRun,
+            DialogUi.Btn("Di chuyển bằng chuột", (s, e) => { var l = Sel(); w.Close(); XrefMoveStart(l?.Id); }),
+            DialogUi.Btn("Đóng", (s, e) => w.Close())));
         w.Content = root;
         w.Closed += (s, e) => { if (_xmWin == w) _xmWin = null; };
         _xmWin = w;

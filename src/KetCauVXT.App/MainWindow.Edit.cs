@@ -321,6 +321,7 @@ public partial class MainWindow
     {
         if (_p == null) return false;
         if (key == Key.Tab && !ctrl && !IsTextInputFocused() && TabCycle()) return true;   // [Kiểu Revit] Tab chuyển vòng đối tượng chồng nhau – MainWindow.RevitGrips.cs
+        if (!IsTextInputFocused() && HandleXrefMoveKey(key)) return true;   // [Di chuyển Xref] Esc, mũi tên nhích – MainWindow.XrefMove.cs
         if (!ctrl && !IsTextInputFocused() && HandleRoofKey(key)) return true;   // [Hệ mái tôn] Esc kết thúc vẽ, Delete xoá hệ mái đang chọn
         if (MixedSelKey(key, ctrl)) return true;   // [Quét chọn] Delete / Esc với nhóm đối tượng đã quét – MainWindow.SelectGridLevel.cs
         if (!ctrl && RevitPlanKey(key)) return true;   // [Kiểu Revit] Esc / Delete khi đặt / chọn cửa – MainWindow.RevitDraw.cs

@@ -1,3 +1,5 @@
+using System.Windows;
+using System.Windows.Input;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -97,6 +99,94 @@ public partial class MainWindow
         if (hadDesign && _design == null) await EnsureDesign();
     }
 
+    /// <summary>DXF lớn (nhiều nét + chữ) để đo tốc độ vẽ mặt bằng khi có Xref.</summary>
+    private static string HeavyDxf(int lines, int texts, double w, double h)
+    {
+        var c = CultureInfo.InvariantCulture; var rnd = new Random(7);
+        var sb = new StringBuilder("0\nSECTION\n2\nHEADER\n9\n$INSUNITS\n70\n4\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n");
+        for (int i = 0; i < lines; i++)
+        {
+            double x = rnd.NextDouble() * w, y = rnd.NextDouble() * h, a = rnd.NextDouble() * Math.PI, L = 200 + rnd.NextDouble() * 1500;
+            sb.Append("0\nLINE\n8\nKT").Append(i % 12).Append("\n62\n").Append(1 + i % 7)
+              .Append("\n10\n").Append(x.ToString(c)).Append("\n20\n").Append(y.ToString(c)).Append("\n30\n0\n11\n").Append((x + L * Math.Cos(a)).ToString(c))
+              .Append("\n21\n").Append((y + L * Math.Sin(a)).ToString(c)).Append("\n31\n0\n");
+        }
+        for (int i = 0; i < texts; i++)
+            sb.Append("0\nTEXT\n8\nCHU\n10\n").Append((rnd.NextDouble() * w).ToString(c)).Append("\n20\n").Append((rnd.NextDouble() * h).ToString(c))
+              .Append("\n30\n0\n40\n250\n1\nPHONG ").Append(i).Append('\n');
+        sb.Append("0\nENDSEC\n0\nEOF\n");
+        return sb.ToString();
+    }
+
+    /// <summary>[Di chuyển Xref] kéo bản vẽ trục bằng chuột (mô phỏng) cho trùng trục; [Mượt khi vẽ] đo thời gian vẽ mặt bằng với Xref lớn.</summary>
+    private async Task SelfTestXrefMovePerf(string tag)
+    {
+        var gx = _p.GridsX.ToList(); var gy = _p.GridsY.ToList();
+        if (gx.Count == 0 || gy.Count == 0) return;
+        tabView.SelectedItem = ViewTab("Mặt bằng");
+        FitPlan(); await Pause(300);
+        // 1) di chuyển Xref bằng chuột
+        string path = Path.Combine(SelfTestOut, tag + "_XrefDiChuyen.dxf");
+        File.WriteAllText(path, GridSampleDxf(_p, 0.37, -0.29), new UTF8Encoding(false));
+        var l = await XrefAttach(path, null);
+        if (l == null) throw new Exception("Di chuyển xref: không gắn được bản vẽ");
+        // bản vẽ lệch trục 0.37 / -0.29 m (giữ gốc toạ độ vì trùng vùng mô hình)
+        FitPlan(); await Pause(300);
+        var src = l.ToModel(gx[0].Coord + 0.37, gy[0].Coord - 0.29);
+        XrefMoveStart(l.Id);
+        var sBase = W2S(src.X, src.Y); sBase.Offset(3, -2);   // lệch 3 px – phải bắt vào giao nét bản vẽ
+        var sDst = W2S(gx[0].Coord, gy[0].Coord); sDst.Offset(-4, 3);   // lệch 4 px – phải bắt vào giao trục
+        XrefMoveDown(sBase);
+        var mid = new Point((sBase.X + sDst.X) / 2, (sBase.Y + sDst.Y) / 2);
+        XrefMoveMove(mid); await Pause(200);
+        XrefMoveMove(sDst); await Pause(300);
+        Shot($"{tag}_58_DiChuyenXref_Keo");
+        XrefMoveUp(sDst);
+        var c1 = l.ToModel(gx[^1].Coord + 0.37, gy[^1].Coord - 0.29);
+        double err = Math.Abs(c1.X - gx[^1].Coord) + Math.Abs(c1.Y - gy[^1].Coord);
+        StLog($"di chuyển xref (kéo chuột): lệch gốc ({l.OffsetX:0.###}; {l.OffsetY:0.###}), sai lệch trục cuối {err * 1000:0.#} mm");
+        if (err > 0.002) throw new Exception("Di chuyển xref: kéo chuột không đưa bản vẽ trùng trục");
+        // nhích bằng phím mũi tên
+        HandleXrefMoveKey(Key.Right); HandleXrefMoveKey(Key.Left);
+        double err2 = Math.Abs(l.ToModel(gx[0].Coord + 0.37, 0).X - gx[0].Coord);
+        StLog($"di chuyển xref: nhích phải + trái → sai lệch {err2 * 1000:0.#} mm");
+        if (err2 > 0.0005) throw new Exception("Di chuyển xref: nhích phím mũi tên sai");
+        HandleXrefMoveKey(Key.Escape); HandleXrefMoveKey(Key.Escape);
+        if (XrefMoveActive) throw new Exception("Di chuyển xref: Esc không kết thúc chế độ");
+        await Pause(300);
+        Shot($"{tag}_59_DiChuyenXref_Xong");
+        CadLinkRemove(l);
+
+        // 2) đo tốc độ với Xref lớn
+        string big = Path.Combine(SelfTestOut, tag + "_XrefLon.dxf");
+        double W = (gx[^1].Coord - gx[0].Coord + 4) * 1000, H = (gy[^1].Coord - gy[0].Coord + 4) * 1000;
+        File.WriteAllText(big, HeavyDxf(60000, 1500, W, H), new UTF8Encoding(false));
+        var lb = await XrefAttach(big, null);
+        if (lb == null) throw new Exception("Xref lớn: không gắn được");
+        FitPlan(); await Pause(500);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (int i = 0; i < 5; i++) RedrawPlan();
+        double tRedraw = sw.Elapsed.TotalMilliseconds / 5;
+        // di chuột khi vẽ dầm (dây chun + bắt điểm Xref)
+        SetPlanMode("AddBeam"); await Pause(200);
+        var a = W2S(gx[0].Coord, gy[0].Coord); var b = W2S(gx[^1].Coord, gy[^1].Coord);
+        sw.Restart();
+        for (int i = 0; i < 60; i++) ProcessPlanMove(new Point(a.X + (b.X - a.X) * i / 60.0, a.Y + (b.Y - a.Y) * i / 60.0));
+        double tMove = sw.Elapsed.TotalMilliseconds / 60;
+        await Pause(100);
+        int n0 = PlanRedrawCount;
+        sw.Restart();
+        for (int i = 0; i < 30; i++) { _ox += 2; PlanQuickView(); }
+        double tPan = sw.Elapsed.TotalMilliseconds / 30;
+        int redrawsDuringPan = PlanRedrawCount - n0;
+        await Pause(500);
+        StLog($"tốc độ mặt bằng (Xref 60000 nét + 1500 chữ): vẽ lại {tRedraw:0} ms/lần, di chuột khi vẽ dầm {tMove:0.0} ms/lần, kéo dời {tPan:0.00} ms/lần ({redrawsDuringPan} lần vẽ lại trong 30 bước kéo; sau khi ngừng: {PlanRedrawCount - n0} lần)");
+        if (redrawsDuringPan > 0) throw new Exception("Mượt khi vẽ: kéo dời vẫn vẽ lại toàn bộ mặt bằng");
+        rbModeSelect.IsChecked = true;
+        CadLinkRemove(lb);
+        FitPlan();
+    }
+
     private async Task SelfTestCadLink(string tag)
     {
         if (_p == null || SelfTestOut == null) return;
@@ -153,6 +243,7 @@ public partial class MainWindow
         Shot($"{tag}_55_Xref");
         CadLinkRemove(xl);
         await SelfTestXrefMap(tag);
+        await SelfTestXrefMovePerf(tag);   // [Di chuyển Xref] + [Mượt khi vẽ]
         FitPlan();
     }
 }

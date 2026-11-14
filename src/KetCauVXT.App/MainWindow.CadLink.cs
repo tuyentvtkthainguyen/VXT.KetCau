@@ -424,7 +424,7 @@ public partial class MainWindow
             {
                 var gg = new GeometryGroup { Transform = mt };
                 gg.Children.Add(geo);
-                planCanvas.Children.Add(new Shapes.Path { Data = gg, Stroke = br, StrokeThickness = 1, Opacity = op, IsHitTestVisible = false, SnapsToDevicePixels = true });
+                planCanvas.Children.Add(new Shapes.Path { Data = gg, Stroke = br, StrokeThickness = 1, Opacity = op, IsHitTestVisible = false, SnapsToDevicePixels = true, Tag = XrefTag(l) });
             }
             if (!l.ShowText || v.Texts.Count == 0) continue;
             var vis = CadLinkSnap.LayerFilter(l, g);
@@ -435,7 +435,7 @@ public partial class MainWindow
                 if (t.X < vx0 || t.X > vx1 || t.Y < vy0 || t.Y > vy1) continue;
                 double fs = t.Height * _scale * 1.3;
                 if (fs < 5) continue;
-                var tb = new TextBlock { Text = t.Text, FontSize = Math.Min(fs, 60), Foreground = l.ByLayerColor ? ClBrush(g.LayerColors[t.Layer]) : ClGrey, Opacity = op, IsHitTestVisible = false };
+                var tb = new TextBlock { Text = t.Text, FontSize = Math.Min(fs, 60), Foreground = l.ByLayerColor ? ClBrush(g.LayerColors[t.Layer]) : ClGrey, Opacity = op, IsHitTestVisible = false, Tag = XrefTag(l) };
                 var sp = W2S(t.X, t.Y);
                 Canvas.SetLeft(tb, sp.X); Canvas.SetTop(tb, sp.Y - fs);
                 planCanvas.Children.Add(tb);
