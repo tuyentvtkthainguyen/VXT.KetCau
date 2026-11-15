@@ -58,7 +58,14 @@ public partial class MainWindow
         double sw = (tabLeft.SelectedContent as ScrollViewer)?.ScrollableWidth ?? -1;
         StLog($"khung trái hẹp 320 px: cuộn ngang được {sw:0} px (nội dung tối thiểu {LeftMinContentWidth} px)");
         if (sw <= 0) throw new Exception("Khung trái: không có thanh trượt ngang khi khung hẹp");
+        cbGrade.SelectedIndex = 4;
+        StLog($"cấp công trình: {_p.BuildingGrade} ({txtGradeHint.Text}); nhóm thẻ đang hiện: {LeftGroups[_leftGroup].Name}, {tabLeft.Items.OfType<TabItem>().Count(t => t.Visibility == Visibility.Visible)} thẻ");
+        if (_p.BuildingGrade != "Cấp III") throw new Exception("Cấp công trình không lưu vào dự án");
         Shot($"{tag}_14_KhungTraiHep");
+        ShowLeftGroup(1, true); await Pause(500);
+        Shot($"{tag}_14c_KhungTraiHep_KetQua");
+        SelectLeft("Địa chất"); await Pause(300);
+        if (_leftGroup != 0 || tabLeft.SelectedItem != tabGeo) throw new Exception("Thẻ theo lớp: chọn thẻ ở nhóm khác không tự chuyển nhóm");
         tabLeft.SelectedItem = tabGeo; await Pause(700);
         Shot($"{tag}_14b_KhungTraiHep_DiaChat");
         colLeftPanel.Width = w0; tabLeft.SelectedIndex = 0; await Pause(300);

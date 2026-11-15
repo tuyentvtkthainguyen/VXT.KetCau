@@ -67,6 +67,7 @@ public static class ExcelReport
         sh.AddRow("Tên công trình", p.Name);
         sh.AddRow("Địa điểm", p.Location);
         sh.AddRow("Chủ đầu tư", p.Owner);
+        sh.AddRow("Cấp công trình", p.BuildingGrade);
         sh.AddRow("Người thiết kế", p.Designer);
         sh.AddRow("Phiên bản", p.Version);
         sh.AddRow("Số nút / số thanh / số ô sàn", $"{p.Nodes.Count} / {p.Frames.Count} / {p.Slabs.Count}");

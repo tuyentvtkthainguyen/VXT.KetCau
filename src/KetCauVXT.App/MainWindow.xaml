@@ -303,6 +303,12 @@
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Địa điểm xây dựng" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtLocation"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Chủ đầu tư" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtOwner"/></DockPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Người thiết kế" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtDesigner"/></DockPanel>
+                                    <DockPanel Style="{StaticResource Field}"><TextBlock Text="Cấp công trình" Style="{StaticResource FieldLabel}"/>
+                                        <ComboBox x:Name="cbGrade" Width="130" HorizontalAlignment="Left" ToolTip="Cấp công trình theo Thông tư 06/2021/TT-BXD – ghi vào thuyết minh, bảng tính">
+                                            <ComboBoxItem Content="(chưa chọn)"/><ComboBoxItem Content="Cấp đặc biệt"/><ComboBoxItem Content="Cấp I"/><ComboBoxItem Content="Cấp II"/><ComboBoxItem Content="Cấp III"/><ComboBoxItem Content="Cấp IV"/>
+                                        </ComboBox>
+                                        <TextBlock x:Name="txtGradeHint" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="DimGray" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                    </DockPanel>
                                 </StackPanel>
                             </GroupBox>
                             <GroupBox Header="Lưới trục và tầng (m) – vd: 3.6 4.2 3.6 hoặc 3*3.3">

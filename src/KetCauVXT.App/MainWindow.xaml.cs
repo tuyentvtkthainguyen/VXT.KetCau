@@ -297,6 +297,7 @@ public partial class MainWindow : Window
         try
         {
             txtName.Text = _p.Name; txtLocation.Text = _p.Location; txtOwner.Text = _p.Owner; txtDesigner.Text = _p.Designer;
+            LoadGradeUi();   // [Cấp công trình] – MainWindow.BuildingGrade.cs
             var gx = _p.GridsX.Select(g => g.Coord).ToList();
             var gy = _p.GridsY.Select(g => g.Coord).ToList();
             if (gx.Count > 1) txtSpansX.Text = string.Join(" ", gx.Zip(gx.Skip(1), (a, b) => F(b - a)));
@@ -346,6 +347,7 @@ public partial class MainWindow : Window
     {
         if (_p == null || _loadingUi) return;
         _p.Name = txtName.Text.Trim(); _p.Location = txtLocation.Text.Trim(); _p.Owner = txtOwner.Text.Trim(); _p.Designer = txtDesigner.Text.Trim();
+        _p.BuildingGrade = cbGrade.SelectedIndex > 0 ? Project.BuildingGrades[cbGrade.SelectedIndex - 1] : "";
         _p.Wind.Enabled = chkWind.IsChecked == true;
         _p.Wind.W0 = Num(txtW0, _p.Wind.W0);
         _p.Wind.Terrain = cbTerrain.SelectedItem as string ?? "B";

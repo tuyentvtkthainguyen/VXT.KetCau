@@ -58,6 +58,7 @@ public static partial class CalculationReport   // thuyết minh tự động: C
         d.Title("CÔNG TRÌNH: " + (p.Name ?? "").ToUpperInvariant(), 15);
         if (!string.IsNullOrWhiteSpace(p.Location)) d.Paragraph("Địa điểm: " + p.Location, false, false, ParaAlign.Center);
         if (!string.IsNullOrWhiteSpace(p.Owner)) d.Paragraph("Chủ đầu tư: " + p.Owner, false, false, ParaAlign.Center);
+        if (!string.IsNullOrWhiteSpace(p.BuildingGrade)) d.Paragraph("Cấp công trình: " + p.BuildingGrade, false, false, ParaAlign.Center);
         d.EmptyLine().EmptyLine();
         if (!string.IsNullOrWhiteSpace(p.Designer)) d.Paragraph("Người thiết kế: " + p.Designer, false, false, ParaAlign.Center);
         d.Paragraph("Phần mềm tính toán: Việt Const", false, true, ParaAlign.Center);

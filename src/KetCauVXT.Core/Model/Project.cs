@@ -95,6 +95,14 @@ public partial class Project
     public string LocationName { get; set; } = "";
     public string Owner { get; set; } = "";
     public string Designer { get; set; } = "";
+    /// <summary>Cấp công trình (Thông tư 06/2021/TT-BXD): "Cấp đặc biệt" | "Cấp I" | "Cấp II" | "Cấp III" | "Cấp IV"; rỗng = chưa chọn.</summary>
+    public string BuildingGrade { get; set; } = "";
+
+    public static readonly string[] BuildingGrades = { "Cấp đặc biệt", "Cấp I", "Cấp II", "Cấp III", "Cấp IV" };
+
+    /// <summary>Gợi ý cấp công trình dân dụng theo số tầng nổi (TT 06/2021/TT-BXD, Phụ lục I – tiêu chí số tầng):
+    /// 1 tầng → IV; 2–7 → III; 8–24 → II; 25–50 → I; &gt; 50 → đặc biệt. Còn phải xét chiều cao, nhịp, tầng hầm, quy mô… theo Thông tư.</summary>
+    public static string SuggestGrade(int floors) => floors <= 0 ? "" : floors <= 1 ? "Cấp IV" : floors <= 7 ? "Cấp III" : floors <= 24 ? "Cấp II" : floors <= 50 ? "Cấp I" : "Cấp đặc biệt";
     public string Version { get; set; } = "1.0";
 
     public List<Material> Materials { get; set; } = new();
