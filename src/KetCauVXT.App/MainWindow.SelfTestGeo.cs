@@ -62,6 +62,18 @@ public partial class MainWindow
         StLog($"cấp công trình: {_p.BuildingGrade} ({txtGradeHint.Text}); nhóm thẻ đang hiện: {LeftGroups[_leftGroup].Name}, {tabLeft.Items.OfType<TabItem>().Count(t => t.Visibility == Visibility.Visible)} thẻ");
         if (_p.BuildingGrade != "Cấp III") throw new Exception("Cấp công trình không lưu vào dự án");
         Shot($"{tag}_14_KhungTraiHep");
+        // [Khai báo từng bước] bảng khai báo + bảng thông số của một nhóm ô nhập
+        var hub = OpenDeclareHub();
+        int nSteps = BuildDeclSteps().Count;
+        if (hub != null) { await Pause(800); ShotWindow(hub, $"{tag}_15_BangKhaiBao"); }
+        var gbInfo = FindChildren<GroupBox>(tabLeft).FirstOrDefault(g => g.Header as string == "Thông tin công trình");
+        StLog($"khai báo từng bước: {nSteps} mục; nhóm Thông tin công trình {(gbInfo != null ? FieldRows(gbInfo).Count : 0)} thông số");
+        if (nSteps < 12 || gbInfo == null || FieldRows(gbInfo).Count < 5) throw new Exception("Bảng khai báo thiếu mục");
+        ShowFieldTable(gbInfo, "Thông tin công trình", false);
+        await Pause(700);
+        var ft = Application.Current.Windows.OfType<Window>().LastOrDefault(x => x.Title == "Thông tin công trình");
+        if (ft != null) { ShotWindow(ft, $"{tag}_15b_BangThongTinCT"); ft.Close(); }
+        hub?.Close();
         ShowLeftGroup(1, true); await Pause(500);
         Shot($"{tag}_14c_KhungTraiHep_KetQua");
         SelectLeft("Địa chất"); await Pause(300);

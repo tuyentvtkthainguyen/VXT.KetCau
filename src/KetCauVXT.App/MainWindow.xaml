@@ -78,6 +78,8 @@
                 <MenuItem Header="_Tên cấu kiện" Click="MnuToggleLabels_Click"/>
             </MenuItem>
             <MenuItem Header="_Khai báo">
+                <MenuItem Header="📋 Bảng khai báo từng bước…" Click="MnuDeclareHub_Click" FontWeight="SemiBold" ToolTip="Một khung liệt kê đủ các thông số cần khai báo; mỗi thông số mở một hộp thoại dạng bảng; đánh dấu đã kiểm để không bỏ sót"/>
+                <Separator/>
                 <MenuItem Header="_Vật liệu…" Click="MnuMaterials_Click" ToolTip="Define → Material Properties: bê tông, cốt thép, thép hình (E, γ, Rb, Rbt, Rs…)"/>
                 <MenuItem Header="_Tiết diện dầm/cột…" Click="MnuSectionManager_Click" ToolTip="Thêm / sao chép / sửa / đổi tên / xoá tiết diện, nhập từ dự án khác (như Define → Frame Sections của ETABS) – MainWindow.BeamTools.cs"/>
                 <MenuItem Header="Loại tường…" Click="MnuWallTypes_Click"/>
@@ -297,6 +299,8 @@
                 <TabItem Header="Công trình">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="6">
+                            <Button Content="📋 Khai báo từng bước (mỗi thông số một bảng)…" Click="MnuDeclareHub_Click" HorizontalAlignment="Left" Padding="10,3,10,3" Margin="2,0,2,6" FontWeight="SemiBold"
+                                    ToolTip="Một khung liệt kê đủ các thông số cần khai báo; bấm từng mục mở hộp thoại dạng bảng; đánh dấu đã kiểm để không bỏ sót"/>
                             <GroupBox Header="Thông tin công trình">
                                 <StackPanel>
                                     <DockPanel Style="{StaticResource Field}"><TextBlock Text="Tên công trình" Style="{StaticResource FieldLabel}"/><TextBox x:Name="txtName"/></DockPanel>

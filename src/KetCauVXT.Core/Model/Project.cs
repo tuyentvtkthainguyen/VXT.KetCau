@@ -97,6 +97,8 @@ public partial class Project
     public string Designer { get; set; } = "";
     /// <summary>Cấp công trình (Thông tư 06/2021/TT-BXD): "Cấp đặc biệt" | "Cấp I" | "Cấp II" | "Cấp III" | "Cấp IV"; rỗng = chưa chọn.</summary>
     public string BuildingGrade { get; set; } = "";
+    /// <summary>[Khai báo từng bước] Các mục khai báo người dùng đã đánh dấu "Đã kiểm".</summary>
+    public List<string> DeclareChecked { get; set; } = new();
 
     public static readonly string[] BuildingGrades = { "Cấp đặc biệt", "Cấp I", "Cấp II", "Cấp III", "Cấp IV" };
 
