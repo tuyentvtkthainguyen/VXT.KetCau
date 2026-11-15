@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        SetupLeftPanelScroll();   // [Khung trái] một khung cố định + thanh trượt ngang – MainWindow.LeftPanelScroll.cs
     }
 
     // ==================================================================

@@ -1,3 +1,5 @@
+using System.Windows;
+using System.Windows.Controls;
 using KetCauVXT.Design.Foundation;
 using KetCauVXT.Model;
 
@@ -49,5 +51,16 @@ public partial class MainWindow
 
         // trả lại trạng thái để bước sau không bị ảnh hưởng
         _p.Boreholes.Remove(bh); LoadGeoUi(); tabLeft.SelectedIndex = 0;
+        // [Khung trái] khung hẹp: hàng thẻ một dòng + thanh trượt ngang, nội dung không bị cắt
+        var w0 = colLeftPanel.Width;
+        colLeftPanel.Width = new GridLength(320);
+        await Pause(700);
+        double sw = (tabLeft.SelectedContent as ScrollViewer)?.ScrollableWidth ?? -1;
+        StLog($"khung trái hẹp 320 px: cuộn ngang được {sw:0} px (nội dung tối thiểu {LeftMinContentWidth} px)");
+        if (sw <= 0) throw new Exception("Khung trái: không có thanh trượt ngang khi khung hẹp");
+        Shot($"{tag}_14_KhungTraiHep");
+        tabLeft.SelectedItem = tabGeo; await Pause(700);
+        Shot($"{tag}_14b_KhungTraiHep_DiaChat");
+        colLeftPanel.Width = w0; tabLeft.SelectedIndex = 0; await Pause(300);
     }
 }
