@@ -58,7 +58,7 @@ public partial class MainWindow
         D("4. Tải trọng", "Gió – vùng áp lực, dạng địa hình (bảng chọn)", () => Warn(string.IsNullOrWhiteSpace(_p.Wind.Zone) && _p.Wind.Enabled, $"vùng {_p.Wind.Zone}, địa hình {_p.Wind.Terrain}, W0 = {_p.Wind.W0:0.###} kN/m²", $"chưa chọn vùng gió (W0 = {_p.Wind.W0:0.###})"), () => { if (SelfTestOut == null) AskSiteData(); });
         D("4. Tải trọng", "Trường hợp tải (Load Patterns)", () => $"{_p.Patterns.Count} trường hợp", () => MnuLoadPatterns_Click(this, new RoutedEventArgs()));
         D("4. Tải trọng", "Trường hợp phân tích (Load Cases)", () => "", () => MnuLoadCases_Click(this, new RoutedEventArgs()));
-        D("4. Tải trọng", "Tổ hợp tải trọng", () => Warn(_p.Combinations.Count == 0, $"{_p.Combinations.Count} tổ hợp", "chưa có tổ hợp – bấm Tự tạo theo TCVN 2737:2023"), OpenComboEditor);
+        D("4. Tải trọng", "Tổ hợp tải trọng", () => Warn(_p.Combinations.Count == 0, $"{_p.Combinations.Count} tổ hợp", "chưa có tổ hợp – bấm Tự tạo theo TCVN 2737:2023"), () => OpenComboEditor());
         D("5. Động đất – dao động", "Phổ phản ứng / động đất (agR, nền, q, γI)", () => _p.Seismic.Enabled ? $"agR = {_p.Seismic.AgR:0.####} g, nền {_p.Seismic.Soil}, q = {_p.Seismic.Q:0.##}, γI = {_p.Seismic.ImportanceFactor:0.##}" : "không tính động đất", () => MnuSpectrum_Click(this, new RoutedEventArgs()));
         D("5. Động đất – dao động", "Nguồn khối lượng & dao động riêng", () => "", () => MnuModal_Click(this, new RoutedEventArgs()));
         D("5. Động đất – dao động", "Sàn cứng (diaphragm) theo tầng", () => _p.UseRigidDiaphragm ? "dùng sàn cứng" : "không dùng sàn cứng", () => MnuDiaphragms_Click(this, new RoutedEventArgs()));
