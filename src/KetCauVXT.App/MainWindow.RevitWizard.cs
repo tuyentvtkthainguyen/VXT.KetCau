@@ -330,6 +330,8 @@ public partial class MainWindow
             var lines = new List<string> { "File: " + _file };
             if (_ex != null) lines.Add($"Revit: {_ex.Levels?.Count ?? 0} cao độ, {_ex.Grids?.Count ?? 0} trục, {_ex.Walls?.Count ?? 0} tường, {_ex.Openings?.Count ?? 0} cửa, {_ex.Rooms?.Count ?? 0} phòng, {_ex.Columns?.Count ?? 0} cột KC, {_ex.Beams?.Count ?? 0} dầm KC, {_ex.Mep?.Count ?? 0} đối tượng điện nước");
             if (_directStructure) lines.Add("→ Có cấu kiện kết cấu: nhập trực tiếp cột, dầm, sàn; tải phòng / tường theo kiến trúc đi kèm.");
+            var skip = RevitArchReader.StructureSkipReason(_ex);
+            if (skip != null) lines.Add("⚠ " + skip);
             if (_drawing != null)
             {
                 lines.AddRange(_drawing.Info);

@@ -679,6 +679,7 @@ Console.WriteLine("105. Khoá bước theo quy trình: chưa xong bước tiền
 WorkflowGateTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 Console.WriteLine("106. Revit chỉ có kiến trúc → nhận diện tải (phòng, lớp cấu tạo tường, bồn nước) → mô hình kết cấu → tối ưu tiết diện theo chi phí");
 RevitArchToDesignTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+RevitProject1Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

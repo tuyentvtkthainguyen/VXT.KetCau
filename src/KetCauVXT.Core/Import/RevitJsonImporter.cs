@@ -70,6 +70,10 @@ public class RvBeam
     public double H { get; set; }
     public string Level { get; set; } = "";
     public string Material { get; set; } = "";
+
+    /// <summary>Thanh quá nhỏ (b &lt; 100 mm hoặc h &lt; 150 mm: tay vịn lan can, khung kính, xà gồ trang trí… vẽ bằng Structural Framing)
+    /// không phải dầm BTCT chịu lực – bỏ qua khi nhập kết cấu.</summary>
+    public bool IsStructural => B >= 0.1 - 1e-9 && H >= 0.15 - 1e-9;
 }
 
 public class RvFloor
@@ -138,6 +142,8 @@ public static class RevitJsonImporter
         ex.Beams.RemoveAll(b => b == null);
         ex.Floors.RemoveAll(f => f == null);
         var rep = new ImportReport { Source = "Revit" };
+        int tiny = ex.Beams.RemoveAll(b => !b.IsStructural);
+        if (tiny > 0) rep.Warnings.Add($"Bỏ qua {tiny} thanh Structural Framing quá nhỏ (b < 100 mm hoặc h < 150 mm – lan can, khung kính…), không phải dầm chịu lực.");
         if (!string.IsNullOrWhiteSpace(ex.ProjectName) && (p.Name == "" || p.Name == "Công trình mới")) p.Name = ex.ProjectName;
         ImportGeometry.ClearModel(p);
         ImportGeometry.EnsurePatterns(p);

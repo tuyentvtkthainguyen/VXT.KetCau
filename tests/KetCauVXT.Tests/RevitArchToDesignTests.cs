@@ -87,6 +87,23 @@ public static class RevitArchToDesignTests
 
         // ---- đọc kiến trúc ----
         check("Mô hình mẫu chỉ có kiến trúc", B(!RevitArchReader.HasStructure(ex)), 1, 0);
+        {
+            // Project1 (nhà thực tế): dầm Structural Framing có, cột không có, nhiều thanh lan can 20x40 → không nhập trực tiếp
+            var exB = Sample();
+            exB.Beams.Add(new RvBeam { X1 = 0, Y1 = 0, Z1 = 3.6, X2 = 4, Y2 = 0, Z2 = 3.6, B = 0.22, H = 0.4, Level = "Tầng 2" });
+            exB.Beams.Add(new RvBeam { X1 = 0, Y1 = 0, Z1 = 4.5, X2 = 4, Y2 = 0, Z2 = 4.5, B = 0.02, H = 0.04, Level = "Tầng 2" });
+            check("Có dầm, không cột → không nhập kết cấu trực tiếp", B(!RevitArchReader.HasStructure(exB)), 1, 0);
+            check("Có dầm, không cột → có lời giải thích", B(RevitArchReader.StructureSkipReason(exB)?.Contains("không có cột") == true), 1, 0);
+            check("Thanh 20x40 không phải dầm chịu lực", B(!exB.Beams[^1].IsStructural), 1, 0);
+            check("Dầm 220x400 là dầm chịu lực", B(exB.Beams[^2].IsStructural), 1, 0);
+            exB.Columns.Add(new RvColumn { X = 0, Y = 0, BaseLevel = "Tầng 1", TopLevel = "Tầng 2", B = 0.22, H = 0.22 });
+            exB.Columns.Add(new RvColumn { X = 4, Y = 0, BaseLevel = "Tầng 1", TopLevel = "Tầng 2", B = 0.22, H = 0.22 });
+            check("Có cột + dầm → nhập kết cấu trực tiếp", B(RevitArchReader.HasStructure(exB)), 1, 0);
+            var pB = new Project();
+            var repB = RevitJsonImporter.Build(pB, exB);
+            check("Nhập trực tiếp: bỏ thanh lan can, còn 1 dầm", repB.Beams, 1, 0);
+            check("Nhập trực tiếp: báo đã bỏ thanh nhỏ", B(repB.Warnings.Any(w => w.Contains("quá nhỏ"))), 1, 0);
+        }
         var o = new ArchImportOptions();
         var d = RevitArchReader.ToDrawing(ex, o);
         foreach (var i in d.Info) Console.WriteLine("    " + i);

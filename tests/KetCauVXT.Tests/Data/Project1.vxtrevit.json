@@ -1,0 +1,2896 @@
+{
+"ProjectName": "Nha pho 3 tang (Project1)",
+"SchemaVersion": "2.0",
+"Levels": [
+{
+"Name": "Tầng 1",
+"Elevation": -0.45
+},
+{
+"Name": "Tầng 2",
+"Elevation": 0
+},
+{
+"Name": "Tầng 3",
+"Elevation": 3.75
+},
+{
+"Name": "Tầng 4",
+"Elevation": 7.35
+},
+{
+"Name": "Mái",
+"Elevation": 10.95
+}
+],
+"Grids": [
+{
+"Name": "1",
+"X1": -10,
+"Y1": 3.57185,
+"X2": -10,
+"Y2": -4.58685
+},
+{
+"Name": "2",
+"X1": -5.69,
+"Y1": 3.57185,
+"X2": -5.69,
+"Y2": -4.58685
+},
+{
+"Name": "3",
+"X1": -0.76,
+"Y1": -4.58685,
+"X2": -0.76,
+"Y2": 3.57185
+},
+{
+"Name": "4",
+"X1": 2.54,
+"Y1": 3.57185,
+"X2": 2.54,
+"Y2": -4.58685
+},
+{
+"Name": "5",
+"X1": 6.03,
+"Y1": -4.58685,
+"X2": 6.03,
+"Y2": 3.57185
+},
+{
+"Name": "6",
+"X1": 10,
+"Y1": 3.57185,
+"X2": 10,
+"Y2": -4.58685
+},
+{
+"Name": "B",
+"X1": -12.06784,
+"Y1": 2.5,
+"X2": 11.57341,
+"Y2": 2.5
+},
+{
+"Name": "A (713333)",
+"X1": 11.57341,
+"Y1": -2.5,
+"X2": -12.06784,
+"Y2": -2.5
+}
+],
+"Columns": [],
+"Beams": [
+{
+"Id": "765633",
+"X1": -9.89,
+"Y1": 2.39,
+"Z1": 3.75,
+"X2": -9.89,
+"Y2": -2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "765740",
+"X1": -9.89,
+"Y1": 2.39,
+"Z1": 3.75,
+"X2": 9.89,
+"Y2": 2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "765767",
+"X1": 9.89,
+"Y1": 2.39,
+"Z1": 3.75,
+"X2": 9.89,
+"Y2": -2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "765790",
+"X1": 9.89,
+"Y1": -2.39,
+"Z1": 3.75,
+"X2": -9.89,
+"Y2": -2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "765844",
+"X1": -5.69,
+"Y1": -2.39,
+"Z1": 3.75,
+"X2": -5.69,
+"Y2": 2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "765910",
+"X1": -0.76,
+"Y1": 2.39,
+"Z1": 3.75,
+"X2": -0.76,
+"Y2": -2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "765943",
+"X1": 2.54,
+"Y1": 2.39,
+"Z1": 3.75,
+"X2": 2.54,
+"Y2": -2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "765974",
+"X1": 6.03,
+"Y1": 2.39,
+"Z1": 3.75,
+"X2": 6.03,
+"Y2": -2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766081",
+"X1": 9.89,
+"Y1": 0.78,
+"Z1": 3.75,
+"X2": 6.03,
+"Y2": 0.78,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766138",
+"X1": 7.27,
+"Y1": 0.78,
+"Z1": 3.75,
+"X2": 7.27,
+"Y2": 2.39,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766225",
+"X1": 2.54,
+"Y1": 0.72,
+"Z1": 3.75,
+"X2": -0.76,
+"Y2": 0.72,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766383",
+"X1": -5.69,
+"Y1": 1.18,
+"Z1": 3.75,
+"X2": -0.76,
+"Y2": 1.18,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766444",
+"X1": -1.97,
+"Y1": 2.39,
+"Z1": 3.75,
+"X2": -1.97,
+"Y2": 1.18,
+"Z2": 3.75,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 3",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766552",
+"X1": -7.985,
+"Y1": 2.39,
+"Z1": 7.35,
+"X2": -7.985,
+"Y2": -2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766553",
+"X1": -7.985,
+"Y1": 2.39,
+"Z1": 7.35,
+"X2": 9.89,
+"Y2": 2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766554",
+"X1": 9.89,
+"Y1": 2.39,
+"Z1": 7.35,
+"X2": 9.89,
+"Y2": -2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766555",
+"X1": 9.89,
+"Y1": -2.39,
+"Z1": 7.35,
+"X2": -7.985,
+"Y2": -2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766556",
+"X1": -5.69,
+"Y1": -2.39,
+"Z1": 7.35,
+"X2": -5.69,
+"Y2": 2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766557",
+"X1": -0.76,
+"Y1": 2.39,
+"Z1": 7.35,
+"X2": -0.76,
+"Y2": -2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766558",
+"X1": 2.54,
+"Y1": 2.39,
+"Z1": 7.35,
+"X2": 2.54,
+"Y2": -2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766559",
+"X1": 6.03,
+"Y1": 2.39,
+"Z1": 7.35,
+"X2": 6.03,
+"Y2": -2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766560",
+"X1": 9.89,
+"Y1": 0.78,
+"Z1": 7.35,
+"X2": 6.03,
+"Y2": 0.78,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766561",
+"X1": 7.27,
+"Y1": 0.78,
+"Z1": 7.35,
+"X2": 7.27,
+"Y2": 2.39,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766562",
+"X1": 2.54,
+"Y1": 0.72,
+"Z1": 7.35,
+"X2": -0.76,
+"Y2": 0.72,
+"Z2": 7.35,
+"B": 0.22,
+"H": 0.4,
+"Level": "Tầng 4",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766567",
+"X1": -7.14,
+"Y1": 2.39,
+"Z1": 10.95,
+"X2": -7.14,
+"Y2": -2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766568",
+"X1": -7.14,
+"Y1": 2.39,
+"Z1": 10.95,
+"X2": 9.89,
+"Y2": 2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766569",
+"X1": 9.89,
+"Y1": 2.39,
+"Z1": 10.95,
+"X2": 9.89,
+"Y2": -2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766570",
+"X1": 9.89,
+"Y1": -2.39,
+"Z1": 10.95,
+"X2": -7.14,
+"Y2": -2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766571",
+"X1": -5.69,
+"Y1": -2.39,
+"Z1": 10.95,
+"X2": -5.69,
+"Y2": 2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766572",
+"X1": -0.76,
+"Y1": 2.39,
+"Z1": 10.95,
+"X2": -0.76,
+"Y2": -2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766573",
+"X1": 2.54,
+"Y1": 2.39,
+"Z1": 10.95,
+"X2": 2.54,
+"Y2": -2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766574",
+"X1": 6.03,
+"Y1": 2.39,
+"Z1": 10.95,
+"X2": 6.03,
+"Y2": -2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766575",
+"X1": 9.89,
+"Y1": 0.78,
+"Z1": 10.95,
+"X2": 6.03,
+"Y2": 0.78,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766576",
+"X1": 7.27,
+"Y1": 0.78,
+"Z1": 10.95,
+"X2": 7.27,
+"Y2": 2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766577",
+"X1": 2.54,
+"Y1": 0.72,
+"Z1": 10.95,
+"X2": -0.76,
+"Y2": 0.72,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "766579",
+"X1": -2.87,
+"Y1": 2.39,
+"Z1": 10.95,
+"X2": -2.87,
+"Y2": -2.39,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "767193",
+"X1": -2.87,
+"Y1": 0.72,
+"Z1": 10.95,
+"X2": -0.76,
+"Y2": 0.72,
+"Z2": 10.95,
+"B": 0.22,
+"H": 0.4,
+"Level": "Mái",
+"Material": "1 BE TONG COT THEP"
+},
+{
+"Id": "795120",
+"X1": -1.96833,
+"Y1": 0.72,
+"Z1": 11.75,
+"X2": -1.96833,
+"Y2": -2.39,
+"Z2": 11.75,
+"B": 0.04,
+"H": 0.08,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "795121",
+"X1": -1.06667,
+"Y1": 0.72,
+"Z1": 11.75,
+"X2": -1.06667,
+"Y2": -2.39,
+"Z2": 11.75,
+"B": 0.04,
+"H": 0.08,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "795122",
+"X1": -0.165,
+"Y1": 0.72,
+"Z1": 11.75,
+"X2": -0.165,
+"Y2": -2.39,
+"Z2": 11.75,
+"B": 0.04,
+"H": 0.08,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "795123",
+"X1": 0.73667,
+"Y1": 0.72,
+"Z1": 11.75,
+"X2": 0.73667,
+"Y2": -2.39,
+"Z2": 11.75,
+"B": 0.04,
+"H": 0.08,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "795124",
+"X1": 1.63833,
+"Y1": 0.72,
+"Z1": 11.75,
+"X2": 1.63833,
+"Y2": -2.39,
+"Z2": 11.75,
+"B": 0.04,
+"H": 0.08,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "795125",
+"X1": -2.87,
+"Y1": -0.31667,
+"Z1": 11.75,
+"X2": 2.54,
+"Y2": -0.31667,
+"Z2": 11.75,
+"B": 0.05,
+"H": 0.1,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "795126",
+"X1": -2.87,
+"Y1": -1.35333,
+"Z1": 11.75,
+"X2": 2.54,
+"Y2": -1.35333,
+"Z2": 11.75,
+"B": 0.05,
+"H": 0.1,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799252",
+"X1": -5.85,
+"Y1": 2.37,
+"Z1": 6.998,
+"X2": -5.85,
+"Y2": -2.26,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799253",
+"X1": -6.4,
+"Y1": 2.37,
+"Z1": 6.998,
+"X2": -6.4,
+"Y2": -2.26,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799254",
+"X1": -7,
+"Y1": 2.37,
+"Z1": 6.998,
+"X2": -7,
+"Y2": -2.26,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799255",
+"X1": -7.6,
+"Y1": 2.37,
+"Z1": 6.998,
+"X2": -7.6,
+"Y2": -2.26,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799256",
+"X1": -7.935,
+"Y1": 2.37,
+"Z1": 6.998,
+"X2": -7.935,
+"Y2": -2.26,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799257",
+"X1": -5.85,
+"Y1": 1.923,
+"Z1": 7.058,
+"X2": -7.935,
+"Y2": 1.923,
+"Z2": 7.058,
+"B": 0.03,
+"H": 0.06,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799258",
+"X1": -5.85,
+"Y1": 0.989,
+"Z1": 7.058,
+"X2": -7.935,
+"Y2": 0.989,
+"Z2": 7.058,
+"B": 0.03,
+"H": 0.06,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799259",
+"X1": -5.85,
+"Y1": 0.055,
+"Z1": 7.058,
+"X2": -7.935,
+"Y2": 0.055,
+"Z2": 7.058,
+"B": 0.03,
+"H": 0.06,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799260",
+"X1": -5.85,
+"Y1": -0.879,
+"Z1": 7.058,
+"X2": -7.935,
+"Y2": -0.879,
+"Z2": 7.058,
+"B": 0.03,
+"H": 0.06,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799261",
+"X1": -5.85,
+"Y1": -1.813,
+"Z1": 7.058,
+"X2": -7.935,
+"Y2": -1.813,
+"Z2": 7.058,
+"B": 0.03,
+"H": 0.06,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799263",
+"X1": -7.985,
+"Y1": 2.39,
+"Z1": 6.998,
+"X2": -5.8,
+"Y2": 2.39,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799264",
+"X1": -5.8,
+"Y1": 2.39,
+"Z1": 6.998,
+"X2": -5.8,
+"Y2": -2.28,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799265",
+"X1": -5.8,
+"Y1": -2.28,
+"Z1": 6.998,
+"X2": -7.985,
+"Y2": -2.28,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799266",
+"X1": -7.985,
+"Y1": -2.28,
+"Z1": 6.998,
+"X2": -7.985,
+"Y2": 2.39,
+"Z2": 6.998,
+"B": 0.02,
+"H": 0.04,
+"Level": "Tầng 4",
+"Material": ""
+},
+{
+"Id": "799920",
+"X1": -5.85,
+"Y1": 2.37,
+"Z1": 10.598,
+"X2": -5.85,
+"Y2": -2.26,
+"Z2": 10.598,
+"B": 0.02,
+"H": 0.04,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799921",
+"X1": -6.4,
+"Y1": 2.37,
+"Z1": 10.598,
+"X2": -6.4,
+"Y2": -2.26,
+"Z2": 10.598,
+"B": 0.02,
+"H": 0.04,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799922",
+"X1": -7,
+"Y1": 2.37,
+"Z1": 10.598,
+"X2": -7,
+"Y2": -2.26,
+"Z2": 10.598,
+"B": 0.02,
+"H": 0.04,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799923",
+"X1": -7.09,
+"Y1": 2.37,
+"Z1": 10.598,
+"X2": -7.09,
+"Y2": -2.26,
+"Z2": 10.598,
+"B": 0.02,
+"H": 0.04,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799924",
+"X1": -5.85,
+"Y1": 1.923,
+"Z1": 10.658,
+"X2": -7.09,
+"Y2": 1.923,
+"Z2": 10.658,
+"B": 0.03,
+"H": 0.06,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799925",
+"X1": -5.85,
+"Y1": 0.989,
+"Z1": 10.658,
+"X2": -7.09,
+"Y2": 0.989,
+"Z2": 10.658,
+"B": 0.03,
+"H": 0.06,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799926",
+"X1": -5.85,
+"Y1": 0.055,
+"Z1": 10.658,
+"X2": -7.09,
+"Y2": 0.055,
+"Z2": 10.658,
+"B": 0.03,
+"H": 0.06,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799927",
+"X1": -5.85,
+"Y1": -0.879,
+"Z1": 10.658,
+"X2": -7.09,
+"Y2": -0.879,
+"Z2": 10.658,
+"B": 0.03,
+"H": 0.06,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799928",
+"X1": -5.85,
+"Y1": -1.813,
+"Z1": 10.658,
+"X2": -7.09,
+"Y2": -1.813,
+"Z2": 10.658,
+"B": 0.03,
+"H": 0.06,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799930",
+"X1": -5.8,
+"Y1": 2.39,
+"Z1": 10.598,
+"X2": -7.14,
+"Y2": 2.39,
+"Z2": 10.598,
+"B": 0.02,
+"H": 0.04,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799931",
+"X1": -7.14,
+"Y1": 2.39,
+"Z1": 10.598,
+"X2": -7.14,
+"Y2": -2.28,
+"Z2": 10.598,
+"B": 0.02,
+"H": 0.04,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799932",
+"X1": -7.14,
+"Y1": -2.28,
+"Z1": 10.598,
+"X2": -5.8,
+"Y2": -2.28,
+"Z2": 10.598,
+"B": 0.02,
+"H": 0.04,
+"Level": "Mái",
+"Material": ""
+},
+{
+"Id": "799933",
+"X1": -5.8,
+"Y1": -2.28,
+"Z1": 10.598,
+"X2": -5.8,
+"Y2": 2.39,
+"Z2": 10.598,
+"B": 0.02,
+"H": 0.04,
+"Level": "Mái",
+"Material": ""
+}
+],
+"Floors": [
+{
+"Id": "713385",
+"Level": "Tầng 3",
+"Thickness": 0.12,
+"Outline": [
+[
+10,
+2.5
+],
+[
+7.325,
+2.5
+],
+[
+-8.095,
+2.5
+],
+[
+-10,
+2.5
+],
+[
+-10,
+-2.5
+],
+[
+-8.095,
+-2.5
+],
+[
+9.89,
+-2.5
+],
+[
+10,
+-2.5
+],
+[
+10,
+0.89
+],
+[
+10,
+2.28
+]
+]
+},
+{
+"Id": "716972",
+"Level": "Tầng 4",
+"Thickness": 0.12,
+"Outline": [
+[
+10,
+2.5
+],
+[
+9.78,
+2.5
+],
+[
+7.38,
+2.5
+],
+[
+-7.25,
+2.5
+],
+[
+-8.095,
+2.5
+],
+[
+-8.095,
+-2.5
+],
+[
+-7.25,
+-2.5
+],
+[
+9.89,
+-2.5
+],
+[
+10,
+-2.5
+],
+[
+10,
+0.89
+]
+]
+},
+{
+"Id": "719120",
+"Level": "Mái",
+"Thickness": 0.12,
+"Outline": [
+[
+10,
+2.5
+],
+[
+-7.25,
+2.5
+],
+[
+-7.25,
+2.39
+],
+[
+-7.25,
+-2.39
+],
+[
+-7.25,
+-2.5
+],
+[
+9.89,
+-2.5
+],
+[
+10,
+-2.5
+],
+[
+10,
+2.39
+]
+]
+},
+{
+"Id": "719153",
+"Level": "Tầng 2",
+"Thickness": 0.45,
+"Outline": [
+[
+10,
+2.5
+],
+[
+-10,
+2.5
+],
+[
+-10,
+2.28
+],
+[
+-10,
+2.16
+],
+[
+-10,
+0.96
+],
+[
+-10,
+0.475
+],
+[
+-10,
+-2.125
+],
+[
+-10,
+-2.28
+],
+[
+-10,
+-2.5
+],
+[
+9.78,
+-2.5
+],
+[
+10,
+-2.5
+],
+[
+10,
+2.28
+]
+]
+}
+],
+"Walls": [
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ad862",
+"Level": "Tầng 2",
+"X1": -9.89,
+"Y1": 2.39,
+"X2": 9.89,
+"Y2": 2.39,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ad8a2",
+"Level": "Tầng 2",
+"X1": 9.89,
+"Y1": 2.39,
+"X2": 9.89,
+"Y2": -2.39,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ad95b",
+"Level": "Tầng 2",
+"X1": 9.89,
+"Y1": -2.39,
+"X2": -9.89,
+"Y2": -2.39,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ad9c4",
+"Level": "Tầng 2",
+"X1": -9.89,
+"Y1": -2.39,
+"X2": -9.89,
+"Y2": 2.39,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ada27",
+"Level": "Tầng 2",
+"X1": 7.325,
+"Y1": 2.39,
+"X2": 7.325,
+"Y2": 0.725,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ada58",
+"Level": "Tầng 2",
+"X1": 7.325,
+"Y1": 0.725,
+"X2": 9.89,
+"Y2": 0.725,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ada99",
+"Level": "Tầng 2",
+"X1": -2.015,
+"Y1": 2.39,
+"X2": -2.015,
+"Y2": 1.225,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000adade",
+"Level": "Tầng 2",
+"X1": -2.015,
+"Y1": 1.225,
+"X2": -7.36,
+"Y2": 1.225,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000adb47",
+"Level": "Tầng 2",
+"X1": -7.36,
+"Y1": 1.225,
+"X2": -7.36,
+"Y2": 0.685,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae504",
+"Level": "Tầng 3",
+"X1": -8.095,
+"Y1": 2.445,
+"X2": 7.325,
+"Y2": 2.445,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae542",
+"Level": "Tầng 3",
+"X1": 9.945,
+"Y1": 0.835,
+"X2": 9.945,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae591",
+"Level": "Tầng 3",
+"X1": 9.945,
+"Y1": -2.39,
+"X2": -8.095,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae621",
+"Level": "Tầng 3",
+"X1": -5.69,
+"Y1": 2.445,
+"X2": -5.69,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae6f6",
+"Level": "Tầng 3",
+"X1": 9.945,
+"Y1": 0.835,
+"X2": 7.325,
+"Y2": 0.835,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae749",
+"Level": "Tầng 3",
+"X1": 7.325,
+"Y1": 0.835,
+"X2": 7.325,
+"Y2": 2.445,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae7df",
+"Level": "Tầng 3",
+"X1": -5.69,
+"Y1": 1.225,
+"X2": -2.015,
+"Y2": 1.225,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae80a",
+"Level": "Tầng 3",
+"X1": -2.015,
+"Y1": 1.225,
+"X2": -2.015,
+"Y2": 0.63,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae85c",
+"Level": "Tầng 3",
+"X1": -2.015,
+"Y1": 1.025,
+"X2": -0.705,
+"Y2": 1.025,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae8cd",
+"Level": "Tầng 3",
+"X1": -0.705,
+"Y1": 1.025,
+"X2": -0.705,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae98b",
+"Level": "Tầng 3",
+"X1": 6.085,
+"Y1": -2.39,
+"X2": 6.085,
+"Y2": 1.025,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae9d9",
+"Level": "Tầng 3",
+"X1": 6.085,
+"Y1": 1.025,
+"X2": 7.325,
+"Y2": 1.025,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af14c",
+"Level": "Tầng 4",
+"X1": -7.25,
+"Y1": 2.445,
+"X2": 7.325,
+"Y2": 2.445,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af14d",
+"Level": "Tầng 4",
+"X1": 9.945,
+"Y1": 0.835,
+"X2": 9.945,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af14e",
+"Level": "Tầng 4",
+"X1": 9.945,
+"Y1": 0.835,
+"X2": 7.325,
+"Y2": 0.835,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af14f",
+"Level": "Tầng 4",
+"X1": 7.325,
+"Y1": 0.835,
+"X2": 7.325,
+"Y2": 2.445,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af151",
+"Level": "Tầng 4",
+"X1": -2.815,
+"Y1": 2.445,
+"X2": -2.815,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af152",
+"Level": "Tầng 4",
+"X1": -2.815,
+"Y1": 1.025,
+"X2": -0.705,
+"Y2": 1.025,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af153",
+"Level": "Tầng 4",
+"X1": -0.705,
+"Y1": 1.025,
+"X2": -0.705,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af154",
+"Level": "Tầng 4",
+"X1": 6.085,
+"Y1": -2.39,
+"X2": 6.085,
+"Y2": 1.025,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af155",
+"Level": "Tầng 4",
+"X1": 6.085,
+"Y1": 1.025,
+"X2": 2.485,
+"Y2": 1.025,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af156",
+"Level": "Tầng 4",
+"X1": 2.485,
+"Y1": 1.025,
+"X2": 2.485,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af17a",
+"Level": "Tầng 4",
+"X1": 9.945,
+"Y1": -2.39,
+"X2": -7.25,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af17b",
+"Level": "Tầng 4",
+"X1": -5.69,
+"Y1": 2.445,
+"X2": -5.69,
+"Y2": -2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af251",
+"Level": "Tầng 2",
+"X1": -7.36,
+"Y1": 0.685,
+"X2": -9.89,
+"Y2": 0.685,
+"Height": 3.75,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b6164",
+"Level": "Tầng 3",
+"X1": 7.325,
+"Y1": 2.39,
+"X2": 9.89,
+"Y2": 2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b621e",
+"Level": "Tầng 3",
+"X1": 9.89,
+"Y1": 0.835,
+"X2": 9.89,
+"Y2": 2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b6281",
+"Level": "Tầng 4",
+"X1": 9.89,
+"Y1": 0.835,
+"X2": 9.89,
+"Y2": 2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b62c0",
+"Level": "Tầng 4",
+"X1": 9.89,
+"Y1": 2.39,
+"X2": 7.325,
+"Y2": 2.39,
+"Height": 3.6,
+"BaseOffset": 0,
+"TypeName": "Tường 220 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch đặc",
+"Thickness": 0.19
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "867549d3-c008-4b1d-b028-13a91b03a99a-000bb595",
+"Level": "Mái",
+"X1": -7.195,
+"Y1": 2.445,
+"X2": 9.945,
+"Y2": 2.445,
+"Height": 0.8,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "867549d3-c008-4b1d-b028-13a91b03a99a-000bb5f0",
+"Level": "Mái",
+"X1": 9.945,
+"Y1": 2.445,
+"X2": 9.945,
+"Y2": -2.445,
+"Height": 0.8,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "867549d3-c008-4b1d-b028-13a91b03a99a-000bb64b",
+"Level": "Mái",
+"X1": 9.945,
+"Y1": -2.445,
+"X2": -7.195,
+"Y2": -2.445,
+"Height": 0.8,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "867549d3-c008-4b1d-b028-13a91b03a99a-000bb67d",
+"Level": "Mái",
+"X1": -7.195,
+"Y1": -2.445,
+"X2": -7.195,
+"Y2": 2.445,
+"Height": 0.8,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "867549d3-c008-4b1d-b028-13a91b03a99a-000bb6e1",
+"Level": "Mái",
+"X1": -2.815,
+"Y1": 0.665,
+"X2": -2.815,
+"Y2": -2.445,
+"Height": 0.8,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "867549d3-c008-4b1d-b028-13a91b03a99a-000bb771",
+"Level": "Mái",
+"X1": -2.815,
+"Y1": 0.665,
+"X2": 2.485,
+"Y2": 0.665,
+"Height": 0.8,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+},
+{
+"Id": "867549d3-c008-4b1d-b028-13a91b03a99a-000bb7af",
+"Level": "Mái",
+"X1": 2.485,
+"Y1": 0.665,
+"X2": 2.485,
+"Y2": -2.445,
+"Height": 0.8,
+"BaseOffset": 0,
+"TypeName": "Tường 110 trát 2 mặt",
+"Layers": [
+{
+"Function": "Finish1",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+},
+{
+"Function": "Structure",
+"Material": "Gạch rỗng",
+"Thickness": 0.08
+},
+{
+"Function": "Finish2",
+"Material": "Vữa xi măng",
+"Thickness": 0.015
+}
+]
+}
+],
+"Openings": [
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af27a",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ad9c4",
+"Category": "Door",
+"TypeName": "Único",
+"X": -9.89,
+"Y": 1.56,
+"Width": 1.16,
+"Height": 2.1,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af2e6",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ad9c4",
+"Category": "Door",
+"TypeName": "CuaCuon_M01",
+"X": -9.89,
+"Y": -0.825,
+"Width": 2.6,
+"Height": 3,
+"Sill": 0,
+"Flipped": false
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af36c",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ada58",
+"Category": "Door",
+"TypeName": "Dw",
+"X": 9.405,
+"Y": 0.725,
+"Width": 0.75,
+"Height": 2.2,
+"Sill": 0,
+"Flipped": false
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af4ea",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af14e",
+"Category": "Door",
+"TypeName": "Dw",
+"X": 9.315,
+"Y": 0.835,
+"Width": 0.75,
+"Height": 2.2,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af699",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae85c",
+"Category": "Door",
+"TypeName": "900X2200",
+"X": -1.36,
+"Y": 1.025,
+"Width": 0.91,
+"Height": 2.2,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af6d4",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae9d9",
+"Category": "Door",
+"TypeName": "900X2200",
+"X": 6.695,
+"Y": 1.025,
+"Width": 0.91,
+"Height": 2.2,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af787",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af151",
+"Category": "Door",
+"TypeName": "900X2200",
+"X": -2.815,
+"Y": 1.715,
+"Width": 0.91,
+"Height": 2.2,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af7a7",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af152",
+"Category": "Door",
+"TypeName": "900X2200",
+"X": -1.325,
+"Y": 1.025,
+"Width": 0.91,
+"Height": 2.2,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af7e3",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af155",
+"Category": "Door",
+"TypeName": "900X2200",
+"X": 3.105,
+"Y": 1.025,
+"Width": 0.91,
+"Height": 2.2,
+"Sill": 0,
+"Flipped": false
+},
+{
+"Id": "b177c94a-7936-49c0-a003-0379c4ba0cae-000b5ce1",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae621",
+"Category": "Door",
+"TypeName": "CỬA ĐI LÙA 2 CÁNH + Ô FIX",
+"X": -5.69,
+"Y": -0.68,
+"Width": 3.2,
+"Height": 2.7,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b5d7b",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af17b",
+"Category": "Door",
+"TypeName": "CỬA ĐI LÙA 2 CÁNH + Ô FIX",
+"X": -5.69,
+"Y": -0.555,
+"Width": 3.2,
+"Height": 2.7,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "f0f36d7b-d167-482c-9d79-c3c6496be3c2-000b7092",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae749",
+"Category": "Door",
+"TypeName": "Dw",
+"X": 7.325,
+"Y": 1.905,
+"Width": 0.75,
+"Height": 2.2,
+"Sill": 0,
+"Flipped": true
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b5d93",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000af17b",
+"Category": "Window",
+"TypeName": "cua so 1 canh vach kinh tren",
+"X": -5.69,
+"Y": 1.79,
+"Width": 0.75,
+"Height": 1.95,
+"Sill": 0.8,
+"Flipped": true
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b5e03",
+"HostId": "b177c94a-7936-49c0-a003-0379c4ba0cae-000ae621",
+"Category": "Window",
+"TypeName": "cua so 1 canh vach kinh tren",
+"X": -5.69,
+"Y": 1.79,
+"Width": 0.75,
+"Height": 1.95,
+"Sill": 0.8,
+"Flipped": true
+}
+],
+"Rooms": [
+{
+"Id": "c0ba47a4-236e-4872-8e5b-9bed8e57d51b-000c2366",
+"Level": "Tầng 3",
+"Name": "Room",
+"Number": "2",
+"Outline": [
+[
+-5.58,
+-2.28
+],
+[
+-0.76,
+-2.28
+],
+[
+-0.76,
+0.97
+],
+[
+-1.96,
+0.97
+],
+[
+-1.96,
+0.63
+],
+[
+-2.07,
+0.63
+],
+[
+-2.07,
+1.025
+],
+[
+-2.07,
+1.17
+],
+[
+-5.58,
+1.17
+]
+]
+},
+{
+"Id": "c0ba47a4-236e-4872-8e5b-9bed8e57d51b-000c2367",
+"Level": "Tầng 3",
+"Name": "Room",
+"Number": "3",
+"Outline": [
+[
+7.27,
+2.39
+],
+[
+-5.58,
+2.39
+],
+[
+-5.58,
+1.28
+],
+[
+-1.96,
+1.28
+],
+[
+-1.96,
+1.08
+],
+[
+-0.65,
+1.08
+],
+[
+-0.65,
+-2.28
+],
+[
+6.03,
+-2.28
+],
+[
+6.03,
+1.08
+],
+[
+7.27,
+1.08
+]
+]
+},
+{
+"Id": "c0ba47a4-236e-4872-8e5b-9bed8e57d51b-000c2368",
+"Level": "Tầng 3",
+"Name": "Room",
+"Number": "4",
+"Outline": [
+[
+9.89,
+-2.28
+],
+[
+9.89,
+0.78
+],
+[
+7.27,
+0.78
+],
+[
+7.27,
+0.97
+],
+[
+6.14,
+0.97
+],
+[
+6.14,
+-2.28
+]
+]
+},
+{
+"Id": "c0ba47a4-236e-4872-8e5b-9bed8e57d51b-000c2369",
+"Level": "Tầng 3",
+"Name": "Room",
+"Number": "5",
+"Outline": [
+[
+7.38,
+0.89
+],
+[
+9.78,
+0.89
+],
+[
+9.78,
+2.28
+],
+[
+7.38,
+2.28
+],
+[
+7.38,
+1.025
+]
+]
+}
+],
+"Mep": [
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b5e4a",
+"Category": "PlumbingFixture",
+"Name": "PLM-BasinLyraplus",
+"Level": "Tầng 2",
+"X1": 9.46,
+"Y1": 2.05536,
+"Z1": 0,
+"W": 0.55036,
+"D": 0.44929,
+"H": 0.4535
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b5ef2",
+"Category": "PlumbingFixture",
+"Name": "Mora Izzy 130012",
+"Level": "Tầng 2",
+"X1": 8.5775,
+"Y1": 2.02343,
+"Z1": 1.1,
+"W": 0.265,
+"D": 0.51315,
+"H": 1.2267
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b5f6c",
+"Category": "PlumbingFixture",
+"Name": "PLM-ToiletNoHost",
+"Level": "Tầng 2",
+"X1": 7.88,
+"Y1": 1.95514,
+"Z1": 0,
+"W": 0.365,
+"D": 0.65027,
+"H": 0.89
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b60ca",
+"Category": "PlumbingFixture",
+"Name": "PLM-ClinicSink1Basin",
+"Level": "Tầng 3",
+"X1": 7.78,
+"Y1": 1.19,
+"Z1": 3.75,
+"W": 0.8,
+"D": 0.6,
+"H": 0.96132
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b60cb",
+"Category": "PlumbingFixture",
+"Name": "Mora Izzy 130012",
+"Level": "Tầng 3",
+"X1": 8.7025,
+"Y1": 1.14657,
+"Z1": 4.85,
+"W": 0.265,
+"D": 0.51315,
+"H": 1.2267
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b60cc",
+"Category": "PlumbingFixture",
+"Name": "PLM-ToiletNoHost",
+"Level": "Tầng 3",
+"X1": 9.4,
+"Y1": 1.25486,
+"Z1": 3.75,
+"W": 0.365,
+"D": 0.65027,
+"H": 0.89
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b60d9",
+"Category": "PlumbingFixture",
+"Name": "PLM-BasinLyraplus",
+"Level": "Tầng 4",
+"X1": 9.46,
+"Y1": 2.05536,
+"Z1": 7.35,
+"W": 0.55036,
+"D": 0.44929,
+"H": 0.4535
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b60da",
+"Category": "PlumbingFixture",
+"Name": "Mora Izzy 130012",
+"Level": "Tầng 4",
+"X1": 8.5775,
+"Y1": 2.02343,
+"Z1": 8.45,
+"W": 0.265,
+"D": 0.51315,
+"H": 1.2267
+},
+{
+"Id": "03e5e396-8fad-4190-991e-ee5b265af4b0-000b60db",
+"Category": "PlumbingFixture",
+"Name": "PLM-ToiletNoHost",
+"Level": "Tầng 4",
+"X1": 7.88,
+"Y1": 1.95514,
+"Z1": 7.35,
+"W": 0.365,
+"D": 0.65027,
+"H": 0.89
+}
+]
+}

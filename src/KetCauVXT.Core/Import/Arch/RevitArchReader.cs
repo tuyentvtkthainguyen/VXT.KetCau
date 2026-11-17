@@ -16,8 +16,24 @@ public static class RevitArchReader
     /// <summary>Tường thấp hơn giá trị này coi là tường chắn mái / lan can, không tạo mặt bằng tầng (m).</summary>
     public const double MinStoreyWall = 1.5;
 
-    /// <summary>Mô hình Revit có cột / dầm kết cấu (Structural Columns / Framing) – khi đó dùng RevitJsonImporter như cũ.</summary>
-    public static bool HasStructure(RevitExchange ex) => ex != null && ((ex.Columns?.Count ?? 0) > 0 || (ex.Beams?.Count ?? 0) > 0);
+    /// <summary>Có khung kết cấu dùng được để nhập trực tiếp: phải có CỘT (và dầm hoặc sàn). Chỉ có dầm mà không có cột
+    /// (dầm vẽ tạm, lanh tô, dầm bo… trong mô hình kiến trúc) thì không thành khung chịu lực → đi đường kiến trúc → bố trí kết cấu.</summary>
+    public static bool HasStructure(RevitExchange ex) =>
+        ex != null && (ex.Columns?.Count ?? 0) >= 2 && (RealBeams(ex) > 0 || (ex.Floors?.Count ?? 0) > 0);
+
+    private static int RealBeams(RevitExchange ex) => ex?.Beams?.Count(b => b != null && b.IsStructural) ?? 0;
+
+    /// <summary>Lý do không nhập trực tiếp được phần kết cấu có sẵn trong Revit (null = không có gì để báo).</summary>
+    public static string StructureSkipReason(RevitExchange ex)
+    {
+        if (ex == null || HasStructure(ex)) return null;
+        int nc = ex.Columns?.Count ?? 0, nb = RealBeams(ex), tiny = (ex.Beams?.Count ?? 0) - nb;
+        string t = tiny > 0 ? $" ({tiny} thanh nhỏ khác là lan can / khung kính, không tính)" : "";
+        if (nb > 0 && nc == 0) return $"Revit có {nb} dầm kết cấu{t} nhưng không có cột – khung không đứng được, phần mềm bỏ qua các dầm này và bố trí cột, dầm từ tường kiến trúc.";
+        if (nb == 0 && tiny > 0 && nc == 0) return $"{tiny} thanh Structural Framing trong Revit đều quá nhỏ (lan can, khung kính) – không phải dầm, bỏ qua.";
+        if (nc > 0) return $"Revit chỉ có {nc} cột kết cấu – chưa đủ khung, phần mềm bố trí lại từ tường kiến trúc.";
+        return null;
+    }
 
     /// <summary>Lập ArchDrawing từ phần kiến trúc của file Revit. Trọng lượng tường theo lớp cấu tạo (RevitMaterials).</summary>
     public static ArchDrawing ToDrawing(RevitExchange ex, ArchImportOptions o)
