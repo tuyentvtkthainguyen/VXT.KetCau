@@ -44,6 +44,7 @@
                 <MenuItem Header="Nhập mặt bằng kết cấu _DWG/DXF..." Click="MnuImportDxf_Click"/>
                 <MenuItem Header="Nhập bản vẽ _kiến trúc (triển khai kết cấu)..." Click="MnuImportArch_Click"/>
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
+                <MenuItem Header="Xuất sang Revit (chuẩn + kết cấu)…" Click="MnuExportToRevit_Click" ToolTip="File *.vxt2revit.json cho add-in Việt Const trong Revit: chuẩn hoá cao độ, trục, vật liệu, loại tường / cột / dầm / sàn; dựng kết cấu; nhận ngược tiết diện"/>
                 <MenuItem Header="Từ mô hình Revit → thiết kế (từng bước)…" Click="MnuRevitWizard_Click" FontWeight="SemiBold" ToolTip="Mô hình Revit kiến trúc → nhận diện tải → bố trí kết cấu → tổ hợp → kiểm tra → phân tích → tối ưu tiết diện theo chi phí → thiết kế; mỗi bước bạn xác nhận (MainWindow.RevitWizard.cs)"/>
                 <MenuItem Header="Nhập mô hình _ETABS/SAP (.e2k/.s2k)…" Click="MnuImportCsiModel_Click"/>
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>

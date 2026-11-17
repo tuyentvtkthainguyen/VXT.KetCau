@@ -27,4 +27,12 @@
     <VendorDescription>Vũ Xuân Tuyến – Việt Const</VendorDescription>
     <VisibilityMode>NotVisibleInFamily</VisibilityMode>
   </AddIn>
+  <AddIn Type="Application">
+    <Name>Việt Const</Name>
+    <Assembly>KetCauVXT.RevitExport.dll</Assembly>
+    <FullClassName>KetCauVXT.RevitExport.RibbonApp</FullClassName>
+    <ClientId>2f8b6d4a-91c3-4e57-b0a2-6c4e9d1f7a35</ClientId>
+    <VendorId>VXT</VendorId>
+    <VendorDescription>Vũ Xuân Tuyến – Việt Const</VendorDescription>
+  </AddIn>
 </RevitAddIns>

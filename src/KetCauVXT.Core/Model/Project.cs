@@ -173,6 +173,8 @@ public partial class Project
     public QuantitySettings QuantitySettings { get; set; } = new();
     /// <summary>Đơn giá dùng khi tối ưu tiết diện theo tổng chi phí (Design/SectionOptimizer.cs)</summary>
     public KetCauVXT.Design.CostRates CostRates { get; set; } = new();
+    /// <summary>Liên kết mô hình Revit nguồn (gốc toạ độ, cao độ tầng 1) – để xuất ngược về Revit (Import/RevitSyncExport.cs); null = không nhập từ Revit</summary>
+    public KetCauVXT.Import.RevitLink RevitLink { get; set; }
     /// <summary>Tuỳ chọn thuyết minh tự động gần nhất (trang bìa, chương…); null = mặc định (Report/ReportOptions.cs)</summary>
     public KetCauVXT.Report.ReportOptions ReportOptions { get; set; }
     // ---- [hết] ----

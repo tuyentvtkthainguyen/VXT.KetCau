@@ -81,6 +81,7 @@ public static class RevitArchReader
             plans.Add(roof);
         }
         d.Floors = plans;
+        d.OriginX = ox; d.OriginY = oy; d.GroundZ = storeyLevels[0].Elevation;
         d.Info.Add($"Revit: {plans.Count(p => !p.IsRoofPlan)} mặt bằng tầng"
                    + (plans.Any(p => p.IsRoofPlan) ? " + mặt bằng mái" : "") + $", gốc toạ độ dời về ({ox:0.000}; {oy:0.000}).");
         foreach (var p in plans)

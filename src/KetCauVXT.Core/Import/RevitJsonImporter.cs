@@ -154,6 +154,7 @@ public static class RevitJsonImporter
             if (ys.Count > 0) oy = Math.Round(ys.Min(), 4);
             if (Math.Abs(ox) > 1e-6 || Math.Abs(oy) > 1e-6) rep.Info.Add($"Dời gốc toạ độ về ({ox:0.000}; {oy:0.000}) của Revit");
         }
+        p.RevitLink = new RevitLink { OriginX = ox, OriginY = oy, GroundZ = 0, SourceFile = ex.ProjectName ?? "" };   // xuất ngược về Revit (RevitSyncExport)
 
         // ---------------- TRỤC ----------------
         p.Grids.Clear();

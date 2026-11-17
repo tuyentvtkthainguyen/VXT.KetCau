@@ -29,6 +29,35 @@ public partial class MainWindow
 
     private void MnuRevitWizard_Click(object sender, RoutedEventArgs e) => OpenRevitWizard();
 
+    /// <summary>Xuất chuẩn (cao độ, trục, vật liệu, loại tường / cột / dầm / sàn, khung tên, nét in) + cột, dầm, sàn sang Revit:
+    /// add-in Việt Const trong Revit dùng file này để chuẩn hoá, dựng kết cấu và nhận ngược tiết diện (Import/RevitSyncExport.cs).</summary>
+    private void MnuExportToRevit_Click(object sender, RoutedEventArgs e)
+    {
+        if (_p == null || !PassGate(WorkflowAction.ExportModel)) return;
+        if (_p.RevitLink == null && MessageBox.Show(this,
+                "Mô hình này không nhập từ Revit nên chưa biết gốc toạ độ Revit: cấu kiện sẽ đặt từ gốc toạ độ nội bộ (0; 0) của Revit, tầng 1 tại cao độ 0.\nTiếp tục?",
+                "Xuất sang Revit", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        var dlg = new SaveFileDialog
+        {
+            Title = "Xuất chuẩn + kết cấu sang Revit", Filter = "File Việt Const → Revit (*.vxt2revit.json)|*.vxt2revit.json",
+            FileName = SafeFile(_p.Name) + ".vxt2revit.json",
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        try
+        {
+            System.IO.File.WriteAllText(dlg.FileName, RevitSyncExport.ToJson(_p), new System.Text.UTF8Encoding(false));
+            int nc = _p.Frames.Count(f => f.Kind == FrameKind.Column), nb = _p.Frames.Count(f => f.Kind != FrameKind.Column);
+            SetStatus($"Đã xuất {nc} cột, {nb} dầm, {_p.Slabs.Count} ô sàn + chuẩn sang {System.IO.Path.GetFileName(dlg.FileName)}. Trong Revit: tab Việt Const → Chuẩn hoá / Dựng kết cấu / Nhận tiết diện.");
+        }
+        catch (Exception ex) { ShowError("Xuất sang Revit", ex); }
+    }
+
+    private static string SafeFile(string s)
+    {
+        foreach (var c in System.IO.Path.GetInvalidFileNameChars()) s = (s ?? "").Replace(c, '_');
+        return string.IsNullOrWhiteSpace(s) ? "VietConst" : s.Trim();
+    }
+
     private void OpenRevitWizard()
     {
         if (_wzWin != null && _wzWin.IsLoaded) { _wzWin.Activate(); return; }
@@ -405,6 +434,7 @@ public partial class MainWindow
                     box.Text = ProposalText();
                     if (!AskReplace()) return;
                     var rep = ArchToStructure.Apply(_m._p, _drawing, _prop, _opt);
+                    _m._p.RevitLink = new RevitLink { OriginX = _drawing.OriginX, OriginY = _drawing.OriginY, GroundZ = _drawing.GroundZ, SourceFile = _file ?? "" };
                     int ne = _loads?.ApplyEquipment(_m._p) ?? 0;
                     AfterModelReplaced();
                     _applied = true;
@@ -601,6 +631,7 @@ public partial class MainWindow
                     DialogUi.Btn("Xem tab Thiết kế", (s, e) => _m.SelectLeft("Thiết kế")),
                     DialogUi.Btn("Thiết kế móng…", (s, e) => _m.MnuDesignFoundation_Click(this, new RoutedEventArgs())),
                     DialogUi.Btn("Xuất toàn bộ hồ sơ…", (s, e) => _m.MnuExpAll_Click(this, new RoutedEventArgs()), bold: true),
+                    DialogUi.Btn("Xuất sang Revit (kết cấu + chuẩn)…", (s, e) => _m.MnuExportToRevit_Click(this, new RoutedEventArgs())),
                     DialogUi.Btn("Làm mới", (s, e) => Show(7))));
             }
             sp.Children.Add(DialogUi.Hint("Người có chứng chỉ hành nghề kiểm tra thuyết minh, bản vẽ và ký trước khi phát hành."));

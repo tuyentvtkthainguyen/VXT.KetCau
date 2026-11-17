@@ -135,6 +135,22 @@ public static class RevitArchToDesignTests
         check("Mô hình: tải bồn nước ở cao trình mái", B(p.NodeLoads.Any(nl => Math.Abs(nl.Fz + 16.5) < 1e-9 && Math.Abs(p.Node(nl.Node).Z - p.Stories.Max(st => st.Elevation)) < 0.02)), 1, 0);
         check("Mô hình: kiểm tra mô hình không lỗi", ModelCheck.Run(p).Errors, 0, 0);
 
+        // ---- xuất ngược sang Revit (*.vxt2revit.json): toạ độ trở về hệ Revit ----
+        check("Gốc Revit ghi nhận khi đọc kiến trúc", d.OriginX * 1000 + d.OriginY, 100 * 1000 + 200, 1e-9);
+        p.RevitLink = new RevitLink { OriginX = d.OriginX, OriginY = d.OriginY, GroundZ = d.GroundZ };
+        var js = RevitSyncExport.Build(p);
+        var jcols = js["Columns"]!.AsArray(); var jbeams = js["Beams"]!.AsArray(); var jslabs = js["Slabs"]!.AsArray();
+        check("Xuất Revit: số cột = số cột mô hình", jcols.Count, p.Frames.Count(f => f.Kind == FrameKind.Column), 0);
+        check("Xuất Revit: có dầm, sàn", B(jbeams.Count > 0 && jslabs.Count > 0), 1, 0);
+        check("Xuất Revit: cột nhỏ nhất ở X = 100 (toạ độ Revit)", jcols.Min(c => (double)c!["X"]!), 100, 1e-6);
+        check("Xuất Revit: cột nhỏ nhất ở Y = 200 (toạ độ Revit)", jcols.Min(c => (double)c!["Y"]!), 200, 1e-6);
+        check("Xuất Revit: đỉnh cột cao nhất = mái +6,9", jcols.Max(c => (double)c!["ZTop"]!), 6.9, 1e-6);
+        check("Xuất Revit: trục 1 tại X = 100", B(js["Grids"]!.AsArray().Any(g => (string)g!["Name"]! == "1" && Math.Abs((double)g["Coord"]! - 100) < 1e-6)), 1, 0);
+        check("Xuất Revit: cao độ tầng 1 tại 0", B(js["Levels"]!.AsArray().Any(l => Math.Abs((double)l!["Elevation"]!) < 1e-6)), 1, 0);
+        check("Xuất Revit: loại tường có lớp cấu tạo", B(js["WallTypes"]!.AsArray().All(w => w!["Layers"]!.AsArray().Count > 0)), 1, 0);
+        check("Xuất Revit: tên loại cột theo quy ước C…x…", B(js["ColumnTypes"]!.AsArray().All(t => ((string)t!["Name"]!).StartsWith("C"))), 1, 0);
+        check("Xuất Revit: chuỗi JSON đọc lại được", B(System.Text.Json.Nodes.JsonNode.Parse(RevitSyncExport.ToJson(p)) != null), 1, 0);
+
         // ---- tối ưu tiết diện theo chi phí (giữ bề rộng) ----
         var widths = p.Frames.Where(f => f.Kind == FrameKind.Beam).ToDictionary(f => f.Id, f => p.Section(f.Section).B);
         var opt = SectionOptimizer.Run(p, new CostRates(), new OptimizeOptions { MaxRounds = 4 });

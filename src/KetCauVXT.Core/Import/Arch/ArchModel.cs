@@ -205,6 +205,10 @@ public class ArchFloorPlan
 public class ArchDrawing
 {
     public string Source { get; set; } = "";
+    /// <summary>[Revit] Toạ độ Revit của gốc (0; 0) và cao độ Revit của sàn tầng 1 – để xuất kết cấu ngược về Revit (RevitLink)</summary>
+    public double OriginX { get; set; }
+    public double OriginY { get; set; }
+    public double GroundZ { get; set; }
     public List<ArchFloorPlan> Floors { get; set; } = new();
     public List<string> Warnings { get; } = new();
     public List<string> Info { get; } = new();
