@@ -8,6 +8,7 @@ using KetCauVXT.Import;
 using KetCauVXT.Import.Arch;
 using KetCauVXT.Loads;
 using KetCauVXT.Model;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
