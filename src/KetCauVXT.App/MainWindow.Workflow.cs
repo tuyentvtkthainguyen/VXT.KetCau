@@ -5,6 +5,7 @@ using System.Windows.Input;
 using KetCauVXT.Analysis;
 using KetCauVXT.Loads;
 using KetCauVXT.Model;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -28,6 +29,7 @@ public partial class MainWindow
         planHost.MouseLeave += (s, e) => { if (txtStCursor != null) txtStCursor.Text = "X = –  Y = –"; };
         AddHandler(PreviewKeyDownEvent, new KeyEventHandler(Workflow_PreviewKeyDown), true);   // nhận cả phím đã xử lý (Esc) để vẽ lại cột đang chọn
         InitModelExplorer();
+        InitGateUi();        // khoá bước + nút Bước tiếp – MainWindow.Gate.cs
     }
 
     private void Workflow_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -480,7 +482,8 @@ public partial class MainWindow
     private async void MnuDeformed_Click(object sender, RoutedEventArgs e)
     {
         if (_p == null || _busy) return;
-        if (!await EnsureAnalysis()) return;
+        if (!PassGate(WorkflowAction.Results) || !await EnsureAnalysis()) return;
+        MarkResultsReviewed();
         string c = cbCase.SelectedItem as string;
         if (c != null && _res.IsEnvelope(c)) c = _res.Cases.Keys.FirstOrDefault();
         if (_deformWin != null && _deformWin.IsLoaded) { _deformWin.Close(); }
@@ -489,9 +492,16 @@ public partial class MainWindow
         _deformWin.Show();
     }
 
-    private async void MnuTables_Click(object sender, RoutedEventArgs e) => await OpenTables(ResultTableKind.JointReactions);
+    private async void MnuTables_Click(object sender, RoutedEventArgs e) => await OpenTablesGated(ResultTableKind.JointReactions);
 
-    private async void MnuReactions_Click(object sender, RoutedEventArgs e) => await OpenTables(ResultTableKind.JointReactions);
+    private async void MnuReactions_Click(object sender, RoutedEventArgs e) => await OpenTablesGated(ResultTableKind.JointReactions);
+
+    /// <summary>Bảng kết quả từ menu: cần đã phân tích (MainWindow.Gate.cs); mở được = đã xem kết quả.</summary>
+    private async Task OpenTablesGated(ResultTableKind kind)
+    {
+        if (_p == null || _busy || !PassGate(WorkflowAction.Results)) return;
+        if (await OpenTables(kind) != null) MarkResultsReviewed();
+    }
 
     private async Task<ResultTablesWindow> OpenTables(ResultTableKind kind)
     {

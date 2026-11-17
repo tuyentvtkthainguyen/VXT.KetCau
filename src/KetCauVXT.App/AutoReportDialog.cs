@@ -91,7 +91,7 @@ internal sealed class AutoReportDialog : Window
         Opt("Đánh số tên bảng (Bảng n.k)", () => Options.TableCaptions, v => Options.TableCaptions = v);
         string font = p?.CadStandard?.ReportFont;
         right.Children.Add(DialogUi.Hint($"Font thuyết minh: {(string.IsNullOrWhiteSpace(font) ? DocxWriter.DefaultFont : font)} (theo chuẩn CAD/thuyết minh). "
-            + "Chương trình tự chạy phân tích và thiết kế nếu chưa có kết quả hoặc mô hình đã sửa sau lần tính trước. "
+            + "Chỉ lập được khi đã phân tích, đã xem kết quả, đã thiết kế và mọi cấu kiện đạt (chương trình báo bước còn thiếu). "
             + "Khi mở bằng Word, chọn “Yes” để cập nhật mục lục và số trang."));
 
         var body = new Grid();

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using KetCauVXT.Report;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -12,7 +13,7 @@ public partial class MainWindow
 
     private async void MnuQuantities_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy) return;
+        if (_busy || !PassGate(WorkflowAction.DesignEdit)) return;   // MainWindow.Gate.cs
         ApplyUiToProject(false);
         if (_design == null)
         {
@@ -38,7 +39,7 @@ public partial class MainWindow
 
     private void MnuAutoReport_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy) return;
+        if (_busy || !PassGate(WorkflowAction.Documents)) return;   // MainWindow.Gate.cs
         ApplyUiToProject(false);
         ShowAutoReportDialog();
     }

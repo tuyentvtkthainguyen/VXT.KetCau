@@ -154,7 +154,7 @@ public partial class MainWindow
         {
             if (_quickStartWin == null || !_quickStartWin.IsLoaded)
             {
-                var w = new QuickStartWindow(() => (_p, _res != null, _design), DoQuickStep);
+                var w = new QuickStartWindow(GateState, DoGateStep);   // trạng thái + khoá bước: MainWindow.Gate.cs
                 if (IsEnabled && IsLoaded) w.Owner = this;
                 w.Closed += (s, e) => { if (ReferenceEquals(_quickStartWin, s)) _quickStartWin = null; };
                 _quickStartWin = w;
@@ -221,7 +221,10 @@ public partial class MainWindow
             case "mong": SelectLeft("Địa chất"); SelectView("Mô hình móng"); break;
             case "phan-tich": MnuRun_Click(this, e); break;
             case "kiem-tra": SelectLeft("Kiểm tra"); SelectView("Biểu đồ nội lực"); break;
-            case "thiet-ke": MnuDesignConcrete_Click(this, e); break;
+            case "thiet-ke":
+                if (_p != null && !_p.Frames.Any(f => f.IsConcrete) && _p.Frames.Any(f => !f.IsConcrete)) MnuCheckSteel_Click(this, e);   // nhà thép tiền chế
+                else MnuDesignConcrete_Click(this, e);
+                break;
             case "ho-so": MnuExpAll_Click(this, e); break;
         }
     }

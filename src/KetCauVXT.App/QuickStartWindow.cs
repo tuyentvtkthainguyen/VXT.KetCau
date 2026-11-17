@@ -13,7 +13,7 @@ namespace KetCauVXT.App;
 /// %AppData%\KetCauVXT\BatDauNhanh.json.</summary>
 internal sealed class QuickStartWindow : Window
 {
-    private readonly Func<(Project P, bool HasResults, DesignSummary Design)> _state;
+    private readonly Func<WorkflowState> _state;
     private readonly Action<string> _doStep;
     private readonly StackPanel _list = new() { Margin = new Thickness(10, 4, 10, 4) };
     private readonly TextBlock _summary = new() { Margin = new Thickness(10, 8, 10, 2), TextWrapping = TextWrapping.Wrap, FontWeight = FontWeights.SemiBold };
@@ -24,18 +24,19 @@ internal sealed class QuickStartWindow : Window
     private static readonly Brush AskBrush = Frozen(Color.FromRgb(200, 120, 20));
     private static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
 
-    /// <param name="state">Trạng thái hiện hành của cửa sổ chính (dự án, có kết quả phân tích, kết quả thiết kế).</param>
-    /// <param name="doStep">Thực hiện bước theo Id (QuickStartStep.Id).</param>
-    public QuickStartWindow(Func<(Project, bool, DesignSummary)> state, Action<string> doStep)
+    /// <param name="state">Trạng thái hiện hành của cửa sổ chính (dự án, kết quả phân tích, kết quả thiết kế, đã xem kết quả) – dùng cả cho khoá bước.</param>
+    /// <param name="doStep">Thực hiện bước theo Id (QuickStartStep.Id; các bước bị khoá vẫn gọi – cửa sổ chính báo bước tiền đề còn thiếu).</param>
+    public QuickStartWindow(Func<WorkflowState> state, Action<string> doStep)
     {
-        _state = () => state();
+        _state = state;
         _doStep = doStep;
         DialogUi.Setup(this, "Bắt đầu nhanh – Việt Const", 760, 640);
         ShowInTaskbar = true;
         ResizeMode = ResizeMode.CanResizeWithGrip;
         Help.SetId(this, "quy-trinh.bat-dau-nhanh");
 
-        var intro = DialogUi.Hint("Các bước làm việc từ khởi tạo đến hồ sơ. ✓ đã làm, ○ chưa làm, ? bạn tự kiểm tra. "
+        var intro = DialogUi.Hint("Các bước làm việc từ khởi tạo đến hồ sơ, làm lần lượt từ trên xuống. ✓ đã làm, ○ chưa làm, ? bạn tự kiểm tra, "
+                                  + "🔒 chưa làm được vì bước trước chưa xong (rê chuột để xem thiếu gì). Bước nên làm tiếp được tô nền xanh. "
                                   + "\"Làm bước này\" chuyển tới tab / công cụ tương ứng; \"Xem hướng dẫn\" mở mục hướng dẫn (F1 cũng mở hướng dẫn theo ngữ cảnh).");
         intro.Margin = new Thickness(10, 0, 10, 4);
 
@@ -50,6 +51,7 @@ internal sealed class QuickStartWindow : Window
         var root = new DockPanel();
         DockPanel.SetDock(_summary, Dock.Top); root.Children.Add(_summary);
         DockPanel.SetDock(intro, Dock.Top); root.Children.Add(intro);
+        DockPanel.SetDock(_next, Dock.Top); root.Children.Add(_next);
         DockPanel.SetDock(bottom, Dock.Bottom); root.Children.Add(bottom);
         root.Children.Add(new ScrollViewer { Content = _list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         Content = root;
@@ -57,7 +59,9 @@ internal sealed class QuickStartWindow : Window
         Refresh();
     }
 
-    private readonly List<(QuickStartStep Step, TextBlock Mark, Button Go)> _rows = new();
+    private readonly List<(QuickStartStep Step, TextBlock Mark, Button Go, Border Box)> _rows = new();
+    private readonly TextBlock _next = new() { Margin = new Thickness(10, 2, 10, 4), TextWrapping = TextWrapping.Wrap, Foreground = new SolidColorBrush(Color.FromRgb(20, 80, 160)), FontWeight = FontWeights.SemiBold };
+    private static readonly Brush NextBack = Frozen(Color.FromRgb(232, 242, 255));
 
     private void BuildRows()
     {
@@ -78,8 +82,9 @@ internal sealed class QuickStartWindow : Window
             DockPanel.SetDock(mark, Dock.Left); row.Children.Add(mark);
             DockPanel.SetDock(actions, Dock.Right); row.Children.Add(actions);
             row.Children.Add(text);
-            _list.Children.Add(new Border { Child = row, BorderBrush = new SolidColorBrush(Color.FromRgb(225, 228, 234)), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 2, 0, 4) });
-            _rows.Add((step, mark, go));
+            var box = new Border { Child = row, BorderBrush = new SolidColorBrush(Color.FromRgb(225, 228, 234)), BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(4, 2, 4, 4) };
+            _list.Children.Add(box);
+            _rows.Add((step, mark, go, box));
         }
     }
 
@@ -87,18 +92,29 @@ internal sealed class QuickStartWindow : Window
     public void Refresh()
     {
         if (_rows.Count == 0) BuildRows();
-        var (p, hasRes, ds) = _state();
+        var s = _state() ?? new WorkflowState();
+        var p = s.Project;
+        var next = WorkflowGate.Next(s);
         int done = 0;
-        foreach (var (step, mark, go) in _rows)
+        foreach (var (step, mark, go, box) in _rows)
         {
-            bool? st = QuickStart.Evaluate(step, p, hasRes, ds);
+            bool? st = QuickStart.Evaluate(step, p, s.HasResults, s.Design);
+            if (step.Id == WorkflowGate.ReviewStepId && s.HasResults) st = s.ResultsReviewed ? true : null;   // đã xem bảng / biểu đồ kết quả hiện hành
+            var gate = WorkflowGate.CheckStep(step.Id, s);
+            bool locked = st != true && !gate.Allowed;
             if (st == true) done++;
-            mark.Text = st == true ? "✓" : st == false ? "○" : "?";
-            mark.Foreground = st == true ? DoneBrush : st == false ? TodoBrush : AskBrush;
-            mark.ToolTip = st == true ? "Đã làm (tự nhận biết từ dự án)" : st == false ? "Chưa làm" : "Không tự nhận biết được – bạn tự kiểm tra";
-            go.FontWeight = st == true ? FontWeights.Normal : FontWeights.Bold;
+            mark.Text = locked ? "🔒" : st == true ? "✓" : st == false ? "○" : "?";
+            mark.Foreground = locked ? TodoBrush : st == true ? DoneBrush : st == false ? TodoBrush : AskBrush;
+            mark.ToolTip = locked ? "Chưa làm được – cần xong trước:\n" + string.Join("\n", gate.Missing.Select(m => "• " + m.Title + ": " + m.Reason))
+                : st == true ? "Đã làm (tự nhận biết từ dự án)" : st == false ? "Chưa làm" : "Không tự nhận biết được – bạn tự kiểm tra";
+            go.ToolTip = locked ? "Bấm để xem bước tiền đề còn thiếu" : null;
+            bool isNext = next != null && (next.StepId == step.Id || (next.StepId == WorkflowGate.ModelCheckStepId && step.Id == "phan-tich")
+                                           || (next.StepId == WorkflowGate.DesignOkStepId && step.Id == "thiet-ke"));
+            box.Background = isNext ? NextBack : Brushes.Transparent;
+            go.FontWeight = isNext ? FontWeights.Bold : FontWeights.Normal;
         }
         _summary.Text = $"Dự án \"{p?.Name}\": đã làm {done}/{QuickStart.Steps.Count} bước.";
+        _next.Text = next == null ? "✓ Đã đủ các bước bắt buộc." : $"➜ Bước tiếp theo: {next.Title}. {next.Reason} {next.Todo}";
     }
 
     /// <summary>Số bước đã làm (tự kiểm tra).</summary>

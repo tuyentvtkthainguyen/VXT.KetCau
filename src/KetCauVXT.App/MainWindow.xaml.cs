@@ -21,6 +21,7 @@ using ExcelReport = KetCauVXT.Report.ExcelReport;
 using ForceTables = KetCauVXT.Report.ForceTables;
 using E2k = KetCauVXT.Export.E2kExporter;
 using S2k = KetCauVXT.Export.S2kExporter;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -126,6 +127,7 @@ public partial class MainWindow : Window
         string f = _path != null ? Path.GetFileName(_path) : "(chưa lưu)";
         Title = $"{AppTitle} – {_p?.Name} – {f}{(_dirty ? " *" : "")}";
         txtFile.Text = _path ?? "";
+        UpdateNextStep();   // nút Bước tiếp – MainWindow.Gate.cs
     }
 
     private void MarkDirty(bool invalidateResults = true)
@@ -579,6 +581,7 @@ public partial class MainWindow : Window
     private async void MnuRun_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
+        if (!PassGate(WorkflowAction.Analysis)) return;   // MainWindow.Gate.cs
         await RunAnalysis();
     }
 
@@ -590,7 +593,7 @@ public partial class MainWindow : Window
 
     private async void MnuDesignConcrete_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !await EnsureAnalysis()) return;
+        if (_busy || !PassGate(WorkflowAction.Design) || !await EnsureAnalysis()) return;
         if (!_p.Frames.Any(f => f.IsConcrete))
         {
             MessageBox.Show("Mô hình không có cấu kiện BTCT.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
@@ -615,7 +618,7 @@ public partial class MainWindow : Window
 
     private async void MnuCheckSteel_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !await EnsureAnalysis()) return;
+        if (_busy || !PassGate(WorkflowAction.Design) || !await EnsureAnalysis()) return;
         if (!_p.Frames.Any(f => !f.IsConcrete))
         {
             MessageBox.Show("Mô hình không có cấu kiện thép.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
@@ -673,7 +676,7 @@ public partial class MainWindow : Window
 
     private async void MnuExpDxf_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !await EnsureDesign()) return;
+        if (_busy || !PassGate(WorkflowAction.Documents) || !await EnsureDesign()) return;
         var expOpt = ExportOptionsDialog.Ask(this, "bộ bản vẽ DXF");   // Gộp 1 file / Tách rời (ExportOptionsDialog.cs)
         if (expOpt == null) return;
         string folder = AskFolder("Chọn thư mục lưu bộ bản vẽ DXF");
@@ -688,7 +691,7 @@ public partial class MainWindow : Window
 
     private async void MnuExpWord_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !await EnsureDesign()) return;
+        if (_busy || !PassGate(WorkflowAction.Documents) || !await EnsureDesign()) return;
         string path = AskSave("Word (*.docx)|*.docx", "ThuyetMinh.docx", "Lưu thuyết minh tính toán");
         if (path == null) return;
         var res = _res; var ds = _design;
@@ -698,7 +701,7 @@ public partial class MainWindow : Window
 
     private async void MnuExpExcel_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !await EnsureDesign()) return;
+        if (_busy || !PassGate(WorkflowAction.Documents) || !await EnsureDesign()) return;
         string path = AskSave("Excel (*.xlsx)|*.xlsx", "BangTinh.xlsx", "Lưu bảng tính");
         if (path == null) return;
         var res = _res; var ds = _design;
@@ -708,7 +711,7 @@ public partial class MainWindow : Window
 
     private async void MnuExpCsv_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !await EnsureAnalysis()) return;
+        if (_busy || !PassGate(WorkflowAction.Results) || !await EnsureAnalysis()) return;
         string folder = AskFolder("Chọn thư mục lưu bảng nội lực CSV");
         if (folder == null) return;
         var res = _res;
@@ -718,7 +721,7 @@ public partial class MainWindow : Window
 
     private async void MnuExpE2k_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy) return;
+        if (_busy || !PassGate(WorkflowAction.ExportModel)) return;
         string path = AskSave("ETABS text (*.e2k)|*.e2k", "MoHinh.e2k", "Xuất mô hình ETABS");
         if (path == null) return;
         ApplyUiToProject(false);
@@ -727,7 +730,7 @@ public partial class MainWindow : Window
 
     private async void MnuExpS2k_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy) return;
+        if (_busy || !PassGate(WorkflowAction.ExportModel)) return;
         string path = AskSave("SAP2000 text (*.s2k)|*.s2k", "MoHinh.s2k", "Xuất mô hình SAP2000");
         if (path == null) return;
         ApplyUiToProject(false);
@@ -736,7 +739,7 @@ public partial class MainWindow : Window
 
     private async void MnuExpAll_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy) return;
+        if (_busy || !PassGate(WorkflowAction.Documents)) return;
         string root = AskFolder("Chọn thư mục để xuất toàn bộ hồ sơ");
         if (root == null) return;
         if (!await EnsureDesign()) return;
@@ -933,6 +936,7 @@ public partial class MainWindow : Window
 
     private void RefreshDesign()
     {
+        UpdateNextStep();       // thiết kế xong / bị xoá → đổi gợi ý Bước tiếp (MainWindow.Gate.cs)
         RedrawSecondaryViews(); // móng 3D + mô hình móng (vẽ trễ, gộp lần gọi)
         RefreshStairGrid();     // cầu thang (MainWindow.Stair.cs)
         if (_design == null)

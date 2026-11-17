@@ -675,6 +675,8 @@ Console.WriteLine("103. Đặt tên cấu kiện: cột / dầm / móng cùng ti
 MemberMarkTests.Run(Check);
 Console.WriteLine("104. AutoCAD hai chiều: cao độ mặt đứng → tầng, kết quả về toạ độ bản vẽ gốc, bản vẽ chi tiết rời không khung tên");
 AcadRoundTripTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+Console.WriteLine("105. Khoá bước theo quy trình: chưa xong bước tiền đề thì không phân tích / thiết kế / xuất hồ sơ; gợi ý bước tiếp theo");
+WorkflowGateTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

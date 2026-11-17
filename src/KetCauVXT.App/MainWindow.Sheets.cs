@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -10,7 +11,7 @@ public partial class MainWindow
 {
     private void MnuSheets_Click(object sender, RoutedEventArgs e)
     {
-        if (_p == null) return;
+        if (_p == null || !PassGate(WorkflowAction.Documents)) return;   // MainWindow.Gate.cs
         try
         {
             var w = new SheetWindow(_p, _res, _design, () => MarkDirty(false)) { Owner = this };

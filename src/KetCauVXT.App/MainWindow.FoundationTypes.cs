@@ -7,6 +7,7 @@ using PileCapDesign = KetCauVXT.Design.Foundation.PileCapDesign;
 using StripFootingDesign = KetCauVXT.Design.Foundation.StripFootingDesign;
 using ConcreteDesigner = KetCauVXT.Design.Concrete.ConcreteDesigner;
 using Shapes = System.Windows.Shapes;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -512,6 +513,7 @@ public partial class MainWindow
         MarkDirty(false);
         SyncFoundationUi();
         if (!dlg.RunDesign) { SetStatus($"Đã lưu thông số móng ({FoundationTypeName(_p.Foundation.Type)})."); return; }
+        if (!PassGate(WorkflowAction.Design)) return;   // thông số móng đã lưu; thiết kế cần đã phân tích + kiểm tra kết quả (MainWindow.Gate.cs)
         var tab = tabView.Items.OfType<TabItem>().FirstOrDefault(t => (t.Header as string) == "Mô hình móng");
         if (tab != null) tabView.SelectedItem = tab;
         await DesignFoundation();

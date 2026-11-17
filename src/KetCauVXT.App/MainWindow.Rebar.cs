@@ -5,6 +5,7 @@ using KetCauVXT.Design.Concrete;
 using KetCauVXT.Model;
 using RebarShopDrawing = KetCauVXT.Drawing.RebarShopDrawing;
 using RebarShopReport = KetCauVXT.Report.RebarShopReport;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -88,7 +89,7 @@ public partial class MainWindow
     {
         if (_busy || _p == null) return;
         string kind = (sender as FrameworkElement)?.Tag as string ?? CurrentDesignKind();
-        if (!await EnsureDesign()) return;
+        if (!PassGate(WorkflowAction.DesignEdit) || !await EnsureDesign()) return;
         var m = SelectedDesignMember(kind);
         if (m == null || m.RebarKeys.Count == 0)
         {
@@ -170,7 +171,7 @@ public partial class MainWindow
 
     private async void MnuExpShop_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy || !await EnsureDesign()) return;
+        if (_busy || !PassGate(WorkflowAction.Documents) || !await EnsureDesign()) return;
         if (!_design.All.Any(m => m.Bars.Count > 0))
         {
             MessageBox.Show("Chưa có cấu kiện BTCT có bố trí thép.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);

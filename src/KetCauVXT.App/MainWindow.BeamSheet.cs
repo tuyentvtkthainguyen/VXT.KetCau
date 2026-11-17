@@ -1,5 +1,6 @@
 using System.Windows;
 using KetCauVXT.Design;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -9,7 +10,7 @@ public partial class MainWindow
     private async void BtnBeamSheet_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _p == null) return;
-        if (!await EnsureDesign()) return;
+        if (!PassGate(WorkflowAction.DesignEdit) || !await EnsureDesign()) return;
         if (_design == null || _design.Beams.Count == 0)
         {
             MessageBox.Show("Chưa có dầm BTCT đã thiết kế.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);

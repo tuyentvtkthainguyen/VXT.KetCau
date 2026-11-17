@@ -236,7 +236,7 @@
                 <Separator/>
                 <Button Content="Kiểm tra MH" Click="MnuCheckModel_Click" Style="{StaticResource ToolButton}" ToolTip="Phân tích → Kiểm tra mô hình…"/>
                 <Button Content="▶ Phân tích" Click="MnuRun_Click" Style="{StaticResource ToolButton}" FontWeight="Bold" ToolTip="Chạy phân tích tĩnh (và dao động riêng nếu bật) – F5"/>
-                <Button Content="Thiết kế BTCT" Click="MnuDesignConcrete_Click" Style="{StaticResource ToolButton}" ToolTip="Thiết kế thép dầm, cột, sàn, móng, cầu thang theo TCVN 5574:2018 (tự phân tích nếu cần)"/>
+                <Button Content="Thiết kế BTCT" Click="MnuDesignConcrete_Click" Style="{StaticResource ToolButton}" ToolTip="Thiết kế thép dầm, cột, sàn, móng, cầu thang theo TCVN 5574:2018 (cần đã phân tích và đã xem kết quả)"/>
                 <Button Content="Kiểm tra thép" Click="MnuCheckSteel_Click" Style="{StaticResource ToolButton}" ToolTip="Kiểm tra cấu kiện khung thép tiền chế (TCVN 5575)"/>
                 <Button Content="Bảng kết quả" Click="MnuTables_Click" Style="{StaticResource ToolButton}" ToolTip="Hiển thị → Bảng kết quả… (Ctrl+T)"/>
                 <Separator/>

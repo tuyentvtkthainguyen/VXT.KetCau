@@ -516,8 +516,9 @@ public static partial class UserGuide
 
         c.Sec("quy-trinh.bat-dau-nhanh", "Bảng Bắt đầu nhanh")
             .P("Bảng **Bắt đầu nhanh** tự hiện khi mở chương trình lần đầu và khi tạo dự án mới (tích **Không hiện lại** để tắt; mở lại bằng {m:quickStart}). Mỗi dòng là một bước của quy trình:")
-            .Bullets("**Trạng thái** tự nhận biết từ dự án: ✓ đã làm (vd. đã có lưới trục, đã có cột – dầm – sàn, đã có tường, đã có kết quả phân tích, đã thiết kế), ○ chưa làm, ? cần bạn tự kiểm tra (vd. kiểm tra kết quả).",
-                "**Làm bước này**: chuyển đến tab, khung nhìn hoặc công cụ tương ứng (vd. tab Công trình, công cụ ＋ Tường, chạy phân tích).",
+            .Bullets("**Trạng thái** tự nhận biết từ dự án: ✓ đã làm (vd. đã có lưới trục, đã có cột – dầm – sàn, đã có tường, đã có kết quả phân tích, đã xem kết quả, đã thiết kế), ○ chưa làm, ? cần bạn tự kiểm tra, 🔒 chưa làm được vì bước trước chưa xong (rê chuột vào 🔒 để xem còn thiếu gì).",
+                "**Bước tiếp theo** được tô nền xanh và ghi ở đầu bảng; cùng gợi ý đó hiện ở nút **➜ Bước tiếp** trên thanh trạng thái cửa sổ chính (bấm để chuyển tới bước).",
+                "**Làm bước này**: chuyển đến tab, khung nhìn hoặc công cụ tương ứng (vd. tab Công trình, công cụ ＋ Tường, chạy phân tích). Bước đang 🔒 thì hiện danh sách bước tiền đề còn thiếu.",
                 "**Xem hướng dẫn**: mở mục hướng dẫn của bước đó.",
                 "Bảng không chặn cửa sổ chính; trạng thái được cập nhật mỗi khi bạn quay lại bảng (hoặc bấm **Làm mới**).");
 
@@ -525,7 +526,8 @@ public static partial class UserGuide
             .Bullets("Lưu dự án thường xuyên (Ctrl+S). File .kcvxt là JSON, có thể sao lưu, so sánh phiên bản.",
                 "\"Tạo mô hình\" ở tab Công trình **xoá mô hình hiện có** và sinh lại; \"Áp dụng thông số\" chỉ cập nhật thông tin, vật liệu, gió, động đất, nền đất.",
                 "Trước khi thiết kế, xem tab Kết quả → **Cảnh báo / thông tin** và tab **Biểu đồ nội lực** để chắc mô hình làm việc đúng.",
-                "Các lệnh xuất tự chạy phân tích và thiết kế nếu kết quả chưa có hoặc đã cũ.");
+                "**Làm lần lượt, không nhảy bước**: chương trình không cho phân tích, thiết kế hay xuất hồ sơ khi bước tiền đề chưa xong, và báo bước còn thiếu kèm nút **Làm bước: …** để chuyển tới. Thứ tự bắt buộc: lưới trục, tầng → tiết diện → cột, dầm → tải trọng và tổ hợp ({m:combos}) → {m:modelCheck} không còn lỗi → {m:run} → xem kết quả (bảng kết quả, biểu đồ nội lực, so sánh ETABS/SAP, hoặc bấm **Tôi đã kiểm tra kết quả**) → thiết kế → mọi cấu kiện đạt → {m:expAll}. Tường và địa chất nên khai báo nhưng không bắt buộc.",
+                "Sửa mô hình sau khi phân tích sẽ xoá kết quả phân tích và thiết kế: phải chạy lại phân tích, xem lại kết quả rồi thiết kế lại trước khi xuất hồ sơ.");
 
         Example(c.Sec("quy-trinh.vi-du", "Ví dụ: nhà phố 4 tầng 5×13,5 m"));
         return c;

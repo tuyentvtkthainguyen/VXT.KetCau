@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using KetCauVXT.Design;
 using KetCauVXT.Import.Arch;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -51,7 +52,7 @@ public partial class MainWindow
 
     private async void MnuAutoResize_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy) return;
+        if (_busy || !PassGate(WorkflowAction.Design)) return;   // MainWindow.Gate.cs
         if (!_p.Frames.Any(f => f.IsConcrete))
         {
             MessageBox.Show(this, "Mô hình không có cấu kiện BTCT.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);

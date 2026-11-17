@@ -1,4 +1,5 @@
 using System.Windows;
+using WorkflowAction = KetCauVXT.Docs.WorkflowAction;
 
 namespace KetCauVXT.App;
 
@@ -9,7 +10,8 @@ public partial class MainWindow
 {
     private async void MnuCrossCheck_Click(object sender, RoutedEventArgs e)
     {
-        if (_busy) return;
+        if (_busy || !PassGate(WorkflowAction.Results)) return;   // MainWindow.Gate.cs
+        MarkResultsReviewed();
         if (_p.Frames.Count == 0)
         {
             MessageBox.Show(this, "Dự án chưa có mô hình khung để so sánh.", AppTitle, MessageBoxButton.OK, MessageBoxImage.Information);
