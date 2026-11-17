@@ -204,7 +204,7 @@ public sealed class ArchLoadTakeoff
     private static string Short(ArchFloorPlan p) => p.IsRoofPlan ? "Mái" : p.IsTum ? "Tum" : "T" + p.FloorNo.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Tải bồn nước từ tên: "1500L", "1,5 m3", "2000 lít" → nước + 10 % vỏ, chân đế; không đọc được → 1500 L (chưa chắc).</summary>
-    internal static (double Load, bool Sure, string Note) TankLoad(string name)
+    public static (double Load, bool Sure, string Note) TankLoad(string name)
     {
         string s = (name ?? "").Replace(',', '.');
         var m = Regex.Match(s, @"(\d+(?:\.\d+)?)\s*(m3|m³|khoi|khối)", RegexOptions.IgnoreCase);
