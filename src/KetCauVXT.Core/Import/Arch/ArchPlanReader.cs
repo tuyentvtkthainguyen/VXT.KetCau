@@ -640,7 +640,7 @@ public static class ArchPlanReader
         return res;
     }
 
-    private static List<ArchGrid> GridsFromWalls(List<ArchWall> walls, GridDir dir)
+    internal static List<ArchGrid> GridsFromWalls(List<ArchWall> walls, GridDir dir)
     {
         // trục X (đường thẳng đứng x = c) lấy từ tường dọc phương Y, ưu tiên tường dày / dài
         var cand = walls.Where(w => dir == GridDir.X ? w.AlongY : w.AlongX)
@@ -741,7 +741,7 @@ public static class ArchPlanReader
     // ------------------------------------------------------------------
     // Đường bao sàn: ô lưới theo toạ độ mép tường, ô "trong nhà" khi tia 4 hướng gặp tường (≥ 3 hướng: chịu được khe cửa lớn ở mặt tiền)
     // ------------------------------------------------------------------
-    private static List<(double X, double Y)> Footprint(List<ArchWall> walls, List<ArchColumn> cols)
+    internal static List<(double X, double Y)> Footprint(List<ArchWall> walls, List<ArchColumn> cols)
     {
         if (walls.Count == 0) return new List<(double X, double Y)>();
         var xs = ImportGeometry.Cluster(walls.SelectMany(w => w.AlongY ? new[] { w.Ax - w.Thickness / 2, w.Ax + w.Thickness / 2 } : new[] { w.Ax, w.Bx }), 0.03);
@@ -845,7 +845,7 @@ public static class ArchPlanReader
         return c;
     }
 
-    private static bool OnOutline(List<(double X, double Y)> poly, ArchWall w)
+    internal static bool OnOutline(List<(double X, double Y)> poly, ArchWall w)
     {
         if (poly.Count < 3) return false;
         double mx = (w.Ax + w.Bx) / 2, my = (w.Ay + w.By) / 2;

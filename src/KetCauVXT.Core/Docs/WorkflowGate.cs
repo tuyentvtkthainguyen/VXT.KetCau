@@ -130,7 +130,7 @@ public static class WorkflowGate
         {
             StepId = "tai-trong", Title = "Tải trọng, tổ hợp",
             Reason = "Chưa có tổ hợp tải trọng.",
-            Todo = "Khai báo → Tự tạo tổ hợp theo TCVN 2737:2023 (hoặc Tổ hợp tải trọng… để tự nhập).",
+            Todo = "Bấm Chạy phân tích: phần mềm tự tạo tổ hợp theo TCVN 2737:2023 và hỏi bạn xác nhận (hoặc Khai báo → Tổ hợp tải trọng… để tự nhập).",
         };
         return null;
     }

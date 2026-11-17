@@ -62,6 +62,10 @@ public class ArchWall
     /// <summary>Tổng chiều dài lỗ cửa trên đoạn tường, m</summary>
     public double OpeningLength;
     public string Layer = "";
+    /// <summary>[Revit] Trọng lượng riêng tương đương của khối tường (kN/m³) sao cho t·γ + 2·trát·18 = trọng lượng thật theo lớp cấu tạo; 0 = theo tuỳ chọn chung (WallUnitWeight).</summary>
+    public double UnitWeight;
+    /// <summary>[Revit] Tên loại tường (Wall Type) – để nhóm trong bảng nhận diện tải.</summary>
+    public string TypeName = "";
     /// <summary>Tường cong: độ vồng có dấu của tim tường (cung tròn) so với dây cung A→B, m – dương = vồng về bên trái hướng A→B
     /// (cùng quy ước với FrameElement.CurveMidOffset). 0 = tường thẳng.</summary>
     public double Sagitta;

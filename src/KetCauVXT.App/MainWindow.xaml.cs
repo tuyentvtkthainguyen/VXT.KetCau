@@ -581,6 +581,7 @@ public partial class MainWindow : Window
     private async void MnuRun_Click(object sender, RoutedEventArgs e)
     {
         if (_busy) return;
+        if (!EnsureCombosConfirmed()) return;             // tự tạo tổ hợp TCVN 2737:2023 + người dùng xác nhận – MainWindow.RevitWizard.cs
         if (!PassGate(WorkflowAction.Analysis)) return;   // MainWindow.Gate.cs
         await RunAnalysis();
     }

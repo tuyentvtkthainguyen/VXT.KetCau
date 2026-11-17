@@ -527,7 +527,9 @@ public static partial class UserGuide
                 "\"Tạo mô hình\" ở tab Công trình **xoá mô hình hiện có** và sinh lại; \"Áp dụng thông số\" chỉ cập nhật thông tin, vật liệu, gió, động đất, nền đất.",
                 "Trước khi thiết kế, xem tab Kết quả → **Cảnh báo / thông tin** và tab **Biểu đồ nội lực** để chắc mô hình làm việc đúng.",
                 "**Làm lần lượt, không nhảy bước**: chương trình không cho phân tích, thiết kế hay xuất hồ sơ khi bước tiền đề chưa xong, và báo bước còn thiếu kèm nút **Làm bước: …** để chuyển tới. Thứ tự bắt buộc: lưới trục, tầng → tiết diện → cột, dầm → tải trọng và tổ hợp ({m:combos}) → {m:modelCheck} không còn lỗi → {m:run} → xem kết quả (bảng kết quả, biểu đồ nội lực, so sánh ETABS/SAP, hoặc bấm **Tôi đã kiểm tra kết quả**) → thiết kế → mọi cấu kiện đạt → {m:expAll}. Tường và địa chất nên khai báo nhưng không bắt buộc.",
-                "Sửa mô hình sau khi phân tích sẽ xoá kết quả phân tích và thiết kế: phải chạy lại phân tích, xem lại kết quả rồi thiết kế lại trước khi xuất hồ sơ.");
+                "Sửa mô hình sau khi phân tích sẽ xoá kết quả phân tích và thiết kế: phải chạy lại phân tích, xem lại kết quả rồi thiết kế lại trước khi xuất hồ sơ.",
+                "Tổ hợp tải trọng: khi bấm chạy phân tích mà chưa có tổ hợp, chương trình tự tạo theo TCVN 2737:2023 và hiện danh sách để bạn xác nhận (hoặc mở bảng tổ hợp để sửa).",
+                "**Từ mô hình Revit (chỉ có kiến trúc) đến thiết kế**: Tệp → Từ mô hình Revit → thiết kế (từng bước)… gồm 8 bước, mỗi bước phần mềm tự làm và bạn xác nhận: đọc tường, cửa, phòng, cao độ → bảng nhận diện tải (phòng → hoạt tải, loại tường → kN/m² theo lớp cấu tạo, mái, bồn nước; mục chưa chắc tô vàng) → bố trí cột, dầm, sàn (bề rộng theo tường) → tổ hợp → kiểm tra mô hình → phân tích, xem kết quả → tối ưu tiết diện theo tổng chi phí bê tông + thép + ván khuôn (giữ bề rộng theo tường; chỗ buộc phải tăng bề rộng được báo riêng) → thiết kế, xuất hồ sơ.");
 
         Example(c.Sec("quy-trinh.vi-du", "Ví dụ: nhà phố 4 tầng 5×13,5 m"));
         return c;

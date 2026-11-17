@@ -133,7 +133,7 @@ public static class AutoResize
     }
 
     /// <summary>Cột tầng dưới không nhỏ hơn tầng trên (cùng vị trí).</summary>
-    private static void EnforceColumnContinuity(Project p)
+    internal static void EnforceColumnContinuity(Project p)
     {
         foreach (var g in p.Frames.Where(f => f.Kind == FrameKind.Column && f.IsConcrete)
                      .GroupBy(f => (Math.Round(p.Node(f.NodeI).X, 3), Math.Round(p.Node(f.NodeI).Y, 3))))

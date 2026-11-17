@@ -44,6 +44,7 @@
                 <MenuItem Header="Nhập mặt bằng kết cấu _DWG/DXF..." Click="MnuImportDxf_Click"/>
                 <MenuItem Header="Nhập bản vẽ _kiến trúc (triển khai kết cấu)..." Click="MnuImportArch_Click"/>
                 <MenuItem Header="Nhập từ _Revit (JSON)..." Click="MnuImportRevit_Click"/>
+                <MenuItem Header="Từ mô hình Revit → thiết kế (từng bước)…" Click="MnuRevitWizard_Click" FontWeight="SemiBold" ToolTip="Mô hình Revit kiến trúc → nhận diện tải → bố trí kết cấu → tổ hợp → kiểm tra → phân tích → tối ưu tiết diện theo chi phí → thiết kế; mỗi bước bạn xác nhận (MainWindow.RevitWizard.cs)"/>
                 <MenuItem Header="Nhập mô hình _ETABS/SAP (.e2k/.s2k)…" Click="MnuImportCsiModel_Click"/>
                 <MenuItem Header="Nhận dữ liệu từ _AutoCAD…" Click="MnuAcadLink_Click"/>
                 <MenuItem Header="Gửi kết quả về AutoCAD (VXT_NHAN / VXT_CHEN)…" Click="MnuAcadResults_Click" ToolTip="Tên cấu kiện, tiết diện, thép, khung móng theo đúng vị trí bản vẽ gốc + bản vẽ chi tiết rời không khung tên"/>
@@ -230,6 +231,7 @@
                 <Button Content="Nhập DWG/DXF" Click="MnuImportDxf_Click" Style="{StaticResource ToolButton}" ToolTip="Nhập mặt bằng kết cấu đã vẽ (layer TRUC, COT, DAM, SAN) từ DWG/DXF"/>
                 <Button Content="Từ bản vẽ KT" Click="MnuImportArch_Click" Style="{StaticResource ToolButton}" ToolTip="Nhập bản vẽ kiến trúc sơ bộ → tự triển khai kết cấu"/>
                 <Button Content="Nhập Revit" Click="MnuImportRevit_Click" Style="{StaticResource ToolButton}" ToolTip="Nhập mô hình xuất từ add-in Revit (*.vxtrevit.json)"/>
+                <Button Content="Revit → Thiết kế" Click="MnuRevitWizard_Click" Style="{StaticResource ToolButton}" FontWeight="Bold" ToolTip="Từ mô hình Revit (kiến trúc) đến thiết kế tối ưu – từng bước, mỗi bước bạn xác nhận"/>
                 <Separator/>
                 <Button Content="Tạo khung BTCT" Click="MnuBuildGrid_Click" Style="{StaticResource ToolButton}" ToolTip="Sinh lại khung BTCT từ lưới trục, tầng ở tab Công trình (xoá mô hình hiện có)"/>
                 <Button Content="Khung tiền chế" Click="MnuBuildPortal_Click" Style="{StaticResource ToolButton}" ToolTip="Tạo khung thép tiền chế (nhịp, cao đỉnh cột, độ dốc, bước khung, tiết diện vát)"/>

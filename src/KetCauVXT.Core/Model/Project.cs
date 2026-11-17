@@ -171,6 +171,8 @@ public partial class Project
     // ---- [Khối lượng vật tư + thuyết minh tự động] ----
     /// <summary>Định mức, đơn giá, tuỳ chọn bảng khối lượng vật tư (Model/QuantitySettings.cs, Report/Quantities.cs)</summary>
     public QuantitySettings QuantitySettings { get; set; } = new();
+    /// <summary>Đơn giá dùng khi tối ưu tiết diện theo tổng chi phí (Design/SectionOptimizer.cs)</summary>
+    public KetCauVXT.Design.CostRates CostRates { get; set; } = new();
     /// <summary>Tuỳ chọn thuyết minh tự động gần nhất (trang bìa, chương…); null = mặc định (Report/ReportOptions.cs)</summary>
     public KetCauVXT.Report.ReportOptions ReportOptions { get; set; }
     // ---- [hết] ----

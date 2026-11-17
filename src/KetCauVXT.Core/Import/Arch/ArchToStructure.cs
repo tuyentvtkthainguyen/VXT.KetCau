@@ -371,7 +371,7 @@ public static class ArchToStructure
         double hWall = (above?.Height ?? 0) - 0.35;
         foreach (var w in wallsOn)
         {
-            double unit = w.Thickness * o.WallUnitWeight + 2 * o.PlasterThickness * 18.0;   // kN/m²
+            double unit = w.Thickness * (w.UnitWeight > 0 ? w.UnitWeight : o.WallUnitWeight) + 2 * o.PlasterThickness * 18.0;   // kN/m² (γ theo loại tường Revit nếu có)
             double hw = Math.Max(hWall, 0.5);
             double open = Math.Min(0.7, w.OpeningLength * 2.0 / Math.Max(w.Length * hw, 1e-6));
             double q = unit * hw * (1 - open);                 // kN/m chiều dài tường
@@ -1032,12 +1032,13 @@ public static class ArchToStructure
 
         // tường: khai báo theo vị trí (sửa được trên mặt bằng), tải sinh khi phân tích
         p.Walls.Clear();
-        string TypeFor(double t)
+        string TypeFor(double t, double gamma = 0)
         {
-            var wt = p.WallTypes.FirstOrDefault(q => Math.Abs(q.Thickness - t) < 0.006 && q.Finish == WallFinish.Plaster2Sides && q.OpeningRatio == 0 && Math.Abs(q.UnitWeight - o.WallUnitWeight) < 1e-6);
+            if (gamma <= 0) gamma = o.WallUnitWeight;   // γ theo loại tường Revit (ArchWall.UnitWeight) hoặc tuỳ chọn chung
+            var wt = p.WallTypes.FirstOrDefault(q => Math.Abs(q.Thickness - t) < 0.006 && q.Finish == WallFinish.Plaster2Sides && q.OpeningRatio == 0 && Math.Abs(q.UnitWeight - gamma) < 1e-6);
             if (wt != null) return wt.Name;
             string tt = (t * 1000).ToString("0", CultureInfo.InvariantCulture);
-            wt = new WallType { Name = $"Tường {tt} trát 2 mặt" + (Math.Abs(o.WallUnitWeight - 18) > 1e-6 ? $" (γ={o.WallUnitWeight:0.#})" : ""), Thickness = Math.Round(t, 3), UnitWeight = o.WallUnitWeight, PlasterThickness = o.PlasterThickness };
+            wt = new WallType { Name = $"Tường {tt} trát 2 mặt" + (Math.Abs(gamma - 18) > 1e-6 ? $" (γ={gamma:0.#})" : ""), Thickness = Math.Round(t, 3), UnitWeight = gamma, PlasterThickness = o.PlasterThickness };
             if (p.WallTypes.Any(q => q.Name == wt.Name)) wt.Name += $" {p.WallTypes.Count + 1}";
             p.WallTypes.Add(wt);
             return wt.Name;
@@ -1051,7 +1052,7 @@ public static class ArchToStructure
             bool isTop = i == s.Levels.Count - 1;
             if (plan != null && !isTop)
                 foreach (var w in plan.Walls.Where(w => w.Thickness >= 0.08 && w.Length >= 0.5))
-                    p.Walls.Add(new WallLine { Id = wid++, Story = lv.Name, X1 = w.Ax, Y1 = w.Ay, X2 = w.Bx, Y2 = w.By, Sagitta = w.IsCurved ? Math.Round(w.Sagitta, 4) : 0, Type = TypeFor(w.Thickness), OpeningArea = Math.Round(w.OpeningLength * 2.0, 2),
+                    p.Walls.Add(new WallLine { Id = wid++, Story = lv.Name, X1 = w.Ax, Y1 = w.Ay, X2 = w.Bx, Y2 = w.By, Sagitta = w.IsCurved ? Math.Round(w.Sagitta, 4) : 0, Type = TypeFor(w.Thickness, w.UnitWeight), OpeningArea = Math.Round(w.OpeningLength * 2.0, 2),
                                              Note = w.IsCurved ? $"Từ bản vẽ kiến trúc – tường cong R={w.Radius:0.00} m" : w.IsDiagonal ? $"Từ bản vẽ kiến trúc – tường xiên {w.AngleDeg:0.#}°" : "Từ bản vẽ kiến trúc" });
             foreach (var pb in lv.Beams.Where(b => b.Include && b.Parapet))
                 p.Walls.Add(new WallLine { Id = wid++, Story = lv.Name, X1 = pb.Ax, Y1 = pb.Ay, X2 = pb.Bx, Y2 = pb.By, Type = TypeFor(0.11), Height = o.ParapetHeight, OpeningArea = 0, Note = "Tường chắn mái" });
