@@ -207,12 +207,12 @@ namespace KetCauVXT.RevitExport
                     .Where(e => { try { return VxtRevit.GetVxtId(e).StartsWith(BuildArchitectureCommand.Prefix, StringComparison.Ordinal); } catch { return false; } }).ToList();
                 if (stairs.Count > 0)
                 {
-                    double sx0 = double.MaxValue, sy0 = double.MaxValue, sx1 = double.MinValue, sy1 = double.MinValue;
+                    double sx0 = double.MaxValue, sy0 = double.MaxValue, sx1 = double.MinValue, sy1 = double.MinValue, sz1 = double.MinValue;
                     var baseLv = new List<Level>();
                     foreach (var st in stairs)
                     {
                         var bb = st.get_BoundingBox(null); if (bb == null) continue;
-                        sx0 = Math.Min(sx0, bb.Min.X); sy0 = Math.Min(sy0, bb.Min.Y); sx1 = Math.Max(sx1, bb.Max.X); sy1 = Math.Max(sy1, bb.Max.Y);
+                        sx0 = Math.Min(sx0, bb.Min.X); sy0 = Math.Min(sy0, bb.Min.Y); sx1 = Math.Max(sx1, bb.Max.X); sy1 = Math.Max(sy1, bb.Max.Y); sz1 = Math.Max(sz1, bb.Max.Z);
                         if (st is Autodesk.Revit.DB.Architecture.Stairs sts && d.GetElement(sts.get_Parameter(BuiltInParameter.STAIRS_BASE_LEVEL_PARAM)?.AsElementId() ?? ElementId.InvalidElementId) is Level bl && !baseLv.Any(x => x.Id == bl.Id)) baseLv.Add(bl);
                     }
                     double mm = VxtRevit.ToFt(1.2);
@@ -245,7 +245,7 @@ namespace KetCauVXT.RevitExport
                         var cc = new XYZ((sx0 + sx1) / 2, (sy0 + sy1) / 2, box.Min.Z);
                         double L = runsY ? sy1 - sy0 : sx1 - sx0, W = runsY ? sx1 - sx0 : sy1 - sy0;
                         var tf = Transform.Identity; tf.Origin = cc; tf.BasisX = bx; tf.BasisY = by; tf.BasisZ = bz;
-                        var sb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-L / 2 - mm, -VxtRevit.ToFt(0.8), 0), Max = new XYZ(L / 2 + mm, box.Max.Z - box.Min.Z + VxtRevit.ToFt(0.8), W / 2 + VxtRevit.ToFt(0.3)) };
+                        var sb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-L / 2 - mm, -VxtRevit.ToFt(0.8), 0), Max = new XYZ(L / 2 + mm, Math.Min(box.Max.Z, sz1 + VxtRevit.ToFt(1.8)) - box.Min.Z, W / 2 + VxtRevit.ToFt(0.3)) };
                         sb2 = ViewSection.CreateSection(d, vftSec.Id, sb);
                         try { sb2.Name = bbName; } catch { }
                         try { sb2.ViewTemplateId = ElementId.InvalidElementId; } catch { }
@@ -253,8 +253,8 @@ namespace KetCauVXT.RevitExport
                         try { sb2.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE)?.Set(1); } catch { }
                         try { sb2.DetailLevel = ViewDetailLevel.Fine; } catch { }
                     }
-                    if (sb2 != null) detail.Add(sb2.Id);
-                    if (detail.Count > 0) sheets.Add(("", "Chi tiết cầu thang", detail));
+                    if (detail.Count > 0) sheets.Add(("", "Chi tiết cầu thang – mặt bằng", detail));
+                    if (sb2 != null) sheets.Add(("", "Chi tiết cầu thang – mặt cắt B-B", new List<ElementId> { sb2.Id }));
                 }
             }
             catch (Exception e4) { log.Add("Chi tiết thang: " + e4.Message); }
@@ -470,25 +470,43 @@ namespace KetCauVXT.RevitExport
             return Outline(sheet);
         }
 
+        /// <summary>
+        /// Đặt các khung nhìn lên tờ theo kích thước thật của khung nhìn: một hàng nếu vừa bề ngang, không thì một cột, không thì lưới 2 cột;
+        /// khung nhìn quá to so với vùng vẽ thì báo để chuyển tờ / đổi tỷ lệ.
+        /// </summary>
         private static void Place(Document d, ViewSheet sheet, List<ElementId> views, List<string> log)
         {
             var o = DrawArea(d, sheet);
-            double w = o.Max.U - o.Min.U, h = o.Max.V - o.Min.V;
-            for (int i = 0; i < views.Count; i++)
+            double W = o.Max.U - o.Min.U, H = o.Max.V - o.Min.V, gap = VxtRevit.ToFt(0.012);
+            var vps = new List<Viewport>();
+            foreach (var id in views)
             {
-                // 1 khung nhìn: giữa tờ; 2 khung nhìn: trên / dưới
-                double cy = views.Count == 1 ? o.Min.V + h / 2 : o.Min.V + h * (i == 0 ? 0.72 : 0.3), cx = o.Min.U + w * 0.5;
-                if (views.Count >= 3)
-                {
-                    // cột trái: các mặt bằng xếp chồng; cột phải: khung nhìn cuối (mặt cắt)
-                    int nl = views.Count - 1;
-                    if (i < nl) { cx = o.Min.U + w * 0.28; cy = o.Max.V - h * (i + 0.5) / nl; }
-                    else { cx = o.Min.U + w * 0.75; cy = o.Min.V + h / 2; }
-                }
-                var pt = new XYZ(cx, cy, 0);
-                try { if (Viewport.CanAddViewToSheet(d, sheet.Id, views[i])) Viewport.Create(d, sheet.Id, views[i], pt); }
+                try { if (Viewport.CanAddViewToSheet(d, sheet.Id, id)) vps.Add(Viewport.Create(d, sheet.Id, id, new XYZ(o.Min.U + W / 2, o.Min.V + H / 2, 0))); }
                 catch (Exception ex) { log.Add("Đặt khung nhìn lên " + sheet.SheetNumber + ": " + ex.Message); }
             }
+            if (vps.Count == 0) return;
+            d.Regenerate();
+            var sz = vps.Select(v => { var b = v.GetBoxOutline(); return (w: b.MaximumPoint.X - b.MinimumPoint.X, h: b.MaximumPoint.Y - b.MinimumPoint.Y); }).ToList();
+            void Put(int i, double cx, double cy) { try { vps[i].SetBoxCenter(new XYZ(cx, cy, 0)); } catch { } }
+            double rowW = sz.Sum(z => z.w) + gap * (vps.Count - 1), colH = sz.Sum(z => z.h) + gap * (vps.Count - 1);
+            if (vps.Count == 1 || rowW <= W)
+            {
+                double x = o.Min.U + (W - rowW) / 2;
+                for (int i = 0; i < vps.Count; i++) { Put(i, x + sz[i].w / 2, o.Min.V + H / 2); x += sz[i].w + gap; }
+            }
+            else if (colH <= H)
+            {
+                double y = o.Max.V - (H - colH) / 2;
+                for (int i = 0; i < vps.Count; i++) { Put(i, o.Min.U + W / 2, y - sz[i].h / 2); y -= sz[i].h + gap; }
+            }
+            else
+            {
+                // lưới 2 cột
+                int rows = (vps.Count + 1) / 2;
+                for (int i = 0; i < vps.Count; i++) Put(i, o.Min.U + W * (i % 2 == 0 ? 0.27 : 0.75), o.Max.V - H * ((i / 2) + 0.5) / rows);
+            }
+            for (int i = 0; i < vps.Count; i++)
+                if (sz[i].w > W * 1.02 || sz[i].h > H * 1.02) log.Add($"Khung nhìn {(d.GetElement(views[i]) as View)?.Name} lớn hơn vùng vẽ tờ {sheet.SheetNumber} – đổi tỷ lệ hoặc thu vùng cắt.");
         }
 
         private static void TagCategory(Document d, View v, BuiltInCategory cat, Level lv, List<string> log)
