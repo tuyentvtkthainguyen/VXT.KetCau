@@ -733,7 +733,7 @@ namespace KetCauVXT.RevitExport
                         try
                         {
                             double wRun = st.Runs.Where(q => q.Width > 0.3).Select(q => q.Width).DefaultIfEmpty(st.Width).Min();
-                            double rise = (t.Elevation - b.Elevation) / Math.Max(1, total);
+                            double riseFt = (t.Elevation - b.Elevation) / Math.Max(1, total); // ft
                             var stype = d.GetElement(stairs.GetTypeId()) as StairsType;
                             string tn = $"VXT thang b{tread * 1000:0} r{wRun * 1000:0}";
                             var nt = new FilteredElementCollector(d).OfClass(typeof(StairsType)).Cast<StairsType>().FirstOrDefault(x => x.Name == tn);
@@ -744,7 +744,7 @@ namespace KetCauVXT.RevitExport
                                 {
                                     nt.MinTreadDepth = VxtRevit.ToFt(tread);
                                     nt.MinRunWidth = VxtRevit.ToFt(wRun);
-                                    if (nt.MaxRiserHeight < VxtRevit.ToFt(rise) + 1e-6) nt.MaxRiserHeight = VxtRevit.ToFt(rise + 0.002);
+                                    if (nt.MaxRiserHeight < riseFt + 1e-6) nt.MaxRiserHeight = riseFt + VxtRevit.ToFt(0.002);
                                 }
                             }
                             if (nt != null && stairs.GetTypeId() != nt.Id) stairs.ChangeTypeId(nt.Id);
