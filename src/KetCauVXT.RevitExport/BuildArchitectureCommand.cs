@@ -34,12 +34,14 @@ namespace KetCauVXT.RevitExport
             catch (Exception ex) { message = "Không đọc được phương án: " + ex.Message; return Result.Failed; }
             if (s == null) return Result.Cancelled;
 
+            VxtRevit.LastTagError = null;
             var ctx = new Ctx(doc, s);
             var items = Plan(ctx);
             string rep = ChangeDialog.Run(doc, Title, "Phương án: " + System.IO.Path.GetFileName(s.File) +
                 "\nCác mục dưới đây sẽ được thêm vào mô hình (phần đã dựng lần trước – có mã KT- – được giữ nguyên).", items);
             if (rep == null) return Result.Cancelled;
             if (ctx.WantStairs) BuildStairs(ctx);
+            if (VxtRevit.LastTagError != null) ctx.Log.Insert(0, "Không gắn được mã KT- (chạy lại lệnh sẽ dựng trùng): " + VxtRevit.LastTagError);
             string full = (AgentMode.Report ?? "") + (ctx.Log.Count > 0 ? "\n\nGhi chú:\n• " + string.Join("\n• ", ctx.Log.Take(40)) : "");
             AgentMode.Report = full;
             if (!AgentMode.Quiet && ctx.Log.Count > 0) TaskDialog.Show(Title, full);

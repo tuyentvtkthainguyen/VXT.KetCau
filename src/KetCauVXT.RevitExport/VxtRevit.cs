@@ -27,7 +27,9 @@ namespace KetCauVXT.RevitExport
             b.SetSchemaName("VietConstLink");
             b.SetReadAccessLevel(AccessLevel.Public);
             b.SetWriteAccessLevel(AccessLevel.Public);
-            b.SetVendorId("VXT");
+            // VendorId phải hợp lệ theo quy tắc Revit (mã nhà phát triển); "VXT" bị Revit 2025 từ chối → thử lần lượt
+            foreach (var v in new[] { "VXT", "VietConst", "VXTC", "com.vietconst" })
+                if (SchemaBuilder.VendorIdIsValid(v)) { b.SetVendorId(v); break; }
             b.AddSimpleField("VxtId", typeof(string));
             return b.Finish();
         }
@@ -48,11 +50,19 @@ namespace KetCauVXT.RevitExport
         /// <summary>Gắn mã Việt Const (cần trong Transaction).</summary>
         public static void SetVxtId(Element e, string id)
         {
-            var s = LinkSchema();
-            var ent = new Entity(s);
-            ent.Set("VxtId", id ?? "");
-            e.SetEntity(ent);
+            // mã liên kết là phụ: lỗi gắn mã không được làm hỏng việc dựng phần tử
+            try
+            {
+                var s = LinkSchema();
+                var ent = new Entity(s);
+                ent.Set("VxtId", id ?? "");
+                e.SetEntity(ent);
+            }
+            catch (Exception ex) { if (LastTagError == null) LastTagError = ex.Message; }
         }
+
+        /// <summary>Lỗi gắn mã đầu tiên (null = không lỗi) – để báo cáo một lần.</summary>
+        public static string LastTagError;
 
         // ------------------------------------------------------------ tham số
         public static double TypeSize(Element sym, params string[] names)
