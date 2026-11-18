@@ -492,7 +492,7 @@ namespace KetCauVXT.RevitExport
             var cb = v.CropBox; var t = cb.Transform; var ti = t.Inverse;
             double m = VxtRevit.ToFt(0.6);
             int n = 0;
-            foreach (var dp in new FilteredElementCollector(d, v.Id).OfClass(typeof(DatumPlane)).Cast<DatumPlane>())
+            foreach (var dp in new FilteredElementCollector(d, v.Id).OfClass(typeof(Grid)).Cast<DatumPlane>())
             {
                 try
                 {
@@ -513,7 +513,7 @@ namespace KetCauVXT.RevitExport
                 }
                 catch { }
             }
-            if (n == 0) log.Add($"{v.Name}: chưa thu được trục / cao độ vào vùng cắt.");
+            if (n == 0 && v is ViewPlan) log.Add($"{v.Name}: chưa thu được trục vào vùng cắt.");
         }
 
         /// <summary>Vùng vẽ của tờ: theo khung tên thật (khung của template có thể đặt gốc ở bất kỳ đâu), trừ dải khung tên bên phải / dưới.</summary>

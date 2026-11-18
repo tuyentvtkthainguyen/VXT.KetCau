@@ -740,7 +740,7 @@ namespace KetCauVXT.RevitExport
                             double L = (r.Risers - 1) * tread;            // đúng số mặt bậc của vế
                             var p0 = P(r.X1, r.Y1); var p1 = P(r.X1 + ux * L, r.Y1 + uy * L);
                             var run = StairsRun.CreateStraightRun(d, sid, Line.CreateBound(new XYZ(p0.X, p0.Y, zb0 + zrel), new XYZ(p1.X, p1.Y, zb0 + zrel)), StairsRunJustification.Center);
-                            try { run.ActualRunWidth = VxtRevit.ToFt(r.Width); } catch { }
+                            try { run.ActualRunWidth = VxtRevit.ToFt(r.Width); } catch (Exception exw) { c.Log.Add($"Cầu thang {st.Id} vế {i + 1}: bề rộng {r.Width * 1000:0} mm chưa đặt được ({exw.Message})."); }
                             runs.Add(run);
                             zrel = run.TopElevation;
                         }
@@ -769,7 +769,27 @@ namespace KetCauVXT.RevitExport
                     var el = d.GetElement(sid) as Stairs;
                     if (el != null)
                     {
-                        using (var tr = new Transaction(d, "Gắn mã cầu thang")) { tr.Start(); VxtRevit.SetVxtId(el, Prefix + st.Id); tr.Commit(); }
+                        using (var tr = new Transaction(d, "Gắn mã cầu thang"))
+                        {
+                            tr.Start();
+                            Swallow(tr, c.Log);
+                            VxtRevit.SetVxtId(el, Prefix + st.Id);
+                            // mặt bậc và bề rộng vế theo phương án (sau khi Revit đã chốt thang)
+                            if (Math.Abs(VxtRevit.ToM(el.ActualTreadDepth) - tread) > 0.001)
+                            {
+                                try { el.ActualTreadDepth = VxtRevit.ToFt(tread); }
+                                catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: không đặt được mặt bậc {tread * 1000:0} mm – {ex.Message}"); }
+                            }
+                            var runIds = el.GetStairsRuns().ToList();
+                            for (int i = 0; i < runIds.Count && i < st.Runs.Count; i++)
+                            {
+                                if (!(d.GetElement(runIds[i]) is StairsRun sr) || st.Runs[i].Width < 0.3) continue;
+                                if (Math.Abs(VxtRevit.ToM(sr.ActualRunWidth) - st.Runs[i].Width) < 0.001) continue;
+                                try { sr.ActualRunWidth = VxtRevit.ToFt(st.Runs[i].Width); }
+                                catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id} vế {i + 1}: không đặt được bề rộng {st.Runs[i].Width * 1000:0} mm – {ex.Message}"); }
+                            }
+                            tr.Commit();
+                        }
                         c.Log.Add($"Cầu thang {st.Id}: {st.Runs.Count} vế, {el.ActualRisersNumber} bậc × {VxtRevit.ToM(el.ActualRiserHeight) * 1000:0} mm, mặt bậc {VxtRevit.ToM(el.ActualTreadDepth) * 1000:0} mm.");
                     }
                 }
