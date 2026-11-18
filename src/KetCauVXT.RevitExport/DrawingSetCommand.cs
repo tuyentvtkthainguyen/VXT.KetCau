@@ -82,7 +82,7 @@ namespace KetCauVXT.RevitExport
             // khổ giấy theo khung tên của dự án / template: đo vùng vẽ trên một tờ tạm (trừ chỗ cho kích thước, chú thích ~ 15 %)
             double maxW = 460, maxH = 320;
             {
-                var tb0 = new FilteredElementCollector(d).OfClass(typeof(FamilySymbol)).OfCategory(BuiltInCategory.OST_TitleBlocks).FirstElementId();
+                var tb0 = TitleBlockType(d);
                 if (tb0 != null && tb0 != ElementId.InvalidElementId)
                 {
                     try
@@ -129,6 +129,7 @@ namespace KetCauVXT.RevitExport
                         try { if (r.Location is LocationPoint lp) d.Create.NewRoomTag(new LinkElementId(r.Id), new UV(lp.Point.X, lp.Point.Y), v.Id); } catch (Exception ex) { log.Add("Tag phòng " + r.Name + ": " + ex.Message); break; }
                     TagCategory(d, v, BuiltInCategory.OST_Doors, lv, log);
                     TagCategory(d, v, BuiltInCategory.OST_Windows, lv, log);
+                    GridDims(d, v, box, log);
                 }
                 if (v != null) { plans.Add(v.Id); sheets.Add(("", "Mặt bằng " + lv.Name, new List<ElementId> { v.Id })); }
             }
@@ -193,6 +194,61 @@ namespace KetCauVXT.RevitExport
                 catch (Exception e3) { log.Add("Mặt cắt: " + e3.Message); }
             if (sec != null) sheets.Add(("", "Mặt cắt A-A", new List<ElementId> { sec.Id }));
 
+            // 3b. chi tiết cầu thang: mặt bằng phóng to từng tầng có chân thang + mặt cắt B-B qua lồng thang (1:50)
+            try
+            {
+                var stairs = new FilteredElementCollector(d).OfCategory(BuiltInCategory.OST_Stairs).WhereElementIsNotElementType()
+                    .Where(e => { try { return VxtRevit.GetVxtId(e).StartsWith(BuildArchitectureCommand.Prefix, StringComparison.Ordinal); } catch { return false; } }).ToList();
+                if (stairs.Count > 0)
+                {
+                    double sx0 = double.MaxValue, sy0 = double.MaxValue, sx1 = double.MinValue, sy1 = double.MinValue;
+                    var baseLv = new List<Level>();
+                    foreach (var st in stairs)
+                    {
+                        var bb = st.get_BoundingBox(null); if (bb == null) continue;
+                        sx0 = Math.Min(sx0, bb.Min.X); sy0 = Math.Min(sy0, bb.Min.Y); sx1 = Math.Max(sx1, bb.Max.X); sy1 = Math.Max(sy1, bb.Max.Y);
+                        if (st is Autodesk.Revit.DB.Architecture.Stairs sts && d.GetElement(sts.get_Parameter(BuiltInParameter.STAIRS_BASE_LEVEL_PARAM)?.AsElementId() ?? ElementId.InvalidElementId) is Level bl && !baseLv.Any(x => x.Id == bl.Id)) baseLv.Add(bl);
+                    }
+                    double mm = VxtRevit.ToFt(1.2);
+                    var detail = new List<ElementId>();
+                    foreach (var lv in baseLv.OrderBy(l => l.Elevation))
+                    {
+                        string name = "KT - Chi tiết thang " + lv.Name;
+                        var v = Find<ViewPlan>(d, name);
+                        if (v == null && vftPlan != null)
+                        {
+                            v = ViewPlan.Create(d, vftPlan.Id, lv.Id);
+                            try { v.Name = name; } catch { }
+                            v.Scale = 50; nv++;
+                            var cb = v.CropBox;
+                            v.CropBox = new BoundingBoxXYZ { Transform = cb.Transform, Min = new XYZ(sx0 - mm, sy0 - mm, cb.Min.Z), Max = new XYZ(sx1 + mm, sy1 + mm, cb.Max.Z) };
+                            v.CropBoxActive = true; v.CropBoxVisible = false;
+                            try { v.DetailLevel = ViewDetailLevel.Fine; } catch { }
+                        }
+                        if (v != null) detail.Add(v.Id);
+                    }
+                    // mặt cắt B-B: mặt phẳng chứa phương vế dài, qua giữa lồng thang
+                    var bbName = "KT - Mặt cắt B-B (cầu thang)";
+                    var sb2 = Find<ViewSection>(d, bbName);
+                    if (sb2 == null && vftSec != null)
+                    {
+                        bool runsY = (sy1 - sy0) >= (sx1 - sx0);
+                        var bx = runsY ? XYZ.BasisY : XYZ.BasisX; var by = XYZ.BasisZ; var bz = bx.CrossProduct(by);
+                        var cc = new XYZ((sx0 + sx1) / 2, (sy0 + sy1) / 2, box.Min.Z);
+                        double L = runsY ? sy1 - sy0 : sx1 - sx0, W = runsY ? sx1 - sx0 : sy1 - sy0;
+                        var tf = Transform.Identity; tf.Origin = cc; tf.BasisX = bx; tf.BasisY = by; tf.BasisZ = bz;
+                        var sb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-L / 2 - mm, -VxtRevit.ToFt(0.8), 0), Max = new XYZ(L / 2 + mm, box.Max.Z - box.Min.Z + VxtRevit.ToFt(0.8), W / 2 + VxtRevit.ToFt(0.3)) };
+                        sb2 = ViewSection.CreateSection(d, vftSec.Id, sb);
+                        try { sb2.Name = bbName; } catch { }
+                        sb2.Scale = 50; nv++;
+                        try { sb2.DetailLevel = ViewDetailLevel.Fine; } catch { }
+                    }
+                    if (sb2 != null) detail.Add(sb2.Id);
+                    if (detail.Count > 0) sheets.Add(("", "Chi tiết cầu thang", detail));
+                }
+            }
+            catch (Exception e4) { log.Add("Chi tiết thang: " + e4.Message); }
+
             // 4. phối cảnh 3D
             var v3 = Ensure3D(d, frontDeg, log);
             if (v3 != null) { sheets.Add(("", "Phối cảnh", new List<ElementId> { v3.Id })); }
@@ -204,7 +260,7 @@ namespace KetCauVXT.RevitExport
             var s3 = Schedule(d, "KT - Thống kê phòng", BuiltInCategory.OST_Rooms, log); if (s3 != null) sch.Add(s3.Id);
 
             // 6. tờ bản vẽ
-            var tb = new FilteredElementCollector(d).OfClass(typeof(FamilySymbol)).OfCategory(BuiltInCategory.OST_TitleBlocks).FirstElementId();
+            var tb = TitleBlockType(d);
             if (tb == null || tb == ElementId.InvalidElementId) log.Add("Dự án chưa có khung tên – tờ được tạo không khung, nạp khung tên rồi đổi sau.");
             var used = new HashSet<string>(new FilteredElementCollector(d).OfClass(typeof(ViewSheet)).Cast<ViewSheet>().Select(s => s.SheetNumber), StringComparer.OrdinalIgnoreCase);
             var placed = new HashSet<ElementId>(new FilteredElementCollector(d).OfClass(typeof(Viewport)).Cast<Viewport>().Select(vp => vp.ViewId));
@@ -220,6 +276,29 @@ namespace KetCauVXT.RevitExport
                 sheet.SheetNumber = no; sheet.Name = sh.Name; ns++;
                 Place(d, sheet, views, log);
             }
+            // danh mục bản vẽ: tờ bìa của template (tờ chưa có khung nhìn) hoặc tờ mới
+            try
+            {
+                var listName = "KT - Danh mục bản vẽ";
+                if (Find<ViewSchedule>(d, listName) == null)
+                {
+                    var sl = ViewSchedule.CreateSheetList(d);
+                    try { sl.Name = listName; } catch { }
+                    var def = sl.Definition;
+                    foreach (var sf in def.GetSchedulableFields())
+                    {
+                        var pid = sf.ParameterId;
+                        if (pid == new ElementId(BuiltInParameter.SHEET_NUMBER) || pid == new ElementId(BuiltInParameter.SHEET_NAME)) def.AddField(sf);
+                    }
+                    var cover = new FilteredElementCollector(d).OfClass(typeof(ViewSheet)).Cast<ViewSheet>()
+                        .Where(x => !x.IsPlaceholder && x.GetAllPlacedViews().Count == 0).OrderBy(x => x.SheetNumber).FirstOrDefault();
+                    if (cover == null) { cover = ViewSheet.Create(d, tb ?? ElementId.InvalidElementId); cover.SheetNumber = "KT-00"; }
+                    try { cover.Name = "Danh mục bản vẽ"; } catch { }
+                    var oc = DrawArea(d, cover);
+                    ScheduleSheetInstance.Create(d, cover.Id, sl.Id, new XYZ(oc.Min.U + VxtRevit.ToFt(0.02), oc.Max.V - VxtRevit.ToFt(0.02), 0));
+                }
+            }
+            catch (Exception e6) { log.Add("Danh mục bản vẽ: " + e6.Message); }
             if (sch.Count > 0)
             {
                 bool already = new FilteredElementCollector(d).OfClass(typeof(ScheduleSheetInstance)).Cast<ScheduleSheetInstance>().Any(x => sch.Contains(x.ScheduleId));
@@ -259,6 +338,43 @@ namespace KetCauVXT.RevitExport
             return o;
         }
 
+        /// <summary>Khung tên: loại đang dùng trên các tờ có sẵn của dự án / template (khung tên công ty), không thì loại đầu tiên.</summary>
+        internal static ElementId TitleBlockType(Document d)
+        {
+            var used = new FilteredElementCollector(d).OfCategory(BuiltInCategory.OST_TitleBlocks).WhereElementIsNotElementType().Cast<FamilyInstance>()
+                .GroupBy(f => f.Symbol.Id).OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault();
+            if (used != null && used != ElementId.InvalidElementId) return used;
+            return new FilteredElementCollector(d).OfClass(typeof(FamilySymbol)).OfCategory(BuiltInCategory.OST_TitleBlocks).FirstElementId();
+        }
+
+        /// <summary>Kích thước trục trên mặt bằng: chuỗi khoảng cách trục + tổng, theo hai phương, đặt ngoài công trình.</summary>
+        internal static int GridDims(Document d, ViewPlan v, BoundingBoxXYZ box, List<string> log)
+        {
+            int n = 0;
+            var grids = new FilteredElementCollector(d).OfClass(typeof(Grid)).Cast<Grid>().Where(g => g.Curve is Line).ToList();
+            double z = v.GenLevel?.Elevation ?? 0;
+            foreach (bool vertical in new[] { true, false })
+            {
+                // lưới đứng (chạy theo Y) → kích thước theo X đặt dưới công trình; lưới ngang → theo Y đặt bên trái
+                var gs = grids.Where(g => { var dir = ((Line)g.Curve).Direction; return vertical ? Math.Abs(dir.Y) > 0.99 : Math.Abs(dir.X) > 0.99; })
+                              .OrderBy(g => vertical ? g.Curve.GetEndPoint(0).X : g.Curve.GetEndPoint(0).Y).ToList();
+                if (gs.Count < 2) continue;
+                for (int k = 0; k < 2; k++)
+                {
+                    var ra = new ReferenceArray();
+                    if (k == 0) foreach (var g in gs) ra.Append(new Reference(g));
+                    else { ra.Append(new Reference(gs.First())); ra.Append(new Reference(gs.Last())); }
+                    double off = VxtRevit.ToFt(1.0 + 0.6 * k);
+                    Line ln = vertical
+                        ? Line.CreateBound(new XYZ(box.Min.X - 1, box.Min.Y - off, z), new XYZ(box.Max.X + 1, box.Min.Y - off, z))
+                        : Line.CreateBound(new XYZ(box.Min.X - off, box.Min.Y - 1, z), new XYZ(box.Min.X - off, box.Max.Y + 1, z));
+                    try { d.Create.NewDimension(v, ln, ra); n++; }
+                    catch (Exception ex) { log.Add($"Kích thước trục ({v.Name}): {ex.Message}"); }
+                }
+            }
+            return n;
+        }
+
         /// <summary>Vùng vẽ của tờ: theo khung tên thật (khung của template có thể đặt gốc ở bất kỳ đâu), trừ dải khung tên bên phải / dưới.</summary>
         internal static BoundingBoxUV DrawArea(Document d, ViewSheet sheet)
         {
@@ -286,8 +402,15 @@ namespace KetCauVXT.RevitExport
             for (int i = 0; i < views.Count; i++)
             {
                 // 1 khung nhìn: giữa tờ; 2 khung nhìn: trên / dưới
-                double cy = views.Count == 1 ? o.Min.V + h / 2 : o.Min.V + h * (i == 0 ? 0.72 : 0.3);
-                var pt = new XYZ(o.Min.U + w * 0.5, cy, 0);
+                double cy = views.Count == 1 ? o.Min.V + h / 2 : o.Min.V + h * (i == 0 ? 0.72 : 0.3), cx = o.Min.U + w * 0.5;
+                if (views.Count >= 3)
+                {
+                    // cột trái: các mặt bằng xếp chồng; cột phải: khung nhìn cuối (mặt cắt)
+                    int nl = views.Count - 1;
+                    if (i < nl) { cx = o.Min.U + w * 0.28; cy = o.Max.V - h * (i + 0.5) / nl; }
+                    else { cx = o.Min.U + w * 0.75; cy = o.Min.V + h / 2; }
+                }
+                var pt = new XYZ(cx, cy, 0);
                 try { if (Viewport.CanAddViewToSheet(d, sheet.Id, views[i])) Viewport.Create(d, sheet.Id, views[i], pt); }
                 catch (Exception ex) { log.Add("Đặt khung nhìn lên " + sheet.SheetNumber + ": " + ex.Message); }
             }
