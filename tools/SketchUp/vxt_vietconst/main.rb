@@ -7,7 +7,8 @@
 require 'sketchup.rb'
 require 'json'
 require 'fileutils'
-require_relative 'phuong_an'
+# load (không phải require): cài lại .rbz trong SketchUp đang mở là dùng ngay mã mới
+load File.join(__dir__, 'phuong_an.rb')
 
 module VXT
   module VietConst
