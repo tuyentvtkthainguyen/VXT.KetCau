@@ -28,3 +28,11 @@ Quy trình:
 4. SketchUp `dung-phuong-an` rồi `anh` cảnh 1 và 2 → mở ảnh soát. `luu` .skp cạnh file phương án.
 5. `luu` Revit.
 Trả về: đường dẫn .rvt, .skp, các ảnh; bảng số lượng; những gì không dựng được và cách xử lý (việc người dùng phải làm tay).
+
+
+## Dự án trên template của người dùng
+- Người dùng chỉ định template (VD `H:\thu vien revit\teamplate\2025.rte`): `du-an-moi` với `"mau": "<đường dẫn .rte>"`, rồi `xuat-viet-const` ra file tạm để đọc **tên + cao độ tầng của template** và đổi tên tầng trong phương án cho trùng (SÂN, TẦNG 1…, MÁI) – giữ được khung nhìn / mẫu khung nhìn của template.
+- `liet-ke-ho` trên dự án mới để biết họ cửa template đã có; họ còn thiếu → `FamilySources` (dự án cũ .rvt).
+- `tao-ban-ve` dùng khung tên đang dùng trên tờ của template, tỷ lệ theo khổ giấy, tự thêm kích thước trục / cửa / cao độ, tờ chi tiết cầu thang, danh mục bản vẽ.
+- Lỗi "An item with the same key" khi dựng = trùng Id phần tử trong phương án (VD hai tường cùng Id ở hai tầng) – sửa Id rồi dựng lại.
+- device_commit_files: mỗi lần ghi đè cùng một file trên máy hãy dùng tên file nguồn (stagedPath) mới – ghi lại cùng tên nguồn có thể ra bản cũ.
