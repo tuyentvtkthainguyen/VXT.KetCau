@@ -233,7 +233,7 @@ namespace KetCauVXT.RevitExport
                             v.CropBoxActive = true; v.CropBoxVisible = false;
                             try { v.DetailLevel = ViewDetailLevel.Fine; } catch { }
                         }
-                        if (v != null) detail.Add(v.Id);
+                        if (v != null) { TidyDetailView(d, v, log); detail.Add(v.Id); }
                     }
                     // mặt cắt B-B: mặt phẳng chứa phương vế dài, qua giữa lồng thang
                     var bbName = "KT - Mặt cắt B-B (cầu thang)";
@@ -253,6 +253,7 @@ namespace KetCauVXT.RevitExport
                         try { sb2.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE)?.Set(1); } catch { }
                         try { sb2.DetailLevel = ViewDetailLevel.Fine; } catch { }
                     }
+                    if (sb2 != null) TidyDetailView(d, sb2, log);
                     if (detail.Count > 0) sheets.Add(("", "Chi tiết cầu thang – mặt bằng", detail));
                     if (sb2 != null) sheets.Add(("", "Chi tiết cầu thang – mặt cắt B-B", new List<ElementId> { sb2.Id }));
                 }
@@ -448,6 +449,40 @@ namespace KetCauVXT.RevitExport
                 return 1;
             }
             catch (Exception ex) { log.Add($"Kích thước cao độ ({v.Name}): {ex.Message}"); return 0; }
+        }
+
+        /// <summary>Trục / cao độ trong khung nhìn chi tiết: thu đường datum về trong vùng cắt (2D riêng khung nhìn), ẩn ký hiệu mặt đứng / mặt cắt thừa.</summary>
+        internal static void TidyDetailView(Document d, View v, List<string> log)
+        {
+            try { v.SetCategoryHidden(new ElementId(BuiltInCategory.OST_Elev), true); } catch { }
+            try { v.SetCategoryHidden(new ElementId(BuiltInCategory.OST_Sections), true); } catch { }
+            try { v.SetCategoryHidden(new ElementId(BuiltInCategory.OST_CalloutHeads), true); } catch { }
+            d.Regenerate();
+            var cb = v.CropBox; var t = cb.Transform; var ti = t.Inverse;
+            double m = VxtRevit.ToFt(0.6);
+            int n = 0;
+            foreach (var dp in new FilteredElementCollector(d, v.Id).OfClass(typeof(DatumPlane)).Cast<DatumPlane>())
+            {
+                try
+                {
+                    var cs = dp.GetCurvesInView(DatumExtentType.ViewSpecific, v);
+                    if (cs == null || cs.Count == 0 || !(cs[0] is Line ln)) continue;
+                    XYZ Clamp(XYZ p)
+                    {
+                        var q = ti.OfPoint(p);
+                        q = new XYZ(Math.Max(cb.Min.X + m, Math.Min(cb.Max.X - m, q.X)), Math.Max(cb.Min.Y + m, Math.Min(cb.Max.Y - m, q.Y)), q.Z);
+                        return t.OfPoint(q);
+                    }
+                    var a = Clamp(ln.GetEndPoint(0)); var b = Clamp(ln.GetEndPoint(1));
+                    if (a.DistanceTo(b) < VxtRevit.ToFt(0.3)) continue;
+                    dp.SetDatumExtentType(DatumEnds.End0, v, DatumExtentType.ViewSpecific);
+                    dp.SetDatumExtentType(DatumEnds.End1, v, DatumExtentType.ViewSpecific);
+                    dp.SetCurveInView(DatumExtentType.ViewSpecific, v, Line.CreateBound(a, b));
+                    n++;
+                }
+                catch { }
+            }
+            if (n == 0) log.Add($"{v.Name}: chưa thu được trục / cao độ vào vùng cắt.");
         }
 
         /// <summary>Vùng vẽ của tờ: theo khung tên thật (khung của template có thể đặt gốc ở bất kỳ đâu), trừ dải khung tên bên phải / dưới.</summary>
