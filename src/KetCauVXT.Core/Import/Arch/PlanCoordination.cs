@@ -195,6 +195,29 @@ public static class PlanCoordination
                     log.Add($"Dầm {b.Id} đi qua trên thang {t.Id}: hạ h {b.H * 1000:0} → {o.MinBeamH * 1000:0} mm để giữ thông thủy.");
                     b.H = o.MinBeamH;
                 }
+        // vẫn thiếu thông thủy → dầm ngược (đáy dầm = đáy sàn, phần dầm nhô lên trên sàn – nằm trong tường tầng trên nếu có)
+        foreach (var t in ex.Stairs)
+        {
+            var top = ex.Levels.FirstOrDefault(l => l.Name == t.TopLevel);
+            if (top == null) continue;
+            var fl = ex.Floors.Where(f => f.Level == t.TopLevel).ToList();
+            double slabT = fl.Count > 0 ? fl.Max(f => f.Thickness > 0 ? f.Thickness : 0.12) : 0.12;
+            var treads = Treads(ex, t);
+            foreach (var b in ex.Beams.Where(b => b.Level == t.TopLevel && Math.Abs(b.Z1 - top.Elevation) < 0.005 && CrossesRuns(t, b)))
+            {
+                double clear = double.MaxValue;
+                foreach (var (x, y, z, ux, uy, w) in treads)
+                    for (int s2 = -1; s2 <= 1; s2++)
+                    {
+                        double px = x - uy * s2 * (w / 2 - 0.05), py = y + ux * s2 * (w / 2 - 0.05);
+                        if (DistSeg(px, py, b.X1, b.Y1, b.X2, b.Y2) <= b.B / 2) clear = Math.Min(clear, top.Elevation - b.H - z);
+                    }
+                if (clear >= o.Headroom - 0.005) continue;
+                double zt = R(top.Elevation - slabT + b.H);
+                b.Z1 = zt; b.Z2 = zt;
+                log.Add($"Dầm {b.Id} qua thang {t.Id} chỉ còn thông thủy {clear:0.00} m → đổi thành dầm ngược (đáy dầm = đáy sàn, nhô {(b.H - slabT) * 1000:0} mm lên trên sàn – đặt dưới tường tầng trên hoặc làm gờ).");
+            }
+        }
 
         // cao tường tới đáy dầm / đáy sàn
         int nw = 0;
@@ -581,7 +604,7 @@ public static class PlanCoordination
                     bool inHole = PlanSpec.InPoly(t.Outline, px, py) || ex.Stairs.Any(o2 => o2.TopLevel == t.TopLevel && PlanSpec.InPoly(o2.Outline, px, py));
                     if (!inHole && fl.Any(f => PlanSpec.InPoly(f.Outline, px, py))) ceil = top.Elevation - slabT;
                     foreach (var b in beams)
-                        if (DistSeg(px, py, b.X1, b.Y1, b.X2, b.Y2) <= b.B / 2) ceil = Math.Min(ceil, top.Elevation - b.H);
+                        if (DistSeg(px, py, b.X1, b.Y1, b.X2, b.Y2) <= b.B / 2) ceil = Math.Min(ceil, (b.Z1 > 0 || b.Z1 < 0 ? b.Z1 : top.Elevation) - b.H);
                     if (ceil - z < worstH) { worstH = ceil - z; where = string.Format(inv, "({0:0.00}; {1:0.00}) bậc cao {2:0.000}", px, py, z); }
                 }
             if (worstH < o.Headroom - 0.1) E($"Thang {t.Id}: khoảng thông thủy chỉ {worstH:0.00} m tại {where} (cần ≥ {o.Headroom:0.0} m) – mở rộng lỗ sàn hoặc dời dầm.");

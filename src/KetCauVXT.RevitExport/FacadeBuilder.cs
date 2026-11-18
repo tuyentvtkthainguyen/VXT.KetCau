@@ -29,7 +29,8 @@ namespace KetCauVXT.RevitExport
                 try
                 {
                     if (!c.Lv.TryGetValue(b.Level, out var lv)) { c.Log.Add($"Dầm {b.Id}: không có cao độ \"{b.Level}\"."); continue; }
-                    double z = lv.Elevation; // ft
+                    // mặt trên dầm: cao độ tầng, hoặc Z riêng (dầm ngược, dầm lệch cốt)
+                    double z = Math.Abs(b.Z) > 1e-9 || Math.Abs(lv.Elevation) < 1e-9 ? VxtRevit.ToFt(b.Z) : lv.Elevation; // ft
                     var a = new XYZ(VxtRevit.ToFt(b.X1), VxtRevit.ToFt(b.Y1), z);
                     var e = new XYZ(VxtRevit.ToFt(b.X2), VxtRevit.ToFt(b.Y2), z);
                     if (a.DistanceTo(e) < 0.2) continue;
