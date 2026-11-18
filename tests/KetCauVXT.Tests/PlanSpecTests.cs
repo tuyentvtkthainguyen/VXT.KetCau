@@ -61,5 +61,20 @@ public static class PlanSpecTests
         check("CAD → phương án: có cửa", B(cad.Openings.Count > 0), 1, 0);
         check("CAD → phương án: có trục", B(cad.Grids.Count >= 4), 1, 0);
         check("CAD → phương án: không lỗi cửa ngoài tường", PlanSpec.Validate(cad).Count(i => i.Error && i.Message.StartsWith("Cửa")), 0, 0);
+
+        // Revit → phương án (Project1 thật): cửa có tầng, giữ họ / loại, ô thang từ phòng Cầu thang
+        var p1 = KetCauVXT.Import.RevitJsonImporter.ReadFile(Path.Combine(AppContext.BaseDirectory, "Data", "Project1_Rooms.vxtrevit.json"));
+        var rp = PlanSpec.FromRevit(p1, new[] { @"C:\mau\Project1.rvt" }, true);
+        check("Revit → phương án: mọi cửa có tầng", rp.Openings.Count(o => string.IsNullOrEmpty(o.Level)), 0, 0);
+        check("Revit → phương án: có ô thang từ phòng Cầu thang", B(rp.Stairs.Count >= 1), 1, 0);
+        check("Revit → phương án: dời gốc về góc lô (x, y ≥ 0)", B(rp.Walls.All(w => Math.Min(w.X1, w.X2) >= -1e-6 && Math.Min(w.Y1, w.Y2) >= -1e-6)), 1, 0);
+        check("Revit → phương án: giữ nguồn họ", rp.FamilySources.Count, 1, 0);
+        check("Revit → phương án: không lỗi cửa ngoài tường", PlanSpec.Validate(rp).Count(i => i.Error && i.Message.StartsWith("Cửa")), 0, 0);
+        // cầu thang theo vế: bậc 163 mm / 270 mm đạt, vế ngắn bị báo lỗi
+        var good = new RvStair { Id = "T", BaseLevel = "Tầng 1", TopLevel = "Tầng 2", Outline = new List<double[]> { new[] { 2.6, 9.0 }, new[] { 5.0, 9.0 }, new[] { 5.0, 14.5 }, new[] { 2.6, 14.5 } }, Width = 1, Runs = { new RvStairRun { X1 = 3, Y1 = 9, X2 = 3, Y2 = 9 + 0.27 * 21, Width = 1, Risers = 22 } } };
+        var ss = PlanSpec.SampleTownhouse(); ss.Stairs.Clear(); ss.Stairs.Add(good);
+        check("Thang theo vế đạt: không lỗi thang", PlanSpec.Validate(ss).Count(i => i.Error && i.Message.StartsWith("Cầu thang")), 0, 0);
+        good.Runs[0].Y2 = 9 + 0.2 * 21;
+        check("Thang theo vế: mặt bậc 200 mm → lỗi", B(PlanSpec.Validate(ss).Any(i => i.Error && i.Message.Contains("mặt bậc"))), 1, 0);
     }
 }

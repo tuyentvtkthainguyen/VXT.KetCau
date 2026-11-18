@@ -15,10 +15,10 @@ internal static class HeadlessCli
 
     [DllImport("kernel32.dll")] private static extern bool AttachConsole(int pid);
 
-    public const string FlagCad = "--cad-sang-phuong-an", FlagCheck = "--kiem-tra-phuong-an", FlagSample = "--phuong-an-mau";
+    public const string FlagCad = "--cad-sang-phuong-an", FlagCheck = "--kiem-tra-phuong-an", FlagSample = "--phuong-an-mau", FlagRevit = "--revit-sang-phuong-an";
 
     public static bool Wants(string[] args) => args.Length > 0 &&
-        new[] { Flag, FlagCad, FlagCheck, FlagSample }.Any(f => string.Equals(args[0], f, StringComparison.OrdinalIgnoreCase));
+        new[] { Flag, FlagCad, FlagCheck, FlagSample, FlagRevit }.Any(f => string.Equals(args[0], f, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Ghi lại mọi dòng đã in – ứng dụng cửa sổ chạy bằng Start-Process không có console, nên lệnh phương án ghi thêm file *.kiemtra.txt.</summary>
     private static readonly StringBuilder Log = new();
@@ -33,6 +33,7 @@ internal static class HeadlessCli
             if (string.Equals(args[0], FlagCad, StringComparison.OrdinalIgnoreCase)) return CadToPlan(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagCheck, StringComparison.OrdinalIgnoreCase)) return CheckPlan(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagSample, StringComparison.OrdinalIgnoreCase)) return SamplePlan(args.Skip(1).ToList());
+            if (string.Equals(args[0], FlagRevit, StringComparison.OrdinalIgnoreCase)) return RevitToPlan(args.Skip(1).ToList());
         }
         catch (Exception e) { Say("Lỗi: " + e.Message); return 2; }
         var o = RevitDesignPipeline.ParseArgs(args.Skip(1).ToList(), out var err);
@@ -92,6 +93,29 @@ internal static class HeadlessCli
         Say($"{ex.ProjectName}: {ex.Levels.Count} cao độ, {ex.Walls.Count} tường, {ex.Openings.Count} cửa, {ex.Rooms.Count} phòng, {ex.Stairs.Count} cầu thang.");
         int rc = PrintIssues(ex);
         SaveLog(a[0]);
+        return rc;
+    }
+
+    /// <summary>
+    /// KetCauVXT.exe --revit-sang-phuong-an &lt;mô hình.vxtrevit.json&gt; &lt;ra.vxtphuongan.json&gt; [--nguon-ho &lt;dự án / thư mục họ&gt;]… [--goc-lo-dat]
+    /// Mô hình Revit đã có (xuất bằng add-in) → phương án để agent làm lại dự án mới: cửa giữ họ / loại, ô thang lấy từ phòng "Cầu thang".
+    /// </summary>
+    private static int RevitToPlan(List<string> a)
+    {
+        var files = new List<string>(); var src = new List<string>(); bool origin = false;
+        for (int i = 0; i < a.Count; i++)
+        {
+            if (a[i] == "--nguon-ho" && i + 1 < a.Count) { src.Add(a[++i]); continue; }
+            if (a[i] == "--goc-lo-dat") { origin = true; continue; }
+            files.Add(a[i]);
+        }
+        if (files.Count != 2 || !File.Exists(files[0])) { Say("Cần: --revit-sang-phuong-an <mô hình.vxtrevit.json> <ra.vxtphuongan.json> [--nguon-ho <file/thư mục>]… [--goc-lo-dat]"); return 2; }
+        var ex = KetCauVXT.Import.RevitJsonImporter.ReadFile(files[0]);
+        var plan = KetCauVXT.Import.Arch.PlanSpec.FromRevit(ex, src, origin);
+        KetCauVXT.Import.Arch.PlanSpec.Save(plan, files[1]);
+        Say($"Đã ghi {files[1]}: {plan.Levels.Count} cao độ, {plan.Walls.Count} tường, {plan.Openings.Count} cửa, {plan.Rooms.Count} phòng, {plan.Stairs.Count} ô thang (cần thiết kế vế thang – Runs).");
+        int rc = PrintIssues(plan);
+        SaveLog(files[1]);
         return rc;
     }
 

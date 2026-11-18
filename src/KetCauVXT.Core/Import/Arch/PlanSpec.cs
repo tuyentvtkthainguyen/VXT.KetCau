@@ -96,6 +96,52 @@ public static class PlanSpec
 
     public static void Save(RevitExchange ex, string path) => File.WriteAllText(path, ToJson(ex), new UTF8Encoding(false));
 
+    // ------------------------------------------------------------------ Revit → phương án
+    /// <summary>
+    /// Mô hình Revit đã có (*.vxtrevit.json) → phương án để dựng lại dự án mới: bỏ khung kết cấu, cửa ghi tầng (theo tường chủ) + họ / loại gốc,
+    /// cao độ không có tường tầng (VD cốt sân) giữ nguyên, ô thang lấy từ phòng tên "Cầu thang" (tầng chân = tầng ngay dưới) – vế thang (Runs) do KTS thiết kế tiếp.
+    /// </summary>
+    public static RevitExchange FromRevit(RevitExchange src, IEnumerable<string> familySources = null, bool moveToLotOrigin = false)
+    {
+        double dx = 0, dy = 0;
+        if (moveToLotOrigin && src.Walls.Count > 0)
+        {
+            dx = -src.Walls.Min(w => Math.Min(w.X1, w.X2)); dy = -src.Walls.Min(w => Math.Min(w.Y1, w.Y2));
+        }
+        double X(double v) => Math.Round(v + dx, 3); double Y(double v) => Math.Round(v + dy, 3);
+        var ex = new RevitExchange { ProjectName = src.ProjectName, SchemaVersion = "2.0" };
+        ex.Levels.AddRange(src.Levels.Select(l => new RvLevel { Name = l.Name, Elevation = l.Elevation }));
+        ex.Grids.AddRange(src.Grids.Select(g => new RvGrid { Name = g.Name.Split(' ')[0], X1 = X(g.X1), Y1 = Y(g.Y1), X2 = X(g.X2), Y2 = Y(g.Y2) }));
+        var wl = new Dictionary<string, string>();
+        foreach (var w in src.Walls)
+        {
+            wl[w.Id] = w.Level;
+            ex.Walls.Add(new RvWall { Id = w.Id, Level = w.Level, X1 = X(w.X1), Y1 = Y(w.Y1), X2 = X(w.X2), Y2 = Y(w.Y2), Height = w.Height, BaseOffset = w.BaseOffset, TypeName = w.TypeName, Layers = w.Layers });
+        }
+        foreach (var o in src.Openings)
+            ex.Openings.Add(new RvOpening
+            {
+                Id = o.Id, Category = o.Category, TypeName = o.TypeName, Family = o.Family, X = X(o.X), Y = Y(o.Y), Width = o.Width, Height = o.Height, Sill = o.Sill,
+                Level = !string.IsNullOrEmpty(o.Level) ? o.Level : (wl.TryGetValue(o.HostId ?? "", out var lv) ? lv : ""),
+            });
+        foreach (var r in src.Rooms) ex.Rooms.Add(new RvRoom { Id = r.Id, Level = r.Level, Name = r.Name, Number = r.Number, Outline = r.Outline.Select(p => new[] { X(p[0]), Y(p[1]) }).ToList() });
+        foreach (var f in src.Floors) ex.Floors.Add(new RvFloor { Id = f.Id, Level = f.Level, Thickness = f.Thickness, Outline = f.Outline.Select(p => new[] { X(p[0]), Y(p[1]) }).ToList() });
+        var lvs = src.Levels.OrderBy(l => l.Elevation).ToList();
+        foreach (var r in src.Rooms.Where(r => LocationDb.Norm(r.Name).Contains("CAU THANG") && r.Outline.Count >= 3))
+        {
+            int k = lvs.FindIndex(l => l.Name == r.Level);
+            if (k <= 0) continue;
+            // tầng chân: tầng ngay dưới có tường tầng
+            var below = lvs.Take(k).LastOrDefault(l => src.Walls.Any(w => w.Level == l.Name && w.Height >= 1.5));
+            if (below == null) continue;
+            var ol = r.Outline.Select(p => new[] { X(p[0]), Y(p[1]) }).ToList();
+            double w0 = ol.Max(p => p[0]) - ol.Min(p => p[0]), h0 = ol.Max(p => p[1]) - ol.Min(p => p[1]);
+            ex.Stairs.Add(new RvStair { Id = "CT" + (ex.Stairs.Count + 1), BaseLevel = below.Name, TopLevel = r.Level, Outline = Rect(ol.Min(p => p[0]), ol.Min(p => p[1]), ol.Max(p => p[0]), ol.Max(p => p[1])), Width = Math.Round(Math.Min(1.0, Math.Min(w0, h0) / (Math.Min(w0, h0) < 1.8 ? 1 : 2)), 2), Shape = Math.Min(w0, h0) < 1.8 ? "1 vế thẳng" : "2 vế chữ U" });
+        }
+        if (familySources != null) ex.FamilySources.AddRange(familySources);
+        return ex;
+    }
+
     // ------------------------------------------------------------------ CAD → phương án
     /// <summary>Mặt bằng kiến trúc đọc từ DWG/DXF (ArchPlanReader) → phương án. Cao độ cộng dồn theo chiều cao tầng, tầng đầu ±0.000.</summary>
     public static RevitExchange FromArchDrawing(ArchDrawing d, string name, double baseElevation = 0)
