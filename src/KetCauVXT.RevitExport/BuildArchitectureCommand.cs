@@ -42,7 +42,7 @@ namespace KetCauVXT.RevitExport
             if (rep == null) return Result.Cancelled;
             if (ctx.WantStairs) BuildStairs(ctx);
             if (VxtRevit.LastTagError != null) ctx.Log.Insert(0, "Không gắn được mã KT- (chạy lại lệnh sẽ dựng trùng): " + VxtRevit.LastTagError);
-            string full = (AgentMode.Report ?? "") + (ctx.Log.Count > 0 ? "\n\nGhi chú:\n• " + string.Join("\n• ", ctx.Log.Take(40)) : "");
+            string full = (AgentMode.Report ?? "") + (ctx.Log.Count > 0 ? "\n\nGhi chú:\n• " + string.Join("\n• ", ctx.Log.Take(200)) : "");
             AgentMode.Report = full;
             if (!AgentMode.Quiet && ctx.Log.Count > 0) TaskDialog.Show(Title, full);
             return Result.Succeeded;
