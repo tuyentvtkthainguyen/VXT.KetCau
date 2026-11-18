@@ -49,7 +49,7 @@ public static class PlanSpecTests
         check("Phương án → kết cấu: mọi cấu kiện đạt", rep.Failed, 0, 0);
 
         // CAD → phương án (bản vẽ kiến trúc mẫu 4 mặt bằng trong 1 file DXF)
-        string dxf = Path.Combine(outDir, "KienTrucMau_PhuongAn.dxf");
+        string dxf = Path.Combine(Path.GetTempPath(), "KienTrucMau_PhuongAn.dxf");   // mẫu nguồn, không thuộc kết quả kiểm DXF
         File.WriteAllText(dxf, ArchSample.Build(), new System.Text.UTF8Encoding(false));
         var dw = ArchPlanReader.Read(dxf, new ArchImportOptions());
         var cad = PlanSpec.FromArchDrawing(dw, "Từ CAD");
