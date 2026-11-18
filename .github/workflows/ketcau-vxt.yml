@@ -37,6 +37,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "plugin SketchUp loi" }
           ruby tools/SketchUp/test/run_phuong_an.rb "$PWD\KetQuaMau\SketchUpPhuongAn"
           if ($LASTEXITCODE -ne 0) { throw "dung phuong an SketchUp loi" }
+          # SketchUp 2021–2023 chạy Ruby 2.7: cấm cú pháp def … = (chỉ Ruby 3)
+          $r3 = Select-String -Path tools\SketchUp\vxt_vietconst\*.rb, tools\SketchUp\vxt_vietconst.rb -Pattern '^\s*def [^(=]*(\([^)]*\))?\s*=\s'
+          if ($r3) { $r3 | ForEach-Object { Write-Host "::error::$_" }; throw "plugin dung cu phap Ruby 3" }
 
       - name: Chay bo kiem thu + quy trinh mau
         shell: pwsh

@@ -2,6 +2,7 @@
 # Việt Const – DỰNG PHƯƠNG ÁN KIẾN TRÚC TRONG SKETCHUP (*.vxtphuongan.json) để render phối cảnh.
 # Tường (tách quanh lỗ cửa), kính, cánh cửa, sàn chừa lỗ thang, cầu thang 2 vế dạng khối, nền sân, vật liệu theo mô tả mặt tiền,
 # cảnh (scene) phối cảnh mặt tiền / mặt đứng / góc sau, xuất ảnh. Cầu nối agent qua thư mục (mặc định TẮT).
+# Tương thích Ruby 2.7 (SketchUp 2021–2023): không dùng cú pháp chỉ có ở Ruby 3.
 # Chỉ đọc / ghi file trên máy, không kết nối mạng, không thu thập dữ liệu người dùng.
 require 'json'
 require 'fileutils'
@@ -27,7 +28,9 @@ module VXT
         data
       end
 
-      def self.pt(x, y, z) = Geom::Point3d.new(x * M, y * M, z * M)
+      def self.pt(x, y, z)
+        Geom::Point3d.new(x * M, y * M, z * M)
+      end
 
       def self.color(hex)
         h = hex.to_s.delete('#')
@@ -115,7 +118,9 @@ module VXT
         t > 0.02 ? t : (w['TypeName'].to_s[/\d{2,3}/].to_f / 1000).then { |v| v > 0.05 ? v : 0.11 }
       end
 
-      def self.door?(o) = !(o['Category'].to_s =~ /win|sổ/i)
+      def self.door?(o)
+        !(o['Category'].to_s =~ /win|sổ/i)
+      end
 
       # ------------------------------------------------------------------ dựng
       def self.build(path, model = Sketchup.active_model, replace: true)
@@ -328,7 +333,9 @@ module VXT
         File.join(base, 'VietConst', 'Agent', 'sketchup')
       end
 
-      def self.agent_enabled? = !!@timer
+      def self.agent_enabled?
+        !!@timer
+      end
 
       def self.toggle_agent
         if @timer
