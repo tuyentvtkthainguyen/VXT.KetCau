@@ -253,6 +253,11 @@ jobs:
           New-Item -ItemType Directory -Force publish\SketchUp | Out-Null
           Compress-Archive -Path tools\SketchUp\vxt_vietconst.rb, tools\SketchUp\vxt_vietconst -DestinationPath publish\SketchUp\VietConst_SketchUp.zip -Force
           Move-Item publish\SketchUp\VietConst_SketchUp.zip publish\SketchUp\VietConst_SketchUp.rbz -Force
+          # add-in Revit 2023–2026 → {app}\RevitAddin\<năm> (chép dll + .addin vào %APPDATA%\Autodesk\Revit\Addins\<năm>)
+          foreach ($rv in 2023, 2024, 2025, 2026) {
+            dotnet build src/KetCauVXT.RevitExport -c Release -p:RevitVersion=$rv -o "publish\RevitAddin\$rv" | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "add-in Revit $rv loi" }
+          }
           # đội agent: gửi lệnh qua cầu nối Revit / SketchUp, render AI → {app}\agent, {app}\render
           New-Item -ItemType Directory -Force publish\agent, publish\render | Out-Null
           Copy-Item tools\agent\* publish\agent\ -Force
