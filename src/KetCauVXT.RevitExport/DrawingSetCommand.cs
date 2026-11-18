@@ -301,6 +301,27 @@ namespace KetCauVXT.RevitExport
                         v.SetSectionBox(sb);
                     }
                     catch { }
+                    // vùng cắt (crop) = hình chiếu khung bao công trình lên mặt phẳng nhìn → xuất ảnh ôm sát nhà
+                    try
+                    {
+                        d.Regenerate();
+                        var cb = v.CropBox;
+                        var inv = cb.Transform.Inverse;
+                        double ux0 = double.MaxValue, uy0 = double.MaxValue, ux1 = double.MinValue, uy1 = double.MinValue;
+                        foreach (double x in new[] { box.Min.X, box.Max.X })
+                            foreach (double y in new[] { box.Min.Y, box.Max.Y })
+                                foreach (double z in new[] { box.Min.Z, box.Max.Z })
+                                {
+                                    var q = inv.OfPoint(new XYZ(x, y, z));
+                                    ux0 = Math.Min(ux0, q.X); uy0 = Math.Min(uy0, q.Y); ux1 = Math.Max(ux1, q.X); uy1 = Math.Max(uy1, q.Y);
+                                }
+                        double pad = Math.Max(ux1 - ux0, uy1 - uy0) * 0.06;
+                        var nb = new BoundingBoxXYZ { Transform = cb.Transform, Min = new XYZ(ux0 - pad, uy0 - pad, cb.Min.Z), Max = new XYZ(ux1 + pad, uy1 + pad, cb.Max.Z) };
+                        v.CropBox = nb;
+                        v.CropBoxActive = true;
+                        v.CropBoxVisible = false;
+                    }
+                    catch (Exception ce) { log.Add("Vùng cắt ảnh 3D: " + ce.Message); }
                 }
                 // ảnh phối cảnh: ẩn trục, cao độ, ký hiệu → khung hình ôm sát công trình
                 foreach (var bic in new[] { BuiltInCategory.OST_Grids, BuiltInCategory.OST_Levels, BuiltInCategory.OST_SectionBox, BuiltInCategory.OST_RoomSeparationLines, BuiltInCategory.OST_Rooms })
