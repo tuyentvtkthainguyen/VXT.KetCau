@@ -235,7 +235,10 @@ namespace KetCauVXT.RevitExport
             return loop;
         }
 
-        private static bool Inside(List<double[]> outer, List<double[]> inner) => inner.All(p => PointIn(outer, p[0], p[1], 1e-3));
+        /// <summary>Lỗ nằm hẳn trong sàn: mọi đỉnh ở trong và cách mép sàn ≥ 2 cm (chạm mép / khấc sẵn ở mép thì không thêm lỗ).</summary>
+        private static bool Inside(List<double[]> outer, List<double[]> inner) =>
+            inner.All(p => PointIn(outer, p[0], p[1]) && Enumerable.Range(0, outer.Count).All(i =>
+                DistSeg(p[0], p[1], outer[i][0], outer[i][1], outer[(i + 1) % outer.Count][0], outer[(i + 1) % outer.Count][1]) >= 0.02));
 
         internal static bool PointIn(List<double[]> poly, double x, double y, double tol = 0)
         {
@@ -341,6 +344,7 @@ namespace KetCauVXT.RevitExport
         private static void PlaceRooms(Ctx c, List<AsRoom> rooms)
         {
             var d = c.Doc;
+            SeparateRooms(c, rooms);
             foreach (var r in rooms)
             {
                 if (!c.Lv.TryGetValue(r.Level, out var lv)) { c.Log.Add($"Phòng {r.Name}: không có cao độ \"{r.Level}\"."); continue; }
@@ -381,6 +385,51 @@ namespace KetCauVXT.RevitExport
                 }
                 catch (Exception ex) { c.Log.Add($"Phòng {r.Name} ({r.Level}): {ex.Message}"); }
             }
+        }
+
+        /// <summary>
+        /// Trước khi đặt phòng: cạnh đường bao phòng không có tường đi dọc (sảnh mở ra phòng khách, ô thang mở ra sinh hoạt chung…)
+        /// → kẻ đường phân chia phòng, để mỗi phòng của phương án là một vùng kín riêng.
+        /// </summary>
+        private static void SeparateRooms(Ctx c, List<AsRoom> rooms)
+        {
+            var d = c.Doc;
+            foreach (var g in rooms.GroupBy(r => r.Level))
+            {
+                if (!c.Lv.TryGetValue(g.Key, out var lv)) continue;
+                var walls = c.S.Walls.Where(w => w.Level.Equals(g.Key, StringComparison.OrdinalIgnoreCase)).ToList();
+                var plan = new FilteredElementCollector(d).OfClass(typeof(ViewPlan)).Cast<ViewPlan>()
+                    .FirstOrDefault(v => !v.IsTemplate && v.GenLevel != null && v.GenLevel.Id == lv.Id && v.ViewType == ViewType.FloorPlan);
+                if (plan == null) { c.Log.Add($"{g.Key}: không có mặt bằng tầng để kẻ đường phân chia phòng."); continue; }
+                var segs = new List<(double X1, double Y1, double X2, double Y2)>();
+                foreach (var r in g)
+                {
+                    var p = r.Outline;
+                    for (int i = 0; i < p.Count; i++)
+                    {
+                        double ax = p[i][0], ay = p[i][1], bx = p[(i + 1) % p.Count][0], by = p[(i + 1) % p.Count][1];
+                        double len = Math.Sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
+                        if (len < 0.3) continue;
+                        double mx = (ax + bx) / 2, my = (ay + by) / 2;
+                        // có tường dọc cạnh này (trung điểm cách tim tường ≤ nửa bề dày + 8 cm) → không cần
+                        if (walls.Any(w => DistSeg(mx, my, w.X1, w.Y1, w.X2, w.Y2) <= Math.Max(w.Thickness, 0.1) / 2 + 0.08)) continue;
+                        // trùng cạnh đã kẻ (hai phòng chung cạnh)
+                        if (segs.Any(q => DistSeg(mx, my, q.X1, q.Y1, q.X2, q.Y2) < 0.02)) continue;
+                        segs.Add((ax, ay, bx, by));
+                    }
+                }
+                if (segs.Count == 0) continue;
+                var ca = new CurveArray();
+                foreach (var q in segs) ca.Append(Line.CreateBound(new XYZ(VxtRevit.ToFt(q.X1), VxtRevit.ToFt(q.Y1), lv.ProjectElevation), new XYZ(VxtRevit.ToFt(q.X2), VxtRevit.ToFt(q.Y2), lv.ProjectElevation)));
+                try
+                {
+                    var sp = SketchPlane.Create(d, Plane.CreateByNormalAndOrigin(XYZ.BasisZ, new XYZ(0, 0, lv.ProjectElevation)));
+                    d.Create.NewRoomBoundaryLines(sp, ca, plan);
+                    c.Log.Add($"{g.Key}: kẻ {segs.Count} đường phân chia phòng ở chỗ không có tường ngăn.");
+                }
+                catch (Exception ex) { c.Log.Add($"{g.Key}: không kẻ được đường phân chia phòng ({ex.Message})."); }
+            }
+            d.Regenerate();
         }
 
         /// <summary>Điểm bên trong đa giác: trọng tâm nếu nằm trong, không thì thử lưới điểm.</summary>
