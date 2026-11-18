@@ -87,18 +87,22 @@ namespace KetCauVXT.RevitExport
             var items = new List<ChangeItem>();
             var docLv = VxtRevit.Levels(doc);
             var missing = new List<AsLevel>();
+            var rename = new List<(Level L, string Name)>();
             foreach (var l in s.Levels)
             {
-                var m = docLv.FirstOrDefault(x => x.Name.Equals(l.Name, StringComparison.OrdinalIgnoreCase)) ?? VxtRevit.LevelAt(docLv, l.Elevation);
-                if (m != null) c.Lv[l.Name] = m; else missing.Add(l);
+                var byName = docLv.FirstOrDefault(x => x.Name.Equals(l.Name, StringComparison.OrdinalIgnoreCase));
+                var m = byName ?? VxtRevit.LevelAt(docLv, l.Elevation);
+                if (m != null) { c.Lv[l.Name] = m; if (byName == null) rename.Add((m, l.Name)); } else missing.Add(l);
             }
             items.Add(new ChangeItem
             {
                 Group = "Cao độ", Order = 0, Checked = true,
-                Text = missing.Count == 0 ? $"Dùng {s.Levels.Count} cao độ sẵn có" : $"Tạo {missing.Count} cao độ + mặt bằng tầng: " + string.Join(", ", missing.Select(l => l.Name + " (" + l.Elevation.ToString("+0.000;-0.000", CultureInfo.InvariantCulture) + ")")),
+                Text = (missing.Count == 0 ? $"Dùng {s.Levels.Count} cao độ sẵn có" : $"Tạo {missing.Count} cao độ + mặt bằng tầng: " + string.Join(", ", missing.Select(l => l.Name + " (" + l.Elevation.ToString("+0.000;-0.000", CultureInfo.InvariantCulture) + ")")))
+                       + (rename.Count > 0 ? "; đổi tên " + string.Join(", ", rename.Select(r => r.L.Name + " → " + r.Name)) : ""),
                 Note = "Khớp theo tên, rồi theo cao độ (±20 mm).",
                 Apply = d =>
                 {
+                    foreach (var (lv0, nm) in rename) try { lv0.Name = nm; } catch { c.Log.Add("Không đổi được tên cao độ " + lv0.Name + " → " + nm); }
                     var vft = new FilteredElementCollector(d).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault(v => v.ViewFamily == ViewFamily.FloorPlan);
                     foreach (var l in missing)
                     {
