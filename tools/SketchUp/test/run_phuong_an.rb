@@ -48,7 +48,13 @@ def sample
   d['Facade'] = { 'Style' => 'Hiện đại tối giản', 'Description' => 'Mặt tiền 5 m, cửa kính khung nhôm đen, lam gỗ.', 'FrontDirectionDeg' => 270,
                   'Materials' => [{ 'Part' => 'Tường ngoài', 'Material' => 'Sơn ngoại thất', 'Color' => '#F2F0EB' },
                                   { 'Part' => 'Khung cửa', 'Material' => 'Nhôm sơn tĩnh điện', 'Color' => '#2B2B2B' },
-                                  { 'Part' => 'Kính', 'Material' => 'Kính cường lực', 'Color' => '#9FC5D8' }] }
+                                  { 'Part' => 'Kính', 'Material' => 'Kính cường lực', 'Color' => '#9FC5D8' },
+                                  { 'Part' => 'Khung viền', 'Material' => 'Sơn xám than', 'Color' => '#3F4448' }],
+                  'Elements' => [{ 'Id' => 'LC-T2', 'Type' => 'LanCan', 'Style' => 'Kính', 'Level' => 'Tầng 2', 'Points' => [[0.2, -1.2], [4.8, -1.2]], 'Height' => 1.1 },
+                                 { 'Id' => 'KV-1', 'Type' => 'Khoi', 'Part' => 'Khung viền', 'Points' => [[-0.02, -1.3], [0.2, 0]], 'Z0' => 3.3, 'Z1' => 10.2 },
+                                 { 'Id' => 'LAM-1', 'Type' => 'Lam', 'Part' => 'Lam', 'Points' => [[0.3, -1.3], [2.0, -1.25]], 'Z0' => 6.9, 'Z1' => 10.2, 'Thickness' => 0.05, 'Spacing' => 0.15 },
+                                 { 'Id' => 'MAI-1', 'Type' => 'MaiDoc', 'Part' => 'Mái', 'Points' => [[2.5, 8.9], [5.1, 14.6]], 'Z0' => 13.0, 'Z1' => 13.4, 'SlopeAxis' => '+X', 'Thickness' => 0.1 }] }
+  d['Beams'] = [{ 'Id' => 'D-W1', 'Level' => 'Tầng 2', 'X1' => 0, 'Y1' => 0, 'X2' => 0, 'Y2' => 20, 'Z1' => 3.6, 'Z2' => 3.6, 'B' => 0.22, 'H' => 0.35 }]
   d
 end
 
@@ -90,7 +96,17 @@ glass = model.materials['VXT Kính']
 check.call('kính: màu theo mô tả mặt tiền #9FC5D8, trong suốt', glass && glass.color.red == 0x9F && glass.alpha < 1)
 check.call('tường ngoài: màu #F2F0EB', model.materials['VXT Tường ngoài']&.color&.red == 0xF2)
 check.call('tag VXT Tường / Sàn / Cửa', %w[VXT\ Tường VXT\ Sàn VXT\ Cửa].all? { |t| model.layers[t] })
-check.call('lan can mái dùng vật liệu "Lan can"', walls.any? { |g| g.material&.name == 'VXT Lan can' })
+check.call('tường lan can mái dùng vật liệu "Tường ngoài"', walls.select { |g| pts[g].map { |q| q[2] }.min > 10.1 && pts[g].map { |q| q[2] }.max < 11.4 }.all? { |g| g.material&.name == 'VXT Tường ngoài' })
+beam = groups.find { |g| g.name == 'Dầm D-W1' }
+check.call('dầm: mặt trên = cao độ tầng, cao 0,35 m', beam && (pts[beam].map { |q| q[2] }.max - 3.6).abs < 0.01 && (pts[beam].map { |q| q[2] }.min - 3.25).abs < 1e-6)
+fe = ->(id) { groups.find { |g| g.name == "Mặt tiền #{id}" } }
+lc = fe['LC-T2']
+all_pts = ->(g) { g.entities.to_a.flat_map { |e| e.is_a?(Sketchup::Group) ? pts[e] : (e.is_a?(Sketchup::Face) ? e.points.map { |p| [p.x * 0.0254, p.y * 0.0254, p.z * 0.0254] } : []) } }
+check.call('lan can kính T2: cao 1,1 m trên sàn tầng 2, có tấm kính', lc && (all_pts[lc].map { |q| q[2] }.max - 4.7).abs < 1e-6 && lc.entities.to_a.any? { |e| e.is_a?(Sketchup::Group) && e.material&.name.to_s.include?('Kính') })
+check.call('khung viền màu theo bảng vật liệu', fe['KV-1']&.material&.color&.red == 0x3F)
+check.call('lam: nhiều thanh', fe['LAM-1'] && fe['LAM-1'].entities.to_a.count { |f| f.is_a?(Sketchup::Face) } >= 6 * 11)
+mz = fe['MAI-1'] && pts[fe['MAI-1']].map { |q| q[2] }
+check.call('mái dốc: thấp 13,0 → cao 13,4 (+ dày)', mz && (mz.min - 13.0).abs < 1e-6 && (mz.max - 13.5).abs < 1e-6)
 st = groups.find { |g| g.name == 'Cầu thang T1' }
 zs = pts[st].map { |q| q[2] }
 check.call('cầu thang T1: từ 0 lên 3,6 m', zs.min.abs < 1e-6 && (zs.max - 3.6).abs < 1e-6)

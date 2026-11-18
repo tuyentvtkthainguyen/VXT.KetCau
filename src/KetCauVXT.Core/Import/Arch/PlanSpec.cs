@@ -62,6 +62,34 @@ public class RvFacade
     public List<string> ReferenceImages { get; set; } = new();
     /// <summary>Hướng mặt tiền: góc pháp tuyến ra ngoài (độ, 0 = +X, 90 = +Y, 180 = −X, 270 = −Y)</summary>
     public double FrontDirectionDeg { get; set; } = 180;
+    /// <summary>Chi tiết mặt tiền dựng thành khối: lan can, khung viền, lam, ốp, ô văng, mái kính… (Revit: DirectShape; SketchUp: nhóm)</summary>
+    public List<RvFacadeElement> Elements { get; set; } = new();
+}
+
+/// <summary>
+/// Một chi tiết kiến trúc trang trí / ban công. Toạ độ m (cùng hệ toạ độ phương án), cao độ tuyệt đối m.
+///   Type "LanCan": lan can theo đường gấp khúc Points [[x,y]…]; chân tại cao độ Level + Z0; cao Height (mặc định 1,1).
+///                  Style "Kính" (kính cường lực + tay vịn), "Thép" (song đứng + tay vịn), "Xây" (tường lửng).
+///   Type "Khoi":   khối lăng trụ đứng – đa giác Points, từ cao độ Z0 tới Z1 (khung viền, trụ ốp đá, lam, ô văng, bồn cây…).
+///   Type "MaiDoc": tấm dốc (mái kính / mái lệch) – khung chữ nhật bao Points, mép thấp ở cao độ Z0, mép cao Z1, dốc lên theo SlopeAxis (+X, −X, +Y, −Y), dày Thickness.
+///   Type "Lam":    dãy lam đứng trong khung chữ nhật bao Points, từ Z0 tới Z1; mỗi lam dày Thickness, bước Spacing, đặt dọc cạnh dài.
+/// Màu: Color (#RRGGBB) hoặc lấy theo Part trong Facade.Materials.
+/// </summary>
+public class RvFacadeElement
+{
+    public string Id { get; set; } = "";
+    public string Type { get; set; } = "Khoi";
+    public string Part { get; set; } = "";
+    public string Style { get; set; } = "";
+    public string Level { get; set; } = "";
+    public List<double[]> Points { get; set; } = new();
+    public double Z0 { get; set; }
+    public double Z1 { get; set; }
+    public double Height { get; set; }
+    public double Thickness { get; set; }
+    public double Spacing { get; set; }
+    public string SlopeAxis { get; set; } = "";
+    public string Color { get; set; } = "";
 }
 
 public class RvSite
@@ -339,6 +367,25 @@ public static class PlanSpec
             if (!names.Contains(f.Level)) E($"Sàn {f.Id}: không có cao độ \"{f.Level}\".");
             if (f.Outline.Count < 3) E($"Sàn {f.Id}: chưa có đường bao.");
         }
+        {
+            var lvs = ex.Levels.OrderBy(l => l.Elevation).ToList();
+            int full = 0;
+            for (int i = 0; i + 1 < lvs.Count; i++)
+            {
+                double h = lvs[i + 1].Elevation - lvs[i].Elevation;
+                if (ex.Floors.Any(f => f.Level == lvs[i + 1].Name)) full += ex.Walls.Count(w => w.Level == lvs[i].Name && Math.Abs(w.BaseOffset) < 0.01 && Math.Abs(w.Height - h) < 0.05);
+            }
+            if (full > 0) W($"{full} tường cao suốt tầng (xuyên qua sàn / dầm) – chạy --bo-sung-dam để thêm dầm và hạ tường xuống đáy dầm.");
+        }
+        foreach (var fe in ex.Facade?.Elements ?? new List<RvFacadeElement>())
+        {
+            string ty = fe.Type ?? "";
+            if (ty != "LanCan" && ty != "Khoi" && ty != "MaiDoc" && ty != "Lam") E($"Chi tiết mặt tiền {fe.Id}: Type \"{ty}\" không hỗ trợ (LanCan, Khoi, MaiDoc, Lam).");
+            else if (fe.Points.Count < (ty == "LanCan" ? 2 : 3) && !(ty != "LanCan" && fe.Points.Count == 2)) E($"Chi tiết mặt tiền {fe.Id}: thiếu điểm (Points).");
+            if (ty == "LanCan" && !string.IsNullOrEmpty(fe.Level) && !names.Contains(fe.Level)) E($"Lan can {fe.Id}: không có cao độ \"{fe.Level}\".");
+            if (ty == "LanCan" && fe.Height > 0 && fe.Height < 1.05) W($"Lan can {fe.Id} cao {fe.Height:0.00} m – QCVN yêu cầu ≥ 1,1 m với ban công / sân thượng.");
+            if ((ty == "Khoi" || ty == "MaiDoc" || ty == "Lam") && fe.Z1 <= fe.Z0 + 1e-6 && ty != "MaiDoc") E($"Chi tiết mặt tiền {fe.Id}: Z1 phải lớn hơn Z0.");
+        }
         if (ex.Facade == null || string.IsNullOrWhiteSpace(ex.Facade.Description) && ex.Facade.Materials.Count == 0)
             W("Chưa có mô tả mặt tiền (Facade) – phối cảnh sẽ dùng vật liệu mặc định.");
         if (ex.Site != null && ex.Site.Width > 0 && ex.Walls.Count > 0)
@@ -372,6 +419,118 @@ public static class PlanSpec
         double t = l2 < 1e-12 ? 0 : Math.Clamp(((x - w.X1) * dx + (y - w.Y1) * dy) / l2, 0, 1);
         double px = w.X1 + t * dx - x, py = w.Y1 + t * dy - y;
         return Math.Sqrt(px * px + py * py);
+    }
+
+    // ------------------------------------------------------------------ dầm dưới sàn
+    /// <summary>
+    /// Bổ sung dầm và hạ tường xuống đáy dầm / đáy sàn (tường không xây xuyên sàn):
+    ///  • tường dày ≥ <paramref name="minWallT"/> dưới sàn tầng trên → dầm b = bề dày tường, h = <paramref name="beamH"/>, tường cao = tầng − h;
+    ///  • tường mỏng hơn → tường cao = tầng − bề dày sàn trên;
+    ///  • mép sàn tầng trên không có tường đỡ (ban công, lô gia, mép mái đua) dài ≥ 1 m → dầm bo b = <paramref name="edgeB"/>, h = <paramref name="edgeH"/>, mặt ngoài trùng mép sàn.
+    /// Chạy lại không thêm trùng (dầm có Id "D-…", tường đã hạ không đổi). Trả về danh sách thay đổi để in.
+    /// </summary>
+    public static List<string> AddBeams(RevitExchange ex, double beamH = 0.35, double minWallT = 0.2, double edgeB = 0.2, double edgeH = 0.3)
+    {
+        var log = new List<string>();
+        var lv = ex.Levels.OrderBy(l => l.Elevation).ToList();
+        var have = new HashSet<string>(ex.Beams.Select(b => b.Id));
+        int nb = 0, ne = 0, nw = 0;
+        for (int i = 0; i + 1 < lv.Count; i++)
+        {
+            var lo = lv[i]; var up = lv[i + 1];
+            double storey = up.Elevation - lo.Elevation;
+            var below = ex.Walls.Where(w => w.Level == lo.Name).ToList();
+            var upFloors = ex.Floors.Where(f => f.Level == up.Name && f.Outline.Count >= 3).ToList();
+            if (below.Count == 0 || upFloors.Count == 0) continue;
+            double slabT = upFloors.Max(f => f.Thickness > 0 ? f.Thickness : 0.12);
+            foreach (var w in below)
+            {
+                if (Math.Abs(w.BaseOffset) > 0.01 || Math.Abs(w.Height - storey) > 0.05) continue;
+                double mx = (w.X1 + w.X2) / 2, my = (w.Y1 + w.Y2) / 2;
+                if (!upFloors.Any(f => InPoly(f.Outline, mx, my) || OnEdge(f.Outline, mx, my, 0.15))) continue;
+                double t = w.Layers?.Sum(l => l.Thickness) ?? 0;
+                if (t <= 0) t = RevitMaterials.ThicknessFromName(w.TypeName) ?? 0.11;
+                if (t >= minWallT - 1e-6)
+                {
+                    string id = "D-" + w.Id;
+                    if (have.Add(id))
+                    {
+                        ex.Beams.Add(new RvBeam { Id = id, X1 = R(w.X1), Y1 = R(w.Y1), X2 = R(w.X2), Y2 = R(w.Y2), Z1 = up.Elevation, Z2 = up.Elevation, B = R(t), H = beamH, Level = up.Name, Material = "Bê tông B20" });
+                        nb++;
+                    }
+                    w.Height = R(storey - beamH);
+                }
+                else w.Height = R(storey - slabT);
+                nw++;
+            }
+            // dầm bo mép sàn không có tường đỡ
+            int k = 0;
+            foreach (var f in upFloors)
+            {
+                var o = f.Outline;
+                for (int j = 0; j < o.Count; j++)
+                {
+                    var a = o[j]; var b = o[(j + 1) % o.Count];
+                    double dx = b[0] - a[0], dy = b[1] - a[1], len = Math.Sqrt(dx * dx + dy * dy);
+                    if (len < 1.0) continue;
+                    double ux = dx / len, uy = dy / len;
+                    // pháp tuyến vào trong sàn
+                    double nx = -uy, ny = ux;
+                    if (!InPoly(o, (a[0] + b[0]) / 2 + nx * 0.05, (a[1] + b[1]) / 2 + ny * 0.05)) { nx = -nx; ny = -ny; }
+                    int n = Math.Max(2, (int)Math.Ceiling(len / 0.25));
+                    double? s0 = null;
+                    for (int q = 0; q <= n; q++)
+                    {
+                        double u = len * q / n;
+                        double px = a[0] + ux * u, py = a[1] + uy * u;
+                        bool covered = below.Any(w => DistToSeg(px, py, w) <= 0.2);
+                        if (!covered && s0 == null) s0 = u;
+                        if ((covered || q == n) && s0 != null)
+                        {
+                            double u1 = covered ? Math.Min(len, u + 0.2) : len;   // kéo tới gặp tường / dầm vuông góc
+                            if (s0.Value > 0) s0 = Math.Max(0, s0.Value - 0.2);
+                            if (u1 - s0.Value >= 1.0)
+                            {
+                                string id = $"DB-{up.Name}-{++k}";
+                                double ox = nx * edgeB / 2, oy = ny * edgeB / 2;
+                                if (!ex.Beams.Any(bm => Math.Abs(bm.Z1 - up.Elevation) < 0.01 && Math.Abs(bm.X1 - R(a[0] + ux * s0.Value + ox)) < 0.02 && Math.Abs(bm.Y1 - R(a[1] + uy * s0.Value + oy)) < 0.02))
+                                {
+                                    ex.Beams.Add(new RvBeam { Id = id, X1 = R(a[0] + ux * s0.Value + ox), Y1 = R(a[1] + uy * s0.Value + oy), X2 = R(a[0] + ux * u1 + ox), Y2 = R(a[1] + uy * u1 + oy), Z1 = up.Elevation, Z2 = up.Elevation, B = edgeB, H = edgeH, Level = up.Name, Material = "Bê tông B20" });
+                                    ne++;
+                                }
+                            }
+                            s0 = null;
+                        }
+                    }
+                }
+            }
+        }
+        log.Add($"Thêm {nb} dầm dưới tường, {ne} dầm bo mép sàn; hạ {nw} tường xuống đáy dầm / đáy sàn.");
+        return log;
+    }
+
+    internal static bool InPoly(List<double[]> poly, double x, double y)
+    {
+        bool c = false;
+        for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++)
+        {
+            double xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+            if ((yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+        }
+        return c;
+    }
+
+    private static bool OnEdge(List<double[]> poly, double x, double y, double tol)
+    {
+        for (int i = 0; i < poly.Count; i++)
+        {
+            var a = poly[i]; var b = poly[(i + 1) % poly.Count];
+            double dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+            double t = l2 < 1e-12 ? 0 : Math.Clamp(((x - a[0]) * dx + (y - a[1]) * dy) / l2, 0, 1);
+            double px = a[0] + t * dx - x, py = a[1] + t * dy - y;
+            if (px * px + py * py <= tol * tol) return true;
+        }
+        return false;
     }
 
     public static double Area(List<double[]> o)

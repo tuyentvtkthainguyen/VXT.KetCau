@@ -13,6 +13,7 @@ module Geom
     attr_reader :x, :y, :z
     def initialize(x, y, z) = (@x, @y, @z = x.to_f, y.to_f, z.to_f)
     def length = Math.sqrt(x * x + y * y + z * z)
+    def %(o) = x * o.x + y * o.y + z * o.z
   end
 
   class Point3d

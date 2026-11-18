@@ -16,6 +16,7 @@ module VXT
         'Tường ngoài' => '#EDEAE4', 'Mặt tiền' => '#D9CDBA', 'Tường trong' => '#F4F3EF', 'Kính' => '#6F8FA8',
         'Khung cửa' => '#4E3B2C', 'Cánh cửa' => '#7A5A40', 'Sàn' => '#BDBAB4', 'Mái' => '#8A8F94', 'Lan can' => '#2F2F2F',
         'Cầu thang' => '#CFC8BC', 'Nền' => '#9DAA8A', 'Cửa cuốn' => '#8C9096',
+        'Khung viền' => '#3F4448', 'Ốp đá' => '#5F6266', 'Lam' => '#8B5A2B', 'Tay vịn' => '#2B2B2B', 'Kính lan can' => '#8FB3C4',
       }.freeze
 
       class << self
@@ -47,9 +48,35 @@ module VXT
         list = facade && facade['Materials'] || []
         fm = list.find { |m| part_matches?(m['Part'].to_s, key) }
         fm ||= list.find { |m| part_matches?(m['Part'].to_s, 'Tường ngoài') } if key == 'Mặt tiền'   # không có điểm nhấn → như tường ngoài
-        mat.color = color(fm && fm['Color']) || color(DEFAULT_MATS[key]) || color('#CCCCCC')
-        mat.alpha = 0.4 if key == 'Kính'
+        fm ||= list.find { |m| key.downcase.include?(m['Part'].to_s.downcase) && !m['Part'].to_s.empty? }
+        dk = DEFAULT_MATS.keys.find { |k| key.downcase.include?(k.downcase) }
+        mat.color = color(fm && fm['Color']) || color(DEFAULT_MATS[key]) || (dk && color(DEFAULT_MATS[dk])) || color('#CCCCCC')
+        mat.alpha = 0.4 if key =~ /kính/i
         mat
+      end
+
+      # vật liệu theo màu ghi thẳng trong chi tiết mặt tiền
+      def self.material_hex(model, key, hex, facade)
+        return material(model, key, facade) unless color(hex)
+        name = "VXT #{key} #{hex.to_s.delete('#').upcase}"
+        mat = model.materials[name]
+        return mat if mat
+        mat = model.materials.add(name)
+        mat.color = color(hex)
+        mat.alpha = 0.4 if key =~ /kính/i
+        mat
+      end
+
+      def self.in_poly?(poly, x, y)
+        c = false
+        j = poly.length - 1
+        poly.each_with_index do |pi, i|
+          xi, yi = pi[0].to_f, pi[1].to_f
+          xj, yj = poly[j][0].to_f, poly[j][1].to_f
+          c = !c if (yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi
+          j = i
+        end
+        c
       end
 
       def self.part_matches?(part, key)
@@ -141,6 +168,7 @@ module VXT
           ops = data['Openings'] || []
           top = data['Levels'].max_by { |l| l['Elevation'].to_f }['Name']
           nwall = 0; nop = 0
+          rooms_in = (data['Rooms'] || []).reject { |r| r['Name'].to_s =~ /ban công|lô gia|logia|sân/i }
 
           (data['Walls'] || []).each do |w|
             z = level_z(data, w['Level']) or (report << "Tường #{w['Id']}: không có cao độ #{w['Level']}"; next)
@@ -152,10 +180,18 @@ module VXT
             h = w['Height'].to_f > 0.05 ? w['Height'].to_f : next_height(data, w['Level'])
             zb = z + w['BaseOffset'].to_f
             # phân loại: tường biên (ngoài) / mặt tiền / lan can mái
-            on = ->(v0, v1, ref) { (v0 - ref).abs < 0.3 && (v1 - ref).abs < 0.3 }
-            side = if on[ax, bx, x0] then [-1, 0] elsif on[ax, bx, x1] then [1, 0] elsif on[ay, by, y0] then [0, -1] elsif on[ay, by, y1] then [0, 1] end
-            key = if side.nil? then 'Tường trong'
-                  elsif w['Level'] == top && h <= 1.6 then 'Lan can'
+            lv_rooms = rooms_in.select { |r| r['Level'].to_s.casecmp?(w['Level'].to_s) }
+            if lv_rooms.empty? # không có phòng → theo khung bao
+              on = ->(v0, v1, ref) { (v0 - ref).abs < 0.3 && (v1 - ref).abs < 0.3 }
+              side = if on[ax, bx, x0] then [-1, 0] elsif on[ax, bx, x1] then [1, 0] elsif on[ay, by, y0] then [0, -1] elsif on[ay, by, y1] then [0, 1] end
+            else # mặt tường không quay vào phòng nào là mặt ngoài
+              mx = (ax + bx) / 2; my = (ay + by) / 2; nx = -dy; ny = dx; o = t / 2 + 0.3
+              ext_a = lv_rooms.none? { |r| in_poly?(r['Outline'] || [], mx + nx * o, my + ny * o) }
+              ext_b = lv_rooms.none? { |r| in_poly?(r['Outline'] || [], mx - nx * o, my - ny * o) }
+              side = ext_a ? [nx, ny] : (ext_b ? [-nx, -ny] : nil)
+            end
+            key = if w['Level'] == top && h <= 1.6 then 'Tường ngoài'
+                  elsif side.nil? then 'Tường trong'
                   elsif side[0] * fn[0] + side[1] * fn[1] > 0.7 then 'Mặt tiền'
                   else 'Tường ngoài' end
             g = root.entities.add_group
@@ -238,6 +274,30 @@ module VXT
             build_stair(g.entities, s, zb, zt)
           end
 
+          # dầm dưới sàn (mặt trên dầm = cao độ tầng)
+          nbeam = 0
+          (data['Beams'] || []).each do |b|
+            z = (b['Z1'] || level_z(data, b['Level'])).to_f
+            bx1, by1, bx2, by2 = b['X1'].to_f, b['Y1'].to_f, b['X2'].to_f, b['Y2'].to_f
+            len = Math.hypot(bx2 - bx1, by2 - by1)
+            next if len < 0.1
+            g = root.entities.add_group
+            g.name = "Dầm #{b['Id']}"; g.layer = tags['VXT Dầm']; g.material = material(model, 'Tường ngoài', facade)
+            ux = (bx2 - bx1) / len; uy = (by2 - by1) / len
+            wall_box(g.entities, bx1, by1, ux, uy, -b['B'].to_f / 2, len + b['B'].to_f / 2, b['B'].to_f, z - b['H'].to_f, z - 0.002)
+            nbeam += 1
+          end
+
+          # chi tiết mặt tiền: lan can, khung viền, ốp, lam, mái dốc
+          nfe = 0
+          (facade['Elements'] || []).each do |e|
+            begin
+              nfe += 1 if build_element(model, root, tags['VXT Mặt tiền'], data, facade, e)
+            rescue StandardError => ex
+              report << "Chi tiết mặt tiền #{e['Id']}: #{ex.message}"
+            end
+          end
+
           # nền sân quanh nhà
           site = data['Site'] || {}
           mx = 6.0
@@ -250,13 +310,116 @@ module VXT
 
           make_scenes(model, data)
           model.commit_operation
-          @last_report = "Đã dựng #{nwall} tường, #{nop} cửa, #{nfl} sàn, #{stairs.length} cầu thang; 3 cảnh phối cảnh." +
+          @last_report = "Đã dựng #{nwall} tường, #{nop} cửa, #{nfl} sàn, #{nbeam} dầm, #{stairs.length} cầu thang, #{nfe} chi tiết mặt tiền; 3 cảnh phối cảnh." +
                          (report.empty? ? '' : "\nGhi chú:\n- " + report.first(30).join("\n- "))
           @last_report
         rescue StandardError
           model.abort_operation
           raise
         end
+      end
+
+      # ------------------------------------------------------------------ chi tiết mặt tiền
+      def self.bbox(pts)
+        xs = pts.map { |p| p[0].to_f }; ys = pts.map { |p| p[1].to_f }
+        [xs.min, ys.min, xs.max, ys.max]
+      end
+
+      def self.rect_poly(b)
+        [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]]
+      end
+
+      def self.bar(ents, ax, ay, bx, by, w, z0, z1)
+        l = Math.hypot(bx - ax, by - ay)
+        return if l < 0.005
+        wall_box(ents, ax, ay, (bx - ax) / l, (by - ay) / l, 0, l, w, z0, z1)
+      end
+
+      def self.post(ents, x, y, w, z0, z1)
+        prism(ents, [[x - w / 2, y - w / 2], [x + w / 2, y - w / 2], [x + w / 2, y + w / 2], [x - w / 2, y + w / 2]], z0, z1)
+      end
+
+      def self.build_element(model, root, tag, data, facade, e)
+        pts = (e['Points'] || []).map { |p| [p[0].to_f, p[1].to_f] }
+        type = e['Type'].to_s
+        g = root.entities.add_group
+        g.name = "Mặt tiền #{e['Id']}"
+        g.layer = tag
+        part = e['Part'].to_s
+        case type
+        when 'LanCan'
+          lz = level_z(data, e['Level']) || 0.0
+          z0 = lz + e['Z0'].to_f
+          h = e['Height'].to_f > 0.3 ? e['Height'].to_f : 1.1
+          st = e['Style'].to_s.downcase
+          if st.include?('xây')
+            g.material = material_hex(model, part.empty? ? 'Tường ngoài' : part, e['Color'], facade)
+            pts.each_cons(2) { |a, b| bar(g.entities, a[0], a[1], b[0], b[1], 0.11, z0, z0 + h) }
+            return true
+          end
+          glass = !(st.include?('thép') || st.include?('sắt'))
+          rail = g.entities.add_group; rail.material = material(model, 'Tay vịn', facade)
+          fill = nil
+          if glass
+            fill = g.entities.add_group
+            fill.material = material_hex(model, 'Kính lan can', e['Color'].to_s.empty? ? ((facade['Materials'] || []).find { |m| m['Part'].to_s =~ /kính/i } || {})['Color'] : e['Color'], facade)
+          end
+          pts.each_cons(2).with_index do |(a, b), i|
+            l = Math.hypot(b[0] - a[0], b[1] - a[1])
+            next if l < 0.01
+            bar(rail.entities, a[0], a[1], b[0], b[1], 0.06, z0 + h - 0.05, z0 + h)
+            if glass
+              bar(fill.entities, a[0], a[1], b[0], b[1], 0.015, z0 + 0.08, z0 + h - 0.06)
+            else
+              bar(rail.entities, a[0], a[1], b[0], b[1], 0.04, z0 + 0.08, z0 + 0.12)
+              nb = [(l / 0.12).floor, 1].max
+              (1...nb).each { |k| post(rail.entities, a[0] + (b[0] - a[0]) * k / nb, a[1] + (b[1] - a[1]) * k / nb, 0.02, z0 + 0.12, z0 + h - 0.05) }
+            end
+            np = [(l / 1.2).ceil, 1].max
+            (0..np).each do |k|
+              next if k == np && i + 2 < pts.length
+              post(rail.entities, a[0] + (b[0] - a[0]) * k / np, a[1] + (b[1] - a[1]) * k / np, 0.05, z0, z0 + h - 0.05)
+            end
+          end
+        when 'MaiDoc'
+          b = bbox(pts)
+          t = e['Thickness'].to_f > 0.005 ? e['Thickness'].to_f : 0.12
+          g.material = material_hex(model, part.empty? ? 'Mái' : part, e['Color'], facade)
+          ax = e['SlopeAxis'].to_s.tr('−', '-').strip.upcase
+          ax = '+X' if ax.empty?
+          neg = ax.start_with?('-')
+          za = neg ? e['Z1'].to_f : e['Z0'].to_f
+          zb = neg ? e['Z0'].to_f : e['Z1'].to_f
+          if ax.end_with?('X')
+            q = [pt(b[0], b[1], za), pt(b[2], b[1], zb), pt(b[2], b[1], zb + t), pt(b[0], b[1], za + t)]
+            dir = Geom::Vector3d.new(0, 1, 0); len = b[3] - b[1]
+          else
+            q = [pt(b[0], b[1], za), pt(b[0], b[3], zb), pt(b[0], b[3], zb + t), pt(b[0], b[1], za + t)]
+            dir = Geom::Vector3d.new(1, 0, 0); len = b[2] - b[0]
+          end
+          f = g.entities.add_face(q)
+          return false unless f
+          f.pushpull((f.normal % dir) > 0 ? len * M : -len * M)
+        when 'Lam'
+          b = bbox(pts)
+          g.material = material_hex(model, part.empty? ? 'Lam' : part, e['Color'], facade)
+          th = e['Thickness'].to_f > 0.005 ? e['Thickness'].to_f : 0.05
+          sp = e['Spacing'].to_f > th ? e['Spacing'].to_f : 0.15
+          along_y = (b[3] - b[1]) >= (b[2] - b[0])
+          l = along_y ? b[3] - b[1] : b[2] - b[0]
+          n = [((l - th) / sp).floor + 1, 1].max
+          st0 = (l - (n - 1) * sp) / 2
+          n.times do |k|
+            u = st0 + k * sp
+            r = along_y ? [b[0], b[1] + u - th / 2, b[2], b[1] + u + th / 2] : [b[0] + u - th / 2, b[1], b[0] + u + th / 2, b[3]]
+            prism(g.entities, rect_poly(r), e['Z0'].to_f, e['Z1'].to_f)
+          end
+        else # Khoi
+          g.material = material_hex(model, part.empty? ? 'Khung viền' : part, e['Color'], facade)
+          poly = pts.length == 2 ? rect_poly(bbox(pts)) : pts
+          prism(g.entities, poly, e['Z0'].to_f, e['Z1'].to_f)
+        end
+        true
       end
 
       # cầu thang 2 vế dạng khối bậc (m)

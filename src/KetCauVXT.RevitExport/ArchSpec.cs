@@ -24,6 +24,14 @@ namespace KetCauVXT.RevitExport
         public List<List<double[]>> Landings = new List<List<double[]>>();
     }
     internal sealed class AsFacadeMaterial { public string Part = "", Material = "", Color = ""; }
+    internal sealed class AsBeam { public string Id = "", Level = ""; public double X1, Y1, X2, Y2, Z, B, H; }
+    /// <summary>Chi tiết mặt tiền (LanCan / Khoi / MaiDoc / Lam) – xem RvFacadeElement trong Việt Const.</summary>
+    internal sealed class AsFacadeElement
+    {
+        public string Id = "", Type = "Khoi", Part = "", Style = "", Level = "", SlopeAxis = "", Color = "";
+        public List<double[]> Points = new List<double[]>();
+        public double Z0, Z1, Height, Thickness, Spacing;
+    }
 
     internal sealed class ArchSpec
     {
@@ -38,6 +46,8 @@ namespace KetCauVXT.RevitExport
         public string FacadeStyle = "", FacadeDescription = "";
         public double FrontDirectionDeg = 180;
         public List<AsFacadeMaterial> FacadeMaterials = new List<AsFacadeMaterial>();
+        public List<AsFacadeElement> FacadeElements = new List<AsFacadeElement>();
+        public List<AsBeam> Beams = new List<AsBeam>();
         public double SiteWidth, SiteDepth;
         public List<string> FamilySources = new List<string>();
 
@@ -54,6 +64,8 @@ namespace KetCauVXT.RevitExport
                 s.Walls.Add(w);
             }
             foreach (var o in MiniJson.A(root, "Openings")) s.Openings.Add(new AsOpening { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Category = MiniJson.S(o, "Category", "Door"), TypeName = MiniJson.S(o, "TypeName"), Family = MiniJson.S(o, "Family"), X = MiniJson.D(o, "X"), Y = MiniJson.D(o, "Y"), Width = MiniJson.D(o, "Width"), Height = MiniJson.D(o, "Height"), Sill = MiniJson.D(o, "Sill") });
+            foreach (var o in MiniJson.A(root, "Beams"))
+                s.Beams.Add(new AsBeam { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), X1 = MiniJson.D(o, "X1"), Y1 = MiniJson.D(o, "Y1"), X2 = MiniJson.D(o, "X2"), Y2 = MiniJson.D(o, "Y2"), Z = MiniJson.D(o, "Z1"), B = MiniJson.D(o, "B", 0.22), H = MiniJson.D(o, "H", 0.35) });
             foreach (var o in MiniJson.A(root, "Rooms")) s.Rooms.Add(new AsRoom { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Name = MiniJson.S(o, "Name"), Number = MiniJson.S(o, "Number"), Outline = Pts(o, "Outline") });
             foreach (var o in MiniJson.A(root, "Floors")) s.Floors.Add(new AsFloor { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Thickness = MiniJson.D(o, "Thickness", 0.1), Outline = Pts(o, "Outline") });
             foreach (var o in MiniJson.A(root, "Stairs"))
@@ -72,6 +84,13 @@ namespace KetCauVXT.RevitExport
                 s.FacadeStyle = MiniJson.S(f, "Style"); s.FacadeDescription = MiniJson.S(f, "Description");
                 s.FrontDirectionDeg = MiniJson.D(f, "FrontDirectionDeg", 180);
                 foreach (var m in MiniJson.A(f, "Materials")) s.FacadeMaterials.Add(new AsFacadeMaterial { Part = MiniJson.S(m, "Part"), Material = MiniJson.S(m, "Material"), Color = MiniJson.S(m, "Color") });
+                foreach (var e in MiniJson.A(f, "Elements"))
+                    s.FacadeElements.Add(new AsFacadeElement
+                    {
+                        Id = MiniJson.S(e, "Id"), Type = MiniJson.S(e, "Type", "Khoi"), Part = MiniJson.S(e, "Part"), Style = MiniJson.S(e, "Style"), Level = MiniJson.S(e, "Level"),
+                        SlopeAxis = MiniJson.S(e, "SlopeAxis"), Color = MiniJson.S(e, "Color"), Points = Pts(e, "Points"),
+                        Z0 = MiniJson.D(e, "Z0"), Z1 = MiniJson.D(e, "Z1"), Height = MiniJson.D(e, "Height"), Thickness = MiniJson.D(e, "Thickness"), Spacing = MiniJson.D(e, "Spacing"),
+                    });
             }
             var site = MiniJson.O(root, "Site");
             if (site != null) { s.SiteWidth = MiniJson.D(site, "Width"); s.SiteDepth = MiniJson.D(site, "Depth"); }

@@ -15,10 +15,10 @@ internal static class HeadlessCli
 
     [DllImport("kernel32.dll")] private static extern bool AttachConsole(int pid);
 
-    public const string FlagCad = "--cad-sang-phuong-an", FlagCheck = "--kiem-tra-phuong-an", FlagSample = "--phuong-an-mau", FlagRevit = "--revit-sang-phuong-an";
+    public const string FlagCad = "--cad-sang-phuong-an", FlagCheck = "--kiem-tra-phuong-an", FlagSample = "--phuong-an-mau", FlagRevit = "--revit-sang-phuong-an", FlagBeams = "--bo-sung-dam";
 
     public static bool Wants(string[] args) => args.Length > 0 &&
-        new[] { Flag, FlagCad, FlagCheck, FlagSample, FlagRevit }.Any(f => string.Equals(args[0], f, StringComparison.OrdinalIgnoreCase));
+        new[] { Flag, FlagCad, FlagCheck, FlagSample, FlagRevit, FlagBeams }.Any(f => string.Equals(args[0], f, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Ghi lại mọi dòng đã in – ứng dụng cửa sổ chạy bằng Start-Process không có console, nên lệnh phương án ghi thêm file *.kiemtra.txt.</summary>
     private static readonly StringBuilder Log = new();
@@ -34,6 +34,7 @@ internal static class HeadlessCli
             if (string.Equals(args[0], FlagCheck, StringComparison.OrdinalIgnoreCase)) return CheckPlan(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagSample, StringComparison.OrdinalIgnoreCase)) return SamplePlan(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagRevit, StringComparison.OrdinalIgnoreCase)) return RevitToPlan(args.Skip(1).ToList());
+            if (string.Equals(args[0], FlagBeams, StringComparison.OrdinalIgnoreCase)) return AddBeams(args.Skip(1).ToList());
         }
         catch (Exception e) { Say("Lỗi: " + e.Message); return 2; }
         var o = RevitDesignPipeline.ParseArgs(args.Skip(1).ToList(), out var err);
@@ -116,6 +117,32 @@ internal static class HeadlessCli
         Say($"Đã ghi {files[1]}: {plan.Levels.Count} cao độ, {plan.Walls.Count} tường, {plan.Openings.Count} cửa, {plan.Rooms.Count} phòng, {plan.Stairs.Count} ô thang (cần thiết kế vế thang – Runs).");
         int rc = PrintIssues(plan);
         SaveLog(files[1]);
+        return rc;
+    }
+
+    /// <summary>
+    /// KetCauVXT.exe --bo-sung-dam &lt;file.vxtphuongan.json&gt; [--cao-dam 0.35] [--dam-bo 0.2x0.3]
+    /// Thêm dầm dưới tường 220 + dầm bo mép sàn, hạ tường xuống đáy dầm / đáy sàn; ghi đè file phương án (giữ bản cũ *.truoc-dam.json).
+    /// </summary>
+    private static int AddBeams(List<string> a)
+    {
+        string file = null; double h = 0.35, eb = 0.2, eh = 0.3;
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        for (int i = 0; i < a.Count; i++)
+        {
+            if (a[i] == "--cao-dam" && i + 1 < a.Count) { h = double.Parse(a[++i].Replace(',', '.'), inv); continue; }
+            if (a[i] == "--dam-bo" && i + 1 < a.Count) { var p = a[++i].ToLowerInvariant().Split('x'); eb = double.Parse(p[0].Replace(',', '.'), inv); if (p.Length > 1) eh = double.Parse(p[1].Replace(',', '.'), inv); continue; }
+            file = a[i];
+        }
+        if (file == null || !File.Exists(file)) { Say("Cần: --bo-sung-dam <file.vxtphuongan.json> [--cao-dam 0.35] [--dam-bo 0.2x0.3]"); return 2; }
+        if (h < 0.2 || h > 1.0) { Say("Chiều cao dầm phải trong khoảng 0,2–1,0 m."); return 2; }
+        var ex = KetCauVXT.Import.RevitJsonImporter.ReadFile(file);
+        try { File.Copy(file, Path.ChangeExtension(file, null) + ".truoc-dam.json", true); } catch { }
+        foreach (var l in KetCauVXT.Import.Arch.PlanSpec.AddBeams(ex, h, 0.2, eb, eh)) Say(l);
+        KetCauVXT.Import.Arch.PlanSpec.Save(ex, file);
+        Say("Đã ghi " + file);
+        int rc = PrintIssues(ex);
+        SaveLog(file);
         return rc;
     }
 

@@ -57,5 +57,7 @@ Lệnh điều phối: `/phuong-an-den-ho-so <mô tả hoặc đường dẫn �
 ### Phương án chi tiết (đã chạy thật trên Project1 làm mới)
 - Cầu thang ghi theo vế (`Runs`: đường tim theo hướng đi lên + số bậc đứng; `Landings`) → Revit dựng đúng số bậc, mặt bậc, chiếu nghỉ; SketchUp dựng khối bậc. Việt Const kiểm tra h 150–175 mm, b ≥ 250 mm, 2h + b.
 - Cửa ghi `Family` + `TypeName`, phương án khai `FamilySources` (VD dự án cũ `Project1.rvt`) → add-in mở ngầm, chép họ cửa nhôm kính, cửa lùa + ô fix, cửa cuốn sang dự án mới, tạo loại đúng kích thước.
-- Lệnh cầu nối mới: `liet-ke-ho` (liệt kê họ cửa trong dự án / file mẫu), `dung-kien-truc` + `lam_lai` (dựng lại cửa / cầu thang / sàn theo phương án đã sửa, giữ phòng, tag và phần người dùng tự vẽ).
+- Lệnh cầu nối mới: `liet-ke-ho` (liệt kê họ cửa trong dự án / file mẫu), `dung-kien-truc` + `lam_lai` (dựng lại tường / dầm / cửa / cầu thang / sàn / mặt tiền theo phương án đã sửa, giữ phòng, tag và phần người dùng tự vẽ).
+- Dầm và tường tới đáy dầm: `KetCauVXT.exe --bo-sung-dam <phương án>` thêm dầm dưới tường 220 + dầm bo mép sàn hở, hạ tường; Revit dựng dầm bằng họ dầm BTCT, SketchUp dựng khối dầm.
+- Chi tiết mặt tiền `Facade.Elements` (LanCan kính / thép / xây, Khoi – khung viền, ốp đá, ô văng…, Lam, MaiDoc – mái lệch / mái kính): kts-mat-tien thiết kế; Revit dựng DirectShape có vật liệu màu + sơn mặt ngoài tường, SketchUp dựng nhóm có vật liệu để render V-Ray.
 - Mặt đứng 4 phía dựng bằng khung nhìn cắt ngoài mặt nhà; tỷ lệ bản vẽ tự chọn theo kích thước nhà; ảnh 3D / mặt bằng cắt ôm công trình.

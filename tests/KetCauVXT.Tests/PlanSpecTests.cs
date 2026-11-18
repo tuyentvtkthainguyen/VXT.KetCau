@@ -25,6 +25,29 @@ public static class PlanSpecTests
         check("Phương án: đọc lại giữ tầng của cửa", B(back.Openings.All(o => o.Level.Length > 0)), 1, 0);
         check("Phương án: đọc lại giữ lớp cấu tạo tường", B(back.Walls.All(w => w.Layers.Count == 3)), 1, 0);
 
+        // dầm dưới sàn: tường hạ xuống đáy dầm / đáy sàn, chạy lại không thêm trùng
+        var bm = PlanSpec.SampleTownhouse();
+        PlanSpec.AddBeams(bm, 0.35);
+        int nBeam = bm.Beams.Count;
+        check("Dầm: có dầm dưới tường 220", B(nBeam > 0 && bm.Beams.All(b => b.H > 0.29 && b.Z1 > 0)), 1, 0);
+        var lvs = bm.Levels.OrderBy(l => l.Elevation).ToList();
+        int through = 0;
+        for (int i = 0; i + 1 < lvs.Count; i++)
+            if (bm.Floors.Any(fl => fl.Level == lvs[i + 1].Name))
+                through += bm.Walls.Count(w => w.Level == lvs[i].Name && Math.Abs(w.Height - (lvs[i + 1].Elevation - lvs[i].Elevation)) < 0.05);
+        check("Dầm: không còn tường xuyên sàn", through, 0, 0);
+        PlanSpec.AddBeams(bm, 0.35);
+        check("Dầm: chạy lại không thêm trùng", bm.Beams.Count, nBeam, 0);
+        check("Dầm: phương án vẫn không lỗi", PlanSpec.Validate(bm).Count(i => i.Error), 0, 0);
+        bm.Facade.Elements.Add(new RvFacadeElement { Id = "LC1", Type = "LanCan", Style = "Kính", Level = "Tầng 2", Points = new() { new[] { 0.2, -1.2 }, new[] { 4.8, -1.2 } }, Height = 1.1 });
+        bm.Facade.Elements.Add(new RvFacadeElement { Id = "K1", Type = "Khoi", Part = "Khung viền", Points = new() { new[] { 0.0, -1.3 }, new[] { 0.2, 0.0 } }, Z0 = 3.3, Z1 = 10 });
+        string fb = Path.Combine(outDir, "NhaPhoMau_dam" + PlanSpec.Extension);
+        PlanSpec.Save(bm, fb);
+        var bb = RevitJsonImporter.ReadFile(fb);
+        check("Mặt tiền: đọc lại giữ chi tiết + dầm", bb.Facade.Elements.Count * 100 + bb.Beams.Count, 200 + nBeam, 0);
+        bb.Facade.Elements.Add(new RvFacadeElement { Id = "X", Type = "Tháp", Points = new() { new[] { 0.0, 0.0 } } });
+        check("Mặt tiền: bắt loại chi tiết sai", PlanSpec.Validate(bb).Count(i => i.Error), 1, 0);
+
         // lỗi phải bắt được
         var bad = PlanSpec.SampleTownhouse();
         bad.Openings.Add(new RvOpening { Id = "X1", Level = "Tầng 1", Category = "Door", X = 2.5, Y = 7, Width = 0.9, Height = 2.2 });

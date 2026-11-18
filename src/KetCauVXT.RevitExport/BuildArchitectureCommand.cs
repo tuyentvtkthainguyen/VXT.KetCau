@@ -54,13 +54,16 @@ namespace KetCauVXT.RevitExport
         }
 
         // ------------------------------------------------------------------ dựng lại một nhóm
-        /// <summary>Xoá phần tử có mã KT- thuộc nhóm "cua" (cửa đi, cửa sổ), "cau-thang", "san" để dựng lại theo phương án đã sửa.</summary>
+        /// <summary>Xoá phần tử có mã KT- thuộc nhóm "cua" (cửa đi, cửa sổ), "cau-thang", "san", "tuong" (kéo theo cửa trên tường), "dam", "mat-tien" (lan can, khung, lam, mái kính…) để dựng lại theo phương án đã sửa.</summary>
         internal static void RemoveForRebuild(Document d, HashSet<string> groups, List<string> log)
         {
             var cats = new List<BuiltInCategory>();
             if (groups.Contains("cua")) { cats.Add(BuiltInCategory.OST_Doors); cats.Add(BuiltInCategory.OST_Windows); }
             if (groups.Contains("cau-thang")) cats.Add(BuiltInCategory.OST_Stairs);
             if (groups.Contains("san")) cats.Add(BuiltInCategory.OST_Floors);
+            if (groups.Contains("tuong")) cats.Add(BuiltInCategory.OST_Walls);
+            if (groups.Contains("dam")) cats.Add(BuiltInCategory.OST_StructuralFraming);
+            if (groups.Contains("mat-tien")) cats.Add(BuiltInCategory.OST_GenericModel);
             if (cats.Count == 0) return;
             var ids = new List<ElementId>();
             foreach (var bic in cats)
@@ -293,6 +296,31 @@ namespace KetCauVXT.RevitExport
                 {
                     Group = "Phòng", Order = 5, Text = $"Đặt {rooms.Count} phòng có tên: " + string.Join(", ", rooms.Select(r => r.Name).Distinct().Take(12)) + (rooms.Select(r => r.Name).Distinct().Count() > 12 ? "…" : ""),
                     Apply = d => { d.Regenerate(); PlaceRooms(c, rooms); }
+                });
+
+            var beams = s.Beams.Where(b => !c.Has(b.Id) && Math.Abs(b.X2 - b.X1) + Math.Abs(b.Y2 - b.Y1) > 0.1).ToList();
+            if (beams.Count > 0)
+                items.Add(new ChangeItem
+                {
+                    Group = "Dầm", Order = 3, Text = $"Dựng {beams.Count} dầm BTCT dưới sàn: " + string.Join(", ", beams.GroupBy(b => $"{b.B * 1000:0}x{b.H * 1000:0}").Select(g => g.Key + " ×" + g.Count())),
+                    Note = "Mặt trên dầm = cao độ tầng; tường trong phương án đã hạ xuống đáy dầm (lệnh Việt Const --bo-sung-dam).",
+                    Apply = d => { int n = FacadeBuilder.BuildBeams(d, c, beams); if (n < beams.Count) c.Log.Add($"Dựng được {n}/{beams.Count} dầm."); }
+                });
+
+            var fes = s.FacadeElements.Where(e => !c.Has(e.Id)).ToList();
+            if (fes.Count > 0 || s.FacadeMaterials.Count > 0)
+                items.Add(new ChangeItem
+                {
+                    Group = "Mặt tiền", Order = 6,
+                    Text = (fes.Count > 0 ? $"Dựng {fes.Count} chi tiết mặt tiền ({string.Join(", ", fes.GroupBy(e => e.Type).Select(g => g.Key + " ×" + g.Count()))}) + " : "") + "sơn mặt ngoài tường theo màu phương án",
+                    Note = "Lan can / khung / lam / mái kính dựng bằng DirectShape (Generic Model) có vật liệu màu; sơn mặt tường không quay vào phòng.",
+                    Apply = d =>
+                    {
+                        int n = FacadeBuilder.BuildElements(d, c, fes);
+                        d.Regenerate();
+                        int p = FacadeBuilder.PaintExterior(d, c);
+                        c.Log.Add($"Mặt tiền: {n} chi tiết, sơn {p} mặt tường ngoài.");
+                    }
                 });
 
             var stairs = s.Stairs.Where(t => !c.Has(t.Id) && t.Outline.Count >= 3).ToList();

@@ -18,12 +18,13 @@ Lệnh SketchUp: `trang-thai`, `dung-phuong-an` (.json, `-Them @{thay_the=$true}
 Lưu ý vận hành:
 - Lệnh `dung-kien-truc` tự chép họ cửa ghi trong `Openings[].Family` từ `FamilySources` (dự án mẫu / thư mục họ); thiếu họ thì dùng họ cửa có sẵn và ghi chú.
 - Cài add-in Revit mới phải khởi động lại Revit (DLL bị khoá khi Revit chạy) – hỏi người dùng trước nếu Revit đang có thay đổi chưa lưu. Plugin SketchUp cài lại bằng Extension Manager là dùng ngay.
+- Người dùng đã nói file là lưu tạm thì **không** `luu`, kể cả bước 5 – chỉ lưu khi họ bảo.
 - Không tự lưu đè file của người dùng khi họ đang sửa; chỉ `luu` khi phương án vừa dựng xong hoặc người dùng bảo.
 
 Quy trình:
 1. `trang-thai` cả hai. Revit chưa mở dự án → `du-an-moi` vào thư mục dự án (VD `<thư mục>\KienTruc\<tên>.rvt`).
 2. Revit `dung-kien-truc` → đọc `bao_cao`: số tường / sàn / cửa / phòng, "Không làm được", "Cảnh báo Revit", ghi chú (VD thiếu họ cửa → nhờ người dùng nạp họ rồi chạy lại; lệnh chỉ thêm phần thiếu).
-3. Revit `anh-3d` → mở ảnh (Read) so với phương án: đủ tầng, cửa mặt tiền đúng chỗ, cầu thang.
+3. Revit `anh-3d` → mở ảnh (Read) so với phương án: đủ tầng, cửa mặt tiền đúng chỗ, cầu thang, tường chỉ tới đáy dầm (không xuyên sàn), lan can đủ ở mọi ban công / mép sàn hở, khung / lam / mái đúng chỗ và màu.
 4. SketchUp `dung-phuong-an` rồi `anh` cảnh 1 và 2 → mở ảnh soát. `luu` .skp cạnh file phương án.
 5. `luu` Revit.
 Trả về: đường dẫn .rvt, .skp, các ảnh; bảng số lượng; những gì không dựng được và cách xử lý (việc người dùng phải làm tay).
