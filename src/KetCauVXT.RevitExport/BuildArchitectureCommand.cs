@@ -728,6 +728,28 @@ namespace KetCauVXT.RevitExport
                         tr.Start();
                         Swallow(tr, c.Log);
                         var stairs = (Stairs)d.GetElement(sid);
+                        // loại thang riêng có mặt bậc tối thiểu = mặt bậc thiết kế, bề rộng vế tối thiểu = vế thiết kế
+                        // (Revit lấy mặt bậc / bề rộng thực theo loại thang – loại của template là 260 / 1000 mm)
+                        try
+                        {
+                            double wRun = st.Runs.Where(q => q.Width > 0.3).Select(q => q.Width).DefaultIfEmpty(st.Width).Min();
+                            double rise = (t.Elevation - b.Elevation) / Math.Max(1, total);
+                            var stype = d.GetElement(stairs.GetTypeId()) as StairsType;
+                            string tn = $"VXT thang b{tread * 1000:0} r{wRun * 1000:0}";
+                            var nt = new FilteredElementCollector(d).OfClass(typeof(StairsType)).Cast<StairsType>().FirstOrDefault(x => x.Name == tn);
+                            if (nt == null && stype != null)
+                            {
+                                nt = stype.Duplicate(tn) as StairsType;
+                                if (nt != null)
+                                {
+                                    nt.MinTreadDepth = VxtRevit.ToFt(tread);
+                                    nt.MinRunWidth = VxtRevit.ToFt(wRun);
+                                    if (nt.MaxRiserHeight < VxtRevit.ToFt(rise) + 1e-6) nt.MaxRiserHeight = VxtRevit.ToFt(rise + 0.002);
+                                }
+                            }
+                            if (nt != null && stairs.GetTypeId() != nt.Id) stairs.ChangeTypeId(nt.Id);
+                        }
+                        catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: chưa tạo được loại thang theo mặt bậc thiết kế ({ex.Message})."); }
                         stairs.DesiredRisersNumber = total;
                         try { stairs.ActualTreadDepth = VxtRevit.ToFt(tread); } catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: không đặt được mặt bậc {tread * 1000:0} mm ({ex.Message})."); }
                         double zb0 = b.ProjectElevation, zrel = 0;
