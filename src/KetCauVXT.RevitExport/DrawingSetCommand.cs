@@ -129,18 +129,18 @@ namespace KetCauVXT.RevitExport
                     var ex = Find<ViewSection>(d, name);
                     if (ex != null) { elevIds.Add(ex.Id); continue; }
                     var n = Dir(sd.Deg);
-                    var org = new XYZ(c.X + n.X * half, c.Y + n.Y * half, box.Min.Z);
                     try
                     {
-                        var mk = ElevationMarker.CreateElevationMarker(d, vftEl.Id, org, 100);
-                        // tạo đủ 4 hướng rồi mới xoá hướng thừa (xoá hết khung nhìn của ký hiệu thì Revit xoá luôn ký hiệu)
-                        var evs = new List<ViewSection>();
-                        for (int i = 0; i < mk.MaximumViewCount && i < 4; i++)
-                            try { if (mk.IsAvailableIndex(i)) evs.Add(mk.CreateElevation(d, plans[0], i)); } catch { }
-                        d.Regenerate();
-                        ViewSection keep = evs.OrderByDescending(ev => ev.ViewDirection.DotProduct(n)).FirstOrDefault(ev => ev.ViewDirection.DotProduct(n) > 0.9);
-                        foreach (var ev in evs) if (keep == null || ev.Id != keep.Id) d.Delete(ev.Id);
-                        if (keep == null) { log.Add(sd.Name + ": không tạo được hướng nhìn."); continue; }
+                        // mặt đứng dựng bằng khung nhìn cắt đặt ngoài mặt nhà, nhìn vào (không cắt qua công trình) – chắc chắn đúng hướng
+                        var vftS = Vft(d, ViewFamily.Section);
+                        if (vftS == null) { log.Add("Dự án chưa có loại khung nhìn mặt cắt."); continue; }
+                        var bz = n; var by = XYZ.BasisZ; var bx = by.CrossProduct(bz);
+                        double halfW = Math.Abs(bx.X) * (box.Max.X - box.Min.X) / 2 + Math.Abs(bx.Y) * (box.Max.Y - box.Min.Y) / 2;
+                        double halfD = Math.Abs(n.X) * (box.Max.X - box.Min.X) / 2 + Math.Abs(n.Y) * (box.Max.Y - box.Min.Y) / 2;
+                        var tf = Transform.Identity; tf.Origin = new XYZ(c.X, c.Y, box.Min.Z); tf.BasisX = bx; tf.BasisY = by; tf.BasisZ = bz;
+                        double m1 = VxtRevit.ToFt(1.5);
+                        var eb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-halfW - m1, -m1, -halfD - m1), Max = new XYZ(halfW + m1, box.Max.Z - box.Min.Z + m1, halfD + VxtRevit.ToFt(0.6)) };
+                        var keep = ViewSection.CreateSection(d, vftS.Id, eb);
                         try { keep.Name = name; } catch { }
                         keep.Scale = sc; nv++;
                         elevIds.Add(keep.Id);
@@ -187,23 +187,23 @@ namespace KetCauVXT.RevitExport
             var used = new HashSet<string>(new FilteredElementCollector(d).OfClass(typeof(ViewSheet)).Cast<ViewSheet>().Select(s => s.SheetNumber), StringComparer.OrdinalIgnoreCase);
             var placed = new HashSet<ElementId>(new FilteredElementCollector(d).OfClass(typeof(Viewport)).Cast<Viewport>().Select(vp => vp.ViewId));
             int k = 0;
+            // số tờ: KT-01… theo thứ tự; số đã có tờ (lần chạy trước) thì lấy số trống kế tiếp
+            string NextNo() { string n; do { k++; n = "KT-" + k.ToString("00", CultureInfo.InvariantCulture); } while (used.Contains(n)); used.Add(n); return n; }
             foreach (var sh in sheets)
             {
-                k++;
-                string no = "KT-" + k.ToString("00", CultureInfo.InvariantCulture);
                 var views = sh.Views.Where(id => !placed.Contains(id)).ToList();
-                if (views.Count == 0 || used.Contains(no)) continue;
+                if (views.Count == 0) continue;
+                string no = NextNo();
                 var sheet = ViewSheet.Create(d, tb ?? ElementId.InvalidElementId);
                 sheet.SheetNumber = no; sheet.Name = sh.Name; ns++;
                 Place(d, sheet, views, log);
             }
             if (sch.Count > 0)
             {
-                k++;
-                string no = "KT-" + k.ToString("00", CultureInfo.InvariantCulture);
                 bool already = new FilteredElementCollector(d).OfClass(typeof(ScheduleSheetInstance)).Cast<ScheduleSheetInstance>().Any(x => sch.Contains(x.ScheduleId));
-                if (!used.Contains(no) && !already)
+                if (!already)
                 {
+                    string no = NextNo();
                     var sheet = ViewSheet.Create(d, tb ?? ElementId.InvalidElementId);
                     sheet.SheetNumber = no; sheet.Name = "Thống kê cửa, phòng"; ns++;
                     var o = Outline(sheet);
