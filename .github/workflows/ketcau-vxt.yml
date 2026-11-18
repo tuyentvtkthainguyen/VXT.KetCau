@@ -35,6 +35,8 @@ jobs:
         run: |
           ruby tools/SketchUp/test/run_mock.rb "$PWD\KetQuaMau\SketchUpPlugin"
           if ($LASTEXITCODE -ne 0) { throw "plugin SketchUp loi" }
+          ruby tools/SketchUp/test/run_phuong_an.rb "$PWD\KetQuaMau\SketchUpPhuongAn"
+          if ($LASTEXITCODE -ne 0) { throw "dung phuong an SketchUp loi" }
 
       - name: Chay bo kiem thu + quy trinh mau
         shell: pwsh

@@ -152,6 +152,17 @@ public static class RevitArchReader
 
         // ---- đường bao, tường ngoài ----
         plan.Outline = ArchPlanReader.Footprint(plan.Walls, plan.Columns);
+        // tường không khép kín (VD tum thang 3 mặt, mặt còn lại là tường chắn mái thấp) → lấy khung bao các tường
+        if ((plan.Outline == null || plan.Outline.Count < 3) && plan.Walls.Count > 0)
+        {
+            double x0 = plan.Walls.Min(w => Math.Min(w.Ax, w.Bx)), x1 = plan.Walls.Max(w => Math.Max(w.Ax, w.Bx));
+            double y0 = plan.Walls.Min(w => Math.Min(w.Ay, w.By)), y1 = plan.Walls.Max(w => Math.Max(w.Ay, w.By));
+            if (x1 - x0 > 0.5 && y1 - y0 > 0.5)
+            {
+                plan.Outline = new List<(double X, double Y)> { (x0, y0), (x1, y0), (x1, y1), (x0, y1) };
+                plan.Notes.Add("Tường không khép kín – lấy khung bao các tường làm đường bao sàn.");
+            }
+        }
         foreach (var w in plan.Walls) w.Exterior = ArchPlanReader.OnOutline(plan.Outline, w);
         if (plan.Outline.Count >= 3)
             for (int i = 0; i < plan.Outline.Count; i++)

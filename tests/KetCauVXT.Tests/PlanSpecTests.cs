@@ -38,7 +38,8 @@ public static class PlanSpecTests
         // Việt Const tính kết cấu thẳng từ phương án (đường kiến trúc)
         check("Phương án → kết cấu: không có khung KC → đi đường kiến trúc", B(!RevitArchReader.HasStructure(back)), 1, 0);
         var d = RevitArchReader.ToDrawing(back, new ArchImportOptions());
-        check("Phương án → kết cấu: 3 mặt bằng tầng", d.Floors.Count(p => !p.IsRoofPlan), 3, 0);
+        check("Phương án → kết cấu: 3 tầng + tum thang", d.Floors.Count(p => !p.IsRoofPlan), 4, 0);
+        check("Phương án → kết cấu: tầng trên cùng là tum", B(d.Floors.Where(p => !p.IsRoofPlan).Last().IsTum), 1, 0);
         var o = KetCauVXT.Pipeline.RevitDesignPipeline.ParseArgs(new[] { f, Path.Combine(outDir, "PhuongAnKetCau"), "--vung-gio", "II", "--khong-ho-so" }, out _);
         var rep = KetCauVXT.Pipeline.RevitDesignPipeline.Run(o);
         foreach (var s in rep.Steps) Console.WriteLine($"    {(s.Ok ? "✓" : "✗")} {s.Title}: {s.Lines.FirstOrDefault()}");

@@ -163,6 +163,11 @@ public static class ArchToStructure
         if (above == null && roofPlan != null && roofPlan.SlabRegions.Count == 0) slabRegs = below.SlabRegions.ToList();
         foreach (var r in slabRegs.Where(r => !r.IsOpening && r.Points.Count >= 3)) polys.Add(r.Points.ToList());
         polys = polys.Where(p => p != null && p.Count >= 3).ToList();
+        if (polys.Count == 0)
+        {
+            s.Warnings.Add($"{lv.Name}: không xác định được vùng sàn (tường không khép kín) – bỏ qua cao trình này, vẽ bổ sung.");
+            return new List<Ln>();
+        }
         bool Inside(double x, double y, double tol) => polys.Any(p => ArchPlanReader.PointInPoly(p, x, y, tol));
         lv.Outline = UnionOutline(polys);
         double bx0 = polys.SelectMany(p => p).Min(q => q.X), bx1 = polys.SelectMany(p => p).Max(q => q.X);

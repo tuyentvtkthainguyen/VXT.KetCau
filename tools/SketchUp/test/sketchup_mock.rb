@@ -145,3 +145,135 @@ module UI
   def self.messagebox(s) = ($VXT_MOCK_LOG << s; 1)
   def self.savepanel(*_a) = $VXT_MOCK_SAVEPATH
 end
+
+# ---------------------------------------------------------------------------------------------
+# Bổ sung cho dựng phương án (phuong_an.rb): add_group / add_face / pushpull, vật liệu, tag, cảnh, camera, ảnh, lưu.
+MB_YESNO = 4
+IDYES = 6
+MF_CHECKED = 8
+MF_UNCHECKED = 0
+
+class Numeric
+  def m = self / 0.0254
+end
+
+module Sketchup
+  class Color
+    attr_reader :red, :green, :blue
+    def initialize(r, g, b) = (@red, @green, @blue = r, g, b)
+  end
+
+  class Material
+    attr_accessor :name, :color, :alpha
+    def initialize(name) = (@name, @alpha = name, 1.0)
+  end
+
+  class NamedList
+    include Enumerable
+    def initialize(klass) = (@klass, @items = klass, [])
+    def [](n) = @items.find { |x| x.name == n }
+    def add(n) = (self[n] || (@items << @klass.new(n)).last)
+    def each(&b) = @items.each(&b)
+    def length = @items.length
+    def erase(x) = @items.delete(x)
+  end
+
+  class Entity
+    attr_accessor :parent_entities
+    def valid? = !@erased
+    def erase! = (@erased = true; parent_entities&.list&.delete(self))
+  end
+
+  class Face
+    def points = @pts
+    def normal
+      nx = ny = nz = 0.0
+      @pts.each_with_index do |a, i|
+        b = @pts[(i + 1) % @pts.length]
+        nx += (a.y - b.y) * (a.z + b.z); ny += (a.z - b.z) * (a.x + b.x); nz += (a.x - b.x) * (a.y + b.y)
+      end
+      l = Math.sqrt(nx * nx + ny * ny + nz * nz)
+      Geom::Vector3d.new(nx / l, ny / l, nz / l)
+    end
+    def reverse! = (@pts = @pts.reverse; self)
+    # đẩy theo pháp tuyến d (inch): thêm mặt đối diện + mặt bên
+    def pushpull(d)
+      n = normal
+      top = @pts.map { |p| Geom::Point3d.new(p.x + n.x * d, p.y + n.y * d, p.z + n.z * d) }
+      ents = parent_entities
+      ents.add_face(top.reverse)
+      @pts.each_with_index { |a, i| b = @pts[(i + 1) % @pts.length]; ents.add_face([a, b, top[(i + 1) % top.length], top[i]]) }
+      nil
+    end
+  end
+
+  class Entities
+    def add_face(pts)
+      return nil if pts.length < 3
+      f = Face.new(pts); f.parent_entities = self; self << f; f
+    end
+    def add_group
+      g = Group.new; g.parent_entities = self; self << g; g
+    end
+  end
+
+  class Group
+    attr_accessor :name, :material
+  end
+
+  class Camera
+    attr_accessor :eye, :target, :up, :perspective, :height, :fov
+    def initialize(eye, target, up) = (@eye, @target, @up, @perspective, @fov = eye, target, up, true, 35)
+    def perspective? = @perspective
+  end
+
+  class Page
+    attr_reader :name, :camera
+    def initialize(name, camera) = (@name, @camera = name, camera)
+  end
+
+  class Pages
+    include Enumerable
+    attr_accessor :selected_page
+    def initialize(model) = (@model, @items = model, [])
+    def [](n) = @items.find { |p| p.name == n }
+    def add(n) = (@items << Page.new(n, @model.active_view.camera)).last
+    def erase(p) = @items.delete(p)
+    def each(&b) = @items.each(&b)
+    def length = @items.length
+  end
+
+  class View
+    attr_accessor :camera
+    def write_image(opts)
+      File.binwrite(opts[:filename], "\x89PNG\r\n\x1a\n".b + [opts[:width], opts[:height]].pack('N2'))
+      $VXT_MOCK_LOG << "write_image #{opts[:filename]}"
+      true
+    end
+  end
+
+  class Model
+    attr_reader :saved_path, :operations
+    def materials = (@materials ||= NamedList.new(Material))
+    def layers = (@layers ||= NamedList.new(Layer))
+    def pages = (@pages ||= Pages.new(self))
+    def active_view = (@view ||= View.new)
+    def shadow_info = (@shadow ||= {})
+    def start_operation(n, *_a) = ((@operations ||= []) << "start #{n}")
+    def commit_operation = (@operations << 'commit')
+    def abort_operation = (@operations << 'abort')
+    def save(path) = (@saved_path = path; File.write(path, 'skp'); true)
+  end
+end
+
+module UI
+  @timers = []
+  def self.messagebox(s, _type = nil) = ($VXT_MOCK_LOG << s; IDYES)
+  def self.start_timer(_s, _r, &b) = (@timers << b; @timers.length)
+  def self.stop_timer(id) = (@timers[id - 1] = nil)
+  def self.timers = @timers
+  def self.openpanel(*_a) = $VXT_MOCK_OPENPATH
+  class Menu
+    def set_validation_proc(_i, &_b) = nil
+  end
+end

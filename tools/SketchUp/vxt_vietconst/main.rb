@@ -7,6 +7,7 @@
 require 'sketchup.rb'
 require 'json'
 require 'fileutils'
+require_relative 'phuong_an'
 
 module VXT
   module VietConst
@@ -171,6 +172,11 @@ module VXT
       menu.add_item('Xuất phần đang chọn sang Việt Const…') { export(true) }
       menu.add_separator
       menu.add_item('Đưa component đang chọn vào thư viện Việt Const') { export_library }
+      menu.add_separator
+      menu.add_item('Dựng phương án kiến trúc (*.vxtphuongan.json)…') { PhuongAn.menu_build }
+      menu.add_item('Lưu ảnh phối cảnh…') { PhuongAn.menu_image }
+      agent_item = menu.add_item('Cho phép agent điều khiển SketchUp') { PhuongAn.toggle_agent }
+      menu.set_validation_proc(agent_item) { PhuongAn.agent_enabled? ? MF_CHECKED : MF_UNCHECKED } if menu.respond_to?(:set_validation_proc)
       file_loaded(__FILE__)
     end
   end

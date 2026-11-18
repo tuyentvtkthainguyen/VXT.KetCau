@@ -116,9 +116,11 @@ public static class PlanSpec
             foreach (var o in f.Openings)
             {
                 bool door = (o.Kind ?? "").IndexOf("đi", StringComparison.OrdinalIgnoreCase) >= 0 || (o.Kind ?? "").IndexOf("door", StringComparison.OrdinalIgnoreCase) >= 0;
+                // điểm chèn block cửa trong CAD thường ở bản lề / mép cánh → kéo về tim tường gần nhất (trong phạm vi 1 bề rộng cửa)
+                var (ox2, oy2) = SnapToWall(f.Walls, o.X, o.Y, Math.Max(0.6, o.Width));
                 ex.Openings.Add(new RvOpening
                 {
-                    Id = "O" + (++oid), Level = lv, Category = door ? "Door" : "Window", X = R(o.X), Y = R(o.Y),
+                    Id = "O" + (++oid), Level = lv, Category = door ? "Door" : "Window", X = R(ox2), Y = R(oy2),
                     Width = o.Width > 0.3 ? R(o.Width) : (door ? 0.9 : 1.2), Height = door ? 2.2 : 1.4, Sill = door ? 0 : 0.9,
                     TypeName = door ? "Cửa đi" : "Cửa sổ",
                 });
@@ -267,6 +269,20 @@ public static class PlanSpec
             double sw = Math.Min(ex.Site.Width, ex.Site.Depth), sd = Math.Max(ex.Site.Width, ex.Site.Depth);
             double bw = Math.Min(w, d), bd = Math.Max(w, d);
             if (bw > sw + 0.25 || bd > sd + 0.25) E($"Nhà {w:0.00} × {d:0.00} m vượt khu đất {ex.Site.Width:0.00} × {ex.Site.Depth:0.00} m.");
+        }
+        return r;
+    }
+
+    private static (double X, double Y) SnapToWall(List<ArchWall> walls, double x, double y, double maxD)
+    {
+        double best = maxD; (double, double) r = (x, y);
+        foreach (var w in walls)
+        {
+            double dx = w.Bx - w.Ax, dy = w.By - w.Ay, l2 = dx * dx + dy * dy;
+            if (l2 < 1e-9) continue;
+            double t = Math.Max(0, Math.Min(1, ((x - w.Ax) * dx + (y - w.Ay) * dy) / l2));
+            double px = w.Ax + t * dx, py = w.Ay + t * dy, dd = Math.Sqrt((px - x) * (px - x) + (py - y) * (py - y));
+            if (dd < best) { best = dd; r = (px, py); }
         }
         return r;
     }
