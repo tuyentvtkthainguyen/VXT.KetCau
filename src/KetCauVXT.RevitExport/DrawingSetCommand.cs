@@ -233,7 +233,38 @@ namespace KetCauVXT.RevitExport
                             v.CropBoxActive = true; v.CropBoxVisible = false;
                             try { v.DetailLevel = ViewDetailLevel.Fine; } catch { }
                         }
-                        if (v != null) { TidyDetailView(d, v, log); detail.Add(v.Id); }
+                        if (v != null)
+                        {
+                            TidyDetailView(d, v, log);
+                            // ghi chú thông số thang có chân ở tầng này
+                            try
+                            {
+                                var tnt = new FilteredElementCollector(d).OfClass(typeof(TextNoteType)).FirstElementId();
+                                var lines = new List<string>();
+                                foreach (var st in stairs.OfType<Stairs>().Where(x => x.get_Parameter(BuiltInParameter.STAIRS_BASE_LEVEL_PARAM)?.AsElementId() == lv.Id))
+                                {
+                                    var runs = st.GetStairsRuns().Select(id => d.GetElement(id) as StairsRun).Where(r => r != null).ToList();
+                                    var parts = runs.Select(r => r.ActualRisersNumber.ToString(CultureInfo.InvariantCulture));
+                                    double tread = 0;
+                                    var r0 = runs.OrderByDescending(r => r.ActualRisersNumber).FirstOrDefault();
+                                    if (r0 != null && r0.ActualRisersNumber > 1)
+                                    {
+                                        double len = 0; foreach (Curve cv in r0.GetStairsPath()) len += cv.Length;
+                                        tread = VxtRevit.ToM(len) / (r0.ActualRisersNumber - 1);
+                                    }
+                                    string tag; try { tag = VxtRevit.GetVxtId(st).Replace(BuildArchitectureCommand.Prefix, ""); } catch { tag = "Thang"; }
+                                    lines.Add($"{tag}: {st.ActualRisersNumber} bậc ({string.Join(" + ", parts)}), h = {VxtRevit.ToM(st.ActualRiserHeight) * 1000:0} mm" + (tread > 0 ? $", b = {tread * 1000:0} mm" : "") + (r0 != null ? $", vế rộng {VxtRevit.ToM(r0.ActualRunWidth) * 1000:0} mm" : ""));
+                                }
+                                if (lines.Count > 0 && tnt != null && tnt != ElementId.InvalidElementId)
+                                {
+                                    var cbx = v.CropBox;
+                                    var pt = cbx.Transform.OfPoint(new XYZ(cbx.Min.X + VxtRevit.ToFt(0.3), cbx.Min.Y + VxtRevit.ToFt(0.5), 0));
+                                    TextNote.Create(d, v.Id, pt, string.Join("\n", lines), tnt);
+                                }
+                            }
+                            catch (Exception exn) { log.Add("Ghi chú thang: " + exn.Message); }
+                            detail.Add(v.Id);
+                        }
                     }
                     // mặt cắt B-B: mặt phẳng chứa phương vế dài, qua giữa lồng thang
                     var bbName = "KT - Mặt cắt B-B (cầu thang)";
@@ -253,7 +284,7 @@ namespace KetCauVXT.RevitExport
                         try { sb2.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE)?.Set(1); } catch { }
                         try { sb2.DetailLevel = ViewDetailLevel.Fine; } catch { }
                     }
-                    if (sb2 != null) TidyDetailView(d, sb2, log);
+                    if (sb2 != null) { TidyDetailView(d, sb2, log); d.Regenerate(); LevelDims(d, sb2, log); }
                     if (detail.Count > 0) sheets.Add(("", "Chi tiết cầu thang – mặt bằng", detail));
                     if (sb2 != null) sheets.Add(("", "Chi tiết cầu thang – mặt cắt B-B", new List<ElementId> { sb2.Id }));
                 }
