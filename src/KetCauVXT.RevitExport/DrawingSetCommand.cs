@@ -130,6 +130,7 @@ namespace KetCauVXT.RevitExport
                     TagCategory(d, v, BuiltInCategory.OST_Doors, lv, log);
                     TagCategory(d, v, BuiltInCategory.OST_Windows, lv, log);
                     GridDims(d, v, box, log);
+                    OpeningDims(d, v, box, log);
                 }
                 if (v != null) { plans.Add(v.Id); sheets.Add(("", "Mặt bằng " + lv.Name, new List<ElementId> { v.Id })); }
             }
@@ -163,6 +164,8 @@ namespace KetCauVXT.RevitExport
                         try { keep.Name = name; } catch { }
                         keep.Scale = sc; nv++;
                         elevIds.Add(keep.Id);
+                        d.Regenerate();
+                        LevelDims(d, keep, log);
                     }
                     catch (Exception e2) { log.Add(sd.Name + ": " + e2.Message); }
                 }
@@ -191,6 +194,8 @@ namespace KetCauVXT.RevitExport
                     sec = ViewSection.CreateSection(d, vftSec.Id, sb);
                     try { sec.Name = secName; } catch { }
                     sec.Scale = sc; nv++;
+                    d.Regenerate();
+                    LevelDims(d, sec, log);
                 }
                 catch (Exception e3) { log.Add("Mặt cắt: " + e3.Message); }
             if (sec != null) sheets.Add(("", "Mặt cắt A-A", new List<ElementId> { sec.Id }));
@@ -378,6 +383,71 @@ namespace KetCauVXT.RevitExport
                 }
             }
             return n;
+        }
+
+        /// <summary>Chuỗi kích thước cửa trên tường biên có cửa (mặt tiền, mặt sau): trục hai đầu + mép trái / phải từng cửa, đặt sát trong chuỗi trục.</summary>
+        internal static int OpeningDims(Document d, ViewPlan v, BoundingBoxXYZ box, List<string> log)
+        {
+            int n = 0;
+            var lv = v.GenLevel; if (lv == null) return 0;
+            double z = lv.Elevation, tol = VxtRevit.ToFt(0.35);
+            var grids = new FilteredElementCollector(d).OfClass(typeof(Grid)).Cast<Grid>().Where(g => g.Curve is Line).ToList();
+            var ops = new FilteredElementCollector(d).OfClass(typeof(FamilyInstance)).Cast<FamilyInstance>()
+                .Where(f => f.LevelId == lv.Id && f.Host is Wall hw && hw.Width >= VxtRevit.ToFt(0.18) && (f.Category?.BuiltInCategory == BuiltInCategory.OST_Doors || f.Category?.BuiltInCategory == BuiltInCategory.OST_Windows)).ToList();
+            // khung bao tường của chính tầng này (mặt tiền tầng trên có thể lùi vào so với tầng 1)
+            double lx0 = double.MaxValue, ly0 = double.MaxValue, lx1 = double.MinValue, ly1 = double.MinValue;
+            foreach (var w in new FilteredElementCollector(d).OfClass(typeof(Wall)).Cast<Wall>().Where(w => w.LevelId == lv.Id && w.Location is LocationCurve))
+            {
+                // chỉ tường có cửa (tường biên chứa cửa) mới định nghĩa cạnh
+                if (!ops.Any(f => f.Host.Id == w.Id)) continue;
+                var c = ((LocationCurve)w.Location).Curve;
+                foreach (var p in new[] { c.GetEndPoint(0), c.GetEndPoint(1) }) { lx0 = Math.Min(lx0, p.X); ly0 = Math.Min(ly0, p.Y); lx1 = Math.Max(lx1, p.X); ly1 = Math.Max(ly1, p.Y); }
+            }
+            if (lx0 > lx1) return 0;
+            // 4 cạnh biên: x min / x max (tường chạy theo Y), y min / y max (tường chạy theo X)
+            var edges = new[] { (alongY: true, v0: lx0, outward: -1.0), (alongY: true, v0: lx1, outward: 1.0), (alongY: false, v0: ly0, outward: -1.0), (alongY: false, v0: ly1, outward: 1.0) };
+            foreach (var e in edges)
+            {
+                var here = ops.Where(f => f.Location is LocationPoint lp && Math.Abs((e.alongY ? lp.Point.X : lp.Point.Y) - e.v0) < tol).ToList();
+                if (here.Count == 0) continue;
+                var ra = new ReferenceArray();
+                foreach (var g in grids)
+                {
+                    var dir = ((Line)g.Curve).Direction;
+                    if (e.alongY ? Math.Abs(dir.X) > 0.99 : Math.Abs(dir.Y) > 0.99) ra.Append(new Reference(g));
+                }
+                foreach (var f in here)
+                {
+                    foreach (var rt in new[] { FamilyInstanceReferenceType.Left, FamilyInstanceReferenceType.Right })
+                        foreach (var r in f.GetReferences(rt)) { ra.Append(r); break; }
+                }
+                if (ra.Size < 3) continue;
+                double off = VxtRevit.ToFt(0.5) * e.outward, a = e.v0 + off;
+                Line ln = e.alongY
+                    ? Line.CreateBound(new XYZ(a, box.Min.Y - 1, z), new XYZ(a, box.Max.Y + 1, z))
+                    : Line.CreateBound(new XYZ(box.Min.X - 1, a, z), new XYZ(box.Max.X + 1, a, z));
+                try { d.Create.NewDimension(v, ln, ra); n++; }
+                catch (Exception ex) { log.Add($"Kích thước cửa ({v.Name}): {ex.Message}"); }
+            }
+            return n;
+        }
+
+        /// <summary>Chuỗi kích thước cao độ tầng trên mặt đứng / mặt cắt (bên phải khung nhìn).</summary>
+        internal static int LevelDims(Document d, ViewSection v, List<string> log)
+        {
+            try
+            {
+                var cb = v.CropBox; var t = cb.Transform;
+                var lvs = VxtRevit.Levels(d).Where(l => l.Elevation >= t.Origin.Z + cb.Min.Y - 1e-6 && l.Elevation <= t.Origin.Z + cb.Max.Y + 1e-6).OrderBy(l => l.Elevation).ToList();
+                if (lvs.Count < 2) return 0;
+                var ra = new ReferenceArray();
+                foreach (var l in lvs) ra.Append(new Reference(l));
+                double x = cb.Max.X - VxtRevit.ToFt(0.6);
+                var p0 = t.OfPoint(new XYZ(x, cb.Min.Y, cb.Max.Z)); var p1 = t.OfPoint(new XYZ(x, cb.Max.Y, cb.Max.Z));
+                d.Create.NewDimension(v, Line.CreateBound(p0, p1), ra);
+                return 1;
+            }
+            catch (Exception ex) { log.Add($"Kích thước cao độ ({v.Name}): {ex.Message}"); return 0; }
         }
 
         /// <summary>Vùng vẽ của tờ: theo khung tên thật (khung của template có thể đặt gốc ở bất kỳ đâu), trừ dải khung tên bên phải / dưới.</summary>
