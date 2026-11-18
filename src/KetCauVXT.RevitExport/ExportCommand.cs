@@ -38,12 +38,16 @@ namespace KetCauVXT.RevitExport
 
         private readonly List<string> _warnings = new List<string>();
 
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) => Run(commandData.Application, ref message);
+
+        /// <summary>Chạy lệnh (gọi từ nút ribbon hoặc từ cầu nối agent).</summary>
+        internal Result Run(UIApplication uiapp, ref string message)
         {
-            var doc = commandData.Application.ActiveUIDocument?.Document;
+            var doc = uiapp.ActiveUIDocument?.Document;
             if (doc == null) { message = "Chưa mở dự án Revit."; return Result.Failed; }
 
-            string path;
+            string path = AgentMode.TakeOutputPath();
+            if (string.IsNullOrEmpty(path))
             using (var dlg = new System.Windows.Forms.SaveFileDialog())
             {
                 dlg.Title = "Xuất mô hình sang Việt Const";
@@ -83,13 +87,14 @@ namespace KetCauVXT.RevitExport
                     foreach (var s in _warnings.Take(25)) sb.AppendLine("- " + s);
                     if (_warnings.Count > 25) sb.AppendLine($"... và {_warnings.Count - 25} cảnh báo khác");
                 }
-                TaskDialog.Show("Việt Const", sb.ToString());
+                AgentMode.Report = sb.ToString();
+                if (!AgentMode.Quiet) TaskDialog.Show("Việt Const", sb.ToString());
                 return Result.Succeeded;
             }
             catch (Exception ex)
             {
                 message = "Lỗi xuất dữ liệu: " + ex.Message;
-                TaskDialog.Show("Việt Const", message + "\n\n" + ex.StackTrace);
+                if (!AgentMode.Quiet) TaskDialog.Show("Việt Const", message + "\n\n" + ex.StackTrace);
                 return Result.Failed;
             }
         }

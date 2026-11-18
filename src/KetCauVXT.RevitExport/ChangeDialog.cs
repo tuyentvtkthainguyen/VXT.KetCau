@@ -66,15 +66,18 @@ namespace KetCauVXT.RevitExport
         /// <summary>Hiện danh sách; OK → áp dụng các mục đã chọn trong một Transaction. Trả về báo cáo (null = huỷ).</summary>
         public static string Run(Document doc, string title, string intro, List<ChangeItem> items)
         {
-            if (items.Count == 0) { MessageBox.Show("Không có gì cần thay đổi – mô hình đã thống nhất với Việt Const.", title); return ""; }
-            using (var dlg = new ChangeDialog(title, intro, items))
-                if (dlg.ShowDialog() != DialogResult.OK) return null;
+            if (items.Count == 0) { AgentMode.Report = "Không có gì cần thay đổi."; if (!AgentMode.Quiet) MessageBox.Show("Không có gì cần thay đổi – mô hình đã thống nhất với Việt Const.", title); return ""; }
+            // Chế độ tự áp dụng chỉ dành cho lệnh kiến trúc do agent gọi; các lệnh kết cấu luôn hiện hộp thoại để người dùng duyệt.
+            if (!AgentMode.AutoApply)
+                using (var dlg = new ChangeDialog(title, intro, items))
+                    if (dlg.ShowDialog() != DialogResult.OK) { AgentMode.Report = "Người dùng huỷ."; return null; }
             var chosen = items.Where(i => i.Checked).OrderBy(i => i.Order).ToList();
             if (chosen.Count == 0) return "";
-            int ok = 0; var errs = new List<string>();
+            int ok = 0; var errs = new List<string>(); var warns = new List<string>();
             using (var t = new Transaction(doc, title))
             {
                 t.Start();
+                if (AgentMode.AutoApply) BuildArchitectureCommand.Swallow(t, warns);
                 // đổi tên hai pha: tên tạm trước, tên thật sau – tránh trùng tên giữa các phần tử đổi chéo nhau
                 var ren = chosen.Where(i => i.RenameTarget != null && !string.IsNullOrEmpty(i.NewName)).ToList();
                 int k = 0;
@@ -96,8 +99,10 @@ namespace KetCauVXT.RevitExport
                 }
                 t.Commit();
             }
-            string rep = $"Đã áp dụng {ok}/{chosen.Count} thay đổi." + (errs.Count > 0 ? "\n\nKhông làm được:\n• " + string.Join("\n• ", errs.Take(25)) : "");
-            MessageBox.Show(rep, title, MessageBoxButtons.OK, errs.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+            string rep = $"Đã áp dụng {ok}/{chosen.Count} thay đổi." + (errs.Count > 0 ? "\n\nKhông làm được:\n• " + string.Join("\n• ", errs.Take(25)) : "")
+                         + (warns.Count > 0 ? "\n\nCảnh báo Revit:\n• " + string.Join("\n• ", warns.Take(25)) : "");
+            AgentMode.Report = rep;
+            if (!AgentMode.Quiet) MessageBox.Show(rep, title, MessageBoxButtons.OK, errs.Count > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
             return rep;
         }
 

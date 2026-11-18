@@ -152,6 +152,8 @@ namespace KetCauVXT.RevitExport
         /// <summary>Hỏi file Việt Const; bỏ qua → chuẩn mặc định (nếu cho phép).</summary>
         public static VxtStandard Ask(string title, bool allowDefault)
         {
+            string preset = AgentMode.TakeInputPath();
+            if (!string.IsNullOrEmpty(preset)) return Load(preset);
             using (var dlg = new System.Windows.Forms.OpenFileDialog())
             {
                 dlg.Title = title;

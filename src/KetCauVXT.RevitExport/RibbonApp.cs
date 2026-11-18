@@ -29,9 +29,30 @@ namespace KetCauVXT.RevitExport
                 "Sau khi Việt Const tối ưu: đổi loại cột, dầm, sàn trong Revit theo tiết diện mới (khớp theo mã đã gắn hoặc theo vị trí).");
             Add("VxtLibrary", "Đưa họ vào\nthư viện", typeof(ExportLibraryCommand).FullName,
                 "Ghi hình học các họ đang chọn vào thư viện 3D của Việt Const.");
+
+            // Kiến trúc từ phương án + cầu nối agent
+            RibbonPanel arch;
+            try { arch = app.CreateRibbonPanel(tab, "Phương án → hồ sơ"); }
+            catch (Exception) { return Result.Succeeded; }
+            void AddA(string name, string text, string cls, string tip) => arch.AddItem(new PushButtonData(name, text, dll, cls) { ToolTip = tip });
+            AddA("VxtArch", "Dựng kiến trúc\ntừ phương án", typeof(BuildArchitectureCommand).FullName,
+                "Phương án mặt bằng (*.vxtphuongan.json) → cao độ, trục, tường, sàn, cửa, phòng có tên, cầu thang. Xem trước rồi áp dụng; chạy lại chỉ thêm phần thiếu.");
+            AddA("VxtSheets", "Bộ bản vẽ\nkiến trúc", typeof(DrawingSetCommand).FullName,
+                "Tạo mặt bằng các tầng (tag phòng, cửa), 4 mặt đứng, mặt cắt A-A, phối cảnh 3D, thống kê cửa / phòng và các tờ KT-01…");
+            AddA("VxtImage", "Ảnh phối cảnh\n3D", typeof(Image3DCommand).FullName,
+                "Lưu ảnh 3D (PNG) của mô hình – làm nền cho render AI hoặc so với SketchUp.");
+            try
+            {
+                AgentBridge.Init();
+                AgentBridge.Button = arch.AddItem(new PushButtonData("VxtAgent", "Cho phép\nagent", dll, typeof(AgentToggleCommand).FullName)
+                {
+                    ToolTip = "Bật / tắt cầu nối để agent (Claude, Việt Const) chạy lệnh Revit trên máy này qua thư mục lệnh. Mặc định tắt; lệnh kết cấu luôn hỏi bạn duyệt.",
+                }) as PushButton;
+            }
+            catch (Exception) { /* không tạo được ExternalEvent – bỏ qua cầu nối */ }
             return Result.Succeeded;
         }
 
-        public Result OnShutdown(UIControlledApplication app) => Result.Succeeded;
+        public Result OnShutdown(UIControlledApplication app) { AgentBridge.Shutdown(); return Result.Succeeded; }
     }
 }

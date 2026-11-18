@@ -22,9 +22,12 @@ namespace KetCauVXT.RevitExport
     {
         private const string Title = "Dựng kết cấu từ Việt Const";
 
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) => Run(commandData.Application, ref message);
+
+        /// <summary>Chạy lệnh (gọi từ nút ribbon hoặc từ cầu nối agent).</summary>
+        internal Result Run(UIApplication uiapp, ref string message)
         {
-            var doc = commandData.Application.ActiveUIDocument?.Document;
+            var doc = uiapp.ActiveUIDocument?.Document;
             if (doc == null || doc.IsFamilyDocument) { message = "Mở một dự án Revit trước."; return Result.Failed; }
             VxtStandard std;
             try { std = VxtStandard.Ask(Title + " – chọn file Việt Const (*.vxt2revit.json)", false); }
@@ -189,9 +192,12 @@ namespace KetCauVXT.RevitExport
     {
         private const string Title = "Nhận tiết diện từ Việt Const";
 
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) => Run(commandData.Application, ref message);
+
+        /// <summary>Chạy lệnh (gọi từ nút ribbon hoặc từ cầu nối agent).</summary>
+        internal Result Run(UIApplication uiapp, ref string message)
         {
-            var doc = commandData.Application.ActiveUIDocument?.Document;
+            var doc = uiapp.ActiveUIDocument?.Document;
             if (doc == null || doc.IsFamilyDocument) { message = "Mở một dự án Revit trước."; return Result.Failed; }
             VxtStandard std;
             try { std = VxtStandard.Ask(Title + " – chọn file Việt Const (*.vxt2revit.json)", false); }
