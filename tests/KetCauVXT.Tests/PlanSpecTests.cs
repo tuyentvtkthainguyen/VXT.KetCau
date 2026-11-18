@@ -55,7 +55,10 @@ public static class PlanSpecTests
         foreach (var i in pmIss) Console.WriteLine("    " + i);
         Directory.CreateDirectory(Path.Combine(outDir, "PhoiHop"));
         PlanSpec.Save(pm, Path.Combine(outDir, "PhoiHop", "Project1_Moi.vxtphuongan.json"));
-        Console.WriteLine("PHOIHOP-JSON:" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(PlanSpec.ToJson(pm))));
+        {
+            string b64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(PlanSpec.ToJson(pm)));
+            for (int q = 0, n = 0; q < b64.Length; q += 3000, n++) Console.WriteLine($"PHOIHOP-{n:000}:" + b64.Substring(q, Math.Min(3000, b64.Length - q)));
+        }
         foreach (var c in pm.Columns) Console.WriteLine($"    cột {c.Id} ({c.X:0.000}; {c.Y:0.000}) {c.BaseLevel}→{c.TopLevel}");
         foreach (var b in pm.Beams) Console.WriteLine($"    dầm {b.Id} ({b.X1:0.000}; {b.Y1:0.000})→({b.X2:0.000}; {b.Y2:0.000}) {b.B * 1000:0}x{b.H * 1000:0}");
         check("Phối hợp Project1: có cột mỗi tầng", B(pm.Columns.Select(c => c.BaseLevel).Distinct().Count() >= 3), 1, 0);
