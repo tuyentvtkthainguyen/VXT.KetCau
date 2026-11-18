@@ -53,3 +53,9 @@ Lệnh điều phối: `/phuong-an-den-ho-so <mô tả hoặc đường dẫn �
 
 ### Render AI
 `python ai_render.py --anh <ảnh khối> --phuong-an <file> [--gio ngay|chieu|toi] [--goc elevation]` – giữ nguyên hình khối, phủ vật liệu theo mô tả mặt tiền. Khoá `GEMINI_API_KEY` của người dùng đặt trên máy; ảnh + câu lệnh chỉ gửi tới Google khi chạy không có `--chi-cau-lenh`.
+
+### Phương án chi tiết (đã chạy thật trên Project1 làm mới)
+- Cầu thang ghi theo vế (`Runs`: đường tim theo hướng đi lên + số bậc đứng; `Landings`) → Revit dựng đúng số bậc, mặt bậc, chiếu nghỉ; SketchUp dựng khối bậc. Việt Const kiểm tra h 150–175 mm, b ≥ 250 mm, 2h + b.
+- Cửa ghi `Family` + `TypeName`, phương án khai `FamilySources` (VD dự án cũ `Project1.rvt`) → add-in mở ngầm, chép họ cửa nhôm kính, cửa lùa + ô fix, cửa cuốn sang dự án mới, tạo loại đúng kích thước.
+- Lệnh cầu nối mới: `liet-ke-ho` (liệt kê họ cửa trong dự án / file mẫu), `dung-kien-truc` + `lam_lai` (dựng lại cửa / cầu thang / sàn theo phương án đã sửa, giữ phòng, tag và phần người dùng tự vẽ).
+- Mặt đứng 4 phía dựng bằng khung nhìn cắt ngoài mặt nhà; tỷ lệ bản vẽ tự chọn theo kích thước nhà; ảnh 3D / mặt bằng cắt ôm công trình.

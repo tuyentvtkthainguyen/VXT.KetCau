@@ -11,9 +11,14 @@ Gửi lệnh: `& "$env:LOCALAPPDATA\Programs\KetCauVXT\agent\GuiLenh.ps1" -Ung r
 
 Cầu nối mặc định TẮT. Nếu mã 2 "CHƯA BẬT": dừng và nhờ người dùng bật — Revit: tab **Việt Const → Phương án → hồ sơ → Cho phép agent**; SketchUp: **Extensions → Việt Const → Cho phép agent điều khiển SketchUp**. Không tìm cách vượt qua.
 
-Lệnh Revit: `trang-thai`, `du-an-moi` (file .rvt, `-Them @{mau='…rte'}`), `mo` (.rvt), `dung-kien-truc` (phương án .json), `tao-ban-ve` (`-Them @{huong_mat_tien=270}`), `anh-3d` (.png, `rong`, `huong_mat_tien`), `xuat-pdf` / `xuat-dwg` (file = thư mục, `so_to='KT-'`), `xuat-viet-const` (.vxtrevit.json), `luu` (không file = lưu đè; có file = lưu thành).
+Lệnh Revit: `trang-thai`, `du-an-moi` (file .rvt, `-Them @{mau='…rte'}`), `mo` (.rvt), `dung-kien-truc` (phương án .json; `-Them @{lam_lai=@('cua','cau-thang','san')}` xoá phần tử KT- nhóm đó rồi dựng lại theo phương án đã sửa – phòng, tag, phần người dùng tự vẽ giữ nguyên), `liet-ke-ho` (không file = dự án đang mở; file = *.rvt / *.rte mở ngầm – liệt kê họ cửa đi / cửa sổ, loại, kích thước, loại đang dùng), `tao-ban-ve` (`-Them @{huong_mat_tien=270}`), `anh-3d` (.png, `rong`, `huong_mat_tien`), `xuat-pdf` / `xuat-dwg` (file = thư mục, `so_to='KT-'`), `xuat-viet-const` (.vxtrevit.json), `luu` (không file = lưu đè; có file = lưu thành).
 `dung-ket-cau`, `nhan-tiet-dien` **không** thuộc việc của bạn (cần người dùng duyệt qua quy trình kết cấu).
 Lệnh SketchUp: `trang-thai`, `dung-phuong-an` (.json, `-Them @{thay_the=$true}`), `anh` (.png, `canh` 1 phối cảnh mặt tiền / 2 mặt đứng chính / 3 góc sau, `rong`, `cao`), `luu` (.skp).
+
+Lưu ý vận hành:
+- Lệnh `dung-kien-truc` tự chép họ cửa ghi trong `Openings[].Family` từ `FamilySources` (dự án mẫu / thư mục họ); thiếu họ thì dùng họ cửa có sẵn và ghi chú.
+- Cài add-in Revit mới phải khởi động lại Revit (DLL bị khoá khi Revit chạy) – hỏi người dùng trước nếu Revit đang có thay đổi chưa lưu. Plugin SketchUp cài lại bằng Extension Manager là dùng ngay.
+- Không tự lưu đè file của người dùng khi họ đang sửa; chỉ `luu` khi phương án vừa dựng xong hoặc người dùng bảo.
 
 Quy trình:
 1. `trang-thai` cả hai. Revit chưa mở dự án → `du-an-moi` vào thư mục dự án (VD `<thư mục>\KienTruc\<tên>.rvt`).
