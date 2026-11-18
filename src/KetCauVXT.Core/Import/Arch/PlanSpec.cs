@@ -378,6 +378,7 @@ public static class PlanSpec
             if (full > 0) W($"{full} tường cao suốt tầng (xuyên qua sàn / dầm) – chạy --phoi-hop để thêm cột, dầm và hạ tường xuống đáy dầm.");
         }
         r.AddRange(PlanCoordination.Check(ex));
+        r.AddRange(PlanStairs.Check(ex));
         foreach (var fe in ex.Facade?.Elements ?? new List<RvFacadeElement>())
         {
             string ty = fe.Type ?? "";

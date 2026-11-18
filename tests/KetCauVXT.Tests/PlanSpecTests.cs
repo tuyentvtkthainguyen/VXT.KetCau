@@ -50,6 +50,8 @@ public static class PlanSpecTests
 
         // phối hợp hình học trên phương án thật (Project1 làm lại): cột, dầm theo nhịp, cao tường, cửa ↔ cột, thang ↔ tường / dầm
         var pm = RevitJsonImporter.ReadFile(Path.Combine(AppContext.BaseDirectory, "Data", "Project1_Moi.vxtphuongan.json"));
+        foreach (var l in PlanStairs.DesignAll(pm)) Console.WriteLine("    " + l);
+        check("Thang Project1: U 3 vế, 21 bậc, vế giữa 2–4", B(pm.Stairs.All(t => t.Runs.Count == 3 && t.Runs.Sum(r => r.Risers) == 21 && t.Runs[1].Risers >= 2 && t.Runs[1].Risers <= 4)), 1, 0);
         foreach (var l in PlanCoordination.Coordinate(pm)) Console.WriteLine("    " + l);
         var pmIss = PlanSpec.Validate(pm);
         foreach (var i in pmIss) Console.WriteLine("    " + i);

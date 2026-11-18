@@ -15,10 +15,10 @@ internal static class HeadlessCli
 
     [DllImport("kernel32.dll")] private static extern bool AttachConsole(int pid);
 
-    public const string FlagCad = "--cad-sang-phuong-an", FlagCheck = "--kiem-tra-phuong-an", FlagSample = "--phuong-an-mau", FlagRevit = "--revit-sang-phuong-an", FlagBeams = "--bo-sung-dam", FlagCoord = "--phoi-hop";
+    public const string FlagCad = "--cad-sang-phuong-an", FlagCheck = "--kiem-tra-phuong-an", FlagSample = "--phuong-an-mau", FlagRevit = "--revit-sang-phuong-an", FlagBeams = "--bo-sung-dam", FlagCoord = "--phoi-hop", FlagStair = "--thiet-ke-thang";
 
     public static bool Wants(string[] args) => args.Length > 0 &&
-        new[] { Flag, FlagCad, FlagCheck, FlagSample, FlagRevit, FlagBeams, FlagCoord }.Any(f => string.Equals(args[0], f, StringComparison.OrdinalIgnoreCase));
+        new[] { Flag, FlagCad, FlagCheck, FlagSample, FlagRevit, FlagBeams, FlagCoord, FlagStair }.Any(f => string.Equals(args[0], f, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Ghi lại mọi dòng đã in – ứng dụng cửa sổ chạy bằng Start-Process không có console, nên lệnh phương án ghi thêm file *.kiemtra.txt.</summary>
     private static readonly StringBuilder Log = new();
@@ -34,6 +34,7 @@ internal static class HeadlessCli
             if (string.Equals(args[0], FlagCheck, StringComparison.OrdinalIgnoreCase)) return CheckPlan(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagSample, StringComparison.OrdinalIgnoreCase)) return SamplePlan(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagRevit, StringComparison.OrdinalIgnoreCase)) return RevitToPlan(args.Skip(1).ToList());
+            if (string.Equals(args[0], FlagStair, StringComparison.OrdinalIgnoreCase)) return DesignStairs(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagBeams, StringComparison.OrdinalIgnoreCase) || string.Equals(args[0], FlagCoord, StringComparison.OrdinalIgnoreCase)) return AddBeams(args.Skip(1).ToList());
         }
         catch (Exception e) { Say("Lỗi: " + e.Message); return 2; }
@@ -146,6 +147,34 @@ internal static class HeadlessCli
         foreach (var l in KetCauVXT.Import.Arch.PlanCoordination.Coordinate(ex, o)) Say(l);
         KetCauVXT.Import.Arch.PlanSpec.Save(ex, file);
         Say("Đã ghi " + file);
+        int rc = PrintIssues(ex);
+        SaveLog(file);
+        return rc;
+    }
+
+    /// <summary>KetCauVXT.exe --thiet-ke-thang &lt;file&gt; [--bac 21] [--giua 3] [--rong 1.0] [--mat-bac 0.26] [--thang CT1]
+    /// Thiết kế lại cầu thang thành chữ U 3 vế (21 bậc / tầng thường, vế giữa 2–4 bậc) trong ô thang; ghi đè file (bản cũ *.truoc-thang.json).</summary>
+    private static int DesignStairs(List<string> a)
+    {
+        string file = null, only = null;
+        var o = new KetCauVXT.Import.Arch.PlanStairs.Options();
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        for (int i = 0; i < a.Count; i++)
+        {
+            if (a[i] == "--bac" && i + 1 < a.Count) { o.Risers = int.Parse(a[++i], inv); continue; }
+            if (a[i] == "--giua" && i + 1 < a.Count) { o.Middle = int.Parse(a[++i], inv); continue; }
+            if (a[i] == "--rong" && i + 1 < a.Count) { o.Width = double.Parse(a[++i].Replace(',', '.'), inv); continue; }
+            if (a[i] == "--mat-bac" && i + 1 < a.Count) { o.Tread = double.Parse(a[++i].Replace(',', '.'), inv); continue; }
+            if (a[i] == "--thang" && i + 1 < a.Count) { only = a[++i]; continue; }
+            file = a[i];
+        }
+        if (file == null || !File.Exists(file)) { Say("Cần: --thiet-ke-thang <file.vxtphuongan.json> [--bac 21] [--giua 3] [--rong 1.0] [--mat-bac 0.26] [--thang CT1]"); return 2; }
+        if (o.Middle < 2 || o.Middle > 4 || o.Tread < 0.25 || o.Tread > 0.32) { Say("Vế giữa 2–4 bậc, mặt bậc 0,25–0,32 m."); return 2; }
+        var ex = KetCauVXT.Import.RevitJsonImporter.ReadFile(file);
+        try { File.Copy(file, Path.ChangeExtension(file, null) + ".truoc-thang.json", true); } catch { }
+        foreach (var t in ex.Stairs.Where(t => only == null || t.Id == only)) Say(KetCauVXT.Import.Arch.PlanStairs.DesignU3(ex, t, o));
+        KetCauVXT.Import.Arch.PlanSpec.Save(ex, file);
+        Say("Đã ghi " + file + " – chạy lại --phoi-hop để cập nhật dầm / thông thủy.");
         int rc = PrintIssues(ex);
         SaveLog(file);
         return rc;
