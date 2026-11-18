@@ -177,17 +177,28 @@ module VXT
               wall_box(g.entities, ax, ay, dx, dy, s[:u0], s[:u1], t, zb + s[:top], zb + h) if s[:top] < h - 0.01
               cur = [cur, s[:u1]].max
               # kính / cánh cửa
+              fr = root.entities.add_group
+              fr.name = "Khung #{s[:o]['Id']}"; fr.layer = tags['VXT Cửa']; fr.material = material(model, 'Khung cửa', facade)
               pg = root.entities.add_group
               pg.name = "#{door?(s[:o]) ? 'Cửa đi' : 'Cửa sổ'} #{s[:o]['Id']}"
               pg.layer = tags['VXT Cửa']
               tn = s[:o]['TypeName'].to_s
-              kind = if tn =~ /cuốn|cuon/i then 'Cửa cuốn'
-                     elsif !door?(s[:o]) || tn =~ /kính|kinh|lùa|lua/i || key == 'Mặt tiền' then 'Kính'
+              fam = s[:o]['Family'].to_s
+              kind = if "#{tn} #{fam}" =~ /cuốn|cuon/i then 'Cửa cuốn'
+                     elsif !door?(s[:o]) || "#{tn} #{fam}" =~ /kính|kinh|lùa|lua|nhôm|nhom|glass|alu/i || key == 'Mặt tiền' then 'Kính'
                      else 'Cánh cửa' end
               pg.material = material(model, kind, facade)
               wall_box(pg.entities, ax, ay, dx, dy, s[:u0] + 0.03, s[:u1] - 0.03, 0.03, zb + s[:s] + 0.03, zb + s[:top] - 0.03)
-              fr = root.entities.add_group
-              fr.name = "Khung #{s[:o]['Id']}"; fr.layer = tags['VXT Cửa']; fr.material = material(model, 'Khung cửa', facade)
+              if kind == 'Kính' # cửa nhôm kính: chia cánh + ô fix trên, đố nhôm
+                ow = s[:u1] - s[:u0]
+                leaves = ow <= 1.0 ? 1 : (ow <= 1.9 ? 2 : 4)
+                (1...leaves).each { |k| um = s[:u0] + ow * k / leaves; wall_box(fr.entities, ax, ay, dx, dy, um - 0.025, um + 0.025, 0.06, zb + s[:s], zb + s[:top]) }
+                hgt = s[:top] - s[:s]
+                if hgt > 2.35 && door?(s[:o]) # ô fix phía trên cửa đi cao
+                  zt2 = zb + s[:top] - 0.45
+                  wall_box(fr.entities, ax, ay, dx, dy, s[:u0], s[:u1], 0.06, zt2 - 0.025, zt2 + 0.025)
+                end
+              end
               [[s[:u0], s[:u0] + 0.05], [s[:u1] - 0.05, s[:u1]]].each { |a, b| wall_box(fr.entities, ax, ay, dx, dy, a, b, 0.07, zb + s[:s], zb + s[:top]) }
               wall_box(fr.entities, ax, ay, dx, dy, s[:u0], s[:u1], 0.07, zb + s[:top] - 0.05, zb + s[:top])
               wall_box(fr.entities, ax, ay, dx, dy, s[:u0], s[:u1], 0.07, zb + s[:s], zb + s[:s] + 0.05) if s[:s] > 0.01
@@ -250,6 +261,7 @@ module VXT
 
       # cầu thang 2 vế dạng khối bậc (m)
       def self.build_stair(ents, s, zb, zt)
+        return build_runs(ents, s, zb, zt) unless (s['Runs'] || []).empty?
         o = s['Outline'].map { |p| [p[0].to_f, p[1].to_f] }
         x0, x1 = o.map(&:first).minmax; y0, y1 = o.map(&:last).minmax
         along_y = (y1 - y0) >= (x1 - x0)
@@ -277,6 +289,33 @@ module VXT
         half.times do |k| # vế 2: quay về
           u1 = half * tread - k * tread
           prism(ents, rect[u1 - tread, u1, wd - w, wd], zl + k * rise, zl + (k + 1) * rise)
+        end
+      end
+
+      # cầu thang theo các vế ghi sẵn: đường tim vế theo hướng đi lên, Risers bậc đứng; chiếu nghỉ theo Landings
+      def self.build_runs(ents, s, zb, zt)
+        runs = s['Runs']
+        total = runs.sum { |r| r['Risers'].to_i }
+        return if total < 2
+        rise = (zt - zb) / total
+        r0 = runs[0]
+        tread = Math.hypot(r0['X2'].to_f - r0['X1'].to_f, r0['Y2'].to_f - r0['Y1'].to_f) / [r0['Risers'].to_i - 1, 1].max
+        z = zb
+        runs.each_with_index do |r, i|
+          x1 = r['X1'].to_f; y1 = r['Y1'].to_f
+          len = Math.hypot(r['X2'].to_f - x1, r['Y2'].to_f - y1)
+          ux = (r['X2'].to_f - x1) / len; uy = (r['Y2'].to_f - y1) / len
+          w = (r['Width'] || 1.0).to_f
+          n = r['Risers'].to_i
+          # bậc k: mặt bậc từ k·tread tới (k+1)·tread, cao tới z + (k+1)·rise; bậc đứng cuối cùng lên chiếu nghỉ / sàn
+          (n - 1).times do |k|
+            wall_box(ents, x1, y1, ux, uy, k * tread, (k + 1) * tread, w, z + k * rise, z + (k + 1) * rise)
+          end
+          z += n * rise
+          lp = (s['Landings'] || [])[i]
+          if lp && lp.length >= 3 && i < runs.length - 1
+            prism(ents, lp.map { |p| [p[0].to_f, p[1].to_f] }, z - 0.12, z)
+          end
         end
       end
 

@@ -38,6 +38,8 @@ public class RvOpening
     /// <summary>"Door" | "Window"</summary>
     public string Category { get; set; } = "Door";
     public string TypeName { get; set; } = "";
+    /// <summary>Tên họ (family) Revit – để dựng lại đúng họ cửa (VD cửa nhôm kính) từ thư viện / dự án mẫu</summary>
+    public string Family { get; set; } = "";
     public double X { get; set; }
     public double Y { get; set; }
     public double Width { get; set; }

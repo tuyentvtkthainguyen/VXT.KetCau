@@ -25,6 +25,21 @@ public class RvStair
     /// <summary>"1 vế", "2 vế chữ U", "chữ L", "xoắn"</summary>
     public string Shape { get; set; } = "2 vế chữ U";
     public double Width { get; set; } = 0.9;
+    /// <summary>Các vế thang theo thứ tự đi lên: đường tim vế từ bậc đầu → bậc cuối (hướng lên), số bậc đứng (risers) của vế. Có thì dựng đúng theo đây.</summary>
+    public List<RvStairRun> Runs { get; set; } = new();
+    /// <summary>Chiếu nghỉ (đa giác), theo thứ tự giữa các vế</summary>
+    public List<List<double[]>> Landings { get; set; } = new();
+}
+
+public class RvStairRun
+{
+    public double X1 { get; set; }
+    public double Y1 { get; set; }
+    public double X2 { get; set; }
+    public double Y2 { get; set; }
+    public double Width { get; set; } = 1.0;
+    /// <summary>Số bậc đứng của vế (vế n bậc đứng có n − 1 mặt bậc trên đường tim)</summary>
+    public int Risers { get; set; }
 }
 
 public class RvFacadeMaterial
@@ -254,6 +269,24 @@ public static class PlanSpec
                 if (a > 16) W($"Cầu thang {s.Id}: ô thang {a:0.0} m² – lớn bất thường.");
             }
             if (s.Width < 0.75) W($"Cầu thang {s.Id}: vế rộng {s.Width:0.00} m (< 0,75 m).");
+            if (s.Runs.Count > 0 && names.Contains(s.BaseLevel) && names.Contains(s.TopLevel))
+            {
+                double H = ex.Levels.First(l => l.Name == s.TopLevel).Elevation - ex.Levels.First(l => l.Name == s.BaseLevel).Elevation;
+                int n = s.Runs.Sum(q => q.Risers);
+                if (n <= 0 || s.Runs.Any(q => q.Risers < 2)) E($"Cầu thang {s.Id}: mỗi vế cần ≥ 2 bậc đứng (Risers).");
+                else
+                {
+                    double h = H / n;
+                    if (h > 0.19 || h < 0.13) E($"Cầu thang {s.Id}: chiều cao bậc {h * 1000:0} mm ({n} bậc cho {H:0.00} m) – nên 150–175 mm.");
+                    foreach (var q in s.Runs)
+                    {
+                        double b = Math.Sqrt((q.X2 - q.X1) * (q.X2 - q.X1) + (q.Y2 - q.Y1) * (q.Y2 - q.Y1)) / (q.Risers - 1);
+                        if (b < 0.25) E($"Cầu thang {s.Id}: vế {q.Risers} bậc dài không đủ – mặt bậc {b * 1000:0} mm (< 250 mm).");
+                        else if (2 * h + b < 0.58 || 2 * h + b > 0.67) W($"Cầu thang {s.Id}: 2h + b = {(2 * h + b) * 1000:0} mm (nên 600–650 mm).");
+                        if (q.Width < 0.9) W($"Cầu thang {s.Id}: vế rộng {q.Width:0.00} m (< 0,9 m).");
+                    }
+                }
+            }
         }
         foreach (var f in ex.Floors)
         {

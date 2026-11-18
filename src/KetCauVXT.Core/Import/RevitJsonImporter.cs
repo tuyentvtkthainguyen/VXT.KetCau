@@ -27,6 +27,8 @@ public class RevitExchange
     public List<RvStair> Stairs { get; set; } = new();
     public RvFacade Facade { get; set; }
     public RvSite Site { get; set; }
+    /// <summary>Nguồn họ Revit (dự án *.rvt / mẫu *.rte / họ *.rfa / thư mục) để lấy họ cửa, cầu thang… khi dựng</summary>
+    public List<string> FamilySources { get; set; } = new();
 }
 
 public class RvLevel

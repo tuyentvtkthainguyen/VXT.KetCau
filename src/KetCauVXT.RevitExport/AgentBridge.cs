@@ -30,7 +30,7 @@ namespace KetCauVXT.RevitExport
 
         public static readonly string[] Commands =
         {
-            "trang-thai", "du-an-moi", "mo", "dung-kien-truc", "xuat-viet-const", "dung-ket-cau", "nhan-tiet-dien", "tao-ban-ve", "anh-3d", "xuat-pdf", "xuat-dwg", "luu",
+            "trang-thai", "du-an-moi", "mo", "dung-kien-truc", "xuat-viet-const", "dung-ket-cau", "nhan-tiet-dien", "tao-ban-ve", "anh-3d", "xuat-pdf", "xuat-dwg", "liet-ke-ho", "luu",
         };
 
         private static AgentBridge _inst;
@@ -136,6 +136,7 @@ namespace KetCauVXT.RevitExport
                     case "dung-kien-truc":
                         Need(file, ".json");
                         AgentMode.AutoApply = true; AgentMode.InputPath = file;
+                        foreach (var g in MiniJson.A(o, "lam_lai")) if (g is string gs) AgentMode.Rebuild.Add(gs);
                         r = new BuildArchitectureCommand().Run(app, ref msg);
                         break;
                     case "xuat-viet-const":
@@ -196,6 +197,10 @@ namespace KetCauVXT.RevitExport
                             AgentMode.Report = $"Đã xuất {ids.Count} tờ ({lenh.Substring(5).ToUpperInvariant()}) vào {file}";
                         }
                         break;
+                    case "liet-ke-ho":
+                        // họ cửa đi / cửa sổ (và loại, kích thước) trong dự án đang mở hoặc trong "file" (*.rvt / *.rte, mở ngầm)
+                        AgentMode.Report = ListFamilies(app, doc, file);
+                        break;
                     case "luu":
                         if (doc == null) throw new InvalidOperationException("Chưa mở dự án.");
                         if (!string.IsNullOrEmpty(file))
@@ -234,6 +239,40 @@ namespace KetCauVXT.RevitExport
                 File.Move(tmp, dst);
             }
             catch { }
+        }
+
+        private static string ListFamilies(UIApplication app, Document doc, string file)
+        {
+            Document sd = doc; bool opened = false;
+            if (!string.IsNullOrWhiteSpace(file))
+            {
+                if (!File.Exists(file)) throw new FileNotFoundException("Không thấy " + file);
+                sd = null;
+                foreach (Document od in app.Application.Documents) if (string.Equals(od.PathName, file, StringComparison.OrdinalIgnoreCase)) sd = od;
+                if (sd == null) { sd = app.Application.OpenDocumentFile(ModelPathUtils.ConvertUserVisiblePathToModelPath(file), new OpenOptions()); opened = true; }
+            }
+            if (sd == null) throw new InvalidOperationException("Chưa mở dự án.");
+            try
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("Nguồn: " + (sd.PathName.Length > 0 ? sd.PathName : sd.Title));
+                foreach (var cat in new[] { BuiltInCategory.OST_Doors, BuiltInCategory.OST_Windows })
+                {
+                    sb.AppendLine(cat == BuiltInCategory.OST_Doors ? "== CỬA ĐI ==" : "== CỬA SỔ ==");
+                    var syms = new FilteredElementCollector(sd).OfClass(typeof(FamilySymbol)).OfCategory(cat).Cast<FamilySymbol>().OrderBy(x => x.FamilyName).ThenBy(x => x.Name);
+                    var used = new HashSet<ElementId>(new FilteredElementCollector(sd).OfClass(typeof(FamilyInstance)).OfCategory(cat).Cast<FamilyInstance>().Select(x => x.Symbol.Id));
+                    foreach (var x in syms)
+                    {
+                        var w = x.get_Parameter(cat == BuiltInCategory.OST_Doors ? BuiltInParameter.DOOR_WIDTH : BuiltInParameter.WINDOW_WIDTH) ?? x.get_Parameter(BuiltInParameter.FAMILY_WIDTH_PARAM);
+                        var h = x.get_Parameter(cat == BuiltInCategory.OST_Doors ? BuiltInParameter.DOOR_HEIGHT : BuiltInParameter.WINDOW_HEIGHT) ?? x.get_Parameter(BuiltInParameter.FAMILY_HEIGHT_PARAM);
+                        string ws = w != null && w.StorageType == StorageType.Double ? Math.Round(VxtRevit.ToM(w.AsDouble()) * 1000).ToString(CultureInfo.InvariantCulture) : "?";
+                        string hs = h != null && h.StorageType == StorageType.Double ? Math.Round(VxtRevit.ToM(h.AsDouble()) * 1000).ToString(CultureInfo.InvariantCulture) : "?";
+                        sb.AppendLine($"{x.FamilyName} | {x.Name} | {ws}x{hs}{(used.Contains(x.Id) ? " | đang dùng" : "")}");
+                    }
+                }
+                return sb.ToString();
+            }
+            finally { if (opened) sd.Close(false); }
         }
 
         private static string SafeName(string s)

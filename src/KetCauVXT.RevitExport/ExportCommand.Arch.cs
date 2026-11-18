@@ -94,6 +94,7 @@ namespace KetCauVXT.RevitExport
                         w.Prop("HostId", fi.Host != null ? fi.Host.UniqueId : "");
                         w.Prop("Category", door ? "Door" : "Window");
                         w.Prop("TypeName", fi.Symbol != null ? fi.Symbol.Name : "");
+                        w.Prop("Family", fi.Symbol != null ? fi.Symbol.FamilyName : "");
                         w.Prop("X", lp.Point.X * Ft); w.Prop("Y", lp.Point.Y * Ft);
                         w.Prop("Width", width * Ft); w.Prop("Height", height * Ft); w.Prop("Sill", sill * Ft);
                         w.Prop("Flipped", fi.FacingFlipped);

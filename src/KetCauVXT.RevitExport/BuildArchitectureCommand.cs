@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
@@ -35,7 +36,11 @@ namespace KetCauVXT.RevitExport
             if (s == null) return Result.Cancelled;
 
             VxtRevit.LastTagError = null;
+            var pre = new List<string>();
+            if (AgentMode.Rebuild.Count > 0) RemoveForRebuild(doc, AgentMode.Rebuild, pre);
+            LoadFamilies(uiapp.Application, doc, s, pre);
             var ctx = new Ctx(doc, s);
+            ctx.Log.AddRange(pre);
             var items = Plan(ctx);
             string rep = ChangeDialog.Run(doc, Title, "Phương án: " + System.IO.Path.GetFileName(s.File) +
                 "\nCác mục dưới đây sẽ được thêm vào mô hình (phần đã dựng lần trước – có mã KT- – được giữ nguyên).", items);
@@ -46,6 +51,96 @@ namespace KetCauVXT.RevitExport
             AgentMode.Report = full;
             if (!AgentMode.Quiet && ctx.Log.Count > 0) TaskDialog.Show(Title, full);
             return Result.Succeeded;
+        }
+
+        // ------------------------------------------------------------------ dựng lại một nhóm
+        /// <summary>Xoá phần tử có mã KT- thuộc nhóm "cua" (cửa đi, cửa sổ), "cau-thang", "san" để dựng lại theo phương án đã sửa.</summary>
+        internal static void RemoveForRebuild(Document d, HashSet<string> groups, List<string> log)
+        {
+            var cats = new List<BuiltInCategory>();
+            if (groups.Contains("cua")) { cats.Add(BuiltInCategory.OST_Doors); cats.Add(BuiltInCategory.OST_Windows); }
+            if (groups.Contains("cau-thang")) cats.Add(BuiltInCategory.OST_Stairs);
+            if (groups.Contains("san")) cats.Add(BuiltInCategory.OST_Floors);
+            if (cats.Count == 0) return;
+            var ids = new List<ElementId>();
+            foreach (var bic in cats)
+                foreach (var e in new FilteredElementCollector(d).OfCategory(bic).WhereElementIsNotElementType())
+                    if (VxtRevit.GetVxtId(e).StartsWith(Prefix, StringComparison.Ordinal)) ids.Add(e.Id);
+            if (ids.Count == 0) return;
+            using (var t = new Transaction(d, "Xoá để dựng lại theo phương án"))
+            {
+                t.Start(); Swallow(t, log);
+                int n = 0;
+                foreach (var id in ids) try { if (d.GetElement(id) != null) { d.Delete(id); n++; } } catch { }
+                t.Commit();
+                log.Add($"Đã xoá {n} phần tử ({string.Join(", ", groups)}) để dựng lại theo phương án mới.");
+            }
+        }
+
+        // ------------------------------------------------------------------ nạp họ từ thư viện / dự án mẫu
+        /// <summary>
+        /// Họ cửa phương án ghi (Openings[].Family) mà dự án chưa có → tìm trong FamilySources:
+        /// *.rfa (theo tên họ), thư mục (tìm &lt;tên họ&gt;.rfa, kể cả thư mục con), *.rvt / *.rte (mở ngầm, chép họ sang). Gọi ngoài Transaction.
+        /// </summary>
+        internal static void LoadFamilies(Autodesk.Revit.ApplicationServices.Application app, Document d, ArchSpec s, List<string> log)
+        {
+            var want = s.Openings.Select(o => o.Family).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (want.Count == 0) return;
+            var have = new HashSet<string>(new FilteredElementCollector(d).OfClass(typeof(Family)).Cast<Family>().Select(f => f.Name), StringComparer.OrdinalIgnoreCase);
+            var miss = want.Where(n => !have.Contains(n)).ToList();
+            if (miss.Count == 0) return;
+            if (s.FamilySources.Count == 0) { log.Add("Phương án cần họ " + string.Join(", ", miss) + " nhưng chưa khai báo FamilySources (dự án mẫu / thư mục họ)."); return; }
+            foreach (var src in s.FamilySources)
+            {
+                if (miss.Count == 0) break;
+                try
+                {
+                    if (Directory.Exists(src))
+                    {
+                        foreach (var n in miss.ToList())
+                        {
+                            var fp = Directory.EnumerateFiles(src, n + ".rfa", SearchOption.AllDirectories).FirstOrDefault();
+                            if (fp == null) continue;
+                            using (var t = new Transaction(d, "Nạp họ " + n)) { t.Start(); if (d.LoadFamily(fp, out _)) { miss.Remove(n); log.Add("Nạp họ " + n + " từ " + fp); } t.Commit(); }
+                        }
+                    }
+                    else if (src.EndsWith(".rfa", StringComparison.OrdinalIgnoreCase) && File.Exists(src))
+                    {
+                        string n = Path.GetFileNameWithoutExtension(src);
+                        if (!miss.Contains(n, StringComparer.OrdinalIgnoreCase)) continue;
+                        using (var t = new Transaction(d, "Nạp họ " + n)) { t.Start(); if (d.LoadFamily(src, out _)) { miss.RemoveAll(x => x.Equals(n, StringComparison.OrdinalIgnoreCase)); log.Add("Nạp họ " + n); } t.Commit(); }
+                    }
+                    else if ((src.EndsWith(".rvt", StringComparison.OrdinalIgnoreCase) || src.EndsWith(".rte", StringComparison.OrdinalIgnoreCase)) && File.Exists(src))
+                    {
+                        Document sd = null; bool opened = false;
+                        foreach (Document od in app.Documents) if (string.Equals(od.PathName, src, StringComparison.OrdinalIgnoreCase)) sd = od;
+                        if (sd == null)
+                        {
+                            var mp = ModelPathUtils.ConvertUserVisiblePathToModelPath(src);
+                            sd = app.OpenDocumentFile(mp, new OpenOptions()); opened = true;
+                        }
+                        try
+                        {
+                            foreach (var fam in new FilteredElementCollector(sd).OfClass(typeof(Family)).Cast<Family>().Where(f => miss.Contains(f.Name, StringComparer.OrdinalIgnoreCase)).ToList())
+                            {
+                                if (!fam.IsEditable) { log.Add("Họ " + fam.Name + " trong " + Path.GetFileName(src) + " không mở được để chép."); continue; }
+                                var fd = sd.EditFamily(fam);
+                                try { fd.LoadFamily(d, new KeepLoadOptions()); miss.RemoveAll(x => x.Equals(fam.Name, StringComparison.OrdinalIgnoreCase)); log.Add("Chép họ " + fam.Name + " từ " + Path.GetFileName(src)); }
+                                finally { fd.Close(false); }
+                            }
+                        }
+                        finally { if (opened) sd.Close(false); }
+                    }
+                }
+                catch (Exception ex) { log.Add("Nguồn họ " + src + ": " + ex.Message); }
+            }
+            if (miss.Count > 0) log.Add("Chưa tìm thấy họ: " + string.Join(", ", miss) + " – dùng họ cửa sẵn có trong dự án.");
+        }
+
+        private sealed class KeepLoadOptions : IFamilyLoadOptions
+        {
+            public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues) { overwriteParameterValues = false; return true; }
+            public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source, out bool overwriteParameterValues) { source = FamilySource.Family; overwriteParameterValues = false; return true; }
         }
 
         // ------------------------------------------------------------------ ngữ cảnh
@@ -291,7 +386,7 @@ namespace KetCauVXT.RevitExport
                 if (host == null) { c.Log.Add($"Cửa {o.Id} ({o.X:0.##}; {o.Y:0.##}) ở {o.Level}: không có tường nào đi qua."); continue; }
                 try
                 {
-                    var sym = SizedSymbol(d, syms, door, o.Width, o.Height, o.TypeName);
+                    var sym = SizedSymbol(d, syms, door, o.Width, o.Height, o.TypeName, o.Family);
                     if (!sym.IsActive) { sym.Activate(); d.Regenerate(); }
                     var lc = (LocationCurve)host.Location;
                     var pt = lc.Curve.Project(P(o.X, o.Y, VxtRevit.ToM(lc.Curve.GetEndPoint(0).Z))).XYZPoint;
@@ -311,8 +406,28 @@ namespace KetCauVXT.RevitExport
             new FilteredElementCollector(d).OfClass(typeof(FamilySymbol)).OfCategory(cat).Cast<FamilySymbol>()
                 .Where(fs => fs.Family != null && !fs.Family.IsInPlace).ToList();
 
-        private static FamilySymbol SizedSymbol(Document d, List<FamilySymbol> syms, bool door, double w, double h, string hint)
+        private static FamilySymbol SizedSymbol(Document d, List<FamilySymbol> syms, bool door, double w, double h, string hint, string family = "")
         {
+            // họ phương án chỉ định (VD cửa nhôm kính của dự án mẫu): đúng loại + đúng kích thước → dùng luôn; không thì nhân bản trong họ đó
+            if (!string.IsNullOrWhiteSpace(family))
+            {
+                var fam = syms.Where(x => x.FamilyName.Equals(family, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (fam.Count > 0)
+                {
+                    bool Fit(FamilySymbol x) => Math.Abs(SymW(x, door) - w) < 0.01 && Math.Abs(SymH(x, door) - h) < 0.01;
+                    var exact = fam.FirstOrDefault(x => x.Name.Equals(hint ?? "", StringComparison.OrdinalIgnoreCase) && Fit(x)) ?? fam.FirstOrDefault(Fit);
+                    if (exact != null) return exact;
+                    string fn = (hint ?? "").Length > 0 ? hint + " " + Mm(w) + "x" + Mm(h) : Mm(w) + "x" + Mm(h);
+                    var again = fam.FirstOrDefault(x => x.Name.Equals(fn, StringComparison.OrdinalIgnoreCase));
+                    if (again != null) return again;
+                    var baseSym = fam.FirstOrDefault(x => x.Name.Equals(hint ?? "", StringComparison.OrdinalIgnoreCase)) ?? fam[0];
+                    var dup = (FamilySymbol)baseSym.Duplicate(fn);
+                    SetDim(dup, w, door ? BuiltInParameter.DOOR_WIDTH : BuiltInParameter.WINDOW_WIDTH, "Width", "Rộng", "Chiều rộng", "Bề rộng");
+                    SetDim(dup, h, door ? BuiltInParameter.DOOR_HEIGHT : BuiltInParameter.WINDOW_HEIGHT, "Height", "Cao", "Chiều cao");
+                    syms.Add(dup);
+                    return dup;
+                }
+            }
             string name = (door ? "Cửa đi " : "Cửa sổ ") + Mm(w) + "x" + Mm(h);
             var found = syms.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             if (found != null) return found;
@@ -324,6 +439,18 @@ namespace KetCauVXT.RevitExport
             SetDim(nt, h, door ? BuiltInParameter.DOOR_HEIGHT : BuiltInParameter.WINDOW_HEIGHT, "Height", "Cao", "Chiều cao");
             syms.Add(nt);
             return nt;
+        }
+
+        private static double SymW(FamilySymbol s, bool door)
+        {
+            var p = s.get_Parameter(door ? BuiltInParameter.DOOR_WIDTH : BuiltInParameter.WINDOW_WIDTH) ?? s.get_Parameter(BuiltInParameter.FAMILY_WIDTH_PARAM);
+            return p != null && p.StorageType == StorageType.Double ? VxtRevit.ToM(p.AsDouble()) : VxtRevit.TypeSize(s, "Width", "Rộng", "Chiều rộng");
+        }
+
+        private static double SymH(FamilySymbol s, bool door)
+        {
+            var p = s.get_Parameter(door ? BuiltInParameter.DOOR_HEIGHT : BuiltInParameter.WINDOW_HEIGHT) ?? s.get_Parameter(BuiltInParameter.FAMILY_HEIGHT_PARAM);
+            return p != null && p.StorageType == StorageType.Double ? VxtRevit.ToM(p.AsDouble()) : VxtRevit.TypeSize(s, "Height", "Cao", "Chiều cao");
         }
 
         private static bool HasSize(FamilySymbol s, bool door)
@@ -461,6 +588,7 @@ namespace KetCauVXT.RevitExport
                 double x0 = st.Outline.Min(p => p[0]), x1 = st.Outline.Max(p => p[0]), y0 = st.Outline.Min(p => p[1]), y1 = st.Outline.Max(p => p[1]);
                 double H = VxtRevit.ToM(t.ProjectElevation - b.ProjectElevation);
                 if (H < 1.5) continue;
+                if (st.Runs.Count > 0) { BuildRunsStair(c, st, b, t); continue; }
                 try
                 {
                     using (var scope = new StairsEditScope(d, "Cầu thang " + st.Id))
@@ -514,6 +642,73 @@ namespace KetCauVXT.RevitExport
                 }
                 catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: chưa dựng tự động được ({ex.Message}) – lỗ sàn đã chừa, vẽ cầu thang bằng tay."); }
             }
+        }
+
+        /// <summary>
+        /// Cầu thang theo các vế phương án ghi sẵn (đường tim vế theo hướng đi lên, số bậc đứng mỗi vế): mặt bậc = dài vế / (bậc đứng − 1),
+        /// chiếu nghỉ tự động giữa hai vế liên tiếp (không được thì dựng theo đa giác Landings).
+        /// </summary>
+        private static void BuildRunsStair(Ctx c, AsStair st, Level b, Level t)
+        {
+            var d = c.Doc;
+            int total = st.Runs.Sum(r => r.Risers);
+            var r0 = st.Runs[0];
+            double tread = Math.Sqrt((r0.X2 - r0.X1) * (r0.X2 - r0.X1) + (r0.Y2 - r0.Y1) * (r0.Y2 - r0.Y1)) / Math.Max(1, r0.Risers - 1);
+            try
+            {
+                using (var scope = new StairsEditScope(d, "Cầu thang " + st.Id))
+                {
+                    var sid = scope.Start(b.Id, t.Id);
+                    using (var tr = new Transaction(d, "Cầu thang " + st.Id))
+                    {
+                        tr.Start();
+                        Swallow(tr, c.Log);
+                        var stairs = (Stairs)d.GetElement(sid);
+                        stairs.DesiredRisersNumber = total;
+                        try { stairs.ActualTreadDepth = VxtRevit.ToFt(tread); } catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: không đặt được mặt bậc {tread * 1000:0} mm ({ex.Message})."); }
+                        double zb0 = b.ProjectElevation, zrel = 0;
+                        var runs = new List<StairsRun>();
+                        for (int i = 0; i < st.Runs.Count; i++)
+                        {
+                            var r = st.Runs[i];
+                            double len = Math.Sqrt((r.X2 - r.X1) * (r.X2 - r.X1) + (r.Y2 - r.Y1) * (r.Y2 - r.Y1));
+                            double ux = (r.X2 - r.X1) / len, uy = (r.Y2 - r.Y1) / len;
+                            double L = (r.Risers - 1) * tread;            // đúng số mặt bậc của vế
+                            var p0 = P(r.X1, r.Y1); var p1 = P(r.X1 + ux * L, r.Y1 + uy * L);
+                            var run = StairsRun.CreateStraightRun(d, sid, Line.CreateBound(new XYZ(p0.X, p0.Y, zb0 + zrel), new XYZ(p1.X, p1.Y, zb0 + zrel)), StairsRunJustification.Center);
+                            try { run.ActualRunWidth = VxtRevit.ToFt(r.Width); } catch { }
+                            runs.Add(run);
+                            zrel = run.TopElevation;
+                        }
+                        for (int i = 0; i + 1 < runs.Count; i++)
+                        {
+                            bool ok = false;
+                            try { ok = StairsLanding.CreateAutomaticLanding(d, runs[i].Id, runs[i + 1].Id).Count > 0; } catch { }
+                            if (!ok && i < st.Landings.Count && st.Landings[i].Count >= 3)
+                            {
+                                var ll = new CurveLoop(); var pl = st.Landings[i];
+                                double zl = runs[i].TopElevation;
+                                for (int k = 0; k < pl.Count; k++)
+                                {
+                                    var a = P(pl[k][0], pl[k][1]); var bb = P(pl[(k + 1) % pl.Count][0], pl[(k + 1) % pl.Count][1]);
+                                    ll.Append(Line.CreateBound(new XYZ(a.X, a.Y, zb0 + zl), new XYZ(bb.X, bb.Y, zb0 + zl)));
+                                }
+                                StairsLanding.CreateSketchedLanding(d, sid, ll, zl); ok = true;
+                            }
+                            if (!ok) c.Log.Add($"Cầu thang {st.Id}: chưa tạo được chiếu nghỉ giữa vế {i + 1} và {i + 2}.");
+                        }
+                        tr.Commit();
+                    }
+                    scope.Commit(new WarningSwallower(c.Log));
+                    var el = d.GetElement(sid) as Stairs;
+                    if (el != null)
+                    {
+                        using (var tr = new Transaction(d, "Gắn mã cầu thang")) { tr.Start(); VxtRevit.SetVxtId(el, Prefix + st.Id); tr.Commit(); }
+                        c.Log.Add($"Cầu thang {st.Id}: {st.Runs.Count} vế, {el.ActualRisersNumber} bậc × {VxtRevit.ToM(el.ActualRiserHeight) * 1000:0} mm, mặt bậc {VxtRevit.ToM(el.ActualTreadDepth) * 1000:0} mm.");
+                    }
+                }
+            }
+            catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: chưa dựng tự động được ({ex.Message}) – lỗ sàn đã chừa."); }
         }
 
         /// <summary>Cầu thang 1 vế: ghi "thẳng" trong Shape, hoặc ô thang hẹp (&lt; 1,6 m) không đủ 2 vế.</summary>

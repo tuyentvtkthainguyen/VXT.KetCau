@@ -13,10 +13,16 @@ namespace KetCauVXT.RevitExport
     internal sealed class AsLevel { public string Name = ""; public double Elevation; }
     internal sealed class AsGrid { public string Name = ""; public double X1, Y1, X2, Y2; }
     internal sealed class AsWall { public string Id = "", Level = "", TypeName = ""; public double X1, Y1, X2, Y2, Height, BaseOffset; public List<VxtLayer> Layers = new List<VxtLayer>(); public double Thickness => Layers.Sum(l => l.Thickness); }
-    internal sealed class AsOpening { public string Id = "", Level = "", Category = "Door", TypeName = ""; public double X, Y, Width, Height, Sill; }
+    internal sealed class AsOpening { public string Id = "", Level = "", Category = "Door", TypeName = "", Family = ""; public double X, Y, Width, Height, Sill; }
     internal sealed class AsRoom { public string Id = "", Level = "", Name = "", Number = ""; public List<double[]> Outline = new List<double[]>(); }
     internal sealed class AsFloor { public string Id = "", Level = ""; public double Thickness; public List<double[]> Outline = new List<double[]>(); }
-    internal sealed class AsStair { public string Id = "", BaseLevel = "", TopLevel = "", Shape = ""; public double Width; public List<double[]> Outline = new List<double[]>(); }
+    internal sealed class AsRun { public double X1, Y1, X2, Y2, Width = 1.0; public int Risers; }
+    internal sealed class AsStair
+    {
+        public string Id = "", BaseLevel = "", TopLevel = "", Shape = ""; public double Width; public List<double[]> Outline = new List<double[]>();
+        public List<AsRun> Runs = new List<AsRun>();
+        public List<List<double[]>> Landings = new List<List<double[]>>();
+    }
     internal sealed class AsFacadeMaterial { public string Part = "", Material = "", Color = ""; }
 
     internal sealed class ArchSpec
@@ -33,6 +39,7 @@ namespace KetCauVXT.RevitExport
         public double FrontDirectionDeg = 180;
         public List<AsFacadeMaterial> FacadeMaterials = new List<AsFacadeMaterial>();
         public double SiteWidth, SiteDepth;
+        public List<string> FamilySources = new List<string>();
 
         public static ArchSpec Load(string path)
         {
@@ -46,10 +53,19 @@ namespace KetCauVXT.RevitExport
                 foreach (var l in MiniJson.A(o, "Layers")) w.Layers.Add(new VxtLayer { Function = MiniJson.S(l, "Function", "Structure"), Material = MiniJson.S(l, "Material"), Thickness = MiniJson.D(l, "Thickness") });
                 s.Walls.Add(w);
             }
-            foreach (var o in MiniJson.A(root, "Openings")) s.Openings.Add(new AsOpening { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Category = MiniJson.S(o, "Category", "Door"), TypeName = MiniJson.S(o, "TypeName"), X = MiniJson.D(o, "X"), Y = MiniJson.D(o, "Y"), Width = MiniJson.D(o, "Width"), Height = MiniJson.D(o, "Height"), Sill = MiniJson.D(o, "Sill") });
+            foreach (var o in MiniJson.A(root, "Openings")) s.Openings.Add(new AsOpening { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Category = MiniJson.S(o, "Category", "Door"), TypeName = MiniJson.S(o, "TypeName"), Family = MiniJson.S(o, "Family"), X = MiniJson.D(o, "X"), Y = MiniJson.D(o, "Y"), Width = MiniJson.D(o, "Width"), Height = MiniJson.D(o, "Height"), Sill = MiniJson.D(o, "Sill") });
             foreach (var o in MiniJson.A(root, "Rooms")) s.Rooms.Add(new AsRoom { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Name = MiniJson.S(o, "Name"), Number = MiniJson.S(o, "Number"), Outline = Pts(o, "Outline") });
             foreach (var o in MiniJson.A(root, "Floors")) s.Floors.Add(new AsFloor { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Thickness = MiniJson.D(o, "Thickness", 0.1), Outline = Pts(o, "Outline") });
-            foreach (var o in MiniJson.A(root, "Stairs")) s.Stairs.Add(new AsStair { Id = MiniJson.S(o, "Id"), BaseLevel = MiniJson.S(o, "BaseLevel"), TopLevel = MiniJson.S(o, "TopLevel"), Shape = MiniJson.S(o, "Shape"), Width = MiniJson.D(o, "Width", 0.9), Outline = Pts(o, "Outline") });
+            foreach (var o in MiniJson.A(root, "Stairs"))
+            {
+                var st = new AsStair { Id = MiniJson.S(o, "Id"), BaseLevel = MiniJson.S(o, "BaseLevel"), TopLevel = MiniJson.S(o, "TopLevel"), Shape = MiniJson.S(o, "Shape"), Width = MiniJson.D(o, "Width", 0.9), Outline = Pts(o, "Outline") };
+                foreach (var r in MiniJson.A(o, "Runs"))
+                    st.Runs.Add(new AsRun { X1 = MiniJson.D(r, "X1"), Y1 = MiniJson.D(r, "Y1"), X2 = MiniJson.D(r, "X2"), Y2 = MiniJson.D(r, "Y2"), Width = MiniJson.D(r, "Width", 1.0), Risers = (int)MiniJson.D(r, "Risers") });
+                foreach (var l in MiniJson.A(o, "Landings"))
+                    if (l is List<object> pl) { var poly = new List<double[]>(); foreach (var p in pl) if (p is List<object> q && q.Count >= 2 && q[0] is double x && q[1] is double y) poly.Add(new[] { x, y }); st.Landings.Add(poly); }
+                s.Stairs.Add(st);
+            }
+            foreach (var p in MiniJson.A(root, "FamilySources")) if (p is string ps && ps.Trim().Length > 0) s.FamilySources.Add(ps.Trim());
             var f = MiniJson.O(root, "Facade");
             if (f != null)
             {
@@ -113,10 +129,12 @@ namespace KetCauVXT.RevitExport
         public static string InputPath;
         public static string OutputPath;
         public static string Report = "";
+        /// <summary>Nhóm phần tử KT- xoá để dựng lại theo phương án mới: "cua", "cau-thang", "san"</summary>
+        public static HashSet<string> Rebuild = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public static string TakeInputPath() { var p = InputPath; InputPath = null; return p; }
         public static string TakeOutputPath() { var p = OutputPath; OutputPath = null; return p; }
 
-        public static void Reset() { Quiet = false; AutoApply = false; InputPath = null; OutputPath = null; }
+        public static void Reset() { Quiet = false; AutoApply = false; InputPath = null; OutputPath = null; Rebuild.Clear(); }
     }
 }
