@@ -79,7 +79,24 @@ namespace KetCauVXT.RevitExport
             var sheets = new List<(string No, string Name, List<ElementId> Views)>();
             // tỷ lệ: nhỏ nhất trong 1:50 / 75 / 100 / 150 / 200 để chiều dài nhà ≤ 46 cm trên giấy (vừa khổ A1–A2)
             double lenM = VxtRevit.ToM(Math.Max(box.Max.X - box.Min.X, box.Max.Y - box.Min.Y));
-            int sc = new[] { 50, 75, 100, 150, 200 }.FirstOrDefault(k => lenM / k * 1000 <= 460);
+            // khổ giấy theo khung tên của dự án / template: đo vùng vẽ trên một tờ tạm (trừ chỗ cho kích thước, chú thích ~ 15 %)
+            double maxW = 460, maxH = 320;
+            {
+                var tb0 = new FilteredElementCollector(d).OfClass(typeof(FamilySymbol)).OfCategory(BuiltInCategory.OST_TitleBlocks).FirstElementId();
+                if (tb0 != null && tb0 != ElementId.InvalidElementId)
+                {
+                    try
+                    {
+                        var tmp = ViewSheet.Create(d, tb0);
+                        var a = DrawArea(d, tmp);
+                        maxW = VxtRevit.ToM(a.Max.U - a.Min.U) * 1000 * 0.85; maxH = VxtRevit.ToM(a.Max.V - a.Min.V) * 1000 * 0.85;
+                        d.Delete(tmp.Id);
+                    }
+                    catch { }
+                }
+            }
+            double depthM = VxtRevit.ToM(Math.Min(box.Max.X - box.Min.X, box.Max.Y - box.Min.Y)) + 6;
+            int sc = new[] { 50, 75, 100, 150, 200 }.FirstOrDefault(k => (lenM + 6) / k * 1000 <= maxW && depthM / k * 1000 <= maxH);
             if (sc == 0) sc = 200;
 
             // 1. mặt bằng các tầng có tường
@@ -211,10 +228,25 @@ namespace KetCauVXT.RevitExport
                     string no = NextNo();
                     var sheet = ViewSheet.Create(d, tb ?? ElementId.InvalidElementId);
                     sheet.SheetNumber = no; sheet.Name = "Thống kê cửa, phòng"; ns++;
-                    var o = Outline(sheet);
-                    double y = o.Max.V - VxtRevit.ToFt(0.03);
+                    var o = DrawArea(d, sheet);
+                    double gap = VxtRevit.ToFt(0.01), x = o.Min.U + gap, y = o.Max.V - gap, colW = 0;
                     foreach (var id in sch)
-                        try { ScheduleSheetInstance.Create(d, sheet.Id, id, new XYZ(o.Min.U + VxtRevit.ToFt(0.03), y, 0)); y -= VxtRevit.ToFt(0.09); }
+                        try
+                        {
+                            var si = ScheduleSheetInstance.Create(d, sheet.Id, id, new XYZ(x, y, 0));
+                            d.Regenerate();
+                            var bb = si.get_BoundingBox(sheet);
+                            if (bb == null) { y -= VxtRevit.ToFt(0.09); continue; }
+                            double bh = bb.Max.Y - bb.Min.Y, bw = bb.Max.X - bb.Min.X;
+                            if (y - bh < o.Min.V && y < o.Max.V - gap - 1e-6)
+                            {
+                                // hết chỗ theo chiều cao → sang cột kế bên
+                                x += colW + gap; y = o.Max.V - gap; colW = 0;
+                                ElementTransformUtils.MoveElement(d, si.Id, new XYZ(x - bb.Min.X, y - bb.Max.Y, 0));
+                            }
+                            else ElementTransformUtils.MoveElement(d, si.Id, new XYZ(x - bb.Min.X, y - bb.Max.Y, 0));
+                            y -= bh + gap; colW = Math.Max(colW, bw);
+                        }
                         catch (Exception e5) { log.Add("Đặt bảng thống kê: " + e5.Message); }
                 }
             }
@@ -227,15 +259,35 @@ namespace KetCauVXT.RevitExport
             return o;
         }
 
+        /// <summary>Vùng vẽ của tờ: theo khung tên thật (khung của template có thể đặt gốc ở bất kỳ đâu), trừ dải khung tên bên phải / dưới.</summary>
+        internal static BoundingBoxUV DrawArea(Document d, ViewSheet sheet)
+        {
+            try
+            {
+                d.Regenerate();
+                var tbi = new FilteredElementCollector(d, sheet.Id).OfCategory(BuiltInCategory.OST_TitleBlocks).WhereElementIsNotElementType().FirstElement();
+                var bb = tbi?.get_BoundingBox(sheet);
+                if (bb != null && bb.Max.X - bb.Min.X > 0.3)
+                {
+                    double w = bb.Max.X - bb.Min.X, h = bb.Max.Y - bb.Min.Y;
+                    // khung tên đứng (dải bên phải) khi tờ nằm ngang; khung tên nằm (dải dưới) khi tờ đứng
+                    if (w >= h) return new BoundingBoxUV(bb.Min.X + w * 0.04, bb.Min.Y + h * 0.04, bb.Max.X - w * 0.2, bb.Max.Y - h * 0.04);
+                    return new BoundingBoxUV(bb.Min.X + w * 0.05, bb.Min.Y + h * 0.18, bb.Max.X - w * 0.05, bb.Max.Y - h * 0.04);
+                }
+            }
+            catch { }
+            return Outline(sheet);
+        }
+
         private static void Place(Document d, ViewSheet sheet, List<ElementId> views, List<string> log)
         {
-            var o = Outline(sheet);
+            var o = DrawArea(d, sheet);
             double w = o.Max.U - o.Min.U, h = o.Max.V - o.Min.V;
             for (int i = 0; i < views.Count; i++)
             {
                 // 1 khung nhìn: giữa tờ; 2 khung nhìn: trên / dưới
                 double cy = views.Count == 1 ? o.Min.V + h / 2 : o.Min.V + h * (i == 0 ? 0.72 : 0.3);
-                var pt = new XYZ(o.Min.U + w * 0.45, cy, 0);
+                var pt = new XYZ(o.Min.U + w * 0.5, cy, 0);
                 try { if (Viewport.CanAddViewToSheet(d, sheet.Id, views[i])) Viewport.Create(d, sheet.Id, views[i], pt); }
                 catch (Exception ex) { log.Add("Đặt khung nhìn lên " + sheet.SheetNumber + ": " + ex.Message); }
             }

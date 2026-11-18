@@ -1399,7 +1399,7 @@
       ]
     },
     {
-      "Id": "W39",
+      "Id": "W50",
       "Level": "Tầng 2",
       "X1": 12.485,
       "Y1": 0.11,
@@ -2070,7 +2070,7 @@
     },
     {
       "Level": "Tầng 2",
-      "Name": "Phòng thay đồ",
+      "Name": "Kho + thay đồ",
       "Number": "202",
       "Outline": [
         [
