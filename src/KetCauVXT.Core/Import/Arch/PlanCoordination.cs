@@ -573,8 +573,9 @@ public static class PlanCoordination
                     double tw = Thick(wl);
                     double worst = 0;
                     for (int q = 0; q <= 10; q++)
-                        for (int s2 = -1; s2 <= 1; s2 += 2)
+                        for (int k2 = -4; k2 <= 4; k2++)
                         {
+                            double s2 = k2 / 4.0; // ngang vế: hai mép + phần giữa (tường có thể nằm lọt trong bề rộng vế)
                             double px = run.X1 + ux * len * q / 10 - uy * s2 * (w / 2 - 0.01), py = run.Y1 + uy * len * q / 10 + ux * s2 * (w / 2 - 0.01);
                             var (d, uu, ll) = Line(wl, px, py);
                             if (uu < 0 || uu > ll) continue; // tường là hình chữ nhật dọc tim, kết thúc tại điểm đầu / cuối
