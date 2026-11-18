@@ -344,7 +344,8 @@ namespace KetCauVXT.RevitExport
                 // ảnh phối cảnh: ẩn trục, cao độ, ký hiệu → khung hình ôm sát công trình
                 foreach (var bic in new[] { BuiltInCategory.OST_Grids, BuiltInCategory.OST_Levels, BuiltInCategory.OST_SectionBox, BuiltInCategory.OST_RoomSeparationLines, BuiltInCategory.OST_Rooms })
                     try { v.SetCategoryHidden(new ElementId(bic), true); } catch { }
-                try { v.DisplayStyle = DisplayStyle.Realistic; } catch { }
+                // Tô bóng (Shaded) dùng màu vật liệu (Material.Color) – vật liệu mặt tiền của phương án hiện đúng màu, kính trong suốt
+                try { v.DisplayStyle = DisplayStyle.ShadingWithEdges; } catch { }
                 try { v.DetailLevel = ViewDetailLevel.Fine; } catch { }
             }
             catch (Exception e) { log.Add("Phối cảnh 3D: " + e.Message); }

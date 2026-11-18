@@ -292,6 +292,36 @@ namespace KetCauVXT.RevitExport
                     }
                 }
             }
+            // mép sàn (ban công, mái đua, sàn tầng) quay ra ngoài
+            var lvOrder = s.Levels.OrderBy(l => l.Elevation).Select(l => l.Name).ToList();
+            var fById = s.Floors.ToDictionary(f => BuildArchitectureCommand.Prefix + f.Id, f => f, StringComparer.OrdinalIgnoreCase);
+            foreach (var fl in new FilteredElementCollector(d).OfClass(typeof(Floor)).Cast<Floor>())
+            {
+                string id; try { id = VxtRevit.GetVxtId(fl); } catch { continue; }
+                if (!fById.TryGetValue(id, out var fs)) continue;
+                int li = lvOrder.FindIndex(x => x.Equals(fs.Level, StringComparison.OrdinalIgnoreCase));
+                var lvNames = new List<string> { fs.Level };
+                if (li > 0) lvNames.Add(lvOrder[li - 1]);
+                var rooms = s.Rooms.Where(r => lvNames.Contains(r.Level, StringComparer.OrdinalIgnoreCase) && r.Outline.Count >= 3 && !Outdoor(r.Name)).ToList();
+                var geo = fl.get_Geometry(new Options { ComputeReferences = true });
+                if (geo == null) continue;
+                foreach (var go in geo)
+                {
+                    if (!(go is Solid so) || so.Volume <= 0) continue;
+                    foreach (Face f in so.Faces)
+                    {
+                        var bb = f.GetBoundingBox();
+                        var uv = new UV((bb.Min.U + bb.Max.U) / 2, (bb.Min.V + bb.Max.V) / 2);
+                        XYZ p, nrm;
+                        try { p = f.Evaluate(uv); nrm = f.ComputeNormal(uv); } catch { continue; }
+                        if (Math.Abs(nrm.Z) > 0.2) continue;
+                        var q = p + new XYZ(nrm.X, nrm.Y, 0).Normalize() * VxtRevit.ToFt(0.3);
+                        double qx = q.X / VxtRevit.ToFt(1), qy = q.Y / VxtRevit.ToFt(1);
+                        if (rooms.Any(rm => InPoly(rm.Outline, qx, qy))) continue;
+                        try { d.Paint(fl.Id, f, mat); n++; } catch { }
+                    }
+                }
+            }
             return n;
         }
     }
