@@ -120,13 +120,13 @@ namespace KetCauVXT.RevitExport
                     try
                     {
                         var mk = ElevationMarker.CreateElevationMarker(d, vftEl.Id, org, 100);
-                        ViewSection keep = null;
-                        for (int i = 0; i < 4; i++)
-                        {
-                            var ev = mk.CreateElevation(d, plans[0], i);
-                            d.Regenerate();
-                            if (keep == null && ev.ViewDirection.DotProduct(n) > 0.9) keep = ev; else d.Delete(ev.Id);
-                        }
+                        // tạo đủ 4 hướng rồi mới xoá hướng thừa (xoá hết khung nhìn của ký hiệu thì Revit xoá luôn ký hiệu)
+                        var evs = new List<ViewSection>();
+                        for (int i = 0; i < mk.MaximumViewCount && i < 4; i++)
+                            try { if (mk.IsAvailableIndex(i)) evs.Add(mk.CreateElevation(d, plans[0], i)); } catch { }
+                        d.Regenerate();
+                        ViewSection keep = evs.OrderByDescending(ev => ev.ViewDirection.DotProduct(n)).FirstOrDefault(ev => ev.ViewDirection.DotProduct(n) > 0.9);
+                        foreach (var ev in evs) if (keep == null || ev.Id != keep.Id) d.Delete(ev.Id);
                         if (keep == null) { log.Add(sd.Name + ": không tạo được hướng nhìn."); continue; }
                         try { keep.Name = name; } catch { }
                         keep.Scale = 100; nv++;
