@@ -347,6 +347,13 @@ public static class PlanSpec
             {
                 double H = ex.Levels.First(l => l.Name == s.TopLevel).Elevation - ex.Levels.First(l => l.Name == s.BaseLevel).Elevation;
                 int n = s.Runs.Sum(q => q.Risers);
+                {
+                    var bl0 = ex.Levels.FirstOrDefault(l => l.Name == s.BaseLevel); var tl0 = ex.Levels.FirstOrDefault(l => l.Name == s.TopLevel);
+                    double hh = bl0 != null && tl0 != null ? tl0.Elevation - bl0.Elevation : 0;
+                    if (hh >= 3.0 && hh <= 3.95 && n > 0 && n != StairDesign.DefaultRisers) W($"Cầu thang {s.Id}: {n} bậc – quy ước nhà ở thông thường 21 bậc / tầng (lệnh --thang-u lập lại).");
+                    if (s.Runs.Count == 3 && (s.Runs[1].Risers < 2 || s.Runs[1].Risers > 4)) W($"Cầu thang {s.Id}: vế giữa {s.Runs[1].Risers} bậc – quy ước 2–4 bậc.");
+                    if (s.Runs.Count is > 0 and < 3 && hh >= 3.0) W($"Cầu thang {s.Id}: {s.Runs.Count} vế – ưu tiên thang chữ U 3 vế (vế giữa 2–4 bậc) nếu lồng thang đủ chỗ.");
+                }
                 if (n <= 0 || s.Runs.Any(q => q.Risers < 2)) E($"Cầu thang {s.Id}: mỗi vế cần ≥ 2 bậc đứng (Risers).");
                 else
                 {

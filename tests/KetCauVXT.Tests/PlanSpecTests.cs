@@ -71,8 +71,20 @@ public static class PlanSpecTests
         check("Phối hợp Project1: chạy lại không đổi số cột / dầm", pm.Columns.Count * 1000 + pm.Beams.Count, nCol * 1000 + nBm, 0);
         // thang lấn tường phải bị bắt
         var bad2 = RevitJsonImporter.ReadFile(Path.Combine(AppContext.BaseDirectory, "Data", "Project1_Moi.vxtphuongan.json"));
-        bad2.Stairs[0].Runs[0].Y1 += 0.2; bad2.Stairs[0].Runs[0].Y2 += 0.2;
+        bad2.Stairs[1].Runs[0].X1 += 0.2; bad2.Stairs[1].Runs[0].X2 += 0.2;
         check("Phối hợp: bắt vế thang lấn tường", B(PlanCoordination.Check(bad2).Any(i => i.Error && i.Message.Contains("lấn vào tường"))), 1, 0);
+
+        // thang chữ U 3 vế theo quy ước 21 bậc, vế giữa 3 bậc
+        {
+            var lv1 = new RvLevel { Name = "T1", Elevation = 0 }; var lv2 = new RvLevel { Name = "T2", Elevation = 3.75 };
+            var (u3, notes) = StairDesign.U3("CTX", lv1, lv2, 9.35, 0.22, 12.43, 3.525);
+            foreach (var n in notes) Console.WriteLine("    " + n);
+            check("Thang U3: 21 bậc 9 + 3 + 9", u3.Runs.Count * 1000 + u3.Runs[0].Risers * 100 + u3.Runs[1].Risers * 10 + u3.Runs[2].Risers, 3000 + 900 + 30 + 9, 0);
+            check("Thang U3: không lỗi", notes.Count(n => n.StartsWith("Lỗi")), 0, 0);
+            double b1 = Math.Abs(u3.Runs[0].Y2 - u3.Runs[0].Y1) / (u3.Runs[0].Risers - 1);
+            check("Thang U3: mặt bậc 250–300 mm", B(b1 >= 0.25 - 1e-6 && b1 <= 0.30 + 1e-6), 1, 0);
+            check("Thang U3: vế 1 và vế 3 nằm trong lồng thang", B(u3.Runs.All(r => Math.Min(r.X1, r.X2) >= 9.35 - 1e-6 && Math.Max(r.X1, r.X2) <= 12.43 + 1e-6 && Math.Min(r.Y1, r.Y2) >= 0.22 - 1e-6 && Math.Max(r.Y1, r.Y2) <= 3.525 + 1e-6)), 1, 0);
+        }
 
         // lỗi phải bắt được
         var bad = PlanSpec.SampleTownhouse();

@@ -404,16 +404,17 @@ public static class PlanCoordination
     {
         var r = new List<RvBeam>();
         int k = 0;
-        foreach (var f in s.UpFloors)
+        var loops = s.UpFloors.Select(f => (f.Outline, hole: false)).Concat(s.Holes.Select(h => (h.Outline, hole: true))).ToList();
+        foreach (var (ol, hole) in loops)
         {
-            var ol = f.Outline;
             for (int j = 0; j < ol.Count; j++)
             {
                 var a = ol[j]; var b = ol[(j + 1) % ol.Count];
                 double dx = b[0] - a[0], dy = b[1] - a[1], len = Math.Sqrt(dx * dx + dy * dy);
                 if (len < 1.0) continue;
                 double ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
-                if (!PlanSpec.InPoly(ol, (a[0] + b[0]) / 2 + nx * 0.05, (a[1] + b[1]) / 2 + ny * 0.05)) { nx = -nx; ny = -ny; }
+                // pháp tuyến hướng vào phần sàn: với mép sàn là vào trong đường bao, với lỗ thang là ra ngoài lỗ
+                if (PlanSpec.InPoly(ol, (a[0] + b[0]) / 2 + nx * 0.05, (a[1] + b[1]) / 2 + ny * 0.05) == hole) { nx = -nx; ny = -ny; }
                 int n = Math.Max(2, (int)Math.Ceiling(len / 0.25));
                 double? s0 = null;
                 for (int q = 0; q <= n; q++)
@@ -428,7 +429,7 @@ public static class PlanCoordination
                         if (u1 - u0 >= 1.0)
                         {
                             double ox = nx * o.EdgeB / 2, oy = ny * o.EdgeB / 2;
-                            r.Add(new RvBeam { Id = $"DB-{s.Up.Name}-{++k}", X1 = R(a[0] + ux * u0 + ox), Y1 = R(a[1] + uy * u0 + oy), X2 = R(a[0] + ux * u1 + ox), Y2 = R(a[1] + uy * u1 + oy), Z1 = s.Up.Elevation, Z2 = s.Up.Elevation, B = o.EdgeB, H = o.EdgeH, Level = s.Up.Name, Material = "Bê tông B20" });
+                            r.Add(new RvBeam { Id = (hole ? "DB-lo-" : "DB-") + $"{s.Up.Name}-{++k}", X1 = R(a[0] + ux * u0 + ox), Y1 = R(a[1] + uy * u0 + oy), X2 = R(a[0] + ux * u1 + ox), Y2 = R(a[1] + uy * u1 + oy), Z1 = s.Up.Elevation, Z2 = s.Up.Elevation, B = o.EdgeB, H = o.EdgeH, Level = s.Up.Name, Material = "Bê tông B20" });
                         }
                         s0 = null;
                     }

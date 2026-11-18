@@ -8,7 +8,7 @@
     },
     {
       "Name": "Tầng 1",
-      "Elevation": 0.0
+      "Elevation": 0
     },
     {
       "Name": "Tầng 2",
@@ -26,9 +26,9 @@
   "Grids": [
     {
       "Name": "1",
-      "X1": 0.0,
+      "X1": 0,
       "Y1": 6.072,
-      "X2": 0.0,
+      "X2": 0,
       "Y2": -2.087
     },
     {
@@ -61,237 +61,28 @@
     },
     {
       "Name": "6",
-      "X1": 20.0,
+      "X1": 20,
       "Y1": 6.072,
-      "X2": 20.0,
+      "X2": 20,
       "Y2": -2.087
     },
     {
       "Name": "B",
       "X1": -2.068,
-      "Y1": 5.0,
+      "Y1": 5,
       "X2": 21.573,
-      "Y2": 5.0
+      "Y2": 5
     },
     {
       "Name": "A",
       "X1": 21.573,
-      "Y1": 0.0,
+      "Y1": 0,
       "X2": -2.068,
-      "Y2": 0.0
+      "Y2": 0
     }
   ],
   "Columns": [],
-  "Beams": [
-    {
-      "Id": "D-W1",
-      "X1": 0.11,
-      "Y1": 4.89,
-      "Z1": 3.75,
-      "X2": 19.89,
-      "Y2": 4.89,
-      "Z2": 3.75,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 2",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W2",
-      "X1": 19.89,
-      "Y1": 4.89,
-      "Z1": 3.75,
-      "X2": 19.89,
-      "Y2": 0.11,
-      "Z2": 3.75,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 2",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W3",
-      "X1": 19.89,
-      "Y1": 0.11,
-      "Z1": 3.75,
-      "X2": 0.11,
-      "Y2": 0.11,
-      "Z2": 3.75,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 2",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W4",
-      "X1": 0.11,
-      "Y1": 0.11,
-      "Z1": 3.75,
-      "X2": 0.11,
-      "Y2": 4.89,
-      "Z2": 3.75,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 2",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W9",
-      "X1": 2.64,
-      "Y1": 3.725,
-      "Z1": 3.75,
-      "X2": 2.64,
-      "Y2": 3.185,
-      "Z2": 3.75,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 2",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "DB-Tầng 2-1",
-      "X1": 4.32,
-      "Y1": 3.824,
-      "Z1": 3.75,
-      "X2": 4.32,
-      "Y2": 4.956,
-      "Z2": 3.75,
-      "B": 0.2,
-      "H": 0.3,
-      "Level": "Tầng 2",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W12",
-      "X1": 19.945,
-      "Y1": 0.11,
-      "Z1": 7.35,
-      "X2": 1.905,
-      "Y2": 0.11,
-      "Z2": 7.35,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 3",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W13",
-      "X1": 4.31,
-      "Y1": 4.945,
-      "Z1": 7.35,
-      "X2": 4.31,
-      "Y2": 0.11,
-      "Z2": 7.35,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 3",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W35",
-      "X1": 17.325,
-      "Y1": 4.89,
-      "Z1": 7.35,
-      "X2": 19.89,
-      "Y2": 4.89,
-      "Z2": 7.35,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 3",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W36",
-      "X1": 19.89,
-      "Y1": 3.335,
-      "Z1": 7.35,
-      "X2": 19.89,
-      "Y2": 4.89,
-      "Z2": 7.35,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Tầng 3",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "DB-Tầng 3-1",
-      "X1": 2.005,
-      "Y1": 4.7,
-      "Z1": 7.35,
-      "X2": 2.005,
-      "Y2": 0.05,
-      "Z2": 7.35,
-      "B": 0.2,
-      "H": 0.3,
-      "Level": "Tầng 3",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W32",
-      "X1": 19.945,
-      "Y1": 0.11,
-      "Z1": 10.95,
-      "X2": 2.75,
-      "Y2": 0.11,
-      "Z2": 10.95,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Mái",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W33",
-      "X1": 4.31,
-      "Y1": 4.945,
-      "Z1": 10.95,
-      "X2": 4.31,
-      "Y2": 0.11,
-      "Z2": 10.95,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Mái",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W37",
-      "X1": 19.89,
-      "Y1": 3.335,
-      "Z1": 10.95,
-      "X2": 19.89,
-      "Y2": 4.89,
-      "Z2": 10.95,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Mái",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "D-W38",
-      "X1": 19.89,
-      "Y1": 4.89,
-      "Z1": 10.95,
-      "X2": 17.325,
-      "Y2": 4.89,
-      "Z2": 10.95,
-      "B": 0.22,
-      "H": 0.35,
-      "Level": "Mái",
-      "Material": "Bê tông B20"
-    },
-    {
-      "Id": "DB-Mái-1",
-      "X1": 2.85,
-      "Y1": 4.851,
-      "Z1": 10.95,
-      "X2": 2.85,
-      "Y2": 0.11,
-      "Z2": 10.95,
-      "B": 0.2,
-      "H": 0.3,
-      "Level": "Mái",
-      "Material": "Bê tông B20"
-    }
-  ],
+  "Beams": [],
   "Floors": [
     {
       "Id": "F-Tầng 2",
@@ -322,43 +113,43 @@
       "Thickness": 0.12,
       "Outline": [
         [
-          20.0,
-          5.0
+          20,
+          5
         ],
         [
           19.78,
-          5.0
+          5
         ],
         [
           17.38,
-          5.0
+          5
         ],
         [
           2.75,
-          5.0
+          5
         ],
         [
           1.905,
-          5.0
+          5
         ],
         [
           1.905,
-          0.0
+          0
         ],
         [
           2.75,
-          0.0
+          0
         ],
         [
           19.89,
-          0.0
+          0
         ],
         [
-          20.0,
-          0.0
+          20,
+          0
         ],
         [
-          20.0,
+          20,
           3.39
         ]
       ]
@@ -369,12 +160,12 @@
       "Thickness": 0.12,
       "Outline": [
         [
-          20.0,
-          5.0
+          20,
+          5
         ],
         [
           2.75,
-          5.0
+          5
         ],
         [
           2.75,
@@ -386,18 +177,18 @@
         ],
         [
           2.75,
-          0.0
+          0
         ],
         [
           19.89,
-          0.0
+          0
         ],
         [
-          20.0,
-          0.0
+          20,
+          0
         ],
         [
-          20.0,
+          20,
           4.89
         ]
       ]
@@ -408,51 +199,51 @@
       "Thickness": 0.15,
       "Outline": [
         [
-          20.0,
-          5.0
+          20,
+          5
         ],
         [
-          0.0,
-          5.0
+          0,
+          5
         ],
         [
-          0.0,
+          0,
           4.78
         ],
         [
-          0.0,
+          0,
           4.66
         ],
         [
-          0.0,
+          0,
           3.46
         ],
         [
-          0.0,
+          0,
           2.975
         ],
         [
-          0.0,
+          0,
           0.375
         ],
         [
-          0.0,
+          0,
           0.22
         ],
         [
-          0.0,
-          0.0
+          0,
+          0
         ],
         [
           19.78,
-          0.0
+          0
         ],
         [
-          20.0,
-          0.0
+          20,
+          0
         ],
         [
-          20.0,
+          20,
           4.78
         ]
       ]
@@ -494,7 +285,7 @@
       "Y1": 4.89,
       "X2": 19.89,
       "Y2": 0.11,
-      "Height": 3.4,
+      "Height": 3.45,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -522,7 +313,7 @@
       "Y1": 0.11,
       "X2": 0.11,
       "Y2": 0.11,
-      "Height": 3.4,
+      "Height": 3.3,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -550,7 +341,7 @@
       "Y1": 0.11,
       "X2": 0.11,
       "Y2": 4.89,
-      "Height": 3.4,
+      "Height": 3.35,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -628,69 +419,13 @@
       ]
     },
     {
-      "Id": "W8",
-      "Level": "Tầng 1",
-      "X1": 7.985,
-      "Y1": 3.725,
-      "X2": 2.64,
-      "Y2": 3.725,
-      "Height": 3.63,
-      "BaseOffset": 0,
-      "TypeName": "Tường 110 trát 2 mặt",
-      "Layers": [
-        {
-          "Function": "Finish1",
-          "Material": "Vữa xi măng",
-          "Thickness": 0.015
-        },
-        {
-          "Function": "Structure",
-          "Material": "Gạch rỗng",
-          "Thickness": 0.08
-        },
-        {
-          "Function": "Finish2",
-          "Material": "Vữa xi măng",
-          "Thickness": 0.015
-        }
-      ]
-    },
-    {
-      "Id": "W9",
-      "Level": "Tầng 1",
-      "X1": 2.64,
-      "Y1": 3.725,
-      "X2": 2.64,
-      "Y2": 3.185,
-      "Height": 3.4,
-      "BaseOffset": 0,
-      "TypeName": "Tường 220 trát 2 mặt",
-      "Layers": [
-        {
-          "Function": "Finish1",
-          "Material": "Vữa xi măng",
-          "Thickness": 0.015
-        },
-        {
-          "Function": "Structure",
-          "Material": "Gạch đặc",
-          "Thickness": 0.19
-        },
-        {
-          "Function": "Finish2",
-          "Material": "Vữa xi măng",
-          "Thickness": 0.015
-        }
-      ]
-    },
-    {
       "Id": "W10",
       "Level": "Tầng 2",
       "X1": 1.905,
       "Y1": 4.945,
       "X2": 17.325,
       "Y2": 4.945,
-      "Height": 3.48,
+      "Height": 3.15,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -718,7 +453,7 @@
       "Y1": 3.335,
       "X2": 19.945,
       "Y2": 0.11,
-      "Height": 3.48,
+      "Height": 3.3,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -746,7 +481,7 @@
       "Y1": 0.11,
       "X2": 1.905,
       "Y2": 0.11,
-      "Height": 3.25,
+      "Height": 3.15,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -774,7 +509,7 @@
       "Y1": 4.945,
       "X2": 4.31,
       "Y2": 0.11,
-      "Height": 3.25,
+      "Height": 3.2,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -942,7 +677,7 @@
       "Y1": 3.525,
       "X2": 9.295,
       "Y2": 0.11,
-      "Height": 3.48,
+      "Height": 3.2,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -970,7 +705,7 @@
       "Y1": 0.11,
       "X2": 16.085,
       "Y2": 3.525,
-      "Height": 3.48,
+      "Height": 3.2,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -1026,7 +761,7 @@
       "Y1": 4.945,
       "X2": 17.325,
       "Y2": 4.945,
-      "Height": 3.48,
+      "Height": 3.15,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -1054,7 +789,7 @@
       "Y1": 3.335,
       "X2": 19.945,
       "Y2": 0.11,
-      "Height": 3.48,
+      "Height": 3.3,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -1194,7 +929,7 @@
       "Y1": 3.525,
       "X2": 9.295,
       "Y2": 0.11,
-      "Height": 3.48,
+      "Height": 3.2,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -1222,7 +957,7 @@
       "Y1": 0.11,
       "X2": 16.085,
       "Y2": 3.525,
-      "Height": 3.48,
+      "Height": 3.2,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -1278,7 +1013,7 @@
       "Y1": 3.525,
       "X2": 12.485,
       "Y2": 0.11,
-      "Height": 3.48,
+      "Height": 3.2,
       "BaseOffset": 0,
       "TypeName": "Tường 110 trát 2 mặt",
       "Layers": [
@@ -1306,7 +1041,7 @@
       "Y1": 0.11,
       "X2": 2.75,
       "Y2": 0.11,
-      "Height": 3.25,
+      "Height": 3.15,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -1334,7 +1069,7 @@
       "Y1": 4.945,
       "X2": 4.31,
       "Y2": 0.11,
-      "Height": 3.25,
+      "Height": 3.2,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -1356,41 +1091,13 @@
       ]
     },
     {
-      "Id": "W34",
-      "Level": "Tầng 1",
-      "X1": 2.64,
-      "Y1": 3.185,
-      "X2": 0.11,
-      "Y2": 3.185,
-      "Height": 3.63,
-      "BaseOffset": 0,
-      "TypeName": "Tường 110 trát 2 mặt",
-      "Layers": [
-        {
-          "Function": "Finish1",
-          "Material": "Vữa xi măng",
-          "Thickness": 0.015
-        },
-        {
-          "Function": "Structure",
-          "Material": "Gạch rỗng",
-          "Thickness": 0.08
-        },
-        {
-          "Function": "Finish2",
-          "Material": "Vữa xi măng",
-          "Thickness": 0.015
-        }
-      ]
-    },
-    {
       "Id": "W35",
       "Level": "Tầng 2",
       "X1": 17.325,
       "Y1": 4.89,
       "X2": 19.89,
       "Y2": 4.89,
-      "Height": 3.25,
+      "Height": 3.3,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -1418,7 +1125,7 @@
       "Y1": 3.335,
       "X2": 19.89,
       "Y2": 4.89,
-      "Height": 3.25,
+      "Height": 3.3,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -1446,7 +1153,7 @@
       "Y1": 3.335,
       "X2": 19.89,
       "Y2": 4.89,
-      "Height": 3.25,
+      "Height": 3.3,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -1474,7 +1181,7 @@
       "Y1": 4.89,
       "X2": 17.325,
       "Y2": 4.89,
-      "Height": 3.25,
+      "Height": 3.3,
       "BaseOffset": 0,
       "TypeName": "Tường 220 trát 2 mặt",
       "Layers": [
@@ -1690,360 +1397,254 @@
           "Thickness": 0.015
         }
       ]
+    },
+    {
+      "Id": "W39",
+      "Level": "Tầng 2",
+      "X1": 12.485,
+      "Y1": 0.11,
+      "X2": 12.485,
+      "Y2": 3.525,
+      "Height": 3.2,
+      "BaseOffset": 0,
+      "TypeName": "Tường 110 trát 2 mặt",
+      "Layers": [
+        {
+          "Function": "Finish1",
+          "Material": "Vữa xi măng",
+          "Thickness": 0.015
+        },
+        {
+          "Function": "Structure",
+          "Material": "Gạch rỗng",
+          "Thickness": 0.08
+        },
+        {
+          "Function": "Finish2",
+          "Material": "Vữa xi măng",
+          "Thickness": 0.015
+        }
+      ]
     }
   ],
   "Openings": [
     {
       "Id": "O1",
-      "Level": "Tầng 1",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "1400 x 2200 mm",
+      "Family": "CỬA ĐI 2 CÁNH NHÔM KÍNH",
       "X": 0.11,
       "Y": 4.06,
       "Width": 1.16,
       "Height": 2.2,
       "Sill": 0,
-      "Family": "CỬA ĐI 2 CÁNH NHÔM KÍNH"
+      "Flipped": false,
+      "Level": "Tầng 1"
     },
     {
       "Id": "O2",
-      "Level": "Tầng 1",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CuaCuon_M01",
+      "Family": "CuaCuon_M01",
       "X": 0.11,
       "Y": 1.675,
       "Width": 2.6,
       "Height": 3,
       "Sill": 0,
-      "Family": "CuaCuon_M01"
+      "Flipped": false,
+      "Level": "Tầng 1"
     },
     {
       "Id": "O3",
-      "Level": "Tầng 1",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CUA VE SINH 750X2000",
-      "X": 19.405,
+      "Family": "CỬA VS",
+      "X": 19.345,
       "Y": 3.225,
       "Width": 0.75,
       "Height": 2.2,
       "Sill": 0,
-      "Family": "CỬA VS"
+      "Flipped": false,
+      "Level": "Tầng 1"
     },
     {
       "Id": "O4",
-      "Level": "Tầng 3",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CUA VE SINH 750X2000",
+      "Family": "CỬA VS",
       "X": 19.315,
       "Y": 3.335,
       "Width": 0.75,
       "Height": 2.2,
       "Sill": 0,
-      "Family": "CỬA VS"
+      "Flipped": false,
+      "Level": "Tầng 3"
     },
     {
       "Id": "O5",
-      "Level": "Tầng 2",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CUA DI 1 CANH CO O THOANG",
+      "Family": "CUA DI 1 CANH CO O THOANG",
       "X": 8.64,
       "Y": 3.525,
       "Width": 0.9,
       "Height": 2.7,
       "Sill": 0,
-      "Family": "CUA DI 1 CANH CO O THOANG"
+      "Flipped": false,
+      "Level": "Tầng 2"
     },
     {
       "Id": "O6",
-      "Level": "Tầng 2",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CUA DI 1 CANH CO O THOANG",
+      "Family": "CUA DI 1 CANH CO O THOANG",
       "X": 16.695,
       "Y": 3.525,
       "Width": 0.9,
       "Height": 2.7,
       "Sill": 0,
-      "Family": "CUA DI 1 CANH CO O THOANG"
+      "Flipped": false,
+      "Level": "Tầng 2"
     },
     {
       "Id": "O7",
-      "Level": "Tầng 3",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CUA DI 1 CANH CO O THOANG",
+      "Family": "CUA DI 1 CANH CO O THOANG",
       "X": 7.185,
       "Y": 4.215,
       "Width": 0.9,
       "Height": 2.7,
       "Sill": 0,
-      "Family": "CUA DI 1 CANH CO O THOANG"
+      "Flipped": false,
+      "Level": "Tầng 3"
     },
     {
       "Id": "O8",
-      "Level": "Tầng 3",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CUA DI 1 CANH CO O THOANG",
+      "Family": "CUA DI 1 CANH CO O THOANG",
       "X": 8.675,
       "Y": 3.525,
       "Width": 0.9,
       "Height": 2.7,
       "Sill": 0,
-      "Family": "CUA DI 1 CANH CO O THOANG"
+      "Flipped": false,
+      "Level": "Tầng 3"
     },
     {
       "Id": "O9",
-      "Level": "Tầng 3",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CUA DI 1 CANH CO O THOANG",
+      "Family": "CUA DI 1 CANH CO O THOANG",
       "X": 13.105,
       "Y": 3.525,
       "Width": 0.9,
       "Height": 2.7,
       "Sill": 0,
-      "Family": "CUA DI 1 CANH CO O THOANG"
+      "Flipped": false,
+      "Level": "Tầng 3"
     },
     {
       "Id": "O10",
-      "Level": "Tầng 2",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CỬA ĐI LÙA 2 CÁNH + Ô FIX",
+      "Family": "D10 CỬA ĐI LÙA 2 CÁNH+Ô FIX TRÊN",
       "X": 4.31,
-      "Y": 1.82,
+      "Y": 1.88,
       "Width": 3.2,
       "Height": 2.7,
       "Sill": 0,
-      "Family": "D10 CỬA ĐI LÙA 2 CÁNH+Ô FIX TRÊN"
+      "Flipped": false,
+      "Level": "Tầng 2"
     },
     {
       "Id": "O11",
-      "Level": "Tầng 3",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CỬA ĐI LÙA 2 CÁNH + Ô FIX",
+      "Family": "D10 CỬA ĐI LÙA 2 CÁNH+Ô FIX TRÊN",
       "X": 4.31,
       "Y": 1.945,
       "Width": 3.2,
       "Height": 2.7,
       "Sill": 0,
-      "Family": "D10 CỬA ĐI LÙA 2 CÁNH+Ô FIX TRÊN"
+      "Flipped": false,
+      "Level": "Tầng 3"
     },
     {
       "Id": "O12",
-      "Level": "Tầng 2",
+      "HostId": "",
       "Category": "Door",
       "TypeName": "CUA VE SINH 750X2000",
+      "Family": "CỬA VS",
       "X": 17.325,
-      "Y": 4.405,
+      "Y": 4.345,
       "Width": 0.75,
       "Height": 2.2,
       "Sill": 0,
-      "Family": "CỬA VS"
+      "Flipped": false,
+      "Level": "Tầng 2"
     },
     {
       "Id": "O13",
-      "Level": "Tầng 3",
+      "HostId": "",
       "Category": "Window",
       "TypeName": "cua so 1 canh vach kinh tren",
+      "Family": "cua so 1 canh vach kinh tren",
       "X": 4.31,
       "Y": 4.29,
       "Width": 0.75,
       "Height": 1.95,
       "Sill": 0.8,
-      "Family": "cua so 1 canh vach kinh tren"
+      "Flipped": false,
+      "Level": "Tầng 3"
     },
     {
       "Id": "O14",
-      "Level": "Tầng 2",
+      "HostId": "",
       "Category": "Window",
       "TypeName": "cua so 1 canh vach kinh tren",
+      "Family": "cua so 1 canh vach kinh tren",
       "X": 4.31,
       "Y": 4.29,
       "Width": 0.75,
       "Height": 1.95,
       "Sill": 0.8,
-      "Family": "cua so 1 canh vach kinh tren"
+      "Flipped": false,
+      "Level": "Tầng 2"
+    },
+    {
+      "Id": "O15",
+      "HostId": "",
+      "Category": "Door",
+      "TypeName": "CUA DI 1 CANH CO O THOANG",
+      "Family": "CUA DI 1 CANH CO O THOANG",
+      "X": 6.2,
+      "Y": 3.725,
+      "Width": 0.8,
+      "Height": 2.7,
+      "Sill": 0,
+      "Flipped": false,
+      "Level": "Tầng 2"
     }
   ],
   "Rooms": [
     {
-      "Id": "R101",
-      "Level": "Tầng 1",
-      "Name": "Gara + phòng khách",
-      "Number": "101",
-      "Outline": [
-        [
-          17.27,
-          4.78
-        ],
-        [
-          8.04,
-          4.78
-        ],
-        [
-          8.04,
-          3.67
-        ],
-        [
-          2.75,
-          3.67
-        ],
-        [
-          2.75,
-          3.13
-        ],
-        [
-          0.22,
-          3.13
-        ],
-        [
-          0.22,
-          0.22
-        ],
-        [
-          19.78,
-          0.22
-        ],
-        [
-          19.78,
-          3.17
-        ],
-        [
-          17.27,
-          3.17
-        ]
-      ]
-    },
-    {
-      "Id": "R102",
-      "Level": "Tầng 1",
-      "Name": "WC",
-      "Number": "102",
-      "Outline": [
-        [
-          19.78,
-          4.78
-        ],
-        [
-          17.38,
-          4.78
-        ],
-        [
-          17.38,
-          3.28
-        ],
-        [
-          19.78,
-          3.28
-        ]
-      ]
-    },
-    {
-      "Id": "R103",
-      "Level": "Tầng 1",
-      "Name": "Sảnh",
-      "Number": "103",
-      "Outline": [
-        [
-          7.93,
-          4.78
-        ],
-        [
-          0.22,
-          4.78
-        ],
-        [
-          0.22,
-          3.24
-        ],
-        [
-          2.53,
-          3.24
-        ],
-        [
-          2.53,
-          3.78
-        ],
-        [
-          7.93,
-          3.78
-        ]
-      ]
-    },
-    {
-      "Id": "R201",
-      "Level": "Tầng 2",
-      "Name": "Góc làm việc",
-      "Number": "201",
-      "Outline": [
-        [
-          7.93,
-          4.89
-        ],
-        [
-          4.42,
-          4.89
-        ],
-        [
-          4.42,
-          3.78
-        ],
-        [
-          7.93,
-          3.78
-        ]
-      ]
-    },
-    {
-      "Id": "R202",
-      "Level": "Tầng 2",
-      "Name": "Sinh hoạt chung",
-      "Number": "202",
-      "Outline": [
-        [
-          17.27,
-          4.89
-        ],
-        [
-          7.93,
-          4.89
-        ],
-        [
-          7.93,
-          3.725
-        ],
-        [
-          8.04,
-          3.725
-        ],
-        [
-          8.04,
-          3.58
-        ],
-        [
-          9.35,
-          3.58
-        ],
-        [
-          9.35,
-          0.22
-        ],
-        [
-          16.03,
-          0.22
-        ],
-        [
-          16.03,
-          3.58
-        ],
-        [
-          17.27,
-          3.58
-        ]
-      ]
-    },
-    {
       "Id": "R203",
       "Level": "Tầng 2",
       "Name": "Phòng ngủ 1",
-      "Number": "203",
+      "Number": "201",
       "Outline": [
         [
           4.42,
@@ -2087,7 +1688,7 @@
       "Id": "R204",
       "Level": "Tầng 2",
       "Name": "WC",
-      "Number": "204",
+      "Number": "205",
       "Outline": [
         [
           17.38,
@@ -2115,7 +1716,7 @@
       "Id": "R205",
       "Level": "Tầng 2",
       "Name": "Phòng ngủ 2",
-      "Number": "205",
+      "Number": "206",
       "Outline": [
         [
           19.89,
@@ -2147,7 +1748,7 @@
       "Id": "R301",
       "Level": "Tầng 3",
       "Name": "WC",
-      "Number": "301",
+      "Number": "306",
       "Outline": [
         [
           17.38,
@@ -2171,7 +1772,7 @@
       "Id": "R302",
       "Level": "Tầng 3",
       "Name": "Phòng ngủ 2",
-      "Number": "302",
+      "Number": "304",
       "Outline": [
         [
           16.03,
@@ -2219,7 +1820,7 @@
       "Id": "R304",
       "Level": "Tầng 3",
       "Name": "Phòng thờ",
-      "Number": "304",
+      "Number": "302",
       "Outline": [
         [
           7.24,
@@ -2243,7 +1844,7 @@
       "Id": "R305",
       "Level": "Tầng 3",
       "Name": "Phòng ngủ 1",
-      "Number": "305",
+      "Number": "301",
       "Outline": [
         [
           7.13,
@@ -2271,7 +1872,7 @@
       "Id": "R306",
       "Level": "Tầng 3",
       "Name": "Sinh hoạt chung",
-      "Number": "306",
+      "Number": "305",
       "Outline": [
         [
           17.27,
@@ -2322,6 +1923,254 @@
           3.28
         ]
       ]
+    },
+    {
+      "Level": "Tầng 1",
+      "Name": "Gara + sảnh",
+      "Number": "101",
+      "Outline": [
+        [
+          0.22,
+          0.22
+        ],
+        [
+          6.0,
+          0.22
+        ],
+        [
+          6.0,
+          4.78
+        ],
+        [
+          0.22,
+          4.78
+        ]
+      ],
+      "Id": "P1"
+    },
+    {
+      "Level": "Tầng 1",
+      "Name": "Phòng khách",
+      "Number": "102",
+      "Outline": [
+        [
+          6.0,
+          0.22
+        ],
+        [
+          9.35,
+          0.22
+        ],
+        [
+          9.35,
+          3.525
+        ],
+        [
+          12.43,
+          3.525
+        ],
+        [
+          12.43,
+          0.22
+        ],
+        [
+          13.5,
+          0.22
+        ],
+        [
+          13.5,
+          4.78
+        ],
+        [
+          6.0,
+          4.78
+        ]
+      ],
+      "Id": "P2"
+    },
+    {
+      "Level": "Tầng 1",
+      "Name": "Cầu thang",
+      "Number": "103",
+      "Outline": [
+        [
+          9.35,
+          0.22
+        ],
+        [
+          12.43,
+          0.22
+        ],
+        [
+          12.43,
+          3.525
+        ],
+        [
+          9.35,
+          3.525
+        ]
+      ],
+      "Id": "P3"
+    },
+    {
+      "Level": "Tầng 1",
+      "Name": "Bếp + phòng ăn",
+      "Number": "104",
+      "Outline": [
+        [
+          13.5,
+          0.22
+        ],
+        [
+          19.78,
+          0.22
+        ],
+        [
+          19.78,
+          3.17
+        ],
+        [
+          17.27,
+          3.17
+        ],
+        [
+          17.27,
+          4.78
+        ],
+        [
+          13.5,
+          4.78
+        ]
+      ],
+      "Id": "P4"
+    },
+    {
+      "Id": "R102",
+      "Level": "Tầng 1",
+      "Name": "WC",
+      "Number": "105",
+      "Outline": [
+        [
+          19.78,
+          4.78
+        ],
+        [
+          17.38,
+          4.78
+        ],
+        [
+          17.38,
+          3.28
+        ],
+        [
+          19.78,
+          3.28
+        ]
+      ]
+    },
+    {
+      "Level": "Tầng 2",
+      "Name": "Phòng thay đồ",
+      "Number": "202",
+      "Outline": [
+        [
+          4.42,
+          3.78
+        ],
+        [
+          7.93,
+          3.78
+        ],
+        [
+          7.93,
+          4.89
+        ],
+        [
+          4.42,
+          4.89
+        ]
+      ],
+      "Id": "P5"
+    },
+    {
+      "Level": "Tầng 2",
+      "Name": "Cầu thang",
+      "Number": "203",
+      "Outline": [
+        [
+          9.35,
+          0.22
+        ],
+        [
+          12.43,
+          0.22
+        ],
+        [
+          12.43,
+          3.525
+        ],
+        [
+          9.35,
+          3.525
+        ]
+      ],
+      "Id": "P6"
+    },
+    {
+      "Level": "Tầng 2",
+      "Name": "Sinh hoạt chung",
+      "Number": "204",
+      "Outline": [
+        [
+          17.27,
+          4.89
+        ],
+        [
+          7.93,
+          4.89
+        ],
+        [
+          7.93,
+          3.725
+        ],
+        [
+          8.04,
+          3.725
+        ],
+        [
+          8.04,
+          3.58
+        ],
+        [
+          9.35,
+          3.58
+        ],
+        [
+          9.35,
+          3.525
+        ],
+        [
+          12.54,
+          3.525
+        ],
+        [
+          12.54,
+          0.22
+        ],
+        [
+          16.03,
+          0.22
+        ],
+        [
+          16.03,
+          3.58
+        ],
+        [
+          17.27,
+          3.58
+        ]
+      ],
+      "Id": "P7"
     }
   ],
   "Mep": [],
@@ -2330,6 +2179,8 @@
       "Id": "CT1",
       "BaseLevel": "Tầng 1",
       "TopLevel": "Tầng 2",
+      "Shape": "3 vế chữ U",
+      "Width": 1.1,
       "Outline": [
         [
           9.35,
@@ -2348,38 +2199,36 @@
           3.525
         ]
       ],
-      "Shape": "1 vế thẳng",
-      "Width": 1.0,
       "Runs": [
         {
-          "X1": 11.93,
-          "Y1": 3.38,
-          "X2": 11.93,
-          "Y2": 1.22,
-          "Width": 1.0,
+          "X1": 11.88,
+          "Y1": 3.525,
+          "X2": 11.88,
+          "Y2": 1.325,
+          "Width": 1.1,
           "Risers": 9
         },
         {
-          "X1": 11.43,
-          "Y1": 0.72,
-          "X2": 10.35,
-          "Y2": 0.72,
-          "Width": 1.0,
-          "Risers": 5
+          "X1": 11.165,
+          "Y1": 0.772,
+          "X2": 10.615,
+          "Y2": 0.772,
+          "Width": 1.105,
+          "Risers": 3
         },
         {
-          "X1": 9.85,
-          "Y1": 1.635,
-          "X2": 9.85,
+          "X1": 9.9,
+          "Y1": 1.325,
+          "X2": 9.9,
           "Y2": 3.525,
-          "Width": 1.0,
-          "Risers": 8
+          "Width": 1.1,
+          "Risers": 9
         }
       ],
       "Landings": [
         [
           [
-            11.43,
+            11.165,
             0.22
           ],
           [
@@ -2388,11 +2237,11 @@
           ],
           [
             12.43,
-            1.22
+            1.325
           ],
           [
-            11.43,
-            1.22
+            11.165,
+            1.325
           ]
         ],
         [
@@ -2401,16 +2250,16 @@
             0.22
           ],
           [
-            10.35,
+            10.615,
             0.22
           ],
           [
-            10.35,
-            1.635
+            10.615,
+            1.325
           ],
           [
             9.35,
-            1.635
+            1.325
           ]
         ]
       ]
@@ -2419,6 +2268,8 @@
       "Id": "CT2",
       "BaseLevel": "Tầng 2",
       "TopLevel": "Tầng 3",
+      "Shape": "3 vế chữ U",
+      "Width": 1.1,
       "Outline": [
         [
           9.35,
@@ -2437,38 +2288,36 @@
           3.525
         ]
       ],
-      "Shape": "3 vế chữ U, 2 chiếu nghỉ",
-      "Width": 1.0,
       "Runs": [
         {
-          "X1": 11.93,
-          "Y1": 3.38,
-          "X2": 11.93,
-          "Y2": 1.22,
-          "Width": 1.0,
+          "X1": 11.88,
+          "Y1": 3.525,
+          "X2": 11.88,
+          "Y2": 1.325,
+          "Width": 1.1,
           "Risers": 9
         },
         {
-          "X1": 11.43,
-          "Y1": 0.72,
-          "X2": 10.35,
-          "Y2": 0.72,
-          "Width": 1.0,
-          "Risers": 5
+          "X1": 11.165,
+          "Y1": 0.772,
+          "X2": 10.615,
+          "Y2": 0.772,
+          "Width": 1.105,
+          "Risers": 3
         },
         {
-          "X1": 9.85,
-          "Y1": 1.635,
-          "X2": 9.85,
+          "X1": 9.9,
+          "Y1": 1.325,
+          "X2": 9.9,
           "Y2": 3.525,
-          "Width": 1.0,
-          "Risers": 8
+          "Width": 1.1,
+          "Risers": 9
         }
       ],
       "Landings": [
         [
           [
-            11.43,
+            11.165,
             0.22
           ],
           [
@@ -2477,11 +2326,11 @@
           ],
           [
             12.43,
-            1.22
+            1.325
           ],
           [
-            11.43,
-            1.22
+            11.165,
+            1.325
           ]
         ],
         [
@@ -2490,28 +2339,21 @@
             0.22
           ],
           [
-            10.35,
+            10.615,
             0.22
           ],
           [
-            10.35,
-            1.635
+            10.615,
+            1.325
           ],
           [
             9.35,
-            1.635
+            1.325
           ]
         ]
       ]
     }
   ],
-  "Site": {
-    "Width": 20,
-    "Depth": 5,
-    "Address": "Thái Nguyên",
-    "FrontSetback": 0,
-    "BackSetback": 0
-  },
   "Facade": {
     "Style": "Hiện đại",
     "Description": "Mặt tiền 5 m quay ra đường (x = 0), phong cách hiện đại. Khung viền xám than bao trọn tầng 2–3 (hai vách bên + dải đỉnh, dải chân ở mép sàn tầng 2). Ban công tầng 2 và tầng 3 lan can kính cường lực tay vịn đen. Lam gỗ đứng che nắng phía phải tầng 3. Tầng 1 trụ ốp đá granite xám đen hai bên cửa cuốn gara và cửa đi nhôm kính. Tường sơn trắng kem, tường lô gia sơn xám ghi nhạt. Mái: mái lệch lấy sáng phủ khối thang trên mái, sân thượng tường lan can 0,8 m.",
@@ -2574,6 +2416,8 @@
         "Id": "KV-TRAI",
         "Type": "Khoi",
         "Part": "Khung viền",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             -0.3,
@@ -2593,12 +2437,19 @@
           ]
         ],
         "Z0": 3.4,
-        "Z1": 11.75
+        "Z1": 11.75,
+        "Height": 0,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "KV-PHAI",
         "Type": "Khoi",
         "Part": "Khung viền",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             -0.3,
@@ -2618,12 +2469,19 @@
           ]
         ],
         "Z0": 3.4,
-        "Z1": 11.75
+        "Z1": 11.75,
+        "Height": 0,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "KV-DINH",
         "Type": "Khoi",
         "Part": "Khung viền",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             -0.3,
@@ -2643,23 +2501,30 @@
           ]
         ],
         "Z0": 11.75,
-        "Z1": 12.15
+        "Z1": 12.15,
+        "Height": 0,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "KV-CHAN",
         "Type": "Khoi",
         "Part": "Khung viền",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             -0.3,
             0.2
           ],
           [
-            0.0,
+            0,
             0.2
           ],
           [
-            0.0,
+            0,
             4.8
           ],
           [
@@ -2668,23 +2533,30 @@
           ]
         ],
         "Z0": 3.4,
-        "Z1": 3.75
+        "Z1": 3.75,
+        "Height": 0,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "OD-1",
         "Type": "Khoi",
         "Part": "Ốp đá",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             -0.04,
             -0.02
           ],
           [
-            0.0,
+            0,
             -0.02
           ],
           [
-            0.0,
+            0,
             0.375
           ],
           [
@@ -2693,23 +2565,30 @@
           ]
         ],
         "Z0": 0,
-        "Z1": 3.4
+        "Z1": 3.4,
+        "Height": 0,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "OD-2",
         "Type": "Khoi",
         "Part": "Ốp đá",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             -0.04,
             2.975
           ],
           [
-            0.0,
+            0,
             2.975
           ],
           [
-            0.0,
+            0,
             3.48
           ],
           [
@@ -2718,23 +2597,30 @@
           ]
         ],
         "Z0": 0,
-        "Z1": 3.4
+        "Z1": 3.4,
+        "Height": 0,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "OD-3",
         "Type": "Khoi",
         "Part": "Ốp đá",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             -0.04,
             4.64
           ],
           [
-            0.0,
+            0,
             4.64
           ],
           [
-            0.0,
+            0,
             5.02
           ],
           [
@@ -2743,13 +2629,18 @@
           ]
         ],
         "Z0": 0,
-        "Z1": 3.4
+        "Z1": 3.4,
+        "Height": 0,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "LC-T2",
         "Type": "LanCan",
-        "Style": "Kính",
         "Part": "Lan can",
+        "Style": "Kính",
         "Level": "Tầng 2",
         "Points": [
           [
@@ -2762,13 +2653,18 @@
           ]
         ],
         "Z0": 0,
-        "Height": 1.1
+        "Z1": 0,
+        "Height": 1.1,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "LC-T3",
         "Type": "LanCan",
-        "Style": "Kính",
         "Part": "Lan can",
+        "Style": "Kính",
         "Level": "Tầng 3",
         "Points": [
           [
@@ -2789,12 +2685,19 @@
           ]
         ],
         "Z0": 0,
-        "Height": 1.1
+        "Z1": 0,
+        "Height": 1.1,
+        "Thickness": 0,
+        "Spacing": 0,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "LAM-T3",
         "Type": "Lam",
         "Part": "Lam",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             -0.25,
@@ -2807,13 +2710,18 @@
         ],
         "Z0": 7.47,
         "Z1": 11.75,
+        "Height": 0,
         "Thickness": 0.05,
-        "Spacing": 0.12
+        "Spacing": 0.12,
+        "SlopeAxis": "",
+        "Color": ""
       },
       {
         "Id": "MAI-1",
         "Type": "MaiDoc",
         "Part": "Mái",
+        "Style": "",
+        "Level": "",
         "Points": [
           [
             7.085,
@@ -2826,10 +2734,20 @@
         ],
         "Z0": 11.75,
         "Z1": 12.25,
+        "Height": 0,
+        "Thickness": 0.1,
+        "Spacing": 0,
         "SlopeAxis": "-Y",
-        "Thickness": 0.1
+        "Color": ""
       }
     ]
+  },
+  "Site": {
+    "Width": 20,
+    "Depth": 5,
+    "Address": "Thái Nguyên",
+    "FrontSetback": 0,
+    "BackSetback": 0
   },
   "FamilySources": [
     "C:\\Users\\Admin\\Desktop\\man hinh\\Project1.rvt"

@@ -35,6 +35,7 @@ internal static class HeadlessCli
             if (string.Equals(args[0], FlagSample, StringComparison.OrdinalIgnoreCase)) return SamplePlan(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagRevit, StringComparison.OrdinalIgnoreCase)) return RevitToPlan(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagStair, StringComparison.OrdinalIgnoreCase)) return DesignStairs(args.Skip(1).ToList());
+            if (string.Equals(args[0], FlagStair, StringComparison.OrdinalIgnoreCase)) return StairU(args.Skip(1).ToList());
             if (string.Equals(args[0], FlagBeams, StringComparison.OrdinalIgnoreCase) || string.Equals(args[0], FlagCoord, StringComparison.OrdinalIgnoreCase)) return AddBeams(args.Skip(1).ToList());
         }
         catch (Exception e) { Say("Lỗi: " + e.Message); return 2; }
@@ -119,6 +120,50 @@ internal static class HeadlessCli
         int rc = PrintIssues(plan);
         SaveLog(files[1]);
         return rc;
+    }
+
+    /// <summary>
+    /// KetCauVXT.exe --thang-u &lt;file.vxtphuongan.json&gt; --id CT1 --tu "Tầng 1" --den "Tầng 2" --long x0,y0,x1,y1
+    ///   [--bac 21] [--ve-giua 3] [--rong 1.0] [--huong -Y] [--ben max|min]
+    /// Lập (hoặc thay) thang chữ U 3 vế theo quy ước 21 bậc / tầng, vế giữa 2–4 bậc, trong lồng thang (mặt trong tường).
+    /// </summary>
+    private static int StairU(List<string> a)
+    {
+        string file = null, id = null, from = null, to = null, box = null;
+        var o = new KetCauVXT.Import.Arch.StairDesign.U3Options();
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        for (int i = 0; i < a.Count; i++)
+        {
+            string v = i + 1 < a.Count ? a[i + 1] : null;
+            switch (a[i])
+            {
+                case "--id": id = v; i++; break;
+                case "--tu": from = v; i++; break;
+                case "--den": to = v; i++; break;
+                case "--long": box = v; i++; break;
+                case "--bac": o.Risers = int.Parse(v, inv); i++; break;
+                case "--ve-giua": o.Middle = int.Parse(v, inv); i++; break;
+                case "--rong": o.Width = double.Parse(v.Replace(',', '.'), inv); i++; break;
+                case "--huong": o.Run1Dir = v; i++; break;
+                case "--ben": o.Run1AtMax = !string.Equals(v, "min", StringComparison.OrdinalIgnoreCase); i++; break;
+                default: file = a[i]; break;
+            }
+        }
+        if (file == null || !File.Exists(file) || id == null || from == null || to == null || box == null)
+        { Say("Cần: --thang-u <phương án> --id CT1 --tu \"Tầng 1\" --den \"Tầng 2\" --long x0,y0,x1,y1 [--bac 21] [--ve-giua 3] [--rong 1.0] [--huong -Y] [--ben max]"); return 2; }
+        var p4 = box.Split(new[] { ',', ';' }).Select(x => double.Parse(x.Trim(), inv)).ToArray();
+        if (p4.Length != 4) { Say("--long cần 4 số x0,y0,x1,y1 (m)."); return 2; }
+        var ex = KetCauVXT.Import.RevitJsonImporter.ReadFile(file);
+        var b = ex.Levels.FirstOrDefault(l => l.Name == from); var t = ex.Levels.FirstOrDefault(l => l.Name == to);
+        if (b == null || t == null) { Say("Không có cao độ " + (b == null ? from : to)); return 2; }
+        var (st, notes) = KetCauVXT.Import.Arch.StairDesign.U3(id, b, t, p4[0], p4[1], p4[2], p4[3], o);
+        foreach (var n in notes) Say(n);
+        if (notes.Any(n => n.StartsWith("Lỗi"))) return 1;
+        ex.Stairs.RemoveAll(x => x.Id == id);
+        ex.Stairs.Add(st);
+        KetCauVXT.Import.Arch.PlanSpec.Save(ex, file);
+        Say("Đã ghi " + file + " – chạy lại --phoi-hop để cập nhật dầm quanh lỗ thang.");
+        return PrintIssues(ex);
     }
 
     /// <summary>
