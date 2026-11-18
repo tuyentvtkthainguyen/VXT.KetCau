@@ -416,7 +416,9 @@ namespace KetCauVXT.RevitExport
                             double run = (n / 2 - 1) * tread;
                             double land = Math.Max(w, L - run);
                             if (run + w > L + 0.3) c.Log.Add($"Cầu thang {st.Id}: ô thang ngắn ({L:0.00} m) so với {n} bậc – kiểm tra lại.");
-                            Func<double, double, XYZ> at = (u, v) => alongY ? P(x0 + v, y0 + u) : P(x0 + u, y0 + v);
+                            // đường vế đặt ở cao độ chân thang (toạ độ mô hình); cao độ vế / chiếu nghỉ của Revit tính từ chân thang
+                            double zb0 = b.ProjectElevation;
+                            Func<double, double, XYZ> at = (u, v) => { var q = alongY ? P(x0 + v, y0 + u) : P(x0 + u, y0 + v); return new XYZ(q.X, q.Y, zb0); };
                             if (Straight(st, W))
                             {
                                 // 1 vế thẳng dọc ô thang, chạy hết số bậc
@@ -429,8 +431,8 @@ namespace KetCauVXT.RevitExport
                             var r1 = StairsRun.CreateStraightRun(d, sid, Line.CreateBound(at(0, w / 2), at(run, w / 2)), StairsRunJustification.Center);
                             double zl = r1.TopElevation;
                             var p0 = at(run, W - w / 2); var p1 = at(0, W - w / 2);
-                            StairsRun.CreateStraightRun(d, sid, Line.CreateBound(new XYZ(p0.X, p0.Y, zl), new XYZ(p1.X, p1.Y, zl)), StairsRunJustification.Center);
-                            var lp = new List<XYZ> { at(run, 0), at(L, 0), at(L, W), at(run, W) };
+                            StairsRun.CreateStraightRun(d, sid, Line.CreateBound(new XYZ(p0.X, p0.Y, zb0 + zl), new XYZ(p1.X, p1.Y, zb0 + zl)), StairsRunJustification.Center);
+                            var lp = new List<XYZ> { at(run, 0), at(L, 0), at(L, W), at(run, W) }.Select(q => new XYZ(q.X, q.Y, zb0 + zl)).ToList();
                             var ll = new CurveLoop();
                             for (int i = 0; i < 4; i++) ll.Append(Line.CreateBound(lp[i], lp[(i + 1) % 4]));
                             StairsLanding.CreateSketchedLanding(d, sid, ll, zl);

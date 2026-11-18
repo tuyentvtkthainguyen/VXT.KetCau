@@ -201,7 +201,19 @@ namespace KetCauVXT.RevitExport
                 ft = src.Duplicate(name) as FloorType;
             }
             var mid = MaterialId(doc, string.IsNullOrEmpty(material) ? "Bê tông B25" : material, "Concrete");
-            var cs = CompoundStructure.CreateSingleLayerCompoundStructure(MaterialFunctionAssignment.Structure, ToFt(t), mid);
+            // giữ cấu trúc của loại gốc (điều kiện EndCap / bọc lỗ hợp với loại sàn), chỉ thay lớp: Revit 2025 từ chối cấu trúc tạo mới
+            var cs = ft.GetCompoundStructure();
+            var layer = new CompoundStructureLayer(ToFt(t), MaterialFunctionAssignment.Structure, mid);
+            if (cs != null)
+            {
+                cs.SetLayers(new List<CompoundStructureLayer> { layer });
+                try { cs.SetNumberOfShellLayers(ShellLayerType.Exterior, 0); cs.SetNumberOfShellLayers(ShellLayerType.Interior, 0); } catch { }
+            }
+            else
+            {
+                cs = CompoundStructure.CreateSingleLayerCompoundStructure(MaterialFunctionAssignment.Structure, ToFt(t), mid);
+                try { cs.EndCap = EndCapCondition.NoEndCap; cs.OpeningWrapping = OpeningWrappingCondition.None; } catch { }
+            }
             cs.StructuralMaterialIndex = 0;
             ft.SetCompoundStructure(cs);
             return ft;
