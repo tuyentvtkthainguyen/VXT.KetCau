@@ -54,7 +54,7 @@ namespace KetCauVXT.RevitExport
         }
 
         // ------------------------------------------------------------------ dựng lại một nhóm
-        /// <summary>Xoá phần tử có mã KT- thuộc nhóm "cua" (cửa đi, cửa sổ), "cau-thang", "san", "tuong" (kéo theo cửa trên tường), "dam", "mat-tien" (lan can, khung, lam, mái kính…) để dựng lại theo phương án đã sửa.</summary>
+        /// <summary>Xoá phần tử có mã KT- thuộc nhóm "cua" (cửa đi, cửa sổ), "cau-thang", "san", "tuong" (kéo theo cửa trên tường), "dam", "cot", "mat-tien" (lan can, khung, lam, mái kính…) để dựng lại theo phương án đã sửa.</summary>
         internal static void RemoveForRebuild(Document d, HashSet<string> groups, List<string> log)
         {
             var cats = new List<BuiltInCategory>();
@@ -63,6 +63,7 @@ namespace KetCauVXT.RevitExport
             if (groups.Contains("san")) cats.Add(BuiltInCategory.OST_Floors);
             if (groups.Contains("tuong")) cats.Add(BuiltInCategory.OST_Walls);
             if (groups.Contains("dam")) cats.Add(BuiltInCategory.OST_StructuralFraming);
+            if (groups.Contains("cot")) cats.Add(BuiltInCategory.OST_StructuralColumns);
             if (groups.Contains("mat-tien")) cats.Add(BuiltInCategory.OST_GenericModel);
             if (cats.Count == 0) return;
             var ids = new List<ElementId>();
@@ -166,6 +167,13 @@ namespace KetCauVXT.RevitExport
                 }
             }
             public bool Has(string id) => Existing.ContainsKey(Prefix + id);
+            public Level UpperLevel(string level)
+            {
+                var me = S.Levels.FirstOrDefault(l => l.Name.Equals(level, StringComparison.OrdinalIgnoreCase));
+                if (me == null) return null;
+                var up = S.Levels.Where(l => l.Elevation > me.Elevation + 1e-6).OrderBy(l => l.Elevation).FirstOrDefault();
+                return up != null && Lv.TryGetValue(up.Name, out var lv) ? lv : null;
+            }
             public double NextElevation(string level)
             {
                 var me = S.Levels.FirstOrDefault(l => l.Name.Equals(level, StringComparison.OrdinalIgnoreCase));
@@ -249,6 +257,18 @@ namespace KetCauVXT.RevitExport
                                 {
                                     var wall = Wall.Create(d, Line.CreateBound(P(w.X1, w.Y1, 0), P(w.X2, w.Y2, 0)), wt.Id, lv.Id, VxtRevit.ToFt(h), VxtRevit.ToFt(w.BaseOffset), false, false);
                                     VxtRevit.SetVxtId(wall, Prefix + w.Id);
+                                    // tường trong tầng: đỉnh gắn vào cao độ trên, offset âm = cao dầm / bề dày sàn → sửa cao độ tầng thì tường chạy theo
+                                    double storey = c.NextElevation(w.Level);
+                                    var upLv = c.UpperLevel(w.Level);
+                                    if (upLv != null && storey > 0 && h <= storey + 0.005 && h >= storey - 1.0)
+                                    {
+                                        try
+                                        {
+                                            wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)?.Set(upLv.Id);
+                                            wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)?.Set(VxtRevit.ToFt(w.BaseOffset + h - storey));
+                                        }
+                                        catch (Exception ex2) { c.Log.Add($"Tường {w.Id}: không gắn được đỉnh vào cao độ trên ({ex2.Message})."); }
+                                    }
                                     c.Walls.Add((w, wall));
                                 }
                                 catch (Exception ex) { c.Log.Add($"Tường {w.Id}: {ex.Message}"); }
@@ -298,12 +318,21 @@ namespace KetCauVXT.RevitExport
                     Apply = d => { d.Regenerate(); PlaceRooms(c, rooms); }
                 });
 
+            var cols = s.Columns.Where(x => !c.Has(x.Id)).ToList();
+            if (cols.Count > 0)
+                items.Add(new ChangeItem
+                {
+                    Group = "Cột", Order = 2, Text = $"Dựng {cols.Count} cột BTCT: " + string.Join(", ", cols.GroupBy(x => $"{x.B * 1000:0}x{x.H * 1000:0}").Select(g => g.Key + " ×" + g.Count())),
+                    Note = "Cột từng tầng, chân tại cao độ tầng, đỉnh tại cao độ tầng trên (Việt Const --phoi-hop đặt cột tại giao trục / nút tường 220).",
+                    Apply = d => { int n = FacadeBuilder.BuildColumns(d, c, cols); if (n < cols.Count) c.Log.Add($"Dựng được {n}/{cols.Count} cột."); }
+                });
+
             var beams = s.Beams.Where(b => !c.Has(b.Id) && Math.Abs(b.X2 - b.X1) + Math.Abs(b.Y2 - b.Y1) > 0.1).ToList();
             if (beams.Count > 0)
                 items.Add(new ChangeItem
                 {
                     Group = "Dầm", Order = 3, Text = $"Dựng {beams.Count} dầm BTCT dưới sàn: " + string.Join(", ", beams.GroupBy(b => $"{b.B * 1000:0}x{b.H * 1000:0}").Select(g => g.Key + " ×" + g.Count())),
-                    Note = "Mặt trên dầm = cao độ tầng; tường trong phương án đã hạ xuống đáy dầm (lệnh Việt Const --bo-sung-dam).",
+                    Note = "Mặt trên dầm = cao độ tầng; tường trong phương án đã hạ xuống đáy dầm (lệnh Việt Const --phoi-hop).",
                     Apply = d => { int n = FacadeBuilder.BuildBeams(d, c, beams); if (n < beams.Count) c.Log.Add($"Dựng được {n}/{beams.Count} dầm."); }
                 });
 
@@ -331,6 +360,13 @@ namespace KetCauVXT.RevitExport
                     Note = "Dựng sau khi áp dụng các mục khác. Không dựng được thì giữ lỗ sàn và ghi chú để vẽ tay.",
                     Apply = d => c.WantStairs = true
                 });
+
+            items.Add(new ChangeItem
+            {
+                Group = "Kết nối", Order = 8, Text = "Kết nối hình học (join): cột cắt sàn / dầm / tường, sàn cắt dầm / tường, dầm cắt tường",
+                Note = "Chỉ phần tử có mã KT-; khối lượng bê tông, gạch không tính trùng; mặt cắt sạch.",
+                Apply = d => { d.Regenerate(); c.Log.Add(FacadeBuilder.JoinAll(d)); }
+            });
 
             if (!string.IsNullOrEmpty(s.ProjectName))
                 items.Add(new ChangeItem

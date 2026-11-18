@@ -274,6 +274,16 @@ module VXT
             build_stair(g.entities, s, zb, zt)
           end
 
+          # cột BTCT (từ cao độ chân tới cao độ đỉnh)
+          (data['Columns'] || []).each do |c|
+            zb = level_z(data, c['BaseLevel']); zt = level_z(data, c['TopLevel'])
+            next unless zb && zt && zt > zb
+            g = root.entities.add_group
+            g.name = "Cột #{c['Id']}"; g.layer = tags['VXT Cột']; g.material = material(model, 'Tường ngoài', facade)
+            bx = (c['B'] || 0.22).to_f / 2; hy = (c['H'] || 0.22).to_f / 2; x = c['X'].to_f; y = c['Y'].to_f
+            prism(g.entities, [[x - bx, y - hy], [x + bx, y - hy], [x + bx, y + hy], [x - bx, y + hy]], zb, zt - 0.002)
+          end
+
           # dầm dưới sàn (mặt trên dầm = cao độ tầng)
           nbeam = 0
           (data['Beams'] || []).each do |b|

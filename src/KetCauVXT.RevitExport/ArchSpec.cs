@@ -24,6 +24,7 @@ namespace KetCauVXT.RevitExport
         public List<List<double[]>> Landings = new List<List<double[]>>();
     }
     internal sealed class AsFacadeMaterial { public string Part = "", Material = "", Color = ""; }
+    internal sealed class AsColumn { public string Id = "", BaseLevel = "", TopLevel = ""; public double X, Y, B, H, Rot; }
     internal sealed class AsBeam { public string Id = "", Level = ""; public double X1, Y1, X2, Y2, Z, B, H; }
     /// <summary>Chi tiết mặt tiền (LanCan / Khoi / MaiDoc / Lam) – xem RvFacadeElement trong Việt Const.</summary>
     internal sealed class AsFacadeElement
@@ -48,6 +49,7 @@ namespace KetCauVXT.RevitExport
         public List<AsFacadeMaterial> FacadeMaterials = new List<AsFacadeMaterial>();
         public List<AsFacadeElement> FacadeElements = new List<AsFacadeElement>();
         public List<AsBeam> Beams = new List<AsBeam>();
+        public List<AsColumn> Columns = new List<AsColumn>();
         public double SiteWidth, SiteDepth;
         public List<string> FamilySources = new List<string>();
 
@@ -64,6 +66,8 @@ namespace KetCauVXT.RevitExport
                 s.Walls.Add(w);
             }
             foreach (var o in MiniJson.A(root, "Openings")) s.Openings.Add(new AsOpening { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Category = MiniJson.S(o, "Category", "Door"), TypeName = MiniJson.S(o, "TypeName"), Family = MiniJson.S(o, "Family"), X = MiniJson.D(o, "X"), Y = MiniJson.D(o, "Y"), Width = MiniJson.D(o, "Width"), Height = MiniJson.D(o, "Height"), Sill = MiniJson.D(o, "Sill") });
+            foreach (var o in MiniJson.A(root, "Columns"))
+                s.Columns.Add(new AsColumn { Id = MiniJson.S(o, "Id"), BaseLevel = MiniJson.S(o, "BaseLevel"), TopLevel = MiniJson.S(o, "TopLevel"), X = MiniJson.D(o, "X"), Y = MiniJson.D(o, "Y"), B = MiniJson.D(o, "B", 0.22), H = MiniJson.D(o, "H", 0.22), Rot = MiniJson.D(o, "RotationDeg") });
             foreach (var o in MiniJson.A(root, "Beams"))
                 s.Beams.Add(new AsBeam { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), X1 = MiniJson.D(o, "X1"), Y1 = MiniJson.D(o, "Y1"), X2 = MiniJson.D(o, "X2"), Y2 = MiniJson.D(o, "Y2"), Z = MiniJson.D(o, "Z1"), B = MiniJson.D(o, "B", 0.22), H = MiniJson.D(o, "H", 0.35) });
             foreach (var o in MiniJson.A(root, "Rooms")) s.Rooms.Add(new AsRoom { Id = MiniJson.S(o, "Id"), Level = MiniJson.S(o, "Level"), Name = MiniJson.S(o, "Name"), Number = MiniJson.S(o, "Number"), Outline = Pts(o, "Outline") });

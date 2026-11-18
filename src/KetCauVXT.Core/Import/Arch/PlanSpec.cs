@@ -375,8 +375,9 @@ public static class PlanSpec
                 double h = lvs[i + 1].Elevation - lvs[i].Elevation;
                 if (ex.Floors.Any(f => f.Level == lvs[i + 1].Name)) full += ex.Walls.Count(w => w.Level == lvs[i].Name && Math.Abs(w.BaseOffset) < 0.01 && Math.Abs(w.Height - h) < 0.05);
             }
-            if (full > 0) W($"{full} tường cao suốt tầng (xuyên qua sàn / dầm) – chạy --bo-sung-dam để thêm dầm và hạ tường xuống đáy dầm.");
+            if (full > 0) W($"{full} tường cao suốt tầng (xuyên qua sàn / dầm) – chạy --phoi-hop để thêm cột, dầm và hạ tường xuống đáy dầm.");
         }
+        r.AddRange(PlanCoordination.Check(ex));
         foreach (var fe in ex.Facade?.Elements ?? new List<RvFacadeElement>())
         {
             string ty = fe.Type ?? "";
@@ -427,87 +428,10 @@ public static class PlanSpec
     ///  • tường dày ≥ <paramref name="minWallT"/> dưới sàn tầng trên → dầm b = bề dày tường, h = <paramref name="beamH"/>, tường cao = tầng − h;
     ///  • tường mỏng hơn → tường cao = tầng − bề dày sàn trên;
     ///  • mép sàn tầng trên không có tường đỡ (ban công, lô gia, mép mái đua) dài ≥ 1 m → dầm bo b = <paramref name="edgeB"/>, h = <paramref name="edgeH"/>, mặt ngoài trùng mép sàn.
-    /// Chạy lại không thêm trùng (dầm có Id "D-…", tường đã hạ không đổi). Trả về danh sách thay đổi để in.
+    /// Nay gọi PlanCoordination.Coordinate (cột + dầm khung theo nhịp + dầm bo + dầm đỡ tường, cao tường, dời cửa khỏi cột).
     /// </summary>
-    public static List<string> AddBeams(RevitExchange ex, double beamH = 0.35, double minWallT = 0.2, double edgeB = 0.2, double edgeH = 0.3)
-    {
-        var log = new List<string>();
-        var lv = ex.Levels.OrderBy(l => l.Elevation).ToList();
-        var have = new HashSet<string>(ex.Beams.Select(b => b.Id));
-        int nb = 0, ne = 0, nw = 0;
-        for (int i = 0; i + 1 < lv.Count; i++)
-        {
-            var lo = lv[i]; var up = lv[i + 1];
-            double storey = up.Elevation - lo.Elevation;
-            var below = ex.Walls.Where(w => w.Level == lo.Name).ToList();
-            var upFloors = ex.Floors.Where(f => f.Level == up.Name && f.Outline.Count >= 3).ToList();
-            if (below.Count == 0 || upFloors.Count == 0) continue;
-            double slabT = upFloors.Max(f => f.Thickness > 0 ? f.Thickness : 0.12);
-            foreach (var w in below)
-            {
-                if (Math.Abs(w.BaseOffset) > 0.01 || Math.Abs(w.Height - storey) > 0.05) continue;
-                double mx = (w.X1 + w.X2) / 2, my = (w.Y1 + w.Y2) / 2;
-                if (!upFloors.Any(f => InPoly(f.Outline, mx, my) || OnEdge(f.Outline, mx, my, 0.15))) continue;
-                double t = w.Layers?.Sum(l => l.Thickness) ?? 0;
-                if (t <= 0) t = RevitMaterials.ThicknessFromName(w.TypeName) ?? 0.11;
-                if (t >= minWallT - 1e-6)
-                {
-                    string id = "D-" + w.Id;
-                    if (have.Add(id))
-                    {
-                        ex.Beams.Add(new RvBeam { Id = id, X1 = R(w.X1), Y1 = R(w.Y1), X2 = R(w.X2), Y2 = R(w.Y2), Z1 = up.Elevation, Z2 = up.Elevation, B = R(t), H = beamH, Level = up.Name, Material = "Bê tông B20" });
-                        nb++;
-                    }
-                    w.Height = R(storey - beamH);
-                }
-                else w.Height = R(storey - slabT);
-                nw++;
-            }
-            // dầm bo mép sàn không có tường đỡ
-            int k = 0;
-            foreach (var f in upFloors)
-            {
-                var o = f.Outline;
-                for (int j = 0; j < o.Count; j++)
-                {
-                    var a = o[j]; var b = o[(j + 1) % o.Count];
-                    double dx = b[0] - a[0], dy = b[1] - a[1], len = Math.Sqrt(dx * dx + dy * dy);
-                    if (len < 1.0) continue;
-                    double ux = dx / len, uy = dy / len;
-                    // pháp tuyến vào trong sàn
-                    double nx = -uy, ny = ux;
-                    if (!InPoly(o, (a[0] + b[0]) / 2 + nx * 0.05, (a[1] + b[1]) / 2 + ny * 0.05)) { nx = -nx; ny = -ny; }
-                    int n = Math.Max(2, (int)Math.Ceiling(len / 0.25));
-                    double? s0 = null;
-                    for (int q = 0; q <= n; q++)
-                    {
-                        double u = len * q / n;
-                        double px = a[0] + ux * u, py = a[1] + uy * u;
-                        bool covered = below.Any(w => DistToSeg(px, py, w) <= 0.2);
-                        if (!covered && s0 == null) s0 = u;
-                        if ((covered || q == n) && s0 != null)
-                        {
-                            double u1 = covered ? Math.Min(len, u + 0.2) : len;   // kéo tới gặp tường / dầm vuông góc
-                            if (s0.Value > 0) s0 = Math.Max(0, s0.Value - 0.2);
-                            if (u1 - s0.Value >= 1.0)
-                            {
-                                string id = $"DB-{up.Name}-{++k}";
-                                double ox = nx * edgeB / 2, oy = ny * edgeB / 2;
-                                if (!ex.Beams.Any(bm => Math.Abs(bm.Z1 - up.Elevation) < 0.01 && Math.Abs(bm.X1 - R(a[0] + ux * s0.Value + ox)) < 0.02 && Math.Abs(bm.Y1 - R(a[1] + uy * s0.Value + oy)) < 0.02))
-                                {
-                                    ex.Beams.Add(new RvBeam { Id = id, X1 = R(a[0] + ux * s0.Value + ox), Y1 = R(a[1] + uy * s0.Value + oy), X2 = R(a[0] + ux * u1 + ox), Y2 = R(a[1] + uy * u1 + oy), Z1 = up.Elevation, Z2 = up.Elevation, B = edgeB, H = edgeH, Level = up.Name, Material = "Bê tông B20" });
-                                    ne++;
-                                }
-                            }
-                            s0 = null;
-                        }
-                    }
-                }
-            }
-        }
-        log.Add($"Thêm {nb} dầm dưới tường, {ne} dầm bo mép sàn; hạ {nw} tường xuống đáy dầm / đáy sàn.");
-        return log;
-    }
+    public static List<string> AddBeams(RevitExchange ex, double beamH = 0.35, double minWallT = 0.2, double edgeB = 0.2, double edgeH = 0.3) =>
+        PlanCoordination.Coordinate(ex, new CoordOptions { MinBeamH = Math.Min(0.3, beamH), EdgeB = edgeB, EdgeH = edgeH });
 
     internal static bool InPoly(List<double[]> poly, double x, double y)
     {

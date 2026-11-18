@@ -47,6 +47,86 @@ namespace KetCauVXT.RevitExport
             return n;
         }
 
+        // ------------------------------------------------------------------ cột
+        internal static int BuildColumns(Document d, BuildArchitectureCommand.Ctx c, List<AsColumn> cols)
+        {
+            var fam = VxtRevit.RectFamily(d, BuiltInCategory.OST_StructuralColumns, c.Log);
+            if (fam == null) { c.Log.Add("Không có họ cột BTCT chữ nhật (thư viện Revit) – chưa dựng cột."); return 0; }
+            int n = 0;
+            foreach (var k in cols)
+            {
+                try
+                {
+                    if (!c.Lv.TryGetValue(k.BaseLevel, out var bl) || !c.Lv.TryGetValue(k.TopLevel, out var tl)) { c.Log.Add($"Cột {k.Id}: thiếu cao độ {k.BaseLevel} / {k.TopLevel}."); continue; }
+                    string name = $"C{Math.Round(k.B * 1000)}x{Math.Round(k.H * 1000)}";
+                    var sym = VxtRevit.RectType(d, fam, name, k.B, k.H);
+                    if (sym == null) { c.Log.Add($"Cột {k.Id}: không tạo được loại {name}."); continue; }
+                    if (!sym.IsActive) { sym.Activate(); d.Regenerate(); }
+                    var fi = d.Create.NewFamilyInstance(new XYZ(VxtRevit.ToFt(k.X), VxtRevit.ToFt(k.Y), bl.Elevation), sym, bl, StructuralType.Column);
+                    fi.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_PARAM)?.Set(bl.Id);
+                    fi.get_Parameter(BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM)?.Set(0.0);
+                    fi.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_PARAM)?.Set(tl.Id);
+                    fi.get_Parameter(BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM)?.Set(0.0);
+                    if (Math.Abs(k.Rot) > 1e-6)
+                    {
+                        var p = new XYZ(VxtRevit.ToFt(k.X), VxtRevit.ToFt(k.Y), 0);
+                        ElementTransformUtils.RotateElement(d, fi.Id, Line.CreateBound(p, p + XYZ.BasisZ), k.Rot * Math.PI / 180);
+                    }
+                    fi.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)?.Set(k.Id);
+                    VxtRevit.SetVxtId(fi, BuildArchitectureCommand.Prefix + k.Id);
+                    n++;
+                }
+                catch (Exception ex) { c.Log.Add($"Cột {k.Id}: {ex.Message}"); }
+            }
+            return n;
+        }
+
+        // ------------------------------------------------------------------ kết nối hình học
+        private static int Rank(Element e)
+        {
+            var cat = e.Category?.BuiltInCategory ?? BuiltInCategory.INVALID;
+            if (cat == BuiltInCategory.OST_StructuralColumns) return 4;
+            if (cat == BuiltInCategory.OST_Floors) return 3;
+            if (cat == BuiltInCategory.OST_StructuralFraming) return 2;
+            if (cat == BuiltInCategory.OST_Walls) return 1;
+            return 0;
+        }
+
+        /// <summary>Join các phần tử KT- giao nhau, thứ tự cắt: cột &gt; sàn &gt; dầm &gt; tường (dầm – cột, tường – tường do Revit tự nối).</summary>
+        internal static string JoinAll(Document d)
+        {
+            var els = new List<(Element E, int R, BoundingBoxXYZ B)>();
+            foreach (var bic in new[] { BuiltInCategory.OST_StructuralColumns, BuiltInCategory.OST_Floors, BuiltInCategory.OST_StructuralFraming, BuiltInCategory.OST_Walls })
+                foreach (var e in new FilteredElementCollector(d).OfCategory(bic).WhereElementIsNotElementType())
+                {
+                    string id; try { id = VxtRevit.GetVxtId(e); } catch { continue; }
+                    if (!id.StartsWith(BuildArchitectureCommand.Prefix, StringComparison.Ordinal)) continue;
+                    var bb = e.get_BoundingBox(null);
+                    if (bb != null) els.Add((e, Rank(e), bb));
+                }
+            double tol = VxtRevit.ToFt(0.002);
+            int joined = 0, switched = 0, failed = 0;
+            for (int i = 0; i < els.Count; i++)
+                for (int j = i + 1; j < els.Count; j++)
+                {
+                    var a = els[i]; var b = els[j];
+                    if (a.R == b.R) continue;                                   // cùng loại: Revit tự nối (tường) hoặc không cần
+                    if (a.R + b.R == 6 && Math.Min(a.R, b.R) == 2) continue;     // dầm – cột: Revit tự cắt đầu dầm
+                    if (a.B.Max.X < b.B.Min.X - tol || b.B.Max.X < a.B.Min.X - tol || a.B.Max.Y < b.B.Min.Y - tol || b.B.Max.Y < a.B.Min.Y - tol || a.B.Max.Z < b.B.Min.Z - tol || b.B.Max.Z < a.B.Min.Z - tol) continue;
+                    var hi = a.R > b.R ? a.E : b.E; var lo = a.R > b.R ? b.E : a.E;
+                    try
+                    {
+                        if (!JoinGeometryUtils.AreElementsJoined(d, hi, lo))
+                        {
+                            try { JoinGeometryUtils.JoinGeometry(d, hi, lo); joined++; } catch { continue; } // không giao thật
+                        }
+                        if (!JoinGeometryUtils.IsCuttingElementInJoin(d, hi, lo)) { JoinGeometryUtils.SwitchJoinOrder(d, hi, lo); switched++; }
+                    }
+                    catch { failed++; }
+                }
+            return $"Kết nối hình học: {joined} cặp mới, {switched} cặp đổi thứ tự cắt" + (failed > 0 ? $", {failed} cặp không nối được" : "") + ".";
+        }
+
         // ------------------------------------------------------------------ vật liệu
         private static readonly Dictionary<string, string> Defaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

@@ -48,6 +48,26 @@ public static class PlanSpecTests
         bb.Facade.Elements.Add(new RvFacadeElement { Id = "X", Type = "Tháp", Points = new() { new[] { 0.0, 0.0 } } });
         check("Mặt tiền: bắt loại chi tiết sai", PlanSpec.Validate(bb).Count(i => i.Error), 1, 0);
 
+        // phối hợp hình học trên phương án thật (Project1 làm lại): cột, dầm theo nhịp, cao tường, cửa ↔ cột, thang ↔ tường / dầm
+        var pm = RevitJsonImporter.ReadFile(Path.Combine(AppContext.BaseDirectory, "Data", "Project1_Moi.vxtphuongan.json"));
+        foreach (var l in PlanCoordination.Coordinate(pm)) Console.WriteLine("    " + l);
+        var pmIss = PlanSpec.Validate(pm);
+        foreach (var i in pmIss) Console.WriteLine("    " + i);
+        Directory.CreateDirectory(Path.Combine(outDir, "PhoiHop"));
+        PlanSpec.Save(pm, Path.Combine(outDir, "PhoiHop", "Project1_Moi.vxtphuongan.json"));
+        foreach (var c in pm.Columns) Console.WriteLine($"    cột {c.Id} ({c.X:0.000}; {c.Y:0.000}) {c.BaseLevel}→{c.TopLevel}");
+        foreach (var b in pm.Beams) Console.WriteLine($"    dầm {b.Id} ({b.X1:0.000}; {b.Y1:0.000})→({b.X2:0.000}; {b.Y2:0.000}) {b.B * 1000:0}x{b.H * 1000:0}");
+        check("Phối hợp Project1: có cột mỗi tầng", B(pm.Columns.Select(c => c.BaseLevel).Distinct().Count() >= 3), 1, 0);
+        check("Phối hợp Project1: cột nằm trong nhà (mặt ngoài ≤ ranh)", B(pm.Columns.All(c => c.X - c.B / 2 >= -0.001 && c.Y - c.H / 2 >= -0.001 && c.Y + c.H / 2 <= 5.001 && c.X + c.B / 2 <= 20.001)), 1, 0);
+        check("Phối hợp Project1: không cửa nào lấn cột", pmIss.Count(i => i.Message.Contains("lấn vào cột")), 0, 0);
+        int nCol = pm.Columns.Count, nBm = pm.Beams.Count;
+        PlanCoordination.Coordinate(pm);
+        check("Phối hợp Project1: chạy lại không đổi số cột / dầm", pm.Columns.Count * 1000 + pm.Beams.Count, nCol * 1000 + nBm, 0);
+        // thang lấn tường phải bị bắt
+        var bad2 = RevitJsonImporter.ReadFile(Path.Combine(AppContext.BaseDirectory, "Data", "Project1_Moi.vxtphuongan.json"));
+        bad2.Stairs[0].Runs[0].Y1 += 0.2; bad2.Stairs[0].Runs[0].Y2 += 0.2;
+        check("Phối hợp: bắt vế thang lấn tường", B(PlanCoordination.Check(bad2).Any(i => i.Error && i.Message.Contains("lấn vào tường"))), 1, 0);
+
         // lỗi phải bắt được
         var bad = PlanSpec.SampleTownhouse();
         bad.Openings.Add(new RvOpening { Id = "X1", Level = "Tầng 1", Category = "Door", X = 2.5, Y = 7, Width = 0.9, Height = 2.2 });
