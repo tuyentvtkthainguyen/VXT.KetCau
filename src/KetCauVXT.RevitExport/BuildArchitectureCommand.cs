@@ -744,6 +744,8 @@ namespace KetCauVXT.RevitExport
                             runs.Add(run);
                             zrel = run.TopElevation;
                         }
+                        // Revit có thể tính lại mặt bậc theo loại thang khi thêm vế → đặt lại đúng mặt bậc phương án
+                        try { if (Math.Abs(VxtRevit.ToM(stairs.ActualTreadDepth) - tread) > 0.001) stairs.ActualTreadDepth = VxtRevit.ToFt(tread); } catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: loại thang không cho mặt bậc {tread * 1000:0} mm ({ex.Message})."); }
                         for (int i = 0; i + 1 < runs.Count; i++)
                         {
                             bool ok = false;

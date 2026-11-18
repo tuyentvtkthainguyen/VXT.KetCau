@@ -152,7 +152,8 @@ namespace KetCauVXT.RevitExport
                         // mặt đứng dựng bằng khung nhìn cắt đặt ngoài mặt nhà, nhìn vào (không cắt qua công trình) – chắc chắn đúng hướng
                         var vftS = Vft(d, ViewFamily.Section);
                         if (vftS == null) { log.Add("Dự án chưa có loại khung nhìn mặt cắt."); continue; }
-                        var bz = n; var by = XYZ.BasisZ; var bx = by.CrossProduct(bz);
+                        // mặt phẳng cắt của khung nhìn nằm ở phía Min.Z, nhìn theo +BasisZ → BasisZ = −n để đứng ngoài mặt nhà phía n nhìn vào
+                        var bz = n.Negate(); var by = XYZ.BasisZ; var bx = by.CrossProduct(bz);
                         double halfW = Math.Abs(bx.X) * (box.Max.X - box.Min.X) / 2 + Math.Abs(bx.Y) * (box.Max.Y - box.Min.Y) / 2;
                         double halfD = Math.Abs(n.X) * (box.Max.X - box.Min.X) / 2 + Math.Abs(n.Y) * (box.Max.Y - box.Min.Y) / 2;
                         var tf = Transform.Identity; tf.Origin = new XYZ(c.X, c.Y, box.Min.Z); tf.BasisX = bx; tf.BasisY = by; tf.BasisZ = bz;
@@ -219,7 +220,9 @@ namespace KetCauVXT.RevitExport
                         {
                             v = ViewPlan.Create(d, vftPlan.Id, lv.Id);
                             try { v.Name = name; } catch { }
+                            try { v.ViewTemplateId = ElementId.InvalidElementId; } catch { } // mẫu khung nhìn của template có thể khoá tỷ lệ 1:100
                             v.Scale = 50; nv++;
+                            try { v.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE)?.Set(1); } catch { }
                             var cb = v.CropBox;
                             v.CropBox = new BoundingBoxXYZ { Transform = cb.Transform, Min = new XYZ(sx0 - mm, sy0 - mm, cb.Min.Z), Max = new XYZ(sx1 + mm, sy1 + mm, cb.Max.Z) };
                             v.CropBoxActive = true; v.CropBoxVisible = false;
@@ -240,7 +243,9 @@ namespace KetCauVXT.RevitExport
                         var sb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-L / 2 - mm, -VxtRevit.ToFt(0.8), 0), Max = new XYZ(L / 2 + mm, box.Max.Z - box.Min.Z + VxtRevit.ToFt(0.8), W / 2 + VxtRevit.ToFt(0.3)) };
                         sb2 = ViewSection.CreateSection(d, vftSec.Id, sb);
                         try { sb2.Name = bbName; } catch { }
+                        try { sb2.ViewTemplateId = ElementId.InvalidElementId; } catch { }
                         sb2.Scale = 50; nv++;
+                        try { sb2.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE)?.Set(1); } catch { }
                         try { sb2.DetailLevel = ViewDetailLevel.Fine; } catch { }
                     }
                     if (sb2 != null) detail.Add(sb2.Id);
