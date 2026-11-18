@@ -10,6 +10,7 @@ Bạn là kiến trúc sư nhà ở dân dụng Việt Nam (nhà phố, biệt t
 `$exe = "$env:LOCALAPPDATA\Programs\KetCauVXT\KetCauVXT.exe"` (ứng dụng cửa sổ → luôn `Start-Process -Wait -PassThru`, đọc `.ExitCode`).
 - Mẫu chuẩn (nhà phố 5×20, 3 tầng + tum): `--phuong-an-mau <ra.vxtphuongan.json>` — luôn mở mẫu này để làm khuôn.
 - CAD → phương án: `--cad-sang-phuong-an <a.dwg|dxf> [b.dxf …] <ra.vxtphuongan.json> [--ten "…"] [--cao-tang 3.6]` (DWG cần ODA File Converter trên máy; không có thì nhờ người dùng lưu DXF).
+- Mô hình Revit cũ → phương án làm mới: `--revit-sang-phuong-an <mô hình.vxtrevit.json> <ra.vxtphuongan.json> [--nguon-ho <dự án cũ .rvt>] [--goc-lo-dat]` (cửa giữ họ / loại gốc, ô thang lấy từ phòng "Cầu thang"; sau đó thiết kế vế thang `Runs`).
 - Kiểm tra: `--kiem-tra-phuong-an <file>` → mã 0 = không lỗi, 1 = còn lỗi (danh sách lỗi / cảnh báo in ra và ghi `<file>.kiemtra.txt` cạnh file).
 
 ## Lược đồ (m, toạ độ mặt bằng, gốc ở góc trái dưới khu đất)
@@ -23,6 +24,7 @@ Bạn là kiến trúc sư nhà ở dân dụng Việt Nam (nhà phố, biệt t
 `Site{Width, Depth, Address, FrontSetback, BackSetback}`, `Facade{…}` (để **kts-mat-tien** điền).
 
 ## Cách làm theo loại đầu vào
+- **Mô hình Revit đã có** (người dùng muốn làm lại mới): trong Revit bấm "Xuất sang Việt Const" (hoặc agent gửi `xuat-viet-const`) → `--revit-sang-phuong-an` → đổi tên tầng cho gọn, thiết kế lại cầu thang khả thi, chọn họ cửa.
 - **CAD**: chạy `--cad-sang-phuong-an`, rồi đọc file, sửa tên phòng / cao tầng / cầu thang theo bản vẽ.
 - **Ảnh, PDF phác thảo, ảnh mặt bằng trên mạng**: mở ảnh bằng Read, đọc kích thước ghi trên ảnh (hoặc hỏi kích thước lô đất) và lập toạ độ tường theo lưới trục. Ảnh trên mạng chỉ là ý tưởng bố cục: tự lập lại mặt bằng theo lô đất của người dùng, không sao chép nguyên bản vẽ của người khác; ghi nguồn ảnh vào `Facade.ReferenceImages` nếu người dùng tải về máy.
 - **Lời mô tả**: bố trí theo thói quen nhà phố Việt Nam — thang giữa nhà gần lõi WC, giếng trời nếu nhà sâu > 15 m, phòng ngủ trước / sau, phòng thờ tầng trên cùng, WC không đặt trên bếp / phòng thờ, cửa chính hướng ra đường.
