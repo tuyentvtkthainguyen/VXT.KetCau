@@ -292,6 +292,15 @@ namespace KetCauVXT.RevitExport
                     var right = fwd.CrossProduct(XYZ.BasisZ).Normalize();
                     var up = right.CrossProduct(fwd).Normalize();
                     v.SetOrientation(new ViewOrientation3D(eye, up, fwd));
+                    // hộp cắt ôm công trình (+1 m) → ảnh xuất "vừa trang" ôm sát nhà, không bị thu nhỏ vì phần tử mẫu ở xa
+                    try
+                    {
+                        double m1 = VxtRevit.ToFt(1.0);
+                        var sb = new BoundingBoxXYZ { Min = box.Min - new XYZ(m1, m1, m1), Max = box.Max + new XYZ(m1, m1, m1) };
+                        v.IsSectionBoxActive = true;
+                        v.SetSectionBox(sb);
+                    }
+                    catch { }
                 }
                 // ảnh phối cảnh: ẩn trục, cao độ, ký hiệu → khung hình ôm sát công trình
                 foreach (var bic in new[] { BuiltInCategory.OST_Grids, BuiltInCategory.OST_Levels, BuiltInCategory.OST_SectionBox, BuiltInCategory.OST_RoomSeparationLines, BuiltInCategory.OST_Rooms })
