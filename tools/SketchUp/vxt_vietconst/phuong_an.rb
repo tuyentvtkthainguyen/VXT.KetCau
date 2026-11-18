@@ -261,6 +261,11 @@ module VXT
         rise = h / n
         at = ->(u, v) { along_y ? [x0 + v, y0 + u] : [x0 + u, y0 + v] }
         rect = ->(u0, u1, v0, v1) { [at[u0, v0], at[u1, v0], at[u1, v1], at[u0, v1]] }
+        if s['Shape'].to_s =~ /thẳng|1 vế/i || wd < 1.6 # 1 vế thẳng hết ô thang
+          tr = [l / n, 0.3].min
+          n.times { |k| prism(ents, rect[k * tr, (k + 1) * tr, 0, wd], zb + k * rise, zb + (k + 1) * rise) }
+          return
+        end
         half.times do |k| # vế 1: đi ra xa
           prism(ents, rect[k * tread, (k + 1) * tread, 0, w], zb + k * rise, zb + (k + 1) * rise)
         end

@@ -411,6 +411,15 @@ namespace KetCauVXT.RevitExport
                             double land = Math.Max(w, L - run);
                             if (run + w > L + 0.3) c.Log.Add($"Cầu thang {st.Id}: ô thang ngắn ({L:0.00} m) so với {n} bậc – kiểm tra lại.");
                             Func<double, double, XYZ> at = (u, v) => alongY ? P(x0 + v, y0 + u) : P(x0 + u, y0 + v);
+                            if (Straight(st, W))
+                            {
+                                // 1 vế thẳng dọc ô thang, chạy hết số bậc
+                                double runS = (n - 1) * tread;
+                                if (runS > L + 0.05) c.Log.Add($"Cầu thang {st.Id} (1 vế): cần {runS:0.00} m, ô thang dài {L:0.00} m – kiểm tra lại.");
+                                StairsRun.CreateStraightRun(d, sid, Line.CreateBound(at(0, W / 2), at(Math.Max(runS, 1.0), W / 2)), StairsRunJustification.Center);
+                                tr.Commit();
+                                goto committed;
+                            }
                             var r1 = StairsRun.CreateStraightRun(d, sid, Line.CreateBound(at(0, w / 2), at(run, w / 2)), StairsRunJustification.Center);
                             double zl = r1.TopElevation;
                             var p0 = at(run, W - w / 2); var p1 = at(0, W - w / 2);
@@ -421,6 +430,7 @@ namespace KetCauVXT.RevitExport
                             StairsLanding.CreateSketchedLanding(d, sid, ll, zl);
                             tr.Commit();
                         }
+                    committed:
                         scope.Commit(new WarningSwallower(c.Log));
                         var el = d.GetElement(sid);
                         if (el != null)
@@ -430,6 +440,10 @@ namespace KetCauVXT.RevitExport
                 catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: chưa dựng tự động được ({ex.Message}) – lỗ sàn đã chừa, vẽ cầu thang bằng tay."); }
             }
         }
+
+        /// <summary>Cầu thang 1 vế: ghi "thẳng" trong Shape, hoặc ô thang hẹp (&lt; 1,6 m) không đủ 2 vế.</summary>
+        internal static bool Straight(AsStair st, double w) =>
+            (st.Shape ?? "").IndexOf("thẳng", StringComparison.OrdinalIgnoreCase) >= 0 || (st.Shape ?? "").IndexOf("1 vế", StringComparison.OrdinalIgnoreCase) >= 0 || w < 1.6;
 
         internal static void Swallow(Transaction t, List<string> log)
         {
