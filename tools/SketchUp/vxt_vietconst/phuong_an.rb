@@ -15,7 +15,7 @@ module VXT
       DEFAULT_MATS = {
         'Tường ngoài' => '#EDEAE4', 'Mặt tiền' => '#D9CDBA', 'Tường trong' => '#F4F3EF', 'Kính' => '#6F8FA8',
         'Khung cửa' => '#4E3B2C', 'Cánh cửa' => '#7A5A40', 'Sàn' => '#BDBAB4', 'Mái' => '#8A8F94', 'Lan can' => '#2F2F2F',
-        'Cầu thang' => '#CFC8BC', 'Nền' => '#9DAA8A',
+        'Cầu thang' => '#CFC8BC', 'Nền' => '#9DAA8A', 'Cửa cuốn' => '#8C9096',
       }.freeze
 
       class << self
@@ -180,8 +180,11 @@ module VXT
               pg = root.entities.add_group
               pg.name = "#{door?(s[:o]) ? 'Cửa đi' : 'Cửa sổ'} #{s[:o]['Id']}"
               pg.layer = tags['VXT Cửa']
-              glass = !door?(s[:o]) || key == 'Mặt tiền'
-              pg.material = material(model, glass ? 'Kính' : 'Cánh cửa', facade)
+              tn = s[:o]['TypeName'].to_s
+              kind = if tn =~ /cuốn|cuon/i then 'Cửa cuốn'
+                     elsif !door?(s[:o]) || tn =~ /kính|kinh|lùa|lua/i || key == 'Mặt tiền' then 'Kính'
+                     else 'Cánh cửa' end
+              pg.material = material(model, kind, facade)
               wall_box(pg.entities, ax, ay, dx, dy, s[:u0] + 0.03, s[:u1] - 0.03, 0.03, zb + s[:s] + 0.03, zb + s[:top] - 0.03)
               fr = root.entities.add_group
               fr.name = "Khung #{s[:o]['Id']}"; fr.layer = tags['VXT Cửa']; fr.material = material(model, 'Khung cửa', facade)
