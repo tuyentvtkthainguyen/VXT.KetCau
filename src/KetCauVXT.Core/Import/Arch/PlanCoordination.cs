@@ -113,9 +113,39 @@ public static class PlanCoordination
             foreach (var w in s.Walls.Where(w => w.Height >= s.H - 0.65 && w.Height < s.H - 1e-6)) w.Height = s.H;
 
         int nc = 0, nf = 0, ne = 0, ns = 0;
+        var colsBy = new Dictionary<Storey, List<RvColumn>>();
+        for (int i = 0; i < st.Count; i++)
+        {
+            var cols = PlaceColumns(ex, st[i], o);
+            // cột tầng trên thẳng hàng cột tầng dưới (lệch ≤ 0,3 m → lấy đúng toạ độ cột dưới)
+            if (i > 0 && colsBy.TryGetValue(st[i - 1], out var below))
+                foreach (var c in cols)
+                {
+                    var bc = below.FirstOrDefault(b => Math.Abs(b.X - c.X) <= 0.3 && Math.Abs(b.Y - c.Y) <= 0.3);
+                    if (bc != null) { c.X = bc.X; c.Y = bc.Y; }
+                }
+            colsBy[st[i]] = cols;
+        }
+        // cột tầng trên chưa có cột đỡ bên dưới → thêm cột tầng dưới nếu có tường chịu lực ở đó và không có cột khác gần (≤ 1 m)
+        for (int i = st.Count - 1; i > 0; i--)
+        {
+            var lower = st[i - 1];
+            if (st[i].Lo.Name != lower.Up.Name) continue;
+            foreach (var c in colsBy[st[i]].ToList())
+            {
+                var lc = colsBy[lower];
+                if (lc.Any(b => Math.Abs(b.X - c.X) < 0.05 && Math.Abs(b.Y - c.Y) < 0.05)) continue;
+                if (lc.Any(b => Len(b.X, b.Y, c.X, c.Y) < 1.0)) continue;
+                var p = Snap(c.X, c.Y, lower, o);
+                if (p == null || Len(p.Value.Item1, p.Value.Item2, c.X, c.Y) > 0.06 || !InFloor(lower.UpFloors, c.X, c.Y, 0.2)) continue;
+                string id = c.Id.Replace("-" + st[i].Lo.Name, "-" + lower.Lo.Name);
+                while (lc.Any(b => b.Id == id)) id = id.Replace("-" + lower.Lo.Name, "b-" + lower.Lo.Name);
+                lc.Add(new RvColumn { Id = id, X = c.X, Y = c.Y, BaseLevel = lower.Lo.Name, TopLevel = lower.Up.Name, B = c.B, H = c.H, Material = c.Material });
+            }
+        }
         foreach (var s in st)
         {
-            var cols = PlaceColumns(ex, s, o);
+            var cols = colsBy[s];
             ex.Columns.AddRange(cols); nc += cols.Count;
             var frame = FrameBeams(s, cols, o);
             ex.Beams.AddRange(frame); nf += frame.Count;
@@ -220,7 +250,7 @@ public static class PlanCoordination
         for (int i = 0; i < gr.Count; i++)
             for (int j = i + 1; j < gr.Count; j++)
                 if (Intersect(gr[i], gr[j], out double x, out double y)) cand.Add((x, y, gr[i].Name + gr[j].Name));
-        foreach (var w in s.Walls.Where(w => w.Height >= 1.5)) // Snap chỉ nhận nút trên tường 220 hoặc tường biên
+        foreach (var w in s.Walls.Where(w => w.Height >= 1.5 && (Thick(w) >= 0.2 - 1e-6 || Perimeter(w, s))))
         {
             cand.Add((w.X1, w.Y1, "")); cand.Add((w.X2, w.Y2, ""));
         }
@@ -240,33 +270,41 @@ public static class PlanCoordination
         return res;
     }
 
-    /// <summary>Tâm cột tại điểm (x, y): bắt vào tim các tường đi qua (≤ 0,35 m); tường mỏng hơn cột ở biên nhà → lùi vào để mặt ngoài cột trùng mặt ngoài tường.</summary>
+    /// <summary>Tường biên mỏng (một mặt ra ngoài sàn tầng trên): dấu dời tim cột vào trong (+1 / −1 theo pháp tuyến trái), 0 nếu không phải biên.</summary>
+    private static int OutSide(RvWall w, Storey s)
+    {
+        double t = Thick(w), len2 = Len(w.X1, w.Y1, w.X2, w.Y2);
+        if (len2 < 1e-9) return 0;
+        double nx = -(w.Y2 - w.Y1) / len2, ny = (w.X2 - w.X1) / len2;
+        double mx = (w.X1 + w.X2) / 2, my = (w.Y1 + w.Y2) / 2;
+        bool outA = !InFloor(s.UpFloors, mx + nx * (t / 2 + 0.05), my + ny * (t / 2 + 0.05), 0);
+        bool outB = !InFloor(s.UpFloors, mx - nx * (t / 2 + 0.05), my - ny * (t / 2 + 0.05), 0);
+        return outA ^ outB ? (outA ? -1 : 1) : 0;
+    }
+    private static bool Perimeter(RvWall w, Storey s) => OutSide(w, s) != 0;
+
+    /// <summary>
+    /// Tâm cột tại điểm (x, y): chỉ bắt vào tim tường "chịu lực" đi qua (tường 220, hoặc tường biên – lùi vào để mặt ngoài cột trùng mặt ngoài tường);
+    /// gặp hai tường vuông góc → giao điểm, một tường → hình chiếu lên tim tường (giữ toạ độ trục dọc tường). Tường ngăn 110 bên trong không kéo lệch cột.
+    /// </summary>
     private static (double, double)? Snap(double x, double y, Storey s, CoordOptions o)
     {
-        var near = new List<(RvWall w, double off)>();
+        var near = new List<(RvWall w, double off, double d)>();
+        double half = Math.Max(o.ColB, o.ColH) / 2;
         foreach (var w in s.Walls.Where(w => w.Height >= 1.5))
         {
             var (d, u, len) = Line(w, x, y);
             if (d > 0.35 || u < -0.35 || u > len + 0.35) continue;
-            double t = Thick(w), off = 0;
-            double half = Math.Max(o.ColB, o.ColH) / 2;
-            if (t < 2 * half - 1e-6)
-            {
-                // phía nào ra ngoài nhà?
-                double len2 = Len(w.X1, w.Y1, w.X2, w.Y2);
-                double nx = -(w.Y2 - w.Y1) / len2, ny = (w.X2 - w.X1) / len2;
-                double mx = (w.X1 + w.X2) / 2, my = (w.Y1 + w.Y2) / 2;
-                bool outA = !InFloor(s.UpFloors, mx + nx * (t / 2 + 0.05), my + ny * (t / 2 + 0.05), 0);
-                bool outB = !InFloor(s.UpFloors, mx - nx * (t / 2 + 0.05), my - ny * (t / 2 + 0.05), 0);
-                if (outA ^ outB) off = (half - t / 2) * (outA ? -1 : 1);
-            }
-            near.Add((w, off));
+            double t = Thick(w);
+            int side = OutSide(w, s);
+            bool strong = t >= 0.2 - 1e-6 || side != 0;
+            if (!strong) continue;
+            double off = t < 2 * half - 1e-6 && side != 0 ? (half - t / 2) * side : 0;
+            near.Add((w, off, d));
         }
         if (near.Count == 0) return null;
-        // chỉ đặt cột khi có tường 220 hoặc tường biên đi qua
-        if (!near.Any(n => Thick(n.w) >= 0.2 - 1e-6 || Math.Abs(n.off) > 1e-6)) return null;
-        // đường tim (đã dời) của tường thứ nhất; nếu có tường vuông góc → giao điểm
-        (double ax, double ay, double ux, double uy) L((RvWall w, double off) n)
+        near.Sort((p, q) => p.d.CompareTo(q.d));
+        (double ax, double ay, double ux, double uy) L((RvWall w, double off, double d) n)
         {
             double len = Len(n.w.X1, n.w.Y1, n.w.X2, n.w.Y2);
             double ux = (n.w.X2 - n.w.X1) / len, uy = (n.w.Y2 - n.w.Y1) / len;
@@ -514,7 +552,8 @@ public static class PlanCoordination
                         for (int s2 = -1; s2 <= 1; s2 += 2)
                         {
                             double px = run.X1 + ux * len * q / 10 - uy * s2 * (w / 2 - 0.01), py = run.Y1 + uy * len * q / 10 + ux * s2 * (w / 2 - 0.01);
-                            double d = DistSeg(px, py, wl.X1, wl.Y1, wl.X2, wl.Y2);
+                            var (d, uu, ll) = Line(wl, px, py);
+                            if (uu < 0 || uu > ll) continue; // tường là hình chữ nhật dọc tim, kết thúc tại điểm đầu / cuối
                             if (d < tw / 2) worst = Math.Max(worst, tw / 2 - d + 0.01);
                         }
                     if (worst > 0.005) E($"Thang {t.Id} vế {i + 1}: lấn vào tường {wl.Id} khoảng {worst * 1000:0} mm – bề rộng vế tính từ mặt tường, không từ tim tường.");
