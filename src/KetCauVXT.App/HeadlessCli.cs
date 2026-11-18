@@ -20,7 +20,10 @@ internal static class HeadlessCli
     public static bool Wants(string[] args) => args.Length > 0 &&
         new[] { Flag, FlagCad, FlagCheck, FlagSample }.Any(f => string.Equals(args[0], f, StringComparison.OrdinalIgnoreCase));
 
-    private static void Say(string s) { try { Console.WriteLine(s); } catch { } }
+    /// <summary>Ghi lại mọi dòng đã in – ứng dụng cửa sổ chạy bằng Start-Process không có console, nên lệnh phương án ghi thêm file *.kiemtra.txt.</summary>
+    private static readonly StringBuilder Log = new();
+    private static void Say(string s) { Log.AppendLine(s); try { Console.WriteLine(s); } catch { } }
+    private static void SaveLog(string planFile) { try { File.WriteAllText(planFile + ".kiemtra.txt", Log.ToString(), new UTF8Encoding(false)); } catch { } }
 
     public static int Run(string[] args)
     {
@@ -76,7 +79,9 @@ internal static class HeadlessCli
         foreach (var i in d.Info) Say("  " + i);
         foreach (var w in d.Warnings) Say("  ⚠ " + w);
         Say($"Đã ghi {outFile}: {ex.Levels.Count} cao độ, {ex.Walls.Count} tường, {ex.Openings.Count} cửa, {ex.Rooms.Count} phòng, {ex.Stairs.Count} ô thang.");
-        return PrintIssues(ex);
+        int rc = PrintIssues(ex);
+        SaveLog(outFile);
+        return rc;
     }
 
     /// <summary>KetCauVXT.exe --kiem-tra-phuong-an &lt;file.vxtphuongan.json&gt; → in lỗi / cảnh báo; mã thoát 0 không lỗi, 1 có lỗi.</summary>
@@ -85,7 +90,9 @@ internal static class HeadlessCli
         if (a.Count < 1 || !File.Exists(a[0])) { Say("Cần: --kiem-tra-phuong-an <file.vxtphuongan.json>"); return 2; }
         var ex = KetCauVXT.Import.RevitJsonImporter.ReadFile(a[0]);
         Say($"{ex.ProjectName}: {ex.Levels.Count} cao độ, {ex.Walls.Count} tường, {ex.Openings.Count} cửa, {ex.Rooms.Count} phòng, {ex.Stairs.Count} cầu thang.");
-        return PrintIssues(ex);
+        int rc = PrintIssues(ex);
+        SaveLog(a[0]);
+        return rc;
     }
 
     /// <summary>KetCauVXT.exe --phuong-an-mau &lt;ra.vxtphuongan.json&gt; → nhà phố mẫu 5 × 20 m làm khuôn cho agent.</summary>

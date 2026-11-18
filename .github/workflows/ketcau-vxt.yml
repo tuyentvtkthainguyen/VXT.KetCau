@@ -253,6 +253,10 @@ jobs:
           New-Item -ItemType Directory -Force publish\SketchUp | Out-Null
           Compress-Archive -Path tools\SketchUp\vxt_vietconst.rb, tools\SketchUp\vxt_vietconst -DestinationPath publish\SketchUp\VietConst_SketchUp.zip -Force
           Move-Item publish\SketchUp\VietConst_SketchUp.zip publish\SketchUp\VietConst_SketchUp.rbz -Force
+          # đội agent: gửi lệnh qua cầu nối Revit / SketchUp, render AI → {app}\agent, {app}\render
+          New-Item -ItemType Directory -Force publish\agent, publish\render | Out-Null
+          Copy-Item tools\agent\* publish\agent\ -Force
+          Copy-Item tools\render\*.py publish\render\ -Force
           # công cụ 3ds Max (MAXScript) → {app}\3dsMax
           New-Item -ItemType Directory -Force publish\3dsMax | Out-Null
           Copy-Item tools\3dsMax\VietConst_Export.ms publish\3dsMax\ -Force

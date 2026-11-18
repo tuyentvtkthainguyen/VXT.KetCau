@@ -28,3 +28,28 @@ Tuỳ chọn: `--ten`, `--vung-gio I..V`, `--w0`, `--dia-hinh A|B|C`, `--khong-g
 Kết quả trong thư mục `<tên>_<ngày giờ>`: BaoCao.md, BaoCao.json (mục "Cần người duyệt"), MoHinh.kcvxt, *.vxt2revit.json, BanVe/, GiaCongThep/, ThuyetMinh.docx, BangTinh.xlsx, BangKhoiLuong.xlsx, NoiLuc/, MoHinh.e2k, MoHinh.s2k.
 
 Chương trình chỉ đọc file đầu vào và ghi vào thư mục ra; không kết nối mạng, không thu thập dữ liệu.
+
+## Đội agent kiến trúc: phương án → mô hình → hồ sơ → phối cảnh
+
+Lệnh điều phối: `/phuong-an-den-ho-so <mô tả hoặc đường dẫn ảnh / PDF / DWG> [ảnh mặt tiền] [thư mục dự án]`.
+
+| Agent | Việc | Công cụ |
+|---|---|---|
+| kts-phuong-an | Lời / ảnh / PDF / DWG / ảnh mạng → `*.vxtphuongan.json`, kiểm tra 0 lỗi | `KetCauVXT.exe --phuong-an-mau`, `--cad-sang-phuong-an`, `--kiem-tra-phuong-an` |
+| kts-mat-tien | Ảnh mặt tiền → phong cách, vật liệu, màu, hướng; đề xuất chỉnh cửa mặt tiền | đọc ảnh, sửa JSON |
+| dung-mo-hinh | Dựng Revit (kiến trúc) + SketchUp (khối, vật liệu, 3 cảnh) | `agent\GuiLenh.ps1` → cầu nối Revit / SketchUp |
+| trien-khai-ho-so-kien-truc | Mặt bằng, 4 mặt đứng, mặt cắt, phối cảnh, thống kê, tờ KT-xx, PDF + DWG | Revit `tao-ban-ve`, `xuat-pdf`, `xuat-dwg` |
+| phoi-canh | Ảnh khối 3 cảnh, render AI (khi người dùng đồng ý), bàn giao Enscape / Vantage | SketchUp `anh`, `render\ai_render.py` |
+
+### Cầu nối agent (mặc định tắt)
+- Revit: tab **Việt Const → Phương án → hồ sơ → Cho phép agent** (hỏi xác nhận; mỗi lần mở Revit phải bật lại).
+- SketchUp: **Extensions → Việt Const → Cho phép agent điều khiển SketchUp**.
+- Lệnh đặt ở `%LOCALAPPDATA%\VietConst\Agent\<revit|sketchup>\in\*.json`, kết quả ở `out\*.ket-qua.json`, trạng thái `trang-thai.json`. Chỉ các lệnh trong danh sách; lệnh dựng / đổi kết cấu luôn hiện hộp thoại để người dùng duyệt. Không mạng, không thu thập dữ liệu.
+
+### Nút mới trên ribbon Revit (panel "Phương án → hồ sơ")
+- **Dựng kiến trúc từ phương án**: cao độ + mặt bằng tầng, trục, loại tường trát 2 mặt, tường, sàn chừa lỗ thang, cửa (tạo loại theo kích thước, cần có sẵn 1 họ cửa đi / cửa sổ), phòng có tên, thử dựng cầu thang 2 vế. Phần tử gắn mã `KT-…` → chạy lại chỉ thêm phần thiếu.
+- **Bộ bản vẽ kiến trúc**: KT-01… (mặt bằng có tag, mặt đứng, mặt cắt A-A, phối cảnh, thống kê). Kích thước, cao độ, ghi chú, chi tiết: kỹ sư hoàn thiện.
+- **Ảnh phối cảnh 3D**: PNG để so / làm nền render.
+
+### Render AI
+`python ai_render.py --anh <ảnh khối> --phuong-an <file> [--gio ngay|chieu|toi] [--goc elevation]` – giữ nguyên hình khối, phủ vật liệu theo mô tả mặt tiền. Khoá `GEMINI_API_KEY` của người dùng đặt trên máy; ảnh + câu lệnh chỉ gửi tới Google khi chạy không có `--chi-cau-lenh`.

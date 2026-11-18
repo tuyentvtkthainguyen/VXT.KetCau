@@ -30,7 +30,7 @@ namespace KetCauVXT.RevitExport
 
         public static readonly string[] Commands =
         {
-            "trang-thai", "du-an-moi", "mo", "dung-kien-truc", "xuat-viet-const", "dung-ket-cau", "nhan-tiet-dien", "tao-ban-ve", "anh-3d", "luu",
+            "trang-thai", "du-an-moi", "mo", "dung-kien-truc", "xuat-viet-const", "dung-ket-cau", "nhan-tiet-dien", "tao-ban-ve", "anh-3d", "xuat-pdf", "xuat-dwg", "luu",
         };
 
         private static AgentBridge _inst;
@@ -168,6 +168,34 @@ namespace KetCauVXT.RevitExport
                             AgentMode.Report = "Đã lưu ảnh " + outFile + (log.Count > 0 ? "\n" + string.Join("\n", log) : "");
                         }
                         break;
+                    case "xuat-pdf":
+                    case "xuat-dwg":
+                        if (doc == null) throw new InvalidOperationException("Chưa mở dự án.");
+                        {
+                            // "file": thư mục đích; "so_to": tiền tố số tờ (mặc định "KT-")
+                            if (string.IsNullOrWhiteSpace(file)) throw new ArgumentException("Thiếu \"file\" (thư mục đích).");
+                            Directory.CreateDirectory(file);
+                            string prefix = MiniJson.S(o, "so_to", "KT-");
+                            var ids = new FilteredElementCollector(doc).OfClass(typeof(ViewSheet)).Cast<ViewSheet>()
+                                .Where(v => !v.IsPlaceholder && v.SheetNumber.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                                .OrderBy(v => v.SheetNumber).Select(v => v.Id).ToList();
+                            if (ids.Count == 0) throw new InvalidOperationException("Không có tờ nào số bắt đầu bằng \"" + prefix + "\" – chạy tao-ban-ve trước.");
+                            string name = SafeName(doc.Title) + "_" + prefix.TrimEnd('-');
+                            if (lenh == "xuat-pdf")
+                            {
+                                var po = new PDFExportOptions { Combine = true, FileName = name };
+                                doc.Export(file, ids, po);
+                                outFile = Path.Combine(file, name + ".pdf");
+                            }
+                            else
+                            {
+                                var dwo = new DWGExportOptions { MergedViews = true };
+                                doc.Export(file, name, ids, dwo);
+                                outFile = file;
+                            }
+                            AgentMode.Report = $"Đã xuất {ids.Count} tờ ({lenh.Substring(5).ToUpperInvariant()}) vào {file}";
+                        }
+                        break;
                     case "luu":
                         if (doc == null) throw new InvalidOperationException("Chưa mở dự án.");
                         if (!string.IsNullOrEmpty(file))
@@ -206,6 +234,12 @@ namespace KetCauVXT.RevitExport
                 File.Move(tmp, dst);
             }
             catch { }
+        }
+
+        private static string SafeName(string s)
+        {
+            foreach (char c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
+            return s;
         }
 
         private static void Need(string file, string ext)
