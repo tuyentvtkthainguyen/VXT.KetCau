@@ -147,7 +147,12 @@ namespace KetCauVXT.RevitExport
                     }
                     catch (Exception e2) { log.Add(sd.Name + ": " + e2.Message); }
                 }
-            for (int i = 0; i < elevIds.Count; i += 2) sheets.Add(("", i == 0 ? "Mặt đứng chính, mặt đứng sau" : "Mặt đứng bên", elevIds.Skip(i).Take(2).ToList()));
+            // mỗi mặt đứng một tờ (tỷ lệ 1:50 hai mặt đứng chồng lên nhau trên một tờ)
+            for (int i = 0; i < elevIds.Count; i++)
+            {
+                string nm = (d.GetElement(elevIds[i]) as View)?.Name ?? "Mặt đứng";
+                sheets.Add(("", nm.StartsWith("KT - ") ? nm.Substring(5) : nm, new List<ElementId> { elevIds[i] }));
+            }
 
             // 3. mặt cắt dọc qua giữa nhà (song song cạnh dài)
             var vftSec = Vft(d, ViewFamily.Section);
