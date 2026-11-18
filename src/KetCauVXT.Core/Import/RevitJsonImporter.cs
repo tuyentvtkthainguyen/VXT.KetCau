@@ -22,6 +22,10 @@ public class RevitExchange
     public List<RvOpening> Openings { get; set; } = new();
     public List<RvRoom> Rooms { get; set; } = new();
     public List<RvMep> Mep { get; set; } = new();
+    // ---- [Phương án – Import/Arch/PlanSpec.cs] file *.vxtphuongan.json do agent / KTS lập (cùng lược đồ, thêm các mục dưới) ----
+    public List<RvStair> Stairs { get; set; } = new();
+    public RvFacade Facade { get; set; }
+    public RvSite Site { get; set; }
 }
 
 public class RvLevel

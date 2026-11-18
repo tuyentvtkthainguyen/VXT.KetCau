@@ -681,6 +681,7 @@ Console.WriteLine("106. Revit chỉ có kiến trúc → nhận diện tải (ph
 RevitArchToDesignTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 RevitProject1Tests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
 RevitPipelineTests.Run(Check, args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"));
+PlanSpecTests.Run(Check, Path.Combine(args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "KetQuaMau"), "PhuongAn"));
 
 Console.WriteLine();
 Console.ForegroundColor = fail == 0 ? ConsoleColor.Green : ConsoleColor.Red;

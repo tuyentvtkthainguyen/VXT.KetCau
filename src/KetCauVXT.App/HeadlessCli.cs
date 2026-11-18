@@ -15,12 +15,23 @@ internal static class HeadlessCli
 
     [DllImport("kernel32.dll")] private static extern bool AttachConsole(int pid);
 
-    public static bool Wants(string[] args) => args.Length > 0 && string.Equals(args[0], Flag, StringComparison.OrdinalIgnoreCase);
+    public const string FlagCad = "--cad-sang-phuong-an", FlagCheck = "--kiem-tra-phuong-an", FlagSample = "--phuong-an-mau";
+
+    public static bool Wants(string[] args) => args.Length > 0 &&
+        new[] { Flag, FlagCad, FlagCheck, FlagSample }.Any(f => string.Equals(args[0], f, StringComparison.OrdinalIgnoreCase));
+
+    private static void Say(string s) { try { Console.WriteLine(s); } catch { } }
 
     public static int Run(string[] args)
     {
         try { AttachConsole(-1); Console.OutputEncoding = Encoding.UTF8; } catch { }
-        void Say(string s) { try { Console.WriteLine(s); } catch { } }
+        try
+        {
+            if (string.Equals(args[0], FlagCad, StringComparison.OrdinalIgnoreCase)) return CadToPlan(args.Skip(1).ToList());
+            if (string.Equals(args[0], FlagCheck, StringComparison.OrdinalIgnoreCase)) return CheckPlan(args.Skip(1).ToList());
+            if (string.Equals(args[0], FlagSample, StringComparison.OrdinalIgnoreCase)) return SamplePlan(args.Skip(1).ToList());
+        }
+        catch (Exception e) { Say("Lỗi: " + e.Message); return 2; }
         var o = RevitDesignPipeline.ParseArgs(args.Skip(1).ToList(), out var err);
         if (o == null)
         {
@@ -40,6 +51,59 @@ internal static class HeadlessCli
         }
         catch (Exception e) { Say("Không ghi được báo cáo: " + e.Message); return 2; }
         return rep.ExitCode;
+    }
+
+    /// <summary>KetCauVXT.exe --cad-sang-phuong-an &lt;mb1.dwg&gt; [mb2.dwg …] &lt;ra.vxtphuongan.json&gt; [--ten "…"] [--cao-tang 3.3]
+    /// Đọc mặt bằng kiến trúc CAD (tường, cửa, trục, chữ tên phòng, ô thang) → phương án chung cho Revit / SketchUp / Việt Const.</summary>
+    private static int CadToPlan(List<string> a)
+    {
+        string name = "", outFile = null; double h = 0;
+        var files = new List<string>();
+        for (int i = 0; i < a.Count; i++)
+        {
+            if (a[i] == "--ten" && i + 1 < a.Count) { name = a[++i]; continue; }
+            if (a[i] == "--cao-tang" && i + 1 < a.Count) { h = double.Parse(a[++i].Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture); continue; }
+            files.Add(a[i]);
+        }
+        if (files.Count < 2) { Say("Cần: --cad-sang-phuong-an <mặt bằng .dwg/.dxf …> <ra.vxtphuongan.json> [--ten …] [--cao-tang 3.3]"); return 2; }
+        outFile = files[^1]; files.RemoveAt(files.Count - 1);
+        foreach (var f in files) if (!File.Exists(f)) { Say("Không thấy file " + f); return 2; }
+        var o = new KetCauVXT.Import.Arch.ArchImportOptions();
+        var d = KetCauVXT.Import.Arch.ArchPlanReader.ReadMany(files, o);
+        if (h > 2) foreach (var fl in d.Floors) fl.Height = h;
+        var ex = KetCauVXT.Import.Arch.PlanSpec.FromArchDrawing(d, string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(files[0]) : name);
+        KetCauVXT.Import.Arch.PlanSpec.Save(ex, outFile);
+        foreach (var i in d.Info) Say("  " + i);
+        foreach (var w in d.Warnings) Say("  ⚠ " + w);
+        Say($"Đã ghi {outFile}: {ex.Levels.Count} cao độ, {ex.Walls.Count} tường, {ex.Openings.Count} cửa, {ex.Rooms.Count} phòng, {ex.Stairs.Count} ô thang.");
+        return PrintIssues(ex);
+    }
+
+    /// <summary>KetCauVXT.exe --kiem-tra-phuong-an &lt;file.vxtphuongan.json&gt; → in lỗi / cảnh báo; mã thoát 0 không lỗi, 1 có lỗi.</summary>
+    private static int CheckPlan(List<string> a)
+    {
+        if (a.Count < 1 || !File.Exists(a[0])) { Say("Cần: --kiem-tra-phuong-an <file.vxtphuongan.json>"); return 2; }
+        var ex = KetCauVXT.Import.RevitJsonImporter.ReadFile(a[0]);
+        Say($"{ex.ProjectName}: {ex.Levels.Count} cao độ, {ex.Walls.Count} tường, {ex.Openings.Count} cửa, {ex.Rooms.Count} phòng, {ex.Stairs.Count} cầu thang.");
+        return PrintIssues(ex);
+    }
+
+    /// <summary>KetCauVXT.exe --phuong-an-mau &lt;ra.vxtphuongan.json&gt; → nhà phố mẫu 5 × 20 m làm khuôn cho agent.</summary>
+    private static int SamplePlan(List<string> a)
+    {
+        if (a.Count < 1) { Say("Cần: --phuong-an-mau <ra.vxtphuongan.json>"); return 2; }
+        KetCauVXT.Import.Arch.PlanSpec.Save(KetCauVXT.Import.Arch.PlanSpec.SampleTownhouse(), a[0]);
+        Say("Đã ghi " + a[0]);
+        return 0;
+    }
+
+    private static int PrintIssues(KetCauVXT.Import.RevitExchange ex)
+    {
+        var iss = KetCauVXT.Import.Arch.PlanSpec.Validate(ex);
+        foreach (var i in iss) Say("  " + i);
+        int err = iss.Count(i => i.Error);
+        Say(err == 0 ? $"Không có lỗi ({iss.Count} cảnh báo)." : $"{err} lỗi, {iss.Count - err} cảnh báo – sửa phương án trước khi dựng.");
+        return err == 0 ? 0 : 1;
     }
 
     private sealed class Progress : IProgress<string>

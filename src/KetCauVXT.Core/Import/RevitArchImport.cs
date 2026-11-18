@@ -44,6 +44,8 @@ public class RvOpening
     public double Height { get; set; }
     public double Sill { get; set; }
     public bool Flipped { get; set; }
+    /// <summary>Phương án: tầng đặt cửa (khi không có HostId – add-in Revit tìm tường gần nhất trên tầng này).</summary>
+    public string Level { get; set; } = "";
 }
 
 public class RvRoom
