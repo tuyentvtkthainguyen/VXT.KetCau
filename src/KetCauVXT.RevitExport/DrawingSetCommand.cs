@@ -293,6 +293,9 @@ namespace KetCauVXT.RevitExport
                     var up = right.CrossProduct(fwd).Normalize();
                     v.SetOrientation(new ViewOrientation3D(eye, up, fwd));
                 }
+                // ảnh phối cảnh: ẩn trục, cao độ, ký hiệu → khung hình ôm sát công trình
+                foreach (var bic in new[] { BuiltInCategory.OST_Grids, BuiltInCategory.OST_Levels, BuiltInCategory.OST_SectionBox, BuiltInCategory.OST_RoomSeparationLines, BuiltInCategory.OST_Rooms })
+                    try { v.SetCategoryHidden(new ElementId(bic), true); } catch { }
                 try { v.DisplayStyle = DisplayStyle.Realistic; } catch { }
                 try { v.DetailLevel = ViewDetailLevel.Fine; } catch { }
             }

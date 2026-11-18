@@ -348,7 +348,25 @@ namespace KetCauVXT.RevitExport
                 try
                 {
                     // đã có phòng ở chỗ này (người dùng tự đặt) → chỉ đặt tên nếu đang trống
-                    var exist = d.GetRoomAtPoint(new XYZ(VxtRevit.ToFt(pt[0]), VxtRevit.ToFt(pt[1]), lv.ProjectElevation + VxtRevit.ToFt(1.0)));
+                    var probe = new XYZ(VxtRevit.ToFt(pt[0]), VxtRevit.ToFt(pt[1]), lv.ProjectElevation + VxtRevit.ToFt(1.0));
+                    var exist = d.GetRoomAtPoint(probe);
+                    // vùng này đã thuộc phòng khác của phương án (không có tường ngăn, VD sảnh mở ra phòng khách) → kẻ đường phân chia phòng theo đường bao
+                    if (exist != null && VxtRevit.GetVxtId(exist).StartsWith(Prefix, StringComparison.Ordinal) && VxtRevit.GetVxtId(exist) != Prefix + r.Id)
+                    {
+                        var plan = new FilteredElementCollector(d).OfClass(typeof(ViewPlan)).Cast<ViewPlan>()
+                            .FirstOrDefault(v => !v.IsTemplate && v.GenLevel != null && v.GenLevel.Id == lv.Id && v.ViewType == ViewType.FloorPlan);
+                        if (plan != null)
+                        {
+                            var ca = new CurveArray();
+                            foreach (var cv in Loop(r.Outline)) ca.Append(Line.CreateBound(new XYZ(cv.GetEndPoint(0).X, cv.GetEndPoint(0).Y, lv.ProjectElevation), new XYZ(cv.GetEndPoint(1).X, cv.GetEndPoint(1).Y, lv.ProjectElevation)));
+                            var sp = SketchPlane.Create(d, Plane.CreateByNormalAndOrigin(XYZ.BasisZ, new XYZ(0, 0, lv.ProjectElevation)));
+                            d.Create.NewRoomBoundaryLines(sp, ca, plan);
+                            d.Regenerate();
+                            exist = d.GetRoomAtPoint(probe);
+                            if (exist != null && VxtRevit.GetVxtId(exist).StartsWith(Prefix, StringComparison.Ordinal)) { c.Log.Add($"Phòng {r.Name} ({r.Level}): trùng vùng với phòng khác, đã kẻ đường phân chia nhưng chưa tách được."); continue; }
+                            c.Log.Add($"Phòng {r.Name} ({r.Level}): kẻ đường phân chia phòng theo đường bao (không có tường ngăn).");
+                        }
+                    }
                     if (exist != null)
                     {
                         if (string.IsNullOrWhiteSpace(exist.Name) || exist.Name.StartsWith("Room", StringComparison.OrdinalIgnoreCase) || exist.Name.StartsWith("Phòng ", StringComparison.OrdinalIgnoreCase))
