@@ -32,6 +32,13 @@ public partial class App : Application
         global::KetCauVXT.Model.TemplateService.AutoApplyDefault = true;
         DialogUi.RegisterFitToScreen();   // hộp thoại dài hơn màn hình → cuộn bằng chuột giữa, không tràn màn
         base.OnStartup(e);
+        if (HeadlessCli.Wants(e.Args ?? Array.Empty<string>()))   // chạy không giao diện cho agent / dòng lệnh (HeadlessCli.cs)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            int code = HeadlessCli.Run(e.Args);
+            Shutdown(code);
+            return;
+        }
         StartWindows(e.Args ?? Array.Empty<string>());
         UpdateService.StartAutoCheck(e.Args ?? Array.Empty<string>());   // kiểm tra ngầm bản mới → hiện nút "Có bản mới" (tắt được)
     }

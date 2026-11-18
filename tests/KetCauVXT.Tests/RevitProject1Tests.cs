@@ -56,3 +56,39 @@ public static class RevitProject1Tests
         try { Directory.CreateDirectory(outDir); p.Save(Path.Combine(outDir, "Project1_TuRevit.kcvxt")); } catch { /* chỉ để xem */ }
     }
 }
+
+/// <summary>Quy trình không giao diện (KetCauVXT.exe --revit-thiet-ke) trên Project1 đã đặt tên phòng: chạy hết, xuất hồ sơ, báo cáo.</summary>
+public static class RevitPipelineTests
+{
+    public static void Run(Action<string, double, double, double> check, string outDir)
+    {
+        static double B(bool v) => v ? 1 : 0;
+        string file = Path.Combine(AppContext.BaseDirectory, "Data", "Project1_Rooms.vxtrevit.json");
+        var o = KetCauVXT.Pipeline.RevitDesignPipeline.ParseArgs(new[] { file, Path.Combine(outDir, "Pipeline"), "--vung-gio", "II", "--cong-nang", "Sảnh + cầu thang=Sảnh, hành lang" }, out var err);
+        check("Pipeline: đọc tham số", B(o != null), 1, 0);
+        if (o == null) { Console.WriteLine("    " + err); return; }
+        var bad = KetCauVXT.Pipeline.RevitDesignPipeline.ParseArgs(new[] { file }, out var err2);
+        check("Pipeline: thiếu thư mục ra → báo lỗi", B(bad == null && err2 != null), 1, 0);
+
+        var rep = KetCauVXT.Pipeline.RevitDesignPipeline.Run(o);
+        var (md, js) = KetCauVXT.Pipeline.RevitDesignPipeline.WriteReport(rep, o);
+        foreach (var s in rep.Steps) Console.WriteLine($"    {(s.Ok ? "✓" : "✗")} {s.Title}: {s.Lines.FirstOrDefault()}");
+        foreach (var r in rep.NeedReview) Console.WriteLine("    duyệt: " + r);
+        check("Pipeline: không lỗi chương trình", B(rep.Ok), 1, 0);
+        check("Pipeline: mọi cấu kiện đạt", rep.Failed, 0, 0);
+        check("Pipeline: có cột", B(rep.Columns >= 6), 1, 0);
+        check("Pipeline: có thuyết minh", B(rep.Files.Contains("ThuyetMinh.docx")), 1, 0);
+        check("Pipeline: có file cho add-in Revit", B(rep.Files.Any(f => f.EndsWith(".vxt2revit.json"))), 1, 0);
+        check("Pipeline: có bản vẽ DXF", B(rep.Files.Any(f => f.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase))), 1, 0);
+        check("Pipeline: báo cáo md + json", B(File.Exists(md) && File.Exists(js)), 1, 0);
+        check("Pipeline: dùng công năng người dùng chọn", B(rep.Steps.Any(s => s.Lines.Any(l => l.Contains("Người dùng chọn")))), 1, 0);
+        check("Pipeline: gió vùng II", B(rep.Steps.Any(s => s.Lines.Any(l => l.Contains("vùng II")))), 1, 0);
+        check("Pipeline: mã thoát 0", rep.ExitCode, 0, 0);
+
+        // dừng sớm để người duyệt bảng tải
+        var o2 = KetCauVXT.Pipeline.RevitDesignPipeline.ParseArgs(new[] { file, Path.Combine(outDir, "Pipeline2"), "--den-buoc", "tai" }, out _);
+        var rep2 = KetCauVXT.Pipeline.RevitDesignPipeline.Run(o2);
+        check("Pipeline: dừng sau bước tải", B(rep2.StoppedAt == "tai" && rep2.Steps.Count == 2), 1, 0);
+        check("Pipeline: dừng sớm → mã thoát 1", rep2.ExitCode, 1, 0);
+    }
+}

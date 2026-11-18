@@ -214,6 +214,19 @@ jobs:
           Get-ChildItem ManHinh | Format-Table Name, Length
           if ($bad -gt 0) { throw "tu kiem tra giao dien loi" }
 
+      - name: Chay khong giao dien cho agent (--revit-thiet-ke Project1)
+        shell: pwsh
+        run: |
+          $out = "$PWD\KetQuaMau\Agent"
+          $in = "$PWD\tests\KetCauVXT.Tests\Data\Project1_Rooms.vxtrevit.json"
+          $p = Start-Process -FilePath publish\KetCauVXT.exe -ArgumentList "--revit-thiet-ke", "`"$in`"", "`"$out`"", "--vung-gio", "II", "--ten", "Project1" -PassThru
+          if (-not $p.WaitForExit(300000)) { Stop-Process -Id $p.Id -Force; throw "chay khong giao dien bi treo" }
+          Write-Host "Ma thoat: $($p.ExitCode)"
+          $rep = Get-ChildItem -Recurse $out -Filter BaoCao.md | Select-Object -First 1
+          if (-not $rep) { throw "khong co BaoCao.md" }
+          Get-Content $rep.FullName -Encoding UTF8 | Select-Object -First 40
+          if ($p.ExitCode -eq 2) { throw "chay khong giao dien loi" }
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
