@@ -77,6 +77,10 @@ namespace KetCauVXT.RevitExport
             var box = ModelBox(d);
             if (box == null) { log.Add("Mô hình chưa có tường – dựng kiến trúc trước."); return; }
             var sheets = new List<(string No, string Name, List<ElementId> Views)>();
+            // tỷ lệ: nhỏ nhất trong 1:50 / 75 / 100 / 150 / 200 để chiều dài nhà ≤ 46 cm trên giấy (vừa khổ A1–A2)
+            double lenM = VxtRevit.ToM(Math.Max(box.Max.X - box.Min.X, box.Max.Y - box.Min.Y));
+            int sc = new[] { 50, 75, 100, 150, 200 }.FirstOrDefault(k => lenM / k * 1000 <= 460);
+            if (sc == 0) sc = 200;
 
             // 1. mặt bằng các tầng có tường
             var wallLevels = new HashSet<ElementId>(new FilteredElementCollector(d).OfClass(typeof(Wall)).Cast<Wall>().Select(w => w.LevelId));
@@ -92,7 +96,16 @@ namespace KetCauVXT.RevitExport
                 {
                     v = ViewPlan.Create(d, vftPlan.Id, lv.Id);
                     try { v.Name = name; } catch { }
-                    v.Scale = 100; nv++;
+                    v.Scale = sc; nv++;
+                    // vùng cắt mặt bằng ôm công trình + 3 m (bỏ ký hiệu mặt đứng, phần tử mẫu ở xa)
+                    try
+                    {
+                        double m3 = VxtRevit.ToFt(3.0);
+                        var cb = v.CropBox;
+                        v.CropBox = new BoundingBoxXYZ { Transform = cb.Transform, Min = new XYZ(box.Min.X - m3, box.Min.Y - m3, cb.Min.Z), Max = new XYZ(box.Max.X + m3, box.Max.Y + m3, cb.Max.Z) };
+                        v.CropBoxActive = true; v.CropBoxVisible = false;
+                    }
+                    catch { }
                     try { v.DetailLevel = ViewDetailLevel.Medium; } catch { }
                     d.Regenerate();
                     foreach (var r in rooms.Where(r => r.LevelId == lv.Id))
@@ -129,7 +142,7 @@ namespace KetCauVXT.RevitExport
                         foreach (var ev in evs) if (keep == null || ev.Id != keep.Id) d.Delete(ev.Id);
                         if (keep == null) { log.Add(sd.Name + ": không tạo được hướng nhìn."); continue; }
                         try { keep.Name = name; } catch { }
-                        keep.Scale = 100; nv++;
+                        keep.Scale = sc; nv++;
                         elevIds.Add(keep.Id);
                     }
                     catch (Exception e2) { log.Add(sd.Name + ": " + e2.Message); }
@@ -153,7 +166,7 @@ namespace KetCauVXT.RevitExport
                     var sb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-L / 2 - m1, -m1, 0), Max = new XYZ(L / 2 + m1, box.Max.Z - box.Min.Z + m1, W / 2 + m1) };
                     sec = ViewSection.CreateSection(d, vftSec.Id, sb);
                     try { sec.Name = secName; } catch { }
-                    sec.Scale = 100; nv++;
+                    sec.Scale = sc; nv++;
                 }
                 catch (Exception e3) { log.Add("Mặt cắt: " + e3.Message); }
             if (sec != null) sheets.Add(("", "Mặt cắt A-A", new List<ElementId> { sec.Id }));
