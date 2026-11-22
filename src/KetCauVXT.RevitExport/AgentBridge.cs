@@ -157,7 +157,10 @@ namespace KetCauVXT.RevitExport
                         break;
                     case "tao-ban-ve":
                         DrawingSetCommand.FrontDeg = MiniJson.D(o, "huong_mat_tien", DrawingSetCommand.FrontDeg);
-                        r = new DrawingSetCommand().Run(app, ref msg);
+                        // "pham_vi": "mat-bang" → chỉ mặt bằng sơ bộ (điểm chốt người dùng xác nhận); bỏ trống → cả bộ
+                        DrawingSetCommand.Scope = MiniJson.S(o, "pham_vi", "");
+                        try { r = new DrawingSetCommand().Run(app, ref msg); }
+                        finally { DrawingSetCommand.Scope = ""; }
                         break;
                     case "anh-3d":
                         Need(file, ".png");

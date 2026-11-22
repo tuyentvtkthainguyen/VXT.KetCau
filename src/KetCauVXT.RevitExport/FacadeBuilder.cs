@@ -93,7 +93,12 @@ namespace KetCauVXT.RevitExport
             return 0;
         }
 
-        /// <summary>Join các phần tử KT- giao nhau, thứ tự cắt: cột &gt; sàn &gt; dầm &gt; tường (dầm – cột, tường – tường do Revit tự nối).</summary>
+        /// <summary>
+        /// Join các phần tử KT- theo cấu tạo để khối lượng vật tư không bị tính trùng: cột &gt; sàn &gt; dầm &gt; tường;
+        /// dầm – dầm: dầm cao hơn (dầm chính) cắt dầm thấp; dầm – cột: cột cắt dầm. Chỉ nối cặp giao nhau thật
+        /// (khối đặc chồng lấn) – cặp đã nối mà không giao thì bỏ nối (hết cảnh báo "joined but do not intersect").
+        /// Tường – tường do Revit tự nối ở đầu tường.
+        /// </summary>
         internal static string JoinAll(Document d)
         {
             var els = new List<(Element E, int R, BoundingBoxXYZ B)>();
@@ -106,26 +111,46 @@ namespace KetCauVXT.RevitExport
                     if (bb != null) els.Add((e, Rank(e), bb));
                 }
             double tol = VxtRevit.ToFt(0.002);
-            int joined = 0, switched = 0, failed = 0;
+            int joined = 0, switched = 0, unjoined = 0, failed = 0;
+            var failedPairs = new List<string>();
             for (int i = 0; i < els.Count; i++)
                 for (int j = i + 1; j < els.Count; j++)
                 {
                     var a = els[i]; var b = els[j];
-                    if (a.R == b.R) continue;                                   // cùng loại: Revit tự nối (tường) hoặc không cần
-                    if (a.R + b.R == 6 && Math.Min(a.R, b.R) == 2) continue;     // dầm – cột: Revit tự cắt đầu dầm
+                    if (a.R == b.R && a.R != 2) continue;                         // tường – tường (Revit tự nối), sàn – sàn, cột – cột
                     if (a.B.Max.X < b.B.Min.X - tol || b.B.Max.X < a.B.Min.X - tol || a.B.Max.Y < b.B.Min.Y - tol || b.B.Max.Y < a.B.Min.Y - tol || a.B.Max.Z < b.B.Min.Z - tol || b.B.Max.Z < a.B.Min.Z - tol) continue;
-                    var hi = a.R > b.R ? a.E : b.E; var lo = a.R > b.R ? b.E : a.E;
+                    bool hit;
+                    try { hit = new ElementIntersectsElementFilter(a.E).PassesFilter(b.E); } catch { hit = false; }
+                    bool isJ = false;
+                    try { isJ = JoinGeometryUtils.AreElementsJoined(d, a.E, b.E); } catch { }
+                    if (!hit)
+                    {
+                        if (isJ) { try { JoinGeometryUtils.UnjoinGeometry(d, a.E, b.E); unjoined++; } catch { } }
+                        continue;
+                    }
+                    Element hi, lo;
+                    if (a.R != b.R) { hi = a.R > b.R ? a.E : b.E; lo = a.R > b.R ? b.E : a.E; }
+                    else
+                    {
+                        // hai dầm: dầm cao hơn cắt; bằng nhau thì dầm dài hơn cắt
+                        double ha = a.B.Max.Z - a.B.Min.Z, hb = b.B.Max.Z - b.B.Min.Z;
+                        double la = Math.Max(a.B.Max.X - a.B.Min.X, a.B.Max.Y - a.B.Min.Y), lb = Math.Max(b.B.Max.X - b.B.Min.X, b.B.Max.Y - b.B.Min.Y);
+                        bool aCut = Math.Abs(ha - hb) > tol ? ha > hb : la >= lb;
+                        hi = aCut ? a.E : b.E; lo = aCut ? b.E : a.E;
+                    }
                     try
                     {
-                        if (!JoinGeometryUtils.AreElementsJoined(d, hi, lo))
-                        {
-                            try { JoinGeometryUtils.JoinGeometry(d, hi, lo); joined++; } catch { continue; } // không giao thật
-                        }
+                        if (!isJ) { JoinGeometryUtils.JoinGeometry(d, hi, lo); joined++; }
                         if (!JoinGeometryUtils.IsCuttingElementInJoin(d, hi, lo)) { JoinGeometryUtils.SwitchJoinOrder(d, hi, lo); switched++; }
                     }
-                    catch { failed++; }
+                    catch
+                    {
+                        failed++;
+                        if (failedPairs.Count < 8) { try { failedPairs.Add(VxtRevit.GetVxtId(hi) + " / " + VxtRevit.GetVxtId(lo)); } catch { } }
+                    }
                 }
-            return $"Kết nối hình học: {joined} cặp mới, {switched} cặp đổi thứ tự cắt" + (failed > 0 ? $", {failed} cặp không nối được" : "") + ".";
+            return $"Kết nối hình học: {joined} cặp mới, {switched} cặp đổi thứ tự cắt" + (unjoined > 0 ? $", bỏ nối {unjoined} cặp không giao" : "")
+                 + (failed > 0 ? $"; {failed} cặp chồng lấn chưa nối được (khối lượng có thể bị tính trùng): " + string.Join("; ", failedPairs) : "; không còn chồng lấn giữa cột / dầm / sàn / tường") + ".";
         }
 
         // ------------------------------------------------------------------ vật liệu

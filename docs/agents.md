@@ -38,7 +38,7 @@ Lệnh điều phối: `/phuong-an-den-ho-so <mô tả hoặc đường dẫn �
 | kts-phuong-an | Lời / ảnh / PDF / DWG / ảnh mạng → `*.vxtphuongan.json`, kiểm tra 0 lỗi | `KetCauVXT.exe --phuong-an-mau`, `--cad-sang-phuong-an`, `--kiem-tra-phuong-an` |
 | kts-mat-tien | Ảnh mặt tiền → phong cách, vật liệu, màu, hướng; đề xuất chỉnh cửa mặt tiền | đọc ảnh, sửa JSON |
 | dung-mo-hinh | Dựng Revit (kiến trúc) + SketchUp (khối, vật liệu, 3 cảnh) | `agent\GuiLenh.ps1` → cầu nối Revit / SketchUp |
-| trien-khai-ho-so-kien-truc | Mặt bằng, 4 mặt đứng, mặt cắt, phối cảnh, thống kê, tờ KT-xx, PDF + DWG | Revit `tao-ban-ve`, `xuat-pdf`, `xuat-dwg` |
+| trien-khai-ho-so-kien-truc | Mặt bằng sơ bộ → **người dùng xác nhận** → 4 mặt đứng, mặt cắt, phối cảnh, thống kê, tờ KT-xx, PDF + DWG | Revit `tao-ban-ve`, `xuat-pdf`, `xuat-dwg` |
 | phoi-canh | Ảnh khối 3 cảnh, render AI (khi người dùng đồng ý), bàn giao Enscape / Vantage | SketchUp `anh`, `render\ai_render.py` |
 
 ### Cầu nối agent (mặc định tắt)

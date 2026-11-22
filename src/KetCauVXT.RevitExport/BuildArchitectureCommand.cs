@@ -481,6 +481,10 @@ namespace KetCauVXT.RevitExport
                     bool Fit(FamilySymbol x) => Math.Abs(SymW(x, door) - w) < 0.01 && Math.Abs(SymH(x, door) - h) < 0.01;
                     var exact = fam.FirstOrDefault(x => x.Name.Equals(hint ?? "", StringComparison.OrdinalIgnoreCase) && Fit(x)) ?? fam.FirstOrDefault(Fit);
                     if (exact != null) return exact;
+                    // loại cùng tên của dự án lệch ≤ 5 cm → dùng nguyên loại có sẵn (không sinh loại mới)
+                    var named = fam.FirstOrDefault(x => x.Name.Equals(hint ?? "", StringComparison.OrdinalIgnoreCase)
+                                                        && Math.Abs(SymW(x, door) - w) <= 0.05 && Math.Abs(SymH(x, door) - h) <= 0.05);
+                    if (named != null) return named;
                     string fn = (hint ?? "").Length > 0 ? hint + " " + Mm(w) + "x" + Mm(h) : Mm(w) + "x" + Mm(h);
                     var again = fam.FirstOrDefault(x => x.Name.Equals(fn, StringComparison.OrdinalIgnoreCase));
                     if (again != null) return again;
@@ -495,6 +499,12 @@ namespace KetCauVXT.RevitExport
             string name = (door ? "Cửa đi " : "Cửa sổ ") + Mm(w) + "x" + Mm(h);
             var found = syms.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             if (found != null) return found;
+            // tận dụng loại cửa có sẵn trong dự án / template: đúng tên gợi ý, rồi bất kỳ loại nào đúng kích thước (±1 cm)
+            bool Same(FamilySymbol x) => Math.Abs(SymW(x, door) - w) < 0.01 && Math.Abs(SymH(x, door) - h) < 0.01;
+            var reuse = syms.FirstOrDefault(s => !string.IsNullOrEmpty(hint) && s.Name.Equals(hint, StringComparison.OrdinalIgnoreCase) && Math.Abs(SymW(s, door) - w) <= 0.05 && Math.Abs(SymH(s, door) - h) <= 0.05)
+                        ?? syms.FirstOrDefault(s => !string.IsNullOrEmpty(hint) && (s.Name.IndexOf(hint, StringComparison.OrdinalIgnoreCase) >= 0 || s.FamilyName.IndexOf(hint, StringComparison.OrdinalIgnoreCase) >= 0) && Same(s))
+                        ?? syms.FirstOrDefault(Same);
+            if (reuse != null) return reuse;
             // gốc: loại có tên gợi ý (VD "Cửa đi"), loại có kích thước chỉnh được, rồi loại đầu tiên
             var src = syms.FirstOrDefault(s => !string.IsNullOrEmpty(hint) && (s.Name.IndexOf(hint, StringComparison.OrdinalIgnoreCase) >= 0 || s.FamilyName.IndexOf(hint, StringComparison.OrdinalIgnoreCase) >= 0) && HasSize(s, door))
                       ?? syms.FirstOrDefault(s => HasSize(s, door)) ?? syms[0];
@@ -665,6 +675,7 @@ namespace KetCauVXT.RevitExport
                             var stairs = (Stairs)d.GetElement(sid);
                             int n = Math.Max(6, (int)Math.Round(H / 0.165));
                             if (n % 2 == 1) n++;
+                            StairType(c, stairs, st.Id, 0, st.Width > 0.6 ? st.Width : 0.9, (t.Elevation - b.Elevation) / Math.Max(1, n));
                             stairs.DesiredRisersNumber = n;
                             double tread = VxtRevit.ToM(stairs.ActualTreadDepth);
                             if (tread < 0.2 || tread > 0.35) tread = 0.26;
@@ -709,6 +720,43 @@ namespace KetCauVXT.RevitExport
         }
 
         /// <summary>
+        /// Loại thang mặc định: "Monolithic Stair" (họ Cast-In-Place Stair – thang BTCT liền khối) có sẵn trong template;
+        /// nhân bản thành "VXT Monolithic b&lt;mặt bậc&gt; r&lt;bề rộng vế&gt;" để Revit giữ đúng mặt bậc / bề rộng thiết kế.
+        /// tread ≤ 0: giữ mặt bậc tối thiểu của loại gốc. riseFt: chiều cao bậc (ft). Gọi trong Transaction của StairsEditScope.
+        /// </summary>
+        internal static void StairType(Ctx c, Stairs stairs, string id, double tread, double wRun, double riseFt)
+        {
+            var d = c.Doc;
+            try
+            {
+                var all = new FilteredElementCollector(d).OfClass(typeof(StairsType)).Cast<StairsType>().ToList();
+                bool Mono(StairsType x) => x.Name.IndexOf("Monolithic", StringComparison.OrdinalIgnoreCase) >= 0 || x.Name.IndexOf("liền khối", StringComparison.OrdinalIgnoreCase) >= 0;
+                var mono = all.Where(Mono).ToList();
+                var baseType = mono.FirstOrDefault(x => x.Name.Equals("Monolithic Stair", StringComparison.OrdinalIgnoreCase) && !x.Name.StartsWith("VXT", StringComparison.Ordinal))
+                               ?? mono.FirstOrDefault(x => !x.Name.StartsWith("VXT", StringComparison.Ordinal))
+                               ?? (d.GetElement(stairs.GetTypeId()) as StairsType);
+                if (mono.Count == 0) c.Log.Add($"Cầu thang {id}: template chưa có loại \"Monolithic Stair\" – dùng loại {baseType?.Name}. Nạp loại thang liền khối vào template để thống nhất.");
+                if (baseType == null) return;
+                double tr = tread > 0 ? tread : VxtRevit.ToM(baseType.MinTreadDepth);
+                string tn = $"VXT Monolithic b{tr * 1000:0} r{wRun * 1000:0}";
+                var nt = all.FirstOrDefault(x => x.Name == tn);
+                if (nt == null)
+                {
+                    nt = baseType.Duplicate(tn) as StairsType;
+                    if (nt != null)
+                    {
+                        nt.MinTreadDepth = VxtRevit.ToFt(tr);
+                        if (wRun > 0.3) nt.MinRunWidth = VxtRevit.ToFt(wRun);
+                        if (nt.MaxRiserHeight < riseFt + 1e-6) nt.MaxRiserHeight = riseFt + VxtRevit.ToFt(0.002);
+                    }
+                }
+                if (nt != null && stairs.GetTypeId() != nt.Id) stairs.ChangeTypeId(nt.Id);
+                c.Log.Add($"Cầu thang {id}: loại {nt?.Name} (gốc {baseType.Name}).");
+            }
+            catch (Exception ex) { c.Log.Add($"Cầu thang {id}: chưa đặt được loại thang Monolithic ({ex.Message})."); }
+        }
+
+        /// <summary>
         /// Cầu thang theo các vế phương án ghi sẵn (đường tim vế theo hướng đi lên, số bậc đứng mỗi vế): mặt bậc = dài vế / (bậc đứng − 1),
         /// chiếu nghỉ tự động giữa hai vế liên tiếp (không được thì dựng theo đa giác Landings).
         /// </summary>
@@ -728,28 +776,10 @@ namespace KetCauVXT.RevitExport
                         tr.Start();
                         Swallow(tr, c.Log);
                         var stairs = (Stairs)d.GetElement(sid);
-                        // loại thang riêng có mặt bậc tối thiểu = mặt bậc thiết kế, bề rộng vế tối thiểu = vế thiết kế
-                        // (Revit lấy mặt bậc / bề rộng thực theo loại thang – loại của template là 260 / 1000 mm)
-                        try
-                        {
-                            double wRun = st.Runs.Where(q => q.Width > 0.3).Select(q => q.Width).DefaultIfEmpty(st.Width).Min();
-                            double riseFt = (t.Elevation - b.Elevation) / Math.Max(1, total); // ft
-                            var stype = d.GetElement(stairs.GetTypeId()) as StairsType;
-                            string tn = $"VXT thang b{tread * 1000:0} r{wRun * 1000:0}";
-                            var nt = new FilteredElementCollector(d).OfClass(typeof(StairsType)).Cast<StairsType>().FirstOrDefault(x => x.Name == tn);
-                            if (nt == null && stype != null)
-                            {
-                                nt = stype.Duplicate(tn) as StairsType;
-                                if (nt != null)
-                                {
-                                    nt.MinTreadDepth = VxtRevit.ToFt(tread);
-                                    nt.MinRunWidth = VxtRevit.ToFt(wRun);
-                                    if (nt.MaxRiserHeight < riseFt + 1e-6) nt.MaxRiserHeight = riseFt + VxtRevit.ToFt(0.002);
-                                }
-                            }
-                            if (nt != null && stairs.GetTypeId() != nt.Id) stairs.ChangeTypeId(nt.Id);
-                        }
-                        catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: chưa tạo được loại thang theo mặt bậc thiết kế ({ex.Message})."); }
+                        // loại thang: Monolithic Stair (thang BTCT đổ liền khối) của template, nhân bản theo mặt bậc / bề rộng vế thiết kế
+                        // (Revit lấy mặt bậc / bề rộng thực theo loại thang – loại mặc định của template là 260 / 1000 mm)
+                        double wRun = st.Runs.Where(q => q.Width > 0.3).Select(q => q.Width).DefaultIfEmpty(st.Width).Min();
+                        StairType(c, stairs, st.Id, tread, wRun, (t.Elevation - b.Elevation) / Math.Max(1, total));
                         stairs.DesiredRisersNumber = total;
                         try { stairs.ActualTreadDepth = VxtRevit.ToFt(tread); } catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: không đặt được mặt bậc {tread * 1000:0} mm ({ex.Message})."); }
                         double zb0 = b.ProjectElevation, zrel = 0;

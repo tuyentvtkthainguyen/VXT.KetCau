@@ -22,6 +22,8 @@ namespace KetCauVXT.RevitExport
         internal const string Title = "Bộ bản vẽ kiến trúc";
         /// <summary>Hướng mặt tiền (độ, 0 = +X, 270 = −Y). Agent đặt theo phương án; mặc định −Y (mép dưới mặt bằng là mặt đường).</summary>
         internal static double FrontDeg = 270;
+        /// <summary>"mat-bang": chỉ lập mặt bằng sơ bộ (khung nhìn + tờ mặt bằng) để người dùng xác nhận trước khi triển khai chi tiết; "" = cả bộ.</summary>
+        internal static string Scope = "";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) => Run(commandData.Application, ref message);
 
@@ -135,12 +137,20 @@ namespace KetCauVXT.RevitExport
                 if (v != null) { plans.Add(v.Id); sheets.Add(("", "Mặt bằng " + lv.Name, new List<ElementId> { v.Id })); }
             }
 
+            if (Scope.Equals("mat-bang", StringComparison.OrdinalIgnoreCase))
+            {
+                MakeSheets(d, sheets, log, ref ns);
+                log.Add("Mặt bằng sơ bộ – chờ người dùng xác nhận rồi chạy tao-ban-ve (cả bộ) để triển khai mặt đứng, mặt cắt, chi tiết.");
+                return;
+            }
+
             // 2. mặt đứng 4 phía (chính / sau / trái / phải theo hướng mặt tiền)
             var vftEl = Vft(d, ViewFamily.Elevation);
             var c = (box.Min + box.Max) / 2;
             double half = Math.Max(box.Max.X - box.Min.X, box.Max.Y - box.Min.Y) / 2 + VxtRevit.ToFt(6);
             var sides = new[] { (Deg: frontDeg, Name: "Mặt đứng chính"), (Deg: frontDeg + 180, Name: "Mặt đứng sau"), (Deg: frontDeg + 90, Name: "Mặt đứng bên phải"), (Deg: frontDeg - 90, Name: "Mặt đứng bên trái") };
             var elevIds = new List<ElementId>();
+            double zGround = Math.Min(box.Min.Z, VxtRevit.Levels(d).Select(l => l.ProjectElevation).DefaultIfEmpty(box.Min.Z).Min());
             if (vftEl != null && plans.Count > 0)
                 foreach (var sd in sides)
                 {
@@ -159,11 +169,13 @@ namespace KetCauVXT.RevitExport
                         double halfD = Math.Abs(n.X) * (box.Max.X - box.Min.X) / 2 + Math.Abs(n.Y) * (box.Max.Y - box.Min.Y) / 2;
                         var tf = Transform.Identity; tf.Origin = new XYZ(c.X, c.Y, box.Min.Z); tf.BasisX = bx; tf.BasisY = by; tf.BasisZ = bz;
                         double m1 = VxtRevit.ToFt(1.5);
-                        var eb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-halfW - m1, -m1, -halfD - m1), Max = new XYZ(halfW + m1, box.Max.Z - box.Min.Z + m1, halfD + VxtRevit.ToFt(0.6)) };
+                        // điểm bắt đầu mặt đứng: đáy khung nhìn ở cốt sân thấp nhất − 0,6 m (đường đất), hai bên ôm mép nhà + 1,5 m
+                        var eb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-halfW - m1, zGround - box.Min.Z - VxtRevit.ToFt(0.6), -halfD - m1), Max = new XYZ(halfW + m1, box.Max.Z - box.Min.Z + m1, halfD + VxtRevit.ToFt(0.6)) };
                         var keep = ViewSection.CreateSection(d, vftS.Id, eb);
                         try { keep.Name = name; } catch { }
                         keep.Scale = sc; nv++;
                         elevIds.Add(keep.Id);
+                        HideMarkers(keep);
                         d.Regenerate();
                         LevelDims(d, keep, log);
                     }
@@ -188,12 +200,21 @@ namespace KetCauVXT.RevitExport
                     var by = XYZ.BasisZ;
                     var bz = bx.CrossProduct(by);                     // hướng về phía người xem
                     double L = alongY ? box.Max.Y - box.Min.Y : box.Max.X - box.Min.X, W = alongY ? box.Max.X - box.Min.X : box.Max.Y - box.Min.Y;
-                    var tf = Transform.Identity; tf.Origin = new XYZ(c.X, c.Y, box.Min.Z); tf.BasisX = bx; tf.BasisY = by; tf.BasisZ = bz;
+                    // mặt cắt A-A đi qua vế thang (cắt qua bậc thang) nếu có; không thì qua giữa nhà
+                    var o0 = new XYZ(c.X, c.Y, zGround);
+                    var stA = new FilteredElementCollector(d).OfCategory(BuiltInCategory.OST_StairsRuns).WhereElementIsNotElementType()
+                        .Select(e => e.get_BoundingBox(null)).Where(bb => bb != null)
+                        .OrderByDescending(bb => alongY ? bb.Max.Y - bb.Min.Y : bb.Max.X - bb.Min.X).FirstOrDefault();
+                    if (stA != null) o0 = alongY ? new XYZ((stA.Min.X + stA.Max.X) / 2, c.Y, zGround) : new XYZ(c.X, (stA.Min.Y + stA.Max.Y) / 2, zGround);
+                    // chiều sâu nhìn (theo +BasisZ từ mặt phẳng cắt) tới mép nhà phía sau
+                    double far = Math.Max(VxtRevit.ToFt(1), alongY ? (bz.X > 0 ? box.Max.X - o0.X : o0.X - box.Min.X) : (bz.Y > 0 ? box.Max.Y - o0.Y : o0.Y - box.Min.Y));
+                    var tf = Transform.Identity; tf.Origin = o0; tf.BasisX = bx; tf.BasisY = by; tf.BasisZ = bz;
                     double m1 = VxtRevit.ToFt(1);
-                    var sb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-L / 2 - m1, -m1, 0), Max = new XYZ(L / 2 + m1, box.Max.Z - box.Min.Z + m1, W / 2 + m1) };
+                    var sb = new BoundingBoxXYZ { Transform = tf, Min = new XYZ(-L / 2 - m1, -VxtRevit.ToFt(0.6), 0), Max = new XYZ(L / 2 + m1, box.Max.Z - zGround + m1, far + m1) };
                     sec = ViewSection.CreateSection(d, vftSec.Id, sb);
                     try { sec.Name = secName; } catch { }
                     sec.Scale = sc; nv++;
+                    HideMarkers(sec);
                     d.Regenerate();
                     LevelDims(d, sec, log);
                 }
@@ -304,20 +325,11 @@ namespace KetCauVXT.RevitExport
             // 6. tờ bản vẽ
             var tb = TitleBlockType(d);
             if (tb == null || tb == ElementId.InvalidElementId) log.Add("Dự án chưa có khung tên – tờ được tạo không khung, nạp khung tên rồi đổi sau.");
+            MakeSheets(d, sheets, log, ref ns);
             var used = new HashSet<string>(new FilteredElementCollector(d).OfClass(typeof(ViewSheet)).Cast<ViewSheet>().Select(s => s.SheetNumber), StringComparer.OrdinalIgnoreCase);
-            var placed = new HashSet<ElementId>(new FilteredElementCollector(d).OfClass(typeof(Viewport)).Cast<Viewport>().Select(vp => vp.ViewId));
             int k = 0;
             // số tờ: KT-01… theo thứ tự; số đã có tờ (lần chạy trước) thì lấy số trống kế tiếp
             string NextNo() { string n; do { k++; n = "KT-" + k.ToString("00", CultureInfo.InvariantCulture); } while (used.Contains(n)); used.Add(n); return n; }
-            foreach (var sh in sheets)
-            {
-                var views = sh.Views.Where(id => !placed.Contains(id)).ToList();
-                if (views.Count == 0) continue;
-                string no = NextNo();
-                var sheet = ViewSheet.Create(d, tb ?? ElementId.InvalidElementId);
-                sheet.SheetNumber = no; sheet.Name = sh.Name; ns++;
-                Place(d, sheet, views, log);
-            }
             // danh mục bản vẽ: tờ bìa của template (tờ chưa có khung nhìn) hoặc tờ mới
             try
             {
@@ -483,6 +495,32 @@ namespace KetCauVXT.RevitExport
         }
 
         /// <summary>Trục / cao độ trong khung nhìn chi tiết: thu đường datum về trong vùng cắt (2D riêng khung nhìn), ẩn ký hiệu mặt đứng / mặt cắt thừa.</summary>
+        /// <summary>Tạo tờ cho các khung nhìn chưa đặt lên tờ nào (số KT-xx trống kế tiếp).</summary>
+        private static void MakeSheets(Document d, List<(string No, string Name, List<ElementId> Views)> sheets, List<string> log, ref int ns)
+        {
+            var tb = TitleBlockType(d);
+            var used = new HashSet<string>(new FilteredElementCollector(d).OfClass(typeof(ViewSheet)).Cast<ViewSheet>().Select(s => s.SheetNumber), StringComparer.OrdinalIgnoreCase);
+            var placed = new HashSet<ElementId>(new FilteredElementCollector(d).OfClass(typeof(Viewport)).Cast<Viewport>().Select(vp => vp.ViewId));
+            int k = 0;
+            foreach (var sh in sheets)
+            {
+                var views = sh.Views.Where(id => !placed.Contains(id)).ToList();
+                if (views.Count == 0) continue;
+                string no; do { k++; no = "KT-" + k.ToString("00", CultureInfo.InvariantCulture); } while (used.Contains(no)); used.Add(no);
+                var sheet = ViewSheet.Create(d, tb ?? ElementId.InvalidElementId);
+                sheet.SheetNumber = no; sheet.Name = sh.Name; ns++;
+                Place(d, sheet, views, log);
+            }
+        }
+
+        /// <summary>Ẩn ký hiệu mặt cắt / mặt đứng / callout của khung nhìn khác (không thuộc nội dung mặt đứng, mặt cắt).</summary>
+        internal static void HideMarkers(View v)
+        {
+            try { v.ViewTemplateId = ElementId.InvalidElementId; } catch { }
+            foreach (var bic in new[] { BuiltInCategory.OST_Elev, BuiltInCategory.OST_Sections, BuiltInCategory.OST_CalloutHeads })
+                try { v.SetCategoryHidden(new ElementId(bic), true); } catch { }
+        }
+
         internal static void TidyDetailView(Document d, View v, List<string> log)
         {
             try { v.SetCategoryHidden(new ElementId(BuiltInCategory.OST_Elev), true); } catch { }
