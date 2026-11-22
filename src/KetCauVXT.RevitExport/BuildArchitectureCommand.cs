@@ -752,12 +752,37 @@ namespace KetCauVXT.RevitExport
                         nt.MinTreadDepth = VxtRevit.ToFt(tr);
                         if (wRun > 0.3) nt.MinRunWidth = VxtRevit.ToFt(wRun);
                         if (nt.MaxRiserHeight < riseFt + 1e-6) nt.MaxRiserHeight = riseFt + VxtRevit.ToFt(0.002);
+                        if (mono) MatchLanding(c, nt, id);
                     }
                 }
                 if (nt != null && stairs.GetTypeId() != nt.Id) stairs.ChangeTypeId(nt.Id);
                 c.Log.Add($"Cầu thang {id}: loại {nt?.Name} (gốc {baseType.FamilyName} / {baseType.Name}).");
             }
             catch (Exception ex) { c.Log.Add($"Cầu thang {id}: chưa đặt được loại thang Monolithic ({ex.Message})."); }
+        }
+
+        /// <summary>
+        /// Thang BTCT liền khối: chiếu nghỉ dày bằng bản thang (đáy bản thang phẳng nối liền đáy chiếu nghỉ).
+        /// Loại Monolithic Stair của template có chiếu nghỉ 300 mm, bản thang 150 mm → Revit báo "Can't make stairs" với thang chữ U 3 vế.
+        /// </summary>
+        private static void MatchLanding(Ctx c, StairsType nt, string id)
+        {
+            var d = c.Doc;
+            try
+            {
+                if (!(d.GetElement(nt.RunType) is StairsRunType rt) || !(d.GetElement(nt.LandingType) is StairsLandingType lt)) return;
+                double depth = rt.StructuralDepth;
+                if (depth <= 0 || lt.Thickness <= depth + 1e-6) return;
+                string ln = $"VXT chiếu nghỉ {VxtRevit.ToM(depth) * 1000:0}mm";
+                var nl = new FilteredElementCollector(d).OfClass(typeof(StairsLandingType)).Cast<StairsLandingType>().FirstOrDefault(x => x.Name == ln);
+                if (nl == null)
+                {
+                    nl = lt.Duplicate(ln) as StairsLandingType;
+                    if (nl != null) nl.Thickness = depth;
+                }
+                if (nl != null) { nt.LandingType = nl.Id; c.Log.Add($"Cầu thang {id}: chiếu nghỉ dày {VxtRevit.ToM(depth) * 1000:0} mm bằng bản thang (loại gốc {VxtRevit.ToM(lt.Thickness) * 1000:0} mm)."); }
+            }
+            catch (Exception ex) { c.Log.Add($"Cầu thang {id}: chưa chỉnh được chiếu nghỉ theo bản thang ({ex.Message})."); }
         }
 
         /// <summary>
