@@ -724,21 +724,25 @@ namespace KetCauVXT.RevitExport
         /// nhân bản thành "VXT Monolithic b&lt;mặt bậc&gt; r&lt;bề rộng vế&gt;" để Revit giữ đúng mặt bậc / bề rộng thiết kế.
         /// tread ≤ 0: giữ mặt bậc tối thiểu của loại gốc. riseFt: chiều cao bậc (ft). Gọi trong Transaction của StairsEditScope.
         /// </summary>
-        internal static void StairType(Ctx c, Stairs stairs, string id, double tread, double wRun, double riseFt)
+        internal static void StairType(Ctx c, Stairs stairs, string id, double tread, double wRun, double riseFt, bool mono = true)
         {
             var d = c.Doc;
             try
             {
                 var all = new FilteredElementCollector(d).OfClass(typeof(StairsType)).Cast<StairsType>().ToList();
-                bool Mono(StairsType x) => x.Name.IndexOf("Monolithic", StringComparison.OrdinalIgnoreCase) >= 0 || x.Name.IndexOf("liền khối", StringComparison.OrdinalIgnoreCase) >= 0;
-                var mono = all.Where(Mono).ToList();
-                var baseType = mono.FirstOrDefault(x => x.Name.Equals("Monolithic Stair", StringComparison.OrdinalIgnoreCase) && !x.Name.StartsWith("VXT", StringComparison.Ordinal))
-                               ?? mono.FirstOrDefault(x => !x.Name.StartsWith("VXT", StringComparison.Ordinal))
-                               ?? (d.GetElement(stairs.GetTypeId()) as StairsType);
-                if (mono.Count == 0) c.Log.Add($"Cầu thang {id}: template chưa có loại \"Monolithic Stair\" – dùng loại {baseType?.Name}. Nạp loại thang liền khối vào template để thống nhất.");
+                bool Cip(StairsType x) => (x.FamilyName ?? "").IndexOf("Cast", StringComparison.OrdinalIgnoreCase) >= 0 || (x.FamilyName ?? "").IndexOf("tại chỗ", StringComparison.OrdinalIgnoreCase) >= 0;
+                bool Mono(StairsType x) => !x.Name.StartsWith("VXT", StringComparison.Ordinal)
+                                           && (x.Name.IndexOf("Monolithic", StringComparison.OrdinalIgnoreCase) >= 0 || x.Name.IndexOf("liền khối", StringComparison.OrdinalIgnoreCase) >= 0);
+                var monos = all.Where(Mono).ToList();
+                // template có 2 loại tên "Monolithic Stair" (họ Cast-In-Place Stair và họ Stair lắp ghép) → ưu tiên họ Cast-In-Place (thang BTCT đổ liền khối)
+                var baseType = !mono ? null
+                    : monos.FirstOrDefault(x => Cip(x) && x.Name.Equals("Monolithic Stair", StringComparison.OrdinalIgnoreCase))
+                      ?? monos.FirstOrDefault(Cip) ?? monos.FirstOrDefault();
+                if (mono && baseType == null) c.Log.Add($"Cầu thang {id}: template chưa có loại \"Monolithic Stair\". Nạp loại thang liền khối vào template để thống nhất.");
+                baseType = baseType ?? (d.GetElement(stairs.GetTypeId()) as StairsType);
                 if (baseType == null) return;
                 double tr = tread > 0 ? tread : VxtRevit.ToM(baseType.MinTreadDepth);
-                string tn = $"VXT Monolithic b{tr * 1000:0} r{wRun * 1000:0}";
+                string tn = $"VXT {(mono ? "Monolithic" : "thang")} b{tr * 1000:0} r{wRun * 1000:0}";
                 var nt = all.FirstOrDefault(x => x.Name == tn);
                 if (nt == null)
                 {
@@ -751,7 +755,7 @@ namespace KetCauVXT.RevitExport
                     }
                 }
                 if (nt != null && stairs.GetTypeId() != nt.Id) stairs.ChangeTypeId(nt.Id);
-                c.Log.Add($"Cầu thang {id}: loại {nt?.Name} (gốc {baseType.Name}).");
+                c.Log.Add($"Cầu thang {id}: loại {nt?.Name} (gốc {baseType.FamilyName} / {baseType.Name}).");
             }
             catch (Exception ex) { c.Log.Add($"Cầu thang {id}: chưa đặt được loại thang Monolithic ({ex.Message})."); }
         }
@@ -761,6 +765,13 @@ namespace KetCauVXT.RevitExport
         /// chiếu nghỉ tự động giữa hai vế liên tiếp (không được thì dựng theo đa giác Landings).
         /// </summary>
         private static void BuildRunsStair(Ctx c, AsStair st, Level b, Level t)
+        {
+            // loại Monolithic Stair trước; Revit không chốt được thang thì dựng lại bằng loại mặc định (sau khi đóng phiên sửa thang)
+            if (BuildRunsStairOnce(c, st, b, t, true)) BuildRunsStairOnce(c, st, b, t, false);
+        }
+
+        /// <summary>Dựng một lần; trả true nếu cần thử lại bằng loại thang mặc định.</summary>
+        private static bool BuildRunsStairOnce(Ctx c, AsStair st, Level b, Level t, bool mono)
         {
             var d = c.Doc;
             int total = st.Runs.Sum(r => r.Risers);
@@ -779,7 +790,7 @@ namespace KetCauVXT.RevitExport
                         // loại thang: Monolithic Stair (thang BTCT đổ liền khối) của template, nhân bản theo mặt bậc / bề rộng vế thiết kế
                         // (Revit lấy mặt bậc / bề rộng thực theo loại thang – loại mặc định của template là 260 / 1000 mm)
                         double wRun = st.Runs.Where(q => q.Width > 0.3).Select(q => q.Width).DefaultIfEmpty(st.Width).Min();
-                        StairType(c, stairs, st.Id, tread, wRun, (t.Elevation - b.Elevation) / Math.Max(1, total));
+                        StairType(c, stairs, st.Id, tread, wRun, (t.Elevation - b.Elevation) / Math.Max(1, total), mono);
                         stairs.DesiredRisersNumber = total;
                         try { stairs.ActualTreadDepth = VxtRevit.ToFt(tread); } catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: không đặt được mặt bậc {tread * 1000:0} mm ({ex.Message})."); }
                         double zb0 = b.ProjectElevation, zrel = 0;
@@ -817,8 +828,22 @@ namespace KetCauVXT.RevitExport
                         }
                         tr.Commit();
                     }
-                    scope.Commit(new WarningSwallower(c.Log));
+                    // lỗi Revit khi chốt thang (VD "Can't make stairs") → bỏ, thử lại bằng loại thang mặc định thay vì hiện hộp thoại chặn agent
+                    var ws = new WarningSwallower(c.Log, rollbackErrors: true);
+                    bool committed = true;
+                    try { scope.Commit(ws); } catch (Exception exc) { committed = false; ws.Errors.Add(exc.Message); }
                     var el = d.GetElement(sid) as Stairs;
+                    if (ws.Errors.Count > 0 || !committed || el == null || !el.IsValidObject)
+                    {
+                        string why = string.Join("; ", ws.Errors.Distinct());
+                        if (mono)
+                        {
+                            c.Log.Add($"Cầu thang {st.Id}: loại Monolithic không dựng được ({why}) – dựng lại bằng loại thang mặc định của template; kiểm tra loại Monolithic Stair (mặt bậc tối thiểu, chiều cao bậc tối đa, loại vế / chiếu nghỉ).");
+                            return true;
+                        }
+                        c.Log.Add($"Cầu thang {st.Id}: chưa dựng tự động được ({why}) – lỗ sàn đã chừa.");
+                        return false;
+                    }
                     if (el != null)
                     {
                         using (var tr = new Transaction(d, "Gắn mã cầu thang"))
@@ -846,7 +871,12 @@ namespace KetCauVXT.RevitExport
                     }
                 }
             }
-            catch (Exception ex) { c.Log.Add($"Cầu thang {st.Id}: chưa dựng tự động được ({ex.Message}) – lỗ sàn đã chừa."); }
+            catch (Exception ex)
+            {
+                if (mono) { c.Log.Add($"Cầu thang {st.Id}: loại Monolithic lỗi ({ex.Message}) – thử loại thang mặc định."); return true; }
+                c.Log.Add($"Cầu thang {st.Id}: chưa dựng tự động được ({ex.Message}) – lỗ sàn đã chừa.");
+            }
+            return false;
         }
 
         /// <summary>Cầu thang 1 vế: ghi "thẳng" trong Shape, hoặc ô thang hẹp (&lt; 1,6 m) không đủ 2 vế.</summary>
@@ -865,9 +895,13 @@ namespace KetCauVXT.RevitExport
     internal sealed class WarningSwallower : IFailuresPreprocessor
     {
         private readonly List<string> _log;
-        public WarningSwallower(List<string> log) { _log = log; }
+        private readonly bool _rollbackErrors;
+        /// <summary>Lỗi Revit bị bỏ (rollback) khi rollbackErrors = true – để thử lại cách khác thay vì hiện hộp thoại chặn agent.</summary>
+        public List<string> Errors { get; } = new List<string>();
+        public WarningSwallower(List<string> log, bool rollbackErrors = false) { _log = log; _rollbackErrors = rollbackErrors; }
         public FailureProcessingResult PreprocessFailures(FailuresAccessor fa)
         {
+            bool err = false;
             foreach (var f in fa.GetFailureMessages())
                 if (f.GetSeverity() == FailureSeverity.Warning)
                 {
@@ -875,7 +909,8 @@ namespace KetCauVXT.RevitExport
                     if (_log != null && !_log.Contains(m)) _log.Add(m);
                     fa.DeleteWarning(f);
                 }
-            return FailureProcessingResult.Continue;
+                else if (_rollbackErrors) { err = true; Errors.Add(f.GetDescriptionText()); }
+            return err ? FailureProcessingResult.ProceedWithRollBack : FailureProcessingResult.Continue;
         }
     }
 }

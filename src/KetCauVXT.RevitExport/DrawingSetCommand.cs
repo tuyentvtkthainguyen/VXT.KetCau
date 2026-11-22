@@ -494,7 +494,6 @@ namespace KetCauVXT.RevitExport
             catch (Exception ex) { log.Add($"Kích thước cao độ ({v.Name}): {ex.Message}"); return 0; }
         }
 
-        /// <summary>Trục / cao độ trong khung nhìn chi tiết: thu đường datum về trong vùng cắt (2D riêng khung nhìn), ẩn ký hiệu mặt đứng / mặt cắt thừa.</summary>
         /// <summary>Tạo tờ cho các khung nhìn chưa đặt lên tờ nào (số KT-xx trống kế tiếp).</summary>
         private static void MakeSheets(Document d, List<(string No, string Name, List<ElementId> Views)> sheets, List<string> log, ref int ns)
         {
@@ -521,6 +520,7 @@ namespace KetCauVXT.RevitExport
                 try { v.SetCategoryHidden(new ElementId(bic), true); } catch { }
         }
 
+        /// <summary>Trục / cao độ trong khung nhìn chi tiết: thu đường datum về trong vùng cắt (2D riêng khung nhìn), ẩn ký hiệu mặt đứng / mặt cắt thừa.</summary>
         internal static void TidyDetailView(Document d, View v, List<string> log)
         {
             try { v.SetCategoryHidden(new ElementId(BuiltInCategory.OST_Elev), true); } catch { }
