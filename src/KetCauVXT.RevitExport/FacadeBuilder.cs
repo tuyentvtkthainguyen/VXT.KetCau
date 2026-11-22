@@ -119,14 +119,14 @@ namespace KetCauVXT.RevitExport
                     var a = els[i]; var b = els[j];
                     if (a.R == b.R && a.R != 2) continue;                         // tường – tường (Revit tự nối), sàn – sàn, cột – cột
                     if (a.B.Max.X < b.B.Min.X - tol || b.B.Max.X < a.B.Min.X - tol || a.B.Max.Y < b.B.Min.Y - tol || b.B.Max.Y < a.B.Min.Y - tol || a.B.Max.Z < b.B.Min.Z - tol || b.B.Max.Z < a.B.Min.Z - tol) continue;
-                    bool hit;
-                    try { hit = new ElementIntersectsElementFilter(a.E).PassesFilter(b.E); } catch { hit = false; }
                     bool isJ = false;
                     try { isJ = JoinGeometryUtils.AreElementsJoined(d, a.E, b.E); } catch { }
-                    if (!hit)
+                    // cặp đã nối: hình đã bị cắt nên không còn "giao" theo bộ lọc → giữ nguyên nối, chỉ chỉnh thứ tự cắt
+                    if (!isJ)
                     {
-                        if (isJ) { try { JoinGeometryUtils.UnjoinGeometry(d, a.E, b.E); unjoined++; } catch { } }
-                        continue;
+                        bool hit;
+                        try { hit = new ElementIntersectsElementFilter(a.E).PassesFilter(b.E); } catch { hit = false; }
+                        if (!hit) continue;                                       // không giao thật → không nối (tránh cảnh báo "joined but do not intersect")
                     }
                     Element hi, lo;
                     if (a.R != b.R) { hi = a.R > b.R ? a.E : b.E; lo = a.R > b.R ? b.E : a.E; }
