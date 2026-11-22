@@ -74,6 +74,18 @@ public static class PlanSpecTests
         bad2.Stairs[1].Runs[0].X1 += 0.2; bad2.Stairs[1].Runs[0].X2 += 0.2;
         check("Phối hợp: bắt vế thang lấn tường", B(PlanCoordination.Check(bad2).Any(i => i.Error && i.Message.Contains("lấn vào tường"))), 1, 0);
 
+        // Project1 theo yêu cầu tầng 1: gara sâu 5,3 m, phòng khách 5 m, cầu thang, bếp + ăn (trục 0 / 4,31 / 10,3 / 13,6 / 16,8 / 20)
+        {
+            var p2 = RevitJsonImporter.ReadFile(Path.Combine(AppContext.BaseDirectory, "Data", "Project1_T1moi.vxtphuongan.json"));
+            foreach (var l in PlanCoordination.Coordinate(p2)) Console.WriteLine("    T1moi: " + l);
+            var iss2 = PlanSpec.Validate(p2);
+            foreach (var i in iss2) Console.WriteLine("    T1moi: " + i);
+            check("Project1 T1 mới: phương án không lỗi", iss2.Count(i => i.Error), 0, 0);
+            check("Project1 T1 mới: có cột mỗi tầng", B(p2.Columns.Select(c => c.BaseLevel).Distinct().Count() >= 3), 1, 0);
+            string b64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(PlanSpec.ToJson(p2)));
+            for (int q = 0, n = 0; q < b64.Length; q += 3000, n++) Console.WriteLine($"PHOIHOP2-{n:000}:" + b64.Substring(q, Math.Min(3000, b64.Length - q)));
+        }
+
         // thang chữ U 3 vế theo quy ước 21 bậc, vế giữa 3 bậc
         {
             var lv1 = new RvLevel { Name = "T1", Elevation = 0 }; var lv2 = new RvLevel { Name = "T2", Elevation = 3.75 };
