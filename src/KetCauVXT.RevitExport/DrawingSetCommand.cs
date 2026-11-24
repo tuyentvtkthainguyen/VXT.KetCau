@@ -107,40 +107,81 @@ namespace KetCauVXT.RevitExport
             var vftPlan = Vft(d, ViewFamily.FloorPlan);
             var rooms = new FilteredElementCollector(d).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().Cast<Room>().Where(r => r.Area > 0).ToList();
             var plans = new List<ElementId>();
+            // Bộ mặt bằng chia theo công năng (mỗi loại một khung nhìn / tờ riêng cho từng tầng):
+            //  1. MB bố trí công năng – tên phòng + diện tích, cửa (dùng để chủ đầu tư duyệt; bước "mat-bang" chỉ lập loại này)
+            //  2. MB kích thước xây tường – trục, kích thước thông thủy giữa các mặt tường, định vị cửa, ký hiệu cửa
+            //  3. MB lát nền – phòng + bảng hoàn thiện sàn (vật liệu lấy từ tham số Floor Finish của phòng)
+            //  4. MB trần – mặt bằng trần phản chiếu + bảng hoàn thiện trần
+            //  tầng trên cùng không có phòng → MB mái (trục + kích thước)
+            var vftCeil = Vft(d, ViewFamily.CeilingPlan);
+            bool prelim = Scope.Equals("mat-bang", StringComparison.OrdinalIgnoreCase);
+            var byType = new Dictionary<string, List<(string Name, ElementId Id)>>();
+            void AddSheet(string key, string sheetName, View v) { if (v == null) return; if (!byType.TryGetValue(key, out var l)) byType[key] = l = new List<(string, ElementId)>(); l.Add((sheetName, v.Id)); }
             foreach (var lv in levels)
             {
-                string name = "KT - Mặt bằng " + lv.Name;
-                var v = Find<ViewPlan>(d, name);
-                if (v == null && vftPlan != null)
+                var lvRooms = rooms.Where(r => r.LevelId == lv.Id).ToList();
+                if (lvRooms.Count == 0)
                 {
-                    v = ViewPlan.Create(d, vftPlan.Id, lv.Id);
-                    try { v.Name = name; } catch { }
-                    v.Scale = sc; nv++;
-                    // vùng cắt mặt bằng ôm công trình + 3 m (bỏ ký hiệu mặt đứng, phần tử mẫu ở xa)
-                    try
-                    {
-                        double m3 = VxtRevit.ToFt(3.0);
-                        var cb = v.CropBox;
-                        v.CropBox = new BoundingBoxXYZ { Transform = cb.Transform, Min = new XYZ(box.Min.X - m3, box.Min.Y - m3, cb.Min.Z), Max = new XYZ(box.Max.X + m3, box.Max.Y + m3, cb.Max.Z) };
-                        v.CropBoxActive = true; v.CropBoxVisible = false;
-                    }
-                    catch { }
-                    try { v.DetailLevel = ViewDetailLevel.Medium; } catch { }
-                    d.Regenerate();
-                    foreach (var r in rooms.Where(r => r.LevelId == lv.Id))
-                        try { if (r.Location is LocationPoint lp) d.Create.NewRoomTag(new LinkElementId(r.Id), new UV(lp.Point.X, lp.Point.Y), v.Id); } catch (Exception ex) { log.Add("Tag phòng " + r.Name + ": " + ex.Message); break; }
-                    TagCategory(d, v, BuiltInCategory.OST_Doors, lv, log);
-                    TagCategory(d, v, BuiltInCategory.OST_Windows, lv, log);
-                    GridDims(d, v, box, log);
-                    OpeningDims(d, v, box, log);
+                    var vm = PlanView(d, vftPlan, lv, "KT - MB mái " + lv.Name, sc, box, ref nv, out bool newM);
+                    if (vm != null && newM) { GridDims(d, vm, box, log); WallDims(d, vm, box, log); }
+                    if (vm != null) { plans.Add(vm.Id); AddSheet("5", "Mặt bằng mái", vm); }
+                    continue;
                 }
-                if (v != null) { plans.Add(v.Id); sheets.Add(("", "Mặt bằng " + lv.Name, new List<ElementId> { v.Id })); }
+                // 1. công năng
+                var v1 = PlanView(d, vftPlan, lv, "KT - MB công năng " + lv.Name, sc, box, ref nv, out bool n1);
+                if (v1 != null && n1)
+                {
+                    RoomTags(d, v1, lvRooms, log);
+                    TagCategory(d, v1, BuiltInCategory.OST_Doors, lv, log);
+                    TagCategory(d, v1, BuiltInCategory.OST_Windows, lv, log);
+                    GridDims(d, v1, box, log);
+                }
+                if (v1 != null) { plans.Add(v1.Id); AddSheet("1", "Mặt bằng bố trí công năng " + lv.Name, v1); }
+                if (prelim) continue;
+                // 2. kích thước xây tường
+                var v2 = PlanView(d, vftPlan, lv, "KT - MB kích thước " + lv.Name, sc, box, ref nv, out bool n2);
+                if (v2 != null && n2)
+                {
+                    Hide(v2, BuiltInCategory.OST_Furniture, BuiltInCategory.OST_PlumbingFixtures, BuiltInCategory.OST_GenericModel);
+                    TagCategory(d, v2, BuiltInCategory.OST_Doors, lv, log);
+                    TagCategory(d, v2, BuiltInCategory.OST_Windows, lv, log);
+                    GridDims(d, v2, box, log);
+                    OpeningDims(d, v2, box, log);
+                    WallDims(d, v2, box, log);
+                }
+                AddSheet("2", "Mặt bằng kích thước xây tường " + lv.Name, v2);
+                // 3. lát nền
+                var v3n = PlanView(d, vftPlan, lv, "KT - MB lát nền " + lv.Name, sc, box, ref nv, out bool n3);
+                if (v3n != null && n3)
+                {
+                    Hide(v3n, BuiltInCategory.OST_Furniture, BuiltInCategory.OST_GenericModel, BuiltInCategory.OST_StructuralFraming);
+                    RoomTags(d, v3n, lvRooms, log);
+                    GridDims(d, v3n, box, log);
+                }
+                AddSheet("3", "Mặt bằng lát nền " + lv.Name, v3n);
+                // 4. trần
+                if (vftCeil != null)
+                {
+                    var v4 = PlanView(d, vftCeil, lv, "KT - MB trần " + lv.Name, sc, box, ref nv, out bool n4);
+                    if (v4 != null && n4) { RoomTags(d, v4, lvRooms, log); GridDims(d, v4, box, log); }
+                    AddSheet("4", "Mặt bằng trần " + lv.Name, v4);
+                }
             }
+            if (!prelim)
+            {
+                var sf = FinishSchedule(d, "KT - Bảng hoàn thiện sàn", BuiltInParameter.ROOM_FINISH_FLOOR, log);
+                var sCeil = FinishSchedule(d, "KT - Bảng hoàn thiện trần", BuiltInParameter.ROOM_FINISH_CEILING, log);
+                if (sf != null) AddSheet("3", "Bảng hoàn thiện sàn", sf);
+                if (sCeil != null) AddSheet("4", "Bảng hoàn thiện trần", sCeil);
+                if (sf != null) log.Add("Vật liệu lát nền / trần lấy theo tham số Floor Finish / Ceiling Finish của phòng – điền trong bảng hoàn thiện nếu còn trống.");
+            }
+            foreach (var key in byType.Keys.OrderBy(x => x))
+                foreach (var it in byType[key]) sheets.Add(("", it.Name, new List<ElementId> { it.Id }));
 
             if (Scope.Equals("mat-bang", StringComparison.OrdinalIgnoreCase))
             {
                 MakeSheets(d, sheets, log, ref ns);
-                log.Add("Mặt bằng sơ bộ – chờ người dùng xác nhận rồi chạy tao-ban-ve (cả bộ) để triển khai mặt đứng, mặt cắt, chi tiết.");
+                log.Add("Mặt bằng công năng sơ bộ – chờ người dùng xác nhận rồi chạy tao-ban-ve (cả bộ) để triển khai MB kích thước, lát nền, trần, mặt đứng, mặt cắt, chi tiết.");
                 return;
             }
 
@@ -492,6 +533,112 @@ namespace KetCauVXT.RevitExport
                 return 1;
             }
             catch (Exception ex) { log.Add($"Kích thước cao độ ({v.Name}): {ex.Message}"); return 0; }
+        }
+
+        /// <summary>Khung nhìn mặt bằng (hoặc trần) theo tên; tạo mới nếu chưa có: tỷ lệ chung, vùng cắt ôm công trình + 3 m, bỏ view template.</summary>
+        private static ViewPlan PlanView(Document d, ViewFamilyType vft, Level lv, string name, int sc, BoundingBoxXYZ box, ref int nv, out bool created)
+        {
+            created = false;
+            var v = Find<ViewPlan>(d, name);
+            if (v != null || vft == null) return v;
+            v = ViewPlan.Create(d, vft.Id, lv.Id);
+            try { v.Name = name; } catch { }
+            try { v.ViewTemplateId = ElementId.InvalidElementId; } catch { }
+            v.Scale = sc; nv++; created = true;
+            try
+            {
+                double m3 = VxtRevit.ToFt(3.0);
+                var cb = v.CropBox;
+                v.CropBox = new BoundingBoxXYZ { Transform = cb.Transform, Min = new XYZ(box.Min.X - m3, box.Min.Y - m3, cb.Min.Z), Max = new XYZ(box.Max.X + m3, box.Max.Y + m3, cb.Max.Z) };
+                v.CropBoxActive = true; v.CropBoxVisible = false;
+            }
+            catch { }
+            try { v.DetailLevel = ViewDetailLevel.Medium; } catch { }
+            HideMarkers(v);
+            d.Regenerate();
+            return v;
+        }
+
+        private static void Hide(View v, params BuiltInCategory[] cats)
+        {
+            foreach (var c in cats) try { v.SetCategoryHidden(new ElementId(c), true); } catch { }
+        }
+
+        private static void RoomTags(Document d, View v, List<Room> rooms, List<string> log)
+        {
+            foreach (var r in rooms)
+                try { if (r.Location is LocationPoint lp) d.Create.NewRoomTag(new LinkElementId(r.Id), new UV(lp.Point.X, lp.Point.Y), v.Id); }
+                catch (Exception ex) { log.Add("Tag phòng " + r.Name + " (" + v.Name + "): " + ex.Message); break; }
+        }
+
+        /// <summary>
+        /// Kích thước xây tường: chuỗi kích thước mặt tường (thông thủy + chiều dày tường) theo phương dọc nhà ở giữa chiều ngang,
+        /// và theo phương ngang ở giữa từng nhịp trục. Tham chiếu là mặt bên của tường (đúng cấu tạo xây, không theo tim).
+        /// </summary>
+        internal static int WallDims(Document d, ViewPlan v, BoundingBoxXYZ box, List<string> log)
+        {
+            int n = 0;
+            var lv = v.GenLevel; if (lv == null) return 0;
+            double z = lv.Elevation;
+            var walls = new FilteredElementCollector(d).OfClass(typeof(Wall)).Cast<Wall>()
+                .Where(w => w.LevelId == lv.Id && w.Location is LocationCurve lc && lc.Curve is Line).ToList();
+            ReferenceArray Faces(bool alongY, double at)
+            {
+                var ra = new ReferenceArray();
+                foreach (var w in walls)
+                {
+                    var ln = (Line)((LocationCurve)w.Location).Curve;
+                    var dir = ln.Direction;
+                    if (alongY ? Math.Abs(dir.Y) < 0.99 : Math.Abs(dir.X) < 0.99) continue;
+                    double a0 = alongY ? ln.GetEndPoint(0).Y : ln.GetEndPoint(0).X, a1 = alongY ? ln.GetEndPoint(1).Y : ln.GetEndPoint(1).X;
+                    if (at < Math.Min(a0, a1) + 1e-3 || at > Math.Max(a0, a1) - 1e-3) continue;
+                    foreach (var side in new[] { ShellLayerType.Exterior, ShellLayerType.Interior })
+                        try { foreach (var r in HostObjectUtils.GetSideFaces(w, side)) { ra.Append(r); break; } } catch { }
+                }
+                return ra;
+            }
+            // dọc nhà (cắt qua các tường chạy theo Y) – đặt ở 1/3 chiều ngang để tránh tag phòng giữa nhà
+            {
+                double y = box.Min.Y + (box.Max.Y - box.Min.Y) / 3;
+                var ra = Faces(true, y);
+                if (ra.Size >= 2)
+                    try { d.Create.NewDimension(v, Line.CreateBound(new XYZ(box.Min.X - 1, y, z), new XYZ(box.Max.X + 1, y, z)), ra); n++; }
+                    catch (Exception ex) { log.Add($"Kích thước tường dọc ({v.Name}): {ex.Message}"); }
+            }
+            // ngang nhà – giữa mỗi nhịp trục đứng
+            var xs = new FilteredElementCollector(d).OfClass(typeof(Grid)).Cast<Grid>().Where(g => g.Curve is Line l && Math.Abs(l.Direction.Y) > 0.99)
+                .Select(g => g.Curve.GetEndPoint(0).X).OrderBy(x => x).ToList();
+            for (int i = 0; i + 1 < xs.Count; i++)
+            {
+                double x = (xs[i] + xs[i + 1]) / 2;
+                var ra = Faces(false, x);
+                if (ra.Size < 3) continue;   // chỉ ghi nhịp có tường ngăn ngang (2 tường biên đã có chuỗi trục)
+                try { d.Create.NewDimension(v, Line.CreateBound(new XYZ(x, box.Min.Y - 1, z), new XYZ(x, box.Max.Y + 1, z)), ra); n++; }
+                catch (Exception ex) { log.Add($"Kích thước tường ngang ({v.Name}): {ex.Message}"); }
+            }
+            return n;
+        }
+
+        /// <summary>Bảng hoàn thiện phòng theo tầng: tầng, số, tên phòng, diện tích, vật liệu hoàn thiện (sàn hoặc trần).</summary>
+        private static ViewSchedule FinishSchedule(Document d, string name, BuiltInParameter finish, List<string> log)
+        {
+            var ex = Find<ViewSchedule>(d, name);
+            if (ex != null) return ex;
+            try
+            {
+                var s = ViewSchedule.CreateSchedule(d, new ElementId(BuiltInCategory.OST_Rooms));
+                try { s.Name = name; } catch { }
+                var def = s.Definition;
+                var fields = def.GetSchedulableFields();
+                foreach (var bip in new[] { BuiltInParameter.ROOM_LEVEL_ID, BuiltInParameter.ROOM_NUMBER, BuiltInParameter.ROOM_NAME, BuiltInParameter.ROOM_AREA, finish })
+                {
+                    var f = fields.FirstOrDefault(x => x.ParameterId == new ElementId(bip));
+                    if (f != null) def.AddField(f);
+                }
+                if (def.GetFieldCount() > 0) def.AddSortGroupField(new ScheduleSortGroupField(def.GetField(0).FieldId));
+                return s;
+            }
+            catch (Exception e) { log.Add(name + ": " + e.Message); return null; }
         }
 
         /// <summary>Tạo tờ cho các khung nhìn chưa đặt lên tờ nào (số KT-xx trống kế tiếp).</summary>
