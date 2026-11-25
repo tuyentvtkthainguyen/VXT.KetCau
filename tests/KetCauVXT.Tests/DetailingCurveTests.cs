@@ -216,9 +216,9 @@ public static class DetailingCurveTests
             check("Trục AutoCAD: bước trục X 3.6 4.2, Y 4.5", B(pa.Plan.SpansX == "3.6 4.2" && pa.Plan.SpansY == "4.5"), 1, 0);
             check("Trục AutoCAD: tên trục 1 2 3 / A B từ bong bóng", B(string.Join(",", Enumerable.Range(0, 3).Select(i => pa.Plan.AxisLabel(true, i))) == "1,2,3" && pa.Plan.AxisLabel(false, 1) == "B"), 1, 0);
             check("Trục AutoCAD: gốc = giao trục 1-A → cột tại (0; 0)", B(la.Items.Any(i => i.Kind == PlanKinds.Column && Math.Abs(i.X1) < 1e-6 && Math.Abs(i.Y1) < 1e-6)), 1, 0);
-            var bx = la.Items.Where(i => i.Kind == PlanKinds.Beam && Math.Abs(i.Y1 - i.Y2) < 1e-6).ToList();
-            check("Dầm qua 3 cột thẳng hàng = 1 dầm (trục A vẽ liền, trục B vẽ từng nhịp) → 2 dầm phương X", bx.Count, 2, 0);
-            check("Dầm qua 3 cột: mỗi dầm 2 nhịp (thép triển khai liên tục)", bx.Sum(b => pa.Plan.BeamSpans(b, la).Count), 4, 0);
+            var bxs = la.Items.Where(i => i.Kind == PlanKinds.Beam && Math.Abs(i.Y1 - i.Y2) < 1e-6).ToList();
+            check("Dầm qua 3 cột thẳng hàng = 1 dầm (trục A vẽ liền, trục B vẽ từng nhịp) → 2 dầm phương X", bxs.Count, 2, 0);
+            check("Dầm qua 3 cột: mỗi dầm 2 nhịp (thép triển khai liên tục)", bxs.Sum(b => pa.Plan.BeamSpans(b, la).Count), 4, 0);
             var sl = la.Items.Where(i => i.Kind == PlanKinds.Slab).OrderBy(i => i.MinX).ToList();
             check("Sàn theo mép dầm: 2 ô sàn", sl.Count, 2, 0);
             check("Sàn theo mép dầm: ô 1 rộng 3,6 − 0,22 = 3,38 m (mép trong dầm)", sl.Count > 0 ? sl[0].MaxX - sl[0].MinX : 0, 3.38, 1e-6);
