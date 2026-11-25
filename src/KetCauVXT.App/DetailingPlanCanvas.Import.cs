@@ -15,7 +15,7 @@ public sealed partial class DetailingPlanCanvas
     internal sealed class ImportOptions
     {
         public ArchLayerKeys Keys = new();
-        public bool AlignOrigin = true, Replace, AutoSlabs = true;
+        public bool AlignOrigin = true, Replace, AutoSlabs = true, MergeBeams = true;
         public (double X, double Y)? Origin;
         public List<PlanLevel> CopyTo = new();
     }
@@ -78,7 +78,8 @@ public sealed partial class DetailingPlanCanvas
         body.Children.Add(gbOrg);
         var chkSlab = new CheckBox { Content = "Tạo mặt bằng sàn từ mặt bằng dầm đã nhận (ô kín bao bởi dầm; ô cùng kích thước dùng chung S1, S2…)", IsChecked = true, Margin = new Thickness(0, 6, 0, 2) };
         var chkReplace = new CheckBox { Content = "Xoá vị trí dầm, cột, sàn cũ của mặt bằng " + lv.Name + " trước khi nhập", IsChecked = hasItems, IsEnabled = hasItems, Margin = new Thickness(0, 2, 0, 2) };
-        body.Children.Add(chkSlab); body.Children.Add(chkReplace);
+        var chkMerge = new CheckBox { Content = "Dầm thẳng hàng nối liền (cùng tên / tiết diện) là MỘT dầm dài nhiều nhịp – chia lại sau bằng công cụ \"Chia dầm\"", IsChecked = true, Margin = new Thickness(0, 2, 0, 2) };
+        body.Children.Add(chkMerge); body.Children.Add(chkSlab); body.Children.Add(chkReplace);
         var others = Plan.Levels.Where(l => l != lv && !l.IsFoundation).ToList();
         var lst = new ListBox { SelectionMode = SelectionMode.Multiple, Height = 70, ItemsSource = others.Select(l => l.Name).ToList() };
         if (others.Count > 0)
@@ -98,11 +99,23 @@ public sealed partial class DetailingPlanCanvas
         if (!ok) return null;
         Fill();
         o.AutoSlabs = chkSlab.IsChecked == true;
+        o.MergeBeams = chkMerge.IsChecked == true;
         o.Replace = chkReplace.IsChecked == true;
         if (rbUnder.IsChecked == true) { o.AlignOrigin = false; o.Origin = (-lv.UnderlayDx, -lv.UnderlayDy); }
         else if (rbKeep.IsChecked == true) { o.AlignOrigin = false; o.Origin = (0, 0); }
         o.CopyTo = lst.SelectedItems.OfType<string>().Select(n => others.First(l => l.Name == n)).ToList();
         return o;
+    }
+
+    /// <summary>Nút "Gộp dầm thẳng hàng".</summary>
+    private void MergeBeamsHere()
+    {
+        var lv = Level; if (lv == null) return;
+        _undo.Push(Plan);
+        var log = new List<string>();
+        int n = PlanBeamMerge.Merge(P, lv, false, null, log);
+        _changed(); FillMembers(); UpdateHint(); Redraw();
+        _status.Text = n > 0 ? string.Join(" ", log) : "Không có đoạn dầm thẳng hàng nối liền cùng tiết diện để gộp.";
     }
 
     /// <summary>Nút "Tạo sàn từ dầm".</summary>

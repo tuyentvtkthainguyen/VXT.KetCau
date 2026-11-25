@@ -370,7 +370,7 @@ public static class StructuralPlanImport
     /// <summary>Nhập vào mặt bằng lv. alignOrigin: dời sao cho điểm trái – dưới nhất của cột / dầm trùng gốc trục 1-A (0; 0)
     /// (khi bản vẽ dùng toạ độ tuỳ ý); replace: xoá vị trí dầm / cột / sàn cũ của mặt bằng trước khi nhập.</summary>
     public static PlanImportResult Import(DetailingProject p, PlanLevel lv, List<DxfEntity> ents, bool alignOrigin = true, bool replace = false, ArchLayerKeys keys = null,
-                                          (double X, double Y)? origin = null, bool autoSlabs = false)
+                                          (double X, double Y)? origin = null, bool autoSlabs = false, bool mergeBeams = true)
     {
         keys ??= new ArchLayerKeys();
         var res = new PlanImportResult();
@@ -509,6 +509,17 @@ public static class StructuralPlanImport
             it.Member = m.Name;
             lv.Items.Add(it); res.Items.Add(it); res.Beams++; res.CurvedBeams++;
             if (m is ManualBeam mb && res.Items.Count(i => i.Member == m.Name) == 1) plan.ApplyGeometry(mb, it, lv);
+        }
+        // ---- [Dầm liên tục] đoạn dầm thẳng hàng nối liền cùng cấu kiện → một dầm dài nhiều nhịp ----
+        if (mergeBeams)
+        {
+            int nm = PlanBeamMerge.Merge(p, lv, true, res.Items.Where(i => i.Kind == PlanKinds.Beam).ToList());
+            if (nm > 0)
+            {
+                res.Items.RemoveAll(i => i.Kind == PlanKinds.Beam && !lv.Items.Contains(i));
+                res.Beams -= nm;
+                res.Log.Add($"Dầm liên tục: gộp {nm} đoạn thẳng hàng nối liền → {res.Beams} dầm (nhịp chia theo trục / cột; chia lại bằng công cụ \"Chia dầm\").");
+            }
         }
         // ---- sàn: chữ S… nằm trong ô dầm ----
         for (int i = 0; i < texts.Count; i++)

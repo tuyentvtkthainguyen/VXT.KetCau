@@ -62,7 +62,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         r2.Children.Add(Btn("Vừa khung", () => { _fitted = false; Redraw(); }, "Thu phóng vừa khung"));
         top.Children.Add(r2);
         var r3 = new WrapPanel();
-        foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (ToolCurvedBeam, "Dầm cong"), (PlanKinds.Slab, "Sàn"),
+        foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (ToolCurvedBeam, "Dầm cong"), (ToolSplitBeam, "Chia dầm"), (PlanKinds.Slab, "Sàn"),
                      (PlanKinds.Lintel, "Lanh tô"), (PlanKinds.Canopy, "Ô văng"), (PlanKinds.Stair, "Cầu thang"), (ToolSection, "Mặt cắt"),
                      (ToolSlabBay, "Sàn trong ô dầm"), (ToolDropSlab, "Sàn hạ cốt"), (ToolStairBay, "Ô cầu thang"), (PlanKinds.Void, "Giếng trời"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), (ToolCallout, "Trích chi tiết"), ("Xoa", "Xoá") })
         {
@@ -166,6 +166,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             ToolSection => _first == null ? "Mặt cắt: bấm điểm đầu đường cắt (cắt qua ô sàn điển hình, vuông góc dầm) – mặt cắt thép sàn tl 1/25 xuất cùng mặt bằng."
                                           : "Mặt cắt: bấm điểm cuối đường cắt – Esc huỷ. Chuột phải lên đường cắt: đổi tên / xoá.",
             ToolCurvedBeam => _first == null ? "Dầm cong: bấm điểm đầu (bắt giao trục / tâm cột)." : _curveEnd == null ? "Dầm cong: bấm điểm cuối – Esc huỷ." : "Dầm cong: bấm một điểm bất kỳ trên cung (định độ vồng) – Esc huỷ.",
+            ToolSplitBeam => "Chia dầm: bấm lên dầm tại vị trí chia (bắt giao trục / tâm cột) – đoạn sau thành dầm mới cùng tiết diện. Mặc định dầm thẳng hàng nối liền là MỘT dầm nhiều nhịp.",
             ToolDropSlab => "Sàn hạ cốt: bấm vào ô sàn (hoặc ô kín bao bởi dầm) → nhập độ hạ (mm, vd. 50 sàn WC, 100 lô gia); nhập 0 để bỏ hạ cốt.",
             ToolStairBay => "Ô cầu thang: bấm vào bên trong ô dầm của thang – tạo ô cầu thang theo kích thước ô (bỏ sàn cũ trong ô). Vẽ ô tuỳ ý: công cụ Cầu thang.",
             PlanKinds.Void => _first == null ? "Giếng trời / ô trống: bấm vào trong ô dầm (lấy cả ô) hoặc bấm góc thứ nhất ở chỗ không kín để vẽ hình chữ nhật." : "Giếng trời: bấm góc đối diện – Esc huỷ.",
@@ -336,6 +337,15 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         _first = null;
         if (Math.Abs(a.X - sp.X) < 1e-6 && Math.Abs(a.Y - sp.Y) < 1e-6) { UpdateHint(); Redraw(); return; }
         var it2 = Plan.Place(P, lv, _tool, a.X, a.Y, sp.X, sp.Y, member);
+        // [Dầm liên tục] nối thẳng hàng với dầm có sẵn → cùng một dầm dài (chia lại bằng công cụ "Chia dầm")
+        if (_tool == PlanKinds.Beam && PlanBeamMerge.AttachNew(P, lv, it2, string.IsNullOrEmpty(member)))
+        {
+            double mx = (a.X + sp.X) / 2, my = (a.Y + sp.Y) / 2;
+            var keep = lv.Items.Contains(it2) ? it2 : lv.Items.Where(i => i.Kind == PlanKinds.Beam).OrderBy(i => StructuralPlan.DistSeg(mx, my, i.X1, i.Y1, i.X2, i.Y2)).First();
+            Done(keep);
+            _status.Text = $"Dầm nối thẳng hàng → gộp vào dầm {keep.Member} (một dầm liên tục, nhịp {string.Join("; ", Plan.BeamSpans(keep, lv).Select(v => v.ToString("0.###", CultureInfo.InvariantCulture)))} m). Muốn dầm riêng: công cụ \"Chia dầm\" hoặc chọn cấu kiện khác trước khi vẽ.";
+            return;
+        }
         Done(it2);
     }
 

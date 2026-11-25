@@ -170,3 +170,144 @@ public static class PlanCopy
         return n;
     }
 }
+
+/// <summary>[Dầm liên tục] Dầm thẳng hàng nối liền trên một trục = MỘT dầm dài nhiều nhịp (nhịp chia theo trục / cột cắt qua);
+/// chỉ tách thành các dầm riêng khi người dùng chia tại vị trí chọn (<see cref="Split"/>).</summary>
+public static class PlanBeamMerge
+{
+    private static (double B, double H)? Sec(DetailingProject p, PlanItem it) =>
+        p.All.FirstOrDefault(m => m.Name == it.Member) is ManualBeam mb ? (Math.Round(mb.B, 3), Math.Round(mb.H, 3)) : null;
+
+    /// <summary>Gộp các dầm thẳng (không cong) thẳng hàng, nối liền (hở ≤ 5 cm hoặc hở chứa tâm cột) trên mặt bằng lv thành một vị trí dầm.
+    /// sameMemberOnly: chỉ gộp các đoạn cùng tên cấu kiện (dùng khi nhập); ngược lại gộp các đoạn cùng tiết diện b × h.
+    /// seeds: chỉ gộp các chuỗi có chứa vị trí trong seeds (null = mọi dầm). Cấu kiện không còn vị trí nào sau khi gộp bị xoá khỏi hồ sơ.
+    /// Trả về số vị trí đã gộp bớt.</summary>
+    public static int Merge(DetailingProject p, PlanLevel lv, bool sameMemberOnly, IEnumerable<PlanItem> seeds = null, List<string> log = null)
+    {
+        if (p?.Plan == null || lv == null) return 0;
+        var plan = p.Plan;
+        var seedSet = seeds != null ? new HashSet<PlanItem>(seeds) : null;
+        var cols = lv.Items.Where(i => i.Kind == PlanKinds.Column).ToList();
+        var beams = lv.Items.Where(i => i.Kind == PlanKinds.Beam && !i.IsCurved && i.Length > 1e-3).ToList();
+        // khoá đường thẳng: hướng chuẩn hoá + khoảng cách tới gốc
+        (double Ux, double Uy, double D) Key(PlanItem it)
+        {
+            double L = it.Length, ux = (it.X2 - it.X1) / L, uy = (it.Y2 - it.Y1) / L;
+            if (ux < -1e-9 || (Math.Abs(ux) <= 1e-9 && uy < 0)) { ux = -ux; uy = -uy; }
+            return (ux, uy, -it.X1 * uy + it.Y1 * ux);
+        }
+        var groups = new List<List<PlanItem>>();
+        foreach (var b in beams)
+        {
+            var k = Key(b);
+            var g = groups.FirstOrDefault(gr => { var k2 = Key(gr[0]); return Math.Abs(k.Ux * k2.Uy - k.Uy * k2.Ux) < 1e-3 && Math.Abs(k.D - k2.D) < 0.02; });
+            if (g == null) groups.Add(new List<PlanItem> { b }); else g.Add(b);
+        }
+        int merged = 0;
+        var removedMembers = new HashSet<string>();
+        foreach (var g in groups.Where(x => x.Count > 1))
+        {
+            var (ux, uy, _) = Key(g[0]);
+            double T(double x, double y) => x * ux + y * uy;
+            var segs = g.Select(it => (It: it, T0: Math.Min(T(it.X1, it.Y1), T(it.X2, it.Y2)), T1: Math.Max(T(it.X1, it.Y1), T(it.X2, it.Y2)))).OrderBy(s => s.T0).ToList();
+            var cur = segs[0];
+            var chain = new List<(PlanItem It, double T0, double T1)> { cur };
+            void Flush()
+            {
+                if (chain.Count > 1 && (seedSet == null || chain.Any(c => seedSet.Contains(c.It))))
+                {
+                    var keep = chain[0].It;
+                    double t0 = chain.Min(c => c.T0), t1 = chain.Max(c => c.T1);
+                    // điểm đầu / cuối trên đường thẳng của keep
+                    double ox = keep.X1 - T(keep.X1, keep.Y1) * ux, oy = keep.Y1 - T(keep.X1, keep.Y1) * uy;
+                    keep.X1 = Math.Round(ox + ux * t0, 4); keep.Y1 = Math.Round(oy + uy * t0, 4);
+                    keep.X2 = Math.Round(ox + ux * t1, 4); keep.Y2 = Math.Round(oy + uy * t1, 4);
+                    foreach (var c in chain.Skip(1)) { lv.Items.Remove(c.It); merged++; if (!string.IsNullOrEmpty(c.It.Member) && c.It.Member != keep.Member) removedMembers.Add(c.It.Member); }
+                    var m = p.All.FirstOrDefault(x => x.Name == keep.Member);
+                    if (m != null) plan.ApplyGeometry(m, keep, lv);
+                    log?.Add($"{lv.Name}: gộp {chain.Count} đoạn thành dầm {keep.Member} dài {Dt.F(t1 - t0, "0.###")} m (nhịp {string.Join("; ", plan.BeamSpans(keep, lv).Select(v => Dt.F(v, "0.###")))}).");
+                }
+                chain.Clear();
+            }
+            for (int i = 1; i < segs.Count; i++)
+            {
+                var s = segs[i];
+                var last = chain[^1];
+                double gap = s.T0 - chain.Max(c => c.T1);
+                bool touch = gap <= 0.05 || (gap <= 1.0 && cols.Any(c =>
+                {
+                    double tc = T(c.X1, c.Y1), d = Math.Abs(-(c.X1) * uy + c.Y1 * ux - Key(g[0]).D);
+                    return d < 0.05 && tc >= chain.Max(q => q.T1) - 0.01 && tc <= s.T0 + 0.01;
+                }));
+                bool same = sameMemberOnly ? s.It.Member == last.It.Member : Equals(Sec(p, s.It), Sec(p, last.It));
+                if (touch && same) chain.Add(s);
+                else { Flush(); chain.Add(s); }
+            }
+            Flush();
+        }
+        // cấu kiện không còn vị trí nào → xoá khỏi hồ sơ
+        foreach (var nm in removedMembers)
+            if (plan.Count(nm) == 0 && p.Beams.FirstOrDefault(b => b.Name == nm) is ManualBeam mb) p.Beams.Remove(mb);
+        if (merged > 0) plan.SyncQuantities(p);
+        return merged;
+    }
+
+    /// <summary>Dầm vừa vẽ nối thẳng hàng với dầm có sẵn: nhận cấu kiện của dầm có sẵn (bỏ cấu kiện mới tạo nếu không còn vị trí) rồi gộp thành một dầm.
+    /// Trả về true nếu đã gộp.</summary>
+    public static bool AttachNew(DetailingProject p, PlanLevel lv, PlanItem it, bool memberWasNew)
+    {
+        if (p?.Plan == null || lv == null || it == null || it.Kind != PlanKinds.Beam || it.IsCurved || it.Length < 1e-3) return false;
+        double L = it.Length, ux = (it.X2 - it.X1) / L, uy = (it.Y2 - it.Y1) / L;
+        PlanItem nb = null;
+        foreach (var o in lv.Items.Where(i => i != it && i.Kind == PlanKinds.Beam && !i.IsCurved && i.Length > 1e-3))
+        {
+            double Lo = o.Length, vx = (o.X2 - o.X1) / Lo, vy = (o.Y2 - o.Y1) / Lo;
+            if (Math.Abs(ux * vy - uy * vx) > 1e-3) continue;
+            if (Math.Abs(-(o.X1 - it.X1) * uy + (o.Y1 - it.Y1) * ux) > 0.02) continue;
+            double a0 = 0, a1 = L, b0 = (o.X1 - it.X1) * ux + (o.Y1 - it.Y1) * uy, b1 = (o.X2 - it.X1) * ux + (o.Y2 - it.Y1) * uy;
+            if (Math.Max(a0, Math.Min(b0, b1)) - Math.Min(a1, Math.Max(b0, b1)) > 0.05) continue;   // không chạm
+            nb = o; break;
+        }
+        if (nb == null || string.IsNullOrEmpty(nb.Member)) return false;
+        if (it.Member != nb.Member)
+        {
+            if (!memberWasNew) return false;   // người dùng chọn cấu kiện khác → dầm riêng
+            string old = it.Member;
+            it.Member = nb.Member;
+            if (!string.IsNullOrEmpty(old) && p.Plan.Count(old) == 0 && p.Beams.FirstOrDefault(b => b.Name == old) is ManualBeam mb) p.Beams.Remove(mb);
+        }
+        return Merge(p, lv, true, new[] { it }) > 0;
+    }
+
+    /// <summary>Chia dầm tại điểm (x, y) (chiếu lên dầm): đoạn đầu giữ cấu kiện, đoạn sau thành cấu kiện mới cùng tiết diện (tên tiếp theo).
+    /// Trả về vị trí đoạn sau; null nếu điểm quá gần đầu dầm hoặc dầm cong.</summary>
+    public static PlanItem Split(DetailingProject p, PlanLevel lv, PlanItem it, double x, double y)
+    {
+        if (p?.Plan == null || lv == null || it == null || it.Kind != PlanKinds.Beam || it.IsCurved) return null;
+        double L = it.Length; if (L < 0.2) return null;
+        double ux = (it.X2 - it.X1) / L, uy = (it.Y2 - it.Y1) / L;
+        double t = (x - it.X1) * ux + (y - it.Y1) * uy;
+        if (t < 0.1 || t > L - 0.1) return null;
+        double sx = Math.Round(it.X1 + ux * t, 4), sy = Math.Round(it.Y1 + uy * t, 4);
+        var it2 = new PlanItem { Kind = PlanKinds.Beam, X1 = sx, Y1 = sy, X2 = it.X2, Y2 = it.Y2, Label = it.Label };
+        it.X2 = sx; it.Y2 = sy;
+        lv.Items.Add(it2);
+        var m = p.All.FirstOrDefault(q => q.Name == it.Member) as ManualBeam;
+        if (m != null)
+        {
+            var c = (ManualBeam)PlanStorey.CloneMember(m);
+            var names = new HashSet<string>(p.All.Select(q => q.Name));
+            string prefix = new string(m.Name.TakeWhile(ch => !char.IsDigit(ch)).ToArray());
+            if (prefix.Length == 0) prefix = "D";
+            int k = 1; while (names.Contains(prefix + k)) k++;
+            c.Name = prefix + k; c.Quantity = 1;
+            p.Beams.Add(c);
+            it2.Member = c.Name;
+            p.Plan.ApplyGeometry(m, it, lv);
+            p.Plan.ApplyGeometry(c, it2, lv);
+        }
+        else p.Plan.EnsureMember(p, it2, lv);
+        p.Plan.SyncQuantities(p);
+        return it2;
+    }
+}

@@ -15,7 +15,7 @@ namespace KetCauVXT.App;
 /// vẽ trong AutoCAD (DXF / DWG hoặc lệnh VXT_MB_KC), liên kết hai chiều với cây thư mục cấu kiện.</summary>
 public sealed partial class DetailingPlanCanvas
 {
-    public const string ToolSlabBay = "SanO", ToolCanopyDoor = "OVCua", ToolMove = "DiChuyen", ToolCurvedBeam = "DamCong", ToolDropSlab = "SanHa", ToolStairBay = "ThangO";
+    public const string ToolSlabBay = "SanO", ToolCanopyDoor = "OVCua", ToolMove = "DiChuyen", ToolCurvedBeam = "DamCong", ToolDropSlab = "SanHa", ToolStairBay = "ThangO", ToolSplitBeam = "ChiaDam";
     private (double X, double Y)? _curveEnd;   // [Dầm cong] điểm cuối (chờ điểm trên cung)
 
     /// <summary>Thư mục hồ sơ (để lưu / tìm ánh xạ theo đường dẫn tương đối).</summary>
@@ -42,6 +42,7 @@ public sealed partial class DetailingPlanCanvas
         r.Children.Add(Btn("Lỗ xuyên từ điện nước", PenetrationsFromModel, "Chuyển lỗ xuyên dầm / sàn có cảnh báo của bộ môn điện nước (mô hình ở chế độ Thiết kế) vào dầm / sàn hồ sơ cùng tên: lỗ trên mặt đứng, thép gia cường LX / LS, kiểm tra cắt tại lỗ"));
         r.Children.Add(Btn("Lanh tô theo cửa KT", LintelsFromDoors, "Đề xuất lanh tô cho mọi ô cửa của ánh xạ kiến trúc tầng này (gộp các cửa giống nhau thành LT1, LT2…)"));
         r.Children.Add(Btn("Nhập MB kết cấu từ CAD…", ImportCadPlan, "Nhập mặt bằng kết cấu vẽ trong AutoCAD (DXF/DWG): nhận diện layer cột, dầm (cả dầm cong – cung tròn), sàn; chữ tên D1 220x400, C1, S1…; đặt theo ánh xạ kiến trúc; tạo sàn từ dầm"));
+        r.Children.Add(Btn("⇔ Gộp dầm thẳng hàng", MergeBeamsHere, "Gộp các đoạn dầm thẳng hàng nối liền cùng tiết diện trên mặt bằng đang xem thành một dầm dài nhiều nhịp (nhịp chia theo trục / cột)"));
         r.Children.Add(Btn("▦ Tạo sàn từ dầm", AutoSlabsHere, "Tạo ô sàn trong mọi ô kín bao bởi dầm của mặt bằng đang xem; ô cùng kích thước dùng chung cấu kiện S1, S2…"));
         r.Children.Add(Btn("⧉ Sao chép sang tầng có sẵn…", CopyToLevelsDialog, "Sao toàn bộ vị trí cấu kiện của mặt bằng đang xem sang các mặt bằng có sẵn giống nhau (dùng chung cấu kiện, SL tự cập nhật)"));
         return r;
@@ -83,6 +84,20 @@ public sealed partial class DetailingPlanCanvas
     {
         switch (_tool)
         {
+            case ToolSplitBeam:
+            {
+                var hit = lv.Items.Where(i => i.Kind == PlanKinds.Beam).Select(i => (I: i, D: i.IsCurved ? PlanArc.Dist(i, w.X, w.Y) : StructuralPlan.DistSeg(w.X, w.Y, i.X1, i.Y1, i.X2, i.Y2)))
+                                  .Where(t => t.D <= Math.Max(tol, 0.3)).OrderBy(t => t.D).Select(t => t.I).FirstOrDefault();
+                if (hit == null) { _status.Text = "Bấm lên một dầm để chia."; return true; }
+                if (hit.IsCurved) { _status.Text = "Chưa chia được dầm cong."; return true; }
+                var sp = SnapW(lv, w, tol);
+                string old = hit.Member;
+                var it2 = PlanBeamMerge.Split(P, lv, hit, sp.X, sp.Y);
+                if (it2 == null) { _status.Text = "Điểm chia quá gần đầu dầm."; return true; }
+                _sel = it2; _changed(); FillMembers(); UpdateHint(); Redraw();
+                _status.Text = $"Đã chia dầm {old} tại ({it2.X1:0.###}; {it2.Y1:0.###}): {old} nhịp {string.Join("; ", Plan.BeamSpans(hit, lv).Select(v => v.ToString("0.###", CultureInfo.InvariantCulture)))} m, {it2.Member} nhịp {string.Join("; ", Plan.BeamSpans(it2, lv).Select(v => v.ToString("0.###", CultureInfo.InvariantCulture)))} m.";
+                return true;
+            }
             case ToolDropSlab:
             {
                 // [Sàn hạ cốt] ô sàn có sẵn tại điểm bấm, hoặc tạo sàn trong ô dầm rồi hạ
@@ -328,7 +343,7 @@ public sealed partial class DetailingPlanCanvas
         var opt = AskImportOptions(lv, ents, source);
         if (opt == null) return;
         _undo.Push(Plan);
-        var r = StructuralPlanImport.Import(P, lv, ents, opt.AlignOrigin, opt.Replace, opt.Keys, opt.Origin, opt.AutoSlabs);
+        var r = StructuralPlanImport.Import(P, lv, ents, opt.AlignOrigin, opt.Replace, opt.Keys, opt.Origin, opt.AutoSlabs, opt.MergeBeams);
         int copied = opt.CopyTo.Count > 0 ? PlanCopy.CopyTo(P, lv, opt.CopyTo, opt.Replace) : 0;
         _changed(); FillMembers(); _fitted = false; UpdateHint(); Redraw();
         _status.Text = (source ?? "") + ": " + string.Join(" ", r.Log) + (copied > 0 ? $" Sao chép sang {string.Join(", ", opt.CopyTo.Select(l => l.Name))} ({copied} vị trí)." : "")

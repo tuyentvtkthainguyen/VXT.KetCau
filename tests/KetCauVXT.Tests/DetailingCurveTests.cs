@@ -98,6 +98,26 @@ public static class DetailingCurveTests
         check("Ô cầu thang: chữ trong ô dầm → vị trí cầu thang 4 × 5 m", t3.Items.Count(i => i.Kind == PlanKinds.Stair), 1, 0);
         check("Ô cầu thang: tạo sàn bỏ ô thang → 1 ô sàn", t3.Items.Count(i => i.Kind == PlanKinds.Slab), 1, 0);
 
+        // [Dầm liên tục] 2 đoạn thẳng hàng (vẽ từng nhịp) → 1 dầm 2 nhịp; chia tại trục 2 → 2 dầm; gộp lại
+        var t4 = new PlanLevel { Name = "Tầng 4", Elevation = 10.8 };
+        p.Plan.Levels.Insert(3, t4);
+        var dl = new List<DxfEntity>();
+        foreach (var x in new[] { 0.0, 4.0, 8.0 })
+            dl.Add(new DxfEntity { Type = DxfEntityType.Polyline, Layer = "S-COT", Closed = true, Points = new() { (x - 0.11, -0.11), (x + 0.11, -0.11), (x + 0.11, 0.11), (x - 0.11, 0.11) } });
+        dl.Add(new DxfEntity { Type = DxfEntityType.Line, Layer = "KC_DAM", Points = new() { (0.0, 0.0), (4.0, 0.0) } });
+        dl.Add(new DxfEntity { Type = DxfEntityType.Line, Layer = "KC_DAM", Points = new() { (4.0, 0.0), (8.0, 0.0) } });
+        var r4 = StructuralPlanImport.Import(p, t4, dl, true, false, keys, (0, 0), false);
+        Console.WriteLine("   · " + string.Join(" | ", r4.Log));
+        var bm4 = t4.Items.Where(i => i.Kind == PlanKinds.Beam).ToList();
+        check("Dầm liên tục: 2 đoạn thẳng hàng nối liền → 1 dầm", bm4.Count, 1, 0);
+        check("Dầm liên tục: 2 nhịp 4 m (chia theo trục / cột)", p.Plan.BeamSpans(bm4[0], t4).Count, 2, 0);
+        var sp2 = PlanBeamMerge.Split(p, t4, bm4[0], 4.0, 0.02);
+        check("Chia dầm tại trục 2 → 2 dầm, tên khác nhau", B(sp2 != null && t4.Items.Count(i => i.Kind == PlanKinds.Beam) == 2 && sp2.Member != bm4[0].Member), 1, 0);
+        check("Chia dầm: mỗi dầm 1 nhịp 4 m", p.Plan.BeamSpans(sp2, t4).Sum() + p.Plan.BeamSpans(bm4[0], t4).Sum(), 8, 1e-6);
+        string m2 = sp2.Member;
+        int nmg = PlanBeamMerge.Merge(p, t4, false);
+        check("Gộp dầm thẳng hàng (cùng tiết diện) → lại 1 dầm, cấu kiện thừa bị xoá", B(nmg == 1 && t4.Items.Count(i => i.Kind == PlanKinds.Beam) == 1 && p.Beams.All(b => b.Name != m2)), 1, 0);
+
         // xuất DXF: dầm cong = ARC trên layer bê tông
         var map = StructuralPlanDrawing.Map(p, new());
         string dxf = StructuralPlanDrawing.Level(p.Plan, lv, map, StructuralPlanDrawing.LevelTitle(lv), false).ToDxfString();
