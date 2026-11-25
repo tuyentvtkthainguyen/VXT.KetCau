@@ -134,16 +134,16 @@ public static class StructuralPlanDrawing
             if (!plan.GridVisible(true, i, lvName)) continue;
             var gs = plan.StyleOf(true, i);
             w.Line(Lay.Truc, xs[i], gy0, xs[i], gy1, "CENTER");
-            if (gs.BubbleStart) w.GridBubble(xs[i], gy0 - R, StructuralPlan.NameX(i));
-            if (gs.BubbleEnd) w.GridBubble(xs[i], gy1 + R, StructuralPlan.NameX(i));
+            if (gs.BubbleStart) w.GridBubble(xs[i], gy0 - R, plan.AxisLabel(true, i));
+            if (gs.BubbleEnd) w.GridBubble(xs[i], gy1 + R, plan.AxisLabel(true, i));
         }
         for (int j = 0; j < ys.Count; j++)
         {
             if (!plan.GridVisible(false, j, lvName)) continue;
             var gs = plan.StyleOf(false, j);
             w.Line(Lay.Truc, gx0, ys[j], gx1, ys[j], "CENTER");
-            if (gs.BubbleStart) w.GridBubble(gx0 - R, ys[j], StructuralPlan.NameY(j));
-            if (gs.BubbleEnd) w.GridBubble(gx1 + R, ys[j], StructuralPlan.NameY(j));
+            if (gs.BubbleStart) w.GridBubble(gx0 - R, ys[j], plan.AxisLabel(false, j));
+            if (gs.BubbleEnd) w.GridBubble(gx1 + R, ys[j], plan.AxisLabel(false, j));
         }
         // chuỗi kích thước chỉ qua các trục hiện
         xs = xs.Where((_, gi) => plan.GridVisible(true, gi, lvName)).ToList();
@@ -540,10 +540,30 @@ public static class StructuralPlanDrawing
             // [Sàn hạ cốt] biên trong nét đứt + ghi "SÀN HẠ COS -50"
             double o = Math.Min(150, Math.Min(x1 - x0, y1 - y0) / 6);
             w.Rect(Lay.KyHieu, x0 + o, y0 + o, x1 - o, y1 - o, "DASHED");
+            HatchDiag(w, x0 + o, y0 + o, x1 - o, y1 - o, 400);   // [đánh dấu sàn hạ cốt] gạch chéo
             w.Text(Lay.Chu, cx, cy - 2.8 * th, 0.8 * th, "SÀN HẠ COS -" + DxfWriter.N0(it.Drop * 1000), 0, 1, 3);
         }
-        if (m is ManualSlab sl) DrawSlabBars(w, x0, y0, x1, y1, sl, v.R);
+        if (m is ManualSlab sl)
+        {
+            // ô theo mép dầm: thép neo vào dầm tính từ tim dầm
+            var ar = it.AxisRect(sl.BeamWidth > 0 ? sl.BeamWidth : 0.22);
+            DrawSlabBars(w, ar.X0 * 1000, ar.Y0 * 1000, ar.X1 * 1000, ar.Y1 * 1000, sl, v.R);
+        }
         else if (m is ManualSlabPlan spl) w.Text(Lay.Chu, cx, cy - 2.8 * th, 0.8 * th, "THÉP SÀN XEM MẶT BẰNG THÉP " + (spl.Name ?? "").ToUpperInvariant(), 0, 1, 3);
+    }
+
+    /// <summary>Gạch chéo 45° trong hình chữ nhật (mm), bước sp – ký hiệu sàn hạ cốt.</summary>
+    public static void HatchDiag(DxfWriter w, double x0, double y0, double x1, double y1, double sp)
+    {
+        if (x1 - x0 < 1 || y1 - y0 < 1 || sp <= 0) return;
+        double W = x1 - x0, H = y1 - y0;
+        for (double c = sp; c < W + H; c += sp)
+        {
+            // đường x - x0 + (y - y0) = c
+            double ax = x0 + Math.Min(c, W), ay = y0 + Math.Max(0, c - W);
+            double bx = x0 + Math.Max(0, c - H), by = y0 + Math.Min(c, H);
+            w.Line(Lay.KyHieu, ax, ay, bx, by);
+        }
     }
 
     /// <summary>Thép sàn trên mặt bằng kết cấu tầng (kiểu PlanBarDraw): lớp dưới mỗi phương 1 thanh đại diện lệch khỏi tâm ô
@@ -641,8 +661,9 @@ public static class StructuralPlanDrawing
         var slabs = new List<(double T0, double T1, double Th, IDetailMember M, DetailResult R, PlanItem It)>();
         foreach (var it in lv.Items.Where(i => i.Kind == PlanKinds.Slab))
         {
-            if (!ClipRect(ax, ay, ux, uy, L, it.MinX, it.MinY, it.MaxX, it.MaxY, out double t0, out double t1)) continue;
             var mm = map.TryGetValue(it.Member ?? "", out var v) ? v.M : null;
+            var ar = it.AxisRect(mm is ManualSlab msb && msb.BeamWidth > 0 ? msb.BeamWidth : 0.22);
+            if (!ClipRect(ax, ay, ux, uy, L, ar.X0, ar.Y0, ar.X1, ar.Y1, out double t0, out double t1)) continue;
             double t = mm switch { ManualSlab s1 => s1.T, ManualSlabPlan s2 => s2.T, RaftInput rf => rf.T, _ => 0.10 } * 1000;
             slabs.Add((t0 * 1000, t1 * 1000, t, mm, v.R, it));
         }

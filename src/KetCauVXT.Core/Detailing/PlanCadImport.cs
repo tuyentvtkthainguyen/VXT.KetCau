@@ -31,6 +31,8 @@ public sealed class CadSeg
 public sealed class PlanImportResult
 {
     public int Beams, Columns, Slabs, NewMembers, CurvedBeams, Voids, Stairs;
+    /// <summary>[Trục từ AutoCAD] số trục X / Y nhận được (0 = không dùng).</summary>
+    public int AxesX, AxesY;
     public List<string> Log { get; } = new();
     public List<PlanItem> Items { get; } = new();
     public double OffsetX, OffsetY;
@@ -144,6 +146,9 @@ public sealed class ArchLayerKeys
     public string[] Beam = { "DAM", "BEAM", "GIANG", "S-BEAM" };
     public string[] Column = { "COT", "COLUMN", "S-COLS" };
     public string[] Slab = { "SAN", "SLAB", "S-SLAB" };
+    public string[] Axis = { "TRUC", "AXIS", "GRID", "S-GRID", "A-GRID" };
+    /// <summary>Layer giả gán cho các đường trục người dùng chọn trong AutoCAD (lệnh VXT_MB_KC, bước chọn trục).</summary>
+    public const string PickedAxisLayer = "⟨TRỤC ĐÃ CHỌN⟩";
 
     private static bool Has(string layer, string[] keys)
     {
@@ -153,16 +158,22 @@ public sealed class ArchLayerKeys
     // layer chuẩn VXT-… (lệnh VXT_CHUANLAYER / "Chuẩn hoá layer") quyết định trước từ khoá
     private static string Std(string l) => KetCauVXT.Import.Arch.StdLayers.CategoryOf(l);
     /// <summary>[Nhận diện layer] Danh sách layer người dùng chỉ định (khớp đúng tên, không phân biệt hoa thường) – khác null thì quyết định thay từ khoá.</summary>
-    public HashSet<string> BeamLayers, ColumnLayers, SlabLayers;
+    public HashSet<string> BeamLayers, ColumnLayers, SlabLayers, AxisLayers;
     private static bool In(HashSet<string> set, string l) => set.Contains((l ?? "").Trim());
     public bool IsWall(string l) { string c = Std(l); return c.Length > 0 ? c == "Tuong" : Has(l, Wall) && !Has(l, Door); }
     public bool IsDoor(string l) { string c = Std(l); return c.Length > 0 ? c == "Cua" : Has(l, Door); }
     public bool IsBeam(string l) { if (BeamLayers != null) return In(BeamLayers, l); string c = Std(l); return c.Length > 0 ? c == "Dam" : Has(l, Beam); }
     public bool IsColumn(string l) { if (ColumnLayers != null) return In(ColumnLayers, l); string c = Std(l); return c.Length > 0 ? c == "Cot" : Has(l, Column) && !Has(l, Beam); }
+    public bool IsAxis(string l)
+    {
+        if ((l ?? "") == PickedAxisLayer) return AxisLayers == null || In(AxisLayers, l);
+        if (AxisLayers != null) return In(AxisLayers, l);
+        string c = Std(l); return c.Length > 0 ? c == "Truc" : Has(l, Axis);
+    }
     public bool IsSlab(string l) { if (SlabLayers != null) return In(SlabLayers, l); string c = Std(l); return c.Length > 0 ? c == "San" : Has(l, Slab); }
 
     /// <summary>Gợi ý vai trò của layer theo tên: "Dầm" | "Cột" | "Sàn" | "".</summary>
-    public string Suggest(string layer) => IsColumn(layer) ? "Cột" : IsBeam(layer) ? "Dầm" : IsSlab(layer) ? "Sàn" : "";
+    public string Suggest(string layer) => IsAxis(layer) ? "Trục" : IsColumn(layer) ? "Cột" : IsBeam(layer) ? "Dầm" : IsSlab(layer) ? "Sàn" : "";
     public static bool DoorBlock(string block)
     {
         string n = ArchPlanReader.Norm(block);
@@ -179,6 +190,56 @@ public sealed class ArchLayerKeys
 /// <summary>Hình học dùng chung khi đọc bản vẽ.</summary>
 public static class PlanCadGeom
 {
+    /// <summary>[Trục từ AutoCAD] đường trục: nét thẳng dài (≥ 1,5 m) đứng / ngang trên layer trục (nét đứt đoạn được gộp);
+    /// tên trục = chữ ngắn (1–4 ký tự, vd. 1, 2', A, B1) gần đầu đường trục (trong bong bóng). Trả về danh sách (toạ độ, tên)
+    /// theo thứ tự tăng dần; tên rỗng nếu không thấy chữ. Mỗi phương cần ≥ 2 trục, không thì trả rỗng.</summary>
+    public static (List<(double C, string Name)> X, List<(double C, string Name)> Y) Axes(IEnumerable<DxfEntity> axisEnts,
+        IList<(double X, double Y, string S, string Layer)> texts, HashSet<int> usedOut = null)
+    {
+        var vx = new List<(double C, double Lo, double Hi)>(); var hy = new List<(double C, double Lo, double Hi)>();
+        foreach (var sg in Segments(axisEnts))
+        {
+            double L = sg.Length; if (L < 1.5) continue;
+            double dx = Math.Abs(sg.X2 - sg.X1), dy = Math.Abs(sg.Y2 - sg.Y1);
+            if (dx < 0.01 * L) vx.Add(((sg.X1 + sg.X2) / 2, Math.Min(sg.Y1, sg.Y2), Math.Max(sg.Y1, sg.Y2)));
+            else if (dy < 0.01 * L) hy.Add(((sg.Y1 + sg.Y2) / 2, Math.Min(sg.X1, sg.X2), Math.Max(sg.X1, sg.X2)));
+        }
+        static List<(double C, double Lo, double Hi)> Merge(List<(double C, double Lo, double Hi)> v)
+        {
+            var r = new List<(double C, double Lo, double Hi)>();
+            foreach (var g in v.OrderBy(q => q.C))
+            {
+                if (r.Count > 0 && g.C - r[^1].C <= 0.05) { var l = r[^1]; r[^1] = ((l.C + g.C) / 2, Math.Min(l.Lo, g.Lo), Math.Max(l.Hi, g.Hi)); }
+                else r.Add(g);
+            }
+            return r;
+        }
+        var X = Merge(vx); var Y = Merge(hy);
+        if (X.Count < 2 || Y.Count < 2) return (new(), new());
+        var used = usedOut ?? new HashSet<int>();
+        bool Short(string t) => Regex.IsMatch(t ?? "", @"^[A-Za-z0-9]{1,3}['’`]?[0-9]?$");
+        string Name((double C, double Lo, double Hi) a, bool vertical)
+        {
+            int bi = -1; double bd = 2.0;
+            for (int i = 0; i < texts.Count; i++)
+            {
+                if (used.Contains(i) || !Short(texts[i].S)) continue;
+                double across = vertical ? Math.Abs(texts[i].X - a.C) : Math.Abs(texts[i].Y - a.C);
+                if (across > 0.9) continue;
+                double along = vertical ? texts[i].Y : texts[i].X;
+                double end = Math.Min(Math.Abs(along - a.Lo), Math.Abs(along - a.Hi));
+                bool beyond = along <= a.Lo + 0.6 || along >= a.Hi - 0.6;   // ở vùng đầu trục
+                if (!beyond) continue;
+                double d = across + 0.3 * end;
+                if (d < bd) { bd = d; bi = i; }
+            }
+            if (bi < 0) return "";
+            used.Add(bi);
+            return texts[bi].S.Trim().Replace('’', '\'').Replace('`', '\'');
+        }
+        return (X.Select(a => (Math.Round(a.C, 4), Name(a, true))).ToList(), Y.Select(a => (Math.Round(a.C, 4), Name(a, false))).ToList());
+    }
+
     /// <summary>Các đoạn thẳng của LINE / POLYLINE (bỏ chữ, đường tròn).</summary>
     public static IEnumerable<CadSeg> Segments(IEnumerable<DxfEntity> ents, bool skipArcs = false)
     {
@@ -370,7 +431,7 @@ public static class StructuralPlanImport
     /// <summary>Nhập vào mặt bằng lv. alignOrigin: dời sao cho điểm trái – dưới nhất của cột / dầm trùng gốc trục 1-A (0; 0)
     /// (khi bản vẽ dùng toạ độ tuỳ ý); replace: xoá vị trí dầm / cột / sàn cũ của mặt bằng trước khi nhập.</summary>
     public static PlanImportResult Import(DetailingProject p, PlanLevel lv, List<DxfEntity> ents, bool alignOrigin = true, bool replace = false, ArchLayerKeys keys = null,
-                                          (double X, double Y)? origin = null, bool autoSlabs = false, bool mergeBeams = true)
+                                          (double X, double Y)? origin = null, bool autoSlabs = false, bool mergeBeams = true, bool useAxes = true)
     {
         keys ??= new ArchLayerKeys();
         var res = new PlanImportResult();
@@ -409,12 +470,29 @@ public static class StructuralPlanImport
             var ysAll = cols.Select(c => c.Y).Concat(beams.SelectMany(b => new[] { b.S.Y1, b.S.Y2 })).Concat(arcBeams.SelectMany(a => new[] { a.Y1, a.Y2 })).ToList();
             if (xsAll.Count > 0) { ox = xsAll.Min(); oy = ysAll.Min(); }
         }
+        // [Trục từ AutoCAD] đường trục + tên trên bản vẽ → hệ trục triển khai; gốc = giao trục đầu (trục trái nhất × dưới nhất)
+        var axisTexts = new HashSet<int>();
+        var axes = useAxes ? PlanCadGeom.Axes(ents.Where(e => keys.IsAxis(e.Layer)), texts, axisTexts) : (X: new List<(double C, string Name)>(), Y: new List<(double C, string Name)>());
+        bool haveAxes = axes.X.Count >= 2 && axes.Y.Count >= 2;
+        if (haveAxes && alignOrigin) { ox = axes.X[0].C; oy = axes.Y[0].C; }
         if (origin is { } og) { ox = og.X; oy = og.Y; }   // theo ánh xạ / gốc chỉ định
         res.OffsetX = ox; res.OffsetY = oy;
+        double axShiftX = 0, axShiftY = 0;
+        if (haveAxes)
+        {
+            plan.SpansX = PlanGridEdit.SpansOf(axes.X.Select(a => a.C - axes.X[0].C).ToList());
+            plan.SpansY = PlanGridEdit.SpansOf(axes.Y.Select(a => a.C - axes.Y[0].C).ToList());
+            plan.SetAxisLabels(true, axes.X.Select(a => a.Name).ToList());
+            plan.SetAxisLabels(false, axes.Y.Select(a => a.Name).ToList());
+            axShiftX = axes.X[0].C - ox; axShiftY = axes.Y[0].C - oy;   // ≠ 0 khi đặt theo ánh xạ / giữ toạ độ → dời cả mặt bằng ở cuối
+            res.AxesX = axes.X.Count; res.AxesY = axes.Y.Count;
+            res.Log.Add($"Hệ trục từ bản vẽ: {axes.X.Count} trục X ({string.Join(", ", Enumerable.Range(0, axes.X.Count).Select(i => plan.AxisLabel(true, i)))}), "
+                        + $"{axes.Y.Count} trục Y ({string.Join(", ", Enumerable.Range(0, axes.Y.Count).Select(i => plan.AxisLabel(false, i)))}); bước X {plan.SpansX}, bước Y {plan.SpansY} m.");
+        }
         if (replace) lv.Items.RemoveAll(i => i.Kind == PlanKinds.Beam || i.Kind == PlanKinds.Column || i.Kind == PlanKinds.Slab);
 
         // chữ gần nhất (đã dùng thì không dùng lại)
-        var usedText = new HashSet<int>();
+        var usedText = new HashSet<int>(haveAxes ? axisTexts : Enumerable.Empty<int>());   // chữ tên trục không dùng làm tên cấu kiện
         int NearText(double x, double y, double maxD, Func<string, bool> ok)
         {
             int bi = -1; double bd = maxD;
@@ -585,6 +663,12 @@ public static class StructuralPlanImport
             if (sl != null && d > 0 && d < 1.5) { sl.Drop = Math.Round(d, 4); nd++; }
         }
         if (nd > 0) res.Log.Add($"Sàn hạ cốt: {nd} ô (đọc chữ \"HẠ COS …\").");
+        if (haveAxes && Math.Abs(axShiftX) + Math.Abs(axShiftY) > 1e-6)
+        {
+            // trục đầu luôn ở toạ độ 0: dời cả mặt bằng (mọi tầng, ánh xạ) cho trùng hệ trục bản vẽ
+            PlanGridFirst.ShiftAll(plan, -axShiftX, -axShiftY);
+            res.Log.Add($"Dời mặt bằng ({Dt.F(-axShiftX, "0.###")}; {Dt.F(-axShiftY, "0.###")}) m để trục {plan.AxisLabel(true, 0)}-{plan.AxisLabel(false, 0)} ở gốc.");
+        }
         return res;
     }
 
@@ -655,6 +739,7 @@ public static class StructuralPlanImport
                     double x = e.TryGetProperty("x", out var xx) && xx.TryGetDouble(out double xv) ? xv * k : 0;
                     double y = e.TryGetProperty("y", out var yy) && yy.TryGetDouble(out double yv) ? yv * k : 0;
                     string s = e.TryGetProperty("s", out var ss) ? ss.GetString() ?? "" : "";
+                    if (e.TryGetProperty("axis", out var axt) && axt.ValueKind == JsonValueKind.True) layer = ArchLayerKeys.PickedAxisLayer;
                     ents.Add(new DxfEntity { Type = DxfEntityType.Text, Layer = layer, Text = s, Points = new() { (x, y) } });
                     continue;
                 }
@@ -675,6 +760,7 @@ public static class StructuralPlanImport
                     var bs = bg.EnumerateArray().Select(v => v.TryGetDouble(out double d) ? d : 0).ToList();
                     if (bs.Any(b => Math.Abs(b) > 1e-9)) (pts, spans) = Tessellate(pts, bs, closed);
                 }
+                if (e.TryGetProperty("axis", out var axf) && axf.ValueKind == JsonValueKind.True) layer = ArchLayerKeys.PickedAxisLayer;   // trục người dùng chọn trong AutoCAD
                 ents.Add(new DxfEntity { Type = pts.Count == 2 && !closed ? DxfEntityType.Line : DxfEntityType.Polyline, Layer = layer, Points = pts, Closed = closed, Arcs = spans,
                     Block = e.TryGetProperty("block", out var bl) ? bl.GetString() ?? "" : "" });
             }

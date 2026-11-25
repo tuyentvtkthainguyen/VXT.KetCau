@@ -131,10 +131,18 @@ public sealed partial class DetailingPlanCanvas
         var g = PlanGridEdit.GridAt(Plan, w.X, w.Y, tol);
         if (g == null) return false;
         var (xDir, idx) = g.Value;
-        string name = xDir ? StructuralPlan.NameX(idx) : StructuralPlan.NameY(idx);
+        string name = Plan.AxisLabel(xDir, idx);
         double cur = (xDir ? Plan.Xs : Plan.Ys)[idx];
         var cm = new ContextMenu();
         void Item(string h, Action a) { var mi = new MenuItem { Header = h }; mi.Click += (s, e) => a(); cm.Items.Add(mi); }
+        Item("Đổi tên trục " + name + "…", () =>
+        {
+            string v = DialogUi.InputBox(_owner, "Đổi tên trục", "Tên mới của trục " + name + " (để trống = tên mặc định " + StructuralPlan.GridName(xDir, idx) + "):", name);
+            if (v == null) return;
+            _undo.Push(Plan);
+            Plan.SetAxisLabel(xDir, idx, v);
+            GridChanged("Trục " + name + " → " + Plan.AxisLabel(xDir, idx) + ".");
+        });
         Item("Dời trục " + name + "… (kéo theo cấu kiện)", () => MoveGridLine(xDir, idx, name, cur, true));
         Item("Dời trục " + name + "… (giữ cấu kiện)", () => MoveGridLine(xDir, idx, name, cur, false));
         Item("Thêm trục song song…", () =>

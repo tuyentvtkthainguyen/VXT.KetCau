@@ -50,6 +50,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         r1.Children.Add(Lbl("① Hệ trục – bước trục X (1, 2, 3…) m:")); r1.Children.Add(_sx);
         r1.Children.Add(Lbl("Bước trục Y (A, B, C…) m:")); r1.Children.Add(_sy);
         r1.Children.Add(Btn("Áp dụng lưới", ApplyGrid, "Cập nhật lưới trục theo bước trục (vd. 3.6 4.2 hoặc 3*3.3)"));
+        r1.Children.Add(Btn("Tên trục…", RenameAxes, "Đổi tên các trục (vd. 1 2 3 3' 4 / A B B' C) – tên hiện trên mặt bằng, bản vẽ; chuột phải lên trục: đổi tên một trục"));
         r1.Children.Add(Btn("Thêm trục…", AddGridLine, "Thêm một trục X hoặc Y tại toạ độ nhập (bước trục tự cập nhật); chuột phải lên trục: dời / xoá trục"));
         r1.Children.Add(Btn("Tải mặt bằng…", LoadPlanGrid, "Lấy bước trục từ bản vẽ CAD (DWG/DXF) hoặc ảnh mặt bằng"));
         top.Children.Add(r1);
@@ -515,16 +516,16 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             if (!Plan.GridVisible(true, i, lvGrid)) continue;
             var gs = Plan.StyleOf(true, i);
             Line(xs[i], gy0, xs[i], gy1, gridBrush, 0.8, true);
-            if (gs.BubbleStart) Bubble(xs[i], gy0, StructuralPlan.NameX(i), 0, -1);
-            if (gs.BubbleEnd) Bubble(xs[i], gy1, StructuralPlan.NameX(i), 0, 1);
+            if (gs.BubbleStart) Bubble(xs[i], gy0, Plan.AxisLabel(true, i), 0, -1);
+            if (gs.BubbleEnd) Bubble(xs[i], gy1, Plan.AxisLabel(true, i), 0, 1);
         }
         for (int j = 0; j < ys.Length; j++)
         {
             if (!Plan.GridVisible(false, j, lvGrid)) continue;
             var gs = Plan.StyleOf(false, j);
             Line(gx0, ys[j], gx1, ys[j], gridBrush, 0.8, true);
-            if (gs.BubbleStart) Bubble(gx0, ys[j], StructuralPlan.NameY(j), -1, 0);
-            if (gs.BubbleEnd) Bubble(gx1, ys[j], StructuralPlan.NameY(j), 1, 0);
+            if (gs.BubbleStart) Bubble(gx0, ys[j], Plan.AxisLabel(false, j), -1, 0);
+            if (gs.BubbleEnd) Bubble(gx1, ys[j], Plan.AxisLabel(false, j), 1, 0);
         }
         var lv = Level;
         DrawUnderlay(lv);
@@ -649,7 +650,11 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                 {
                     double o = Math.Min(0.15, Math.Min(it.MaxX - it.MinX, it.MaxY - it.MinY) / 6);
                     RectW(it.MinX + o, it.MinY + o, it.MaxX - o, it.MaxY - o, Brushes.DarkMagenta, 1, new SolidColorBrush(Color.FromArgb(30, 0x8B, 0x00, 0x8B)), true);
-                    Text((it.X1 + it.X2) / 2, (it.Y1 + it.Y2) / 2 - 0.35, "hạ cốt −" + Dim(it.Drop), Brushes.DarkMagenta, 11);
+                    // [đánh dấu sàn hạ cốt] gạch chéo 45° bước 0,4 m như bản vẽ
+                    double hx0 = it.MinX + o, hy0 = it.MinY + o, W = it.MaxX - it.MinX - 2 * o, H = it.MaxY - it.MinY - 2 * o;
+                    for (double c = 0.4; c < W + H; c += 0.4)
+                        Line(hx0 + Math.Min(c, W), hy0 + Math.Max(0, c - W), hx0 + Math.Max(0, c - H), hy0 + Math.Min(c, H), Brushes.DarkMagenta, 0.5, false);
+                    Text((it.X1 + it.X2) / 2, (it.Y1 + it.Y2) / 2 - 0.35, "SÀN HẠ COS −" + Dim(it.Drop), Brushes.DarkMagenta, 11);
                 }
                 break;
             case PlanKinds.Canopy:

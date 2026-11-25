@@ -33,6 +33,11 @@ namespace KetCauVXT.AcadLink
                 var o = new PromptSelectionOptions { MessageForAdding = "\nChọn mặt bằng kết cấu (dầm, cột, chữ tên cấu kiện, cửa): " };
                 var r = ed.GetSelection(o);
                 if (r.Status != PromptStatus.OK) return;
+                // [Trục] chọn đường trục + bong bóng / chữ tên trục làm hệ trục triển khai (Enter = bỏ qua, Việt Const nhận theo layer trục)
+                var axisIds = new HashSet<ObjectId>();
+                var o2 = new PromptSelectionOptions { MessageForAdding = "\nChọn các ĐƯỜNG TRỤC gốc + ký hiệu trục (bong bóng, chữ tên trục) – Enter để bỏ qua: " };
+                var r2 = ed.GetSelection(o2);
+                if (r2.Status == PromptStatus.OK) foreach (var id in r2.Value.GetObjectIds()) axisIds.Add(id);
                 string unitName;
                 double k = Exchange.UnitToM((int)db.Insunits, out unitName);
                 var w = new JsonOut();
@@ -48,10 +53,22 @@ namespace KetCauVXT.AcadLink
                 {
                     foreach (var id in r.Value.GetObjectIds())
                     {
+                        if (axisIds.Contains(id)) continue;
                         var e = tr.GetObject(id, OpenMode.ForRead) as Entity;
                         if (e == null) continue;
                         n += Write(w, e, k, "", 0);
                     }
+                    _axis = true;
+                    try
+                    {
+                        foreach (var id in axisIds)
+                        {
+                            var e = tr.GetObject(id, OpenMode.ForRead) as Entity;
+                            if (e == null) continue;
+                            n += Write(w, e, k, "", 0);
+                        }
+                    }
+                    finally { _axis = false; }
                     tr.Commit();
                 }
                 w.EndArray();
@@ -61,7 +78,7 @@ namespace KetCauVXT.AcadLink
                 Directory.CreateDirectory(dir);
                 string file = Path.Combine(dir, "plan_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture) + ".json");
                 File.WriteAllText(file, w.ToString(), new System.Text.UTF8Encoding(false));
-                ed.WriteMessage("\nĐã gửi " + n + " đối tượng (đơn vị bản vẽ: " + unitName + ") → " + file
+                ed.WriteMessage("\nĐã gửi " + n + " đối tượng" + (axisIds.Count > 0 ? " (" + axisIds.Count + " đối tượng trục)" : "") + " (đơn vị bản vẽ: " + unitName + ") → " + file
                                 + "\nTrong Việt Const (Triển khai hồ sơ – tab Mặt bằng kết cấu): chương trình hỏi nhận vào mặt bằng đang xem.");
             }
             catch (Exception ex) { ed.WriteMessage("\nLỗi VXT_MB_KC: " + ex.Message); }
@@ -105,8 +122,9 @@ namespace KetCauVXT.AcadLink
                 Seg(w, layer, block, pts, false, null, new[] { arc.Center.X * k, arc.Center.Y * k, arc.Radius * k });
                 return 1;
             }
+            if (e is AttributeDefinition) return 0;   // định nghĩa thuộc tính (tên thẻ) khi phân rã block – giá trị lấy từ AttributeReference
             var t = e as DBText;
-            if (t != null && !string.IsNullOrWhiteSpace(t.TextString)) { Txt(w, layer, P(t.Position, k), t.TextString.Trim()); return 1; }
+            if (t != null && !string.IsNullOrWhiteSpace(t.TextString)) { Txt(w, layer, P(TextPt(t), k), t.TextString.Trim()); return 1; }
             var mt = e as MText;
             if (mt != null && !string.IsNullOrWhiteSpace(mt.Text)) { Txt(w, layer, P(mt.Location, k), mt.Text.Replace("\r", " ").Replace("\n", " ").Trim()); return 1; }
             var br = e as BlockReference;
@@ -120,6 +138,17 @@ namespace KetCauVXT.AcadLink
                 }
                 catch { }
                 int n = 0;
+                // thuộc tính block (vd. bong bóng trục có thuộc tính tên trục)
+                try
+                {
+                    foreach (ObjectId aid in br.AttributeCollection)
+                    {
+                        var ar = aid.GetObject(OpenMode.ForRead) as AttributeReference;
+                        if (ar == null || ar.Invisible || string.IsNullOrWhiteSpace(ar.TextString)) continue;
+                        Txt(w, ar.Layer == "0" ? layer : ar.Layer, P(TextPt(ar), k), ar.TextString.Trim()); n++;
+                    }
+                }
+                catch { }
                 var parts = new DBObjectCollection();
                 try { br.Explode(parts); } catch { return 0; }
                 foreach (DBObject d in parts)
@@ -139,6 +168,16 @@ namespace KetCauVXT.AcadLink
 
         private static double[] P(Point3d p, double k) { return new[] { p.X * k, p.Y * k }; }
 
+        /// <summary>Điểm đặt chữ: chữ canh giữa / phải dùng điểm canh (gần tâm bong bóng trục hơn).</summary>
+        private static Point3d TextPt(DBText t)
+        {
+            try { if (t.HorizontalMode != TextHorizontalMode.TextLeft || t.VerticalMode != TextVerticalMode.TextBase) return t.AlignmentPoint; } catch { }
+            return t.Position;
+        }
+
+        /// <summary>Đang ghi các đối tượng người dùng chọn làm trục.</summary>
+        [ThreadStatic] private static bool _axis;
+
         private static void Seg(JsonOut w, string layer, string block, List<double[]> pts, bool closed, List<double> bulges = null, double[] arc = null)
         {
             w.BeginObject();
@@ -147,6 +186,7 @@ namespace KetCauVXT.AcadLink
             if (!string.IsNullOrEmpty(block)) w.Prop("block", block);
             w.Points("pts", pts);
             w.Prop("closed", closed);
+            if (_axis) w.Prop("axis", true);
             if (bulges != null) w.Numbers("bulges", bulges);
             if (arc != null) w.Numbers("arc", arc);
             w.EndObject();
@@ -160,6 +200,7 @@ namespace KetCauVXT.AcadLink
             w.Prop("x", p[0]);
             w.Prop("y", p[1]);
             w.Prop("s", s);
+            if (_axis) w.Prop("axis", true);
             w.EndObject();
         }
     }

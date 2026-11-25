@@ -189,6 +189,56 @@ public static class DetailingCurveTests
         check("Hệ trục trước: ánh xạ kiến trúc dời theo (0,5 − 2 = −1,5)", g0.UnderlayDx, -1.5, 1e-9);
         check("Hệ trục trước: đã có trục → không tạo lại", B(PlanGridFirst.Infer(gp) == null), 1, 0);
 
+        // [Trục từ AutoCAD] layer TRUC + trục chọn trong AutoCAD ("axis":true); tên trục trong bong bóng; dầm qua 3 cột = 1 dầm; sàn theo mép dầm
+        {
+            string Ln(string layer, double x1, double y1, double x2, double y2, bool ax = false) => $"{{\"t\":\"line\",\"layer\":\"{layer}\",\"pts\":[[{x1},{y1}],[{x2},{y2}]]{(ax ? ",\"axis\":true" : "")}}}";
+            string Tx(string layer, double x, double y, string t, bool ax = false) => $"{{\"t\":\"text\",\"layer\":\"{layer}\",\"x\":{x},\"y\":{y},\"s\":\"{t}\"{(ax ? ",\"axis\":true" : "")}}}";
+            string Cl(double x, double y) => $"{{\"t\":\"line\",\"layer\":\"S-COT\",\"pts\":[[{x - 110},{y - 110}],[{x + 110},{y - 110}],[{x + 110},{y + 110}],[{x - 110},{y + 110}]],\"closed\":true}}";
+            var ae = new List<string>();
+            var AX = new[] { 10000.0, 13600, 17800 }; var AY = new[] { 5000.0, 9500 };
+            ae.Add(Ln("TRUC", 10000, 4000, 10000, 7000)); ae.Add(Ln("TRUC", 10000, 7100, 10000, 11000));   // trục nét đứt 2 đoạn
+            ae.Add(Ln("TRUC", 13600, 4000, 13600, 11000)); ae.Add(Ln("TRUC", 17800, 4000, 17800, 11000));
+            foreach (var y in AY) ae.Add(Ln("0", 9000, y, 19000, y, true));   // trục Y người dùng chọn trong AutoCAD
+            ae.Add(Tx("TRUC", 10000, 3500, "1")); ae.Add(Tx("TRUC", 13600, 3500, "2")); ae.Add(Tx("TRUC", 17800, 3500, "3"));
+            ae.Add(Tx("KYHIEU", 8500, 5000, "A", true)); ae.Add(Tx("KYHIEU", 8500, 9500, "B", true));
+            foreach (var x in AX) foreach (var y in AY) ae.Add(Cl(x, y));
+            ae.Add(Ln("KC_DAM", 10000, 4890, 17800, 4890)); ae.Add(Ln("KC_DAM", 10000, 5110, 17800, 5110));   // dầm trục A vẽ liền qua 3 cột
+            foreach (var (xa, xb) in new[] { (10000.0, 13600.0), (13600.0, 17800.0) }) { ae.Add(Ln("KC_DAM", xa, 9390, xb, 9390)); ae.Add(Ln("KC_DAM", xa, 9610, xb, 9610)); }   // trục B vẽ từng nhịp
+            foreach (var x in AX) { ae.Add(Ln("KC_DAM", x - 110, 5000, x - 110, 9500)); ae.Add(Ln("KC_DAM", x + 110, 5000, x + 110, 9500)); }
+            var aents = StructuralPlanImport.ParseExchange("{\"unit\":\"mm\",\"entities\":[" + string.Join(",", ae) + "]}");
+            check("Trục AutoCAD: trục chọn → layer trục đã chọn", aents.Count(e => e.Layer == ArchLayerKeys.PickedAxisLayer), 4, 0);
+            var pa = new DetailingProject();
+            var la = pa.Plan.Levels[1];
+            var ka = new ArchLayerKeys { BeamLayers = new(new[] { "KC_DAM" }, StringComparer.OrdinalIgnoreCase), ColumnLayers = new(new[] { "S-COT" }, StringComparer.OrdinalIgnoreCase), SlabLayers = new() };
+            var ra = StructuralPlanImport.Import(pa, la, aents, true, false, ka, null, true);
+            Console.WriteLine("   · " + string.Join(" | ", ra.Log));
+            check("Trục AutoCAD: 3 trục X, 2 trục Y", ra.AxesX * 10 + ra.AxesY, 32, 0);
+            check("Trục AutoCAD: bước trục X 3.6 4.2, Y 4.5", B(pa.Plan.SpansX == "3.6 4.2" && pa.Plan.SpansY == "4.5"), 1, 0);
+            check("Trục AutoCAD: tên trục 1 2 3 / A B từ bong bóng", B(string.Join(",", Enumerable.Range(0, 3).Select(i => pa.Plan.AxisLabel(true, i))) == "1,2,3" && pa.Plan.AxisLabel(false, 1) == "B"), 1, 0);
+            check("Trục AutoCAD: gốc = giao trục 1-A → cột tại (0; 0)", B(la.Items.Any(i => i.Kind == PlanKinds.Column && Math.Abs(i.X1) < 1e-6 && Math.Abs(i.Y1) < 1e-6)), 1, 0);
+            var bx = la.Items.Where(i => i.Kind == PlanKinds.Beam && Math.Abs(i.Y1 - i.Y2) < 1e-6).ToList();
+            check("Dầm qua 3 cột thẳng hàng = 1 dầm (trục A vẽ liền, trục B vẽ từng nhịp) → 2 dầm phương X", bx.Count, 2, 0);
+            check("Dầm qua 3 cột: mỗi dầm 2 nhịp (thép triển khai liên tục)", bx.Sum(b => pa.Plan.BeamSpans(b, la).Count), 4, 0);
+            var sl = la.Items.Where(i => i.Kind == PlanKinds.Slab).OrderBy(i => i.MinX).ToList();
+            check("Sàn theo mép dầm: 2 ô sàn", sl.Count, 2, 0);
+            check("Sàn theo mép dầm: ô 1 rộng 3,6 − 0,22 = 3,38 m (mép trong dầm)", sl.Count > 0 ? sl[0].MaxX - sl[0].MinX : 0, 3.38, 1e-6);
+            check("Sàn theo mép dầm: ô đánh dấu Faces", B(sl.All(q => q.Faces)), 1, 0);
+            var ms1 = pa.All.FirstOrDefault(m => m.Name == sl[0].Member) as ManualSlab;
+            check("Sàn theo mép dầm: nhịp tính toán Lx = 3,6 m (tim dầm)", ms1?.Lx ?? 0, 3.6, 1e-6);
+            // tên trục đi theo trục khi thêm trục
+            PlanGridEdit.Insert(pa.Plan, true, 1.8);
+            check("Thêm trục: trục cũ '2' giữ tên", B(pa.Plan.AxisLabel(true, 2) == "2" && pa.Plan.AxisLabel(true, 3) == "3"), 1, 0);
+            pa.Plan.SetAxisLabel(true, 1, "1'");
+            check("Đổi tên trục 1'", B(pa.Plan.AxisLabel(true, 1) == "1'"), 1, 0);
+            // dầm vẽ thêm nối liền, cùng tiết diện, khác tên đang chọn → nhập vào dầm có sẵn
+            var lt = new PlanLevel { Name = "Tầng thử", Elevation = 30 };
+            pa.Plan.Levels.Add(lt);
+            var d1 = pa.Plan.Place(pa, lt, PlanKinds.Beam, 0, 0, 3.6, 0, "");
+            var d2 = pa.Plan.Place(pa, lt, PlanKinds.Beam, 3.6, 0, 7.8, 0, "");
+            bool att = PlanBeamMerge.AttachNew(pa, lt, d2, false);
+            check("Vẽ dầm nối tiếp cùng tiết diện (đang chọn tên khác) → 1 dầm 2 nhịp", B(att && lt.Items.Count(i => i.Kind == PlanKinds.Beam) == 1), 1, 0);
+        }
+
         // xuất DXF: dầm cong = ARC trên layer bê tông
         var map = StructuralPlanDrawing.Map(p, new());
         string dxf = StructuralPlanDrawing.Level(p.Plan, lv, map, StructuralPlanDrawing.LevelTitle(lv), false).ToDxfString();

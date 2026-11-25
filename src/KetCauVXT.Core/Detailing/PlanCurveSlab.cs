@@ -109,7 +109,7 @@ public static class PlanAutoSlab
 {
     /// <summary>Tạo ô sàn trong mọi ô kín chữ nhật bao bởi dầm (thẳng, song song trục) của mặt bằng lv; bỏ ô đã có sàn.
     /// Ô cùng kích thước (làm tròn 10 mm) dùng chung cấu kiện; tên S1, S2… theo thứ tự diện tích giảm dần. Trả về số ô tạo mới.</summary>
-    public static int Create(DetailingProject p, PlanLevel lv, List<string> log = null)
+    public static int Create(DetailingProject p, PlanLevel lv, List<string> log = null, bool faces = true)
     {
         if (p == null || lv == null) return 0;
         var plan = p.Plan ??= new StructuralPlan();
@@ -123,6 +123,15 @@ public static class PlanAutoSlab
                                   .Where(c => c.x1 - c.x0 > 0.5 && c.y1 - c.y0 > 0.5).ToList();
         var existing = lv.Items.Where(i => i.Kind == PlanKinds.Slab || i.Kind == PlanKinds.Stair || i.Kind == PlanKinds.Void).ToList();   // bỏ ô đã có sàn, ô thang, giếng trời
         cells = cells.Where(c => !existing.Any(e => (c.x0 + c.x1) / 2 > e.MinX && (c.x0 + c.x1) / 2 < e.MaxX && (c.y0 + c.y1) / 2 > e.MinY && (c.y0 + c.y1) / 2 < e.MaxY)).ToList();
+        // [Ô sàn theo mép dầm] thu mỗi cạnh nửa bề rộng dầm nằm trên cạnh đó (ô không chia theo trục / tim)
+        var axisCells = new HashSet<(double, double, double, double)>();
+        if (faces)
+            cells = cells.Select(c =>
+            {
+                var q = PlanOutline.InsetToBeamFaces(p, lv, new List<double[]> { new[] { c.x0, c.y0 }, new[] { c.x1, c.y0 }, new[] { c.x1, c.y1 }, new[] { c.x0, c.y1 } });
+                if (q == null || q.Count != 4) { axisCells.Add((c.x0, c.y0, c.x1, c.y1)); return c; }
+                return (x0: q.Min(v => v[0]), y0: q.Min(v => v[1]), x1: q.Max(v => v[0]), y1: q.Max(v => v[1]));
+            }).Where(c => c.x1 - c.x0 > 0.3 && c.y1 - c.y0 > 0.3).ToList();
         int made = 0;
         foreach (var g in cells.GroupBy(c => (Math.Round(Math.Min(c.x1 - c.x0, c.y1 - c.y0), 2), Math.Round(Math.Max(c.x1 - c.x0, c.y1 - c.y0), 2)))
                                .OrderByDescending(g => g.Key.Item1 * g.Key.Item2))
@@ -132,13 +141,13 @@ public static class PlanAutoSlab
             bool first = true;
             foreach (var c in g)
             {
-                var it = new PlanItem { Kind = PlanKinds.Slab, Member = m.Name, X1 = Math.Round(c.x0, 4), Y1 = Math.Round(c.y0, 4), X2 = Math.Round(c.x1, 4), Y2 = Math.Round(c.y1, 4) };
+                var it = new PlanItem { Kind = PlanKinds.Slab, Member = m.Name, X1 = Math.Round(c.x0, 4), Y1 = Math.Round(c.y0, 4), X2 = Math.Round(c.x1, 4), Y2 = Math.Round(c.y1, 4), Faces = faces && !axisCells.Contains((c.x0, c.y0, c.x1, c.y1)) };
                 lv.Items.Add(it); made++;
                 if (first) { plan.ApplyGeometry(m, it, lv); first = false; }
             }
         }
         plan.SyncQuantities(p);
-        log?.Add($"Mặt bằng {lv.Name}: tạo {made} ô sàn từ mặt bằng dầm ({cells.Select(c => (Math.Round(c.x1 - c.x0, 2), Math.Round(c.y1 - c.y0, 2))).Distinct().Count()} loại kích thước).");
+        log?.Add($"Mặt bằng {lv.Name}: tạo {made} ô sàn từ mặt bằng dầm{(faces ? " – biên ô theo mép dầm" : "")} ({cells.Select(c => (Math.Round(c.x1 - c.x0, 2), Math.Round(c.y1 - c.y0, 2))).Distinct().Count()} loại kích thước).");
         return made;
     }
 }
@@ -158,7 +167,7 @@ public static class PlanCopy
             foreach (var it in src.Items)
             {
                 if (it.Kind == PlanKinds.Footing && !t.IsFoundation) continue;
-                t.Items.Add(new PlanItem { Kind = it.Kind, Member = it.Member, X1 = it.X1, Y1 = it.Y1, X2 = it.X2, Y2 = it.Y2, Rotation = it.Rotation, Label = it.Label, Bulge = it.Bulge, Drop = it.Drop,
+                t.Items.Add(new PlanItem { Kind = it.Kind, Member = it.Member, X1 = it.X1, Y1 = it.Y1, X2 = it.X2, Y2 = it.Y2, Rotation = it.Rotation, Label = it.Label, Bulge = it.Bulge, Drop = it.Drop, Faces = it.Faces,
                     Outline = it.Outline?.Select(q => new[] { q[0], q[1] }).ToList() });
                 n++;
             }
@@ -273,10 +282,16 @@ public static class PlanBeamMerge
         if (nb == null || string.IsNullOrEmpty(nb.Member)) return false;
         if (it.Member != nb.Member)
         {
-            if (!memberWasNew) return false;   // người dùng chọn cấu kiện khác → dầm riêng
+            // [Dầm liên tục] dầm qua nhiều cột thẳng hàng là MỘT dầm: đoạn vẽ thêm nối liền, cùng tiết diện → nhập vào dầm có sẵn
+            // (kể cả khi đang chọn tên khác); khác tiết diện → dầm riêng. Muốn tách: công cụ Chia dầm.
+            if (!memberWasNew)
+            {
+                var ma = p.Beams.FirstOrDefault(b => b.Name == it.Member) as ManualBeam; var mb2 = p.Beams.FirstOrDefault(b => b.Name == nb.Member) as ManualBeam;
+                if (ma == null || mb2 == null || Math.Abs(ma.B - mb2.B) > 1e-6 || Math.Abs(ma.H - mb2.H) > 1e-6) return false;
+            }
             string old = it.Member;
             it.Member = nb.Member;
-            if (!string.IsNullOrEmpty(old) && p.Plan.Count(old) == 0 && p.Beams.FirstOrDefault(b => b.Name == old) is ManualBeam mb) p.Beams.Remove(mb);
+            if (memberWasNew && !string.IsNullOrEmpty(old) && p.Plan.Count(old) == 0 && p.Beams.FirstOrDefault(b => b.Name == old) is ManualBeam mb) p.Beams.Remove(mb);
         }
         return Merge(p, lv, true, new[] { it }) > 0;
     }
@@ -594,12 +609,14 @@ public static class PlanOutline
     }
 
     /// <summary>Đặt ô sàn theo biên dạng (đa giác): hình bao = X1..Y2. Đa giác là hình chữ nhật song song trục → sàn chữ nhật thường.</summary>
-    public static PlanItem PlaceSlab(DetailingProject p, PlanLevel lv, List<double[]> poly, string member = "")
+    public static PlanItem PlaceSlab(DetailingProject p, PlanLevel lv, List<double[]> poly, string member = "", bool faces = false)
     {
         double x0 = poly.Min(q => q[0]), x1 = poly.Max(q => q[0]), y0 = poly.Min(q => q[1]), y1 = poly.Max(q => q[1]);
         bool rect = poly.Count == 4 && Math.Abs(Math.Abs(Area(poly)) - (x1 - x0) * (y1 - y0)) < 1e-4;
         var it = p.Plan.Place(p, lv, PlanKinds.Slab, x0, y0, x1, y1, member ?? "");
         if (!rect) it.Outline = poly.Select(q => new[] { q[0], q[1] }).ToList();
+        it.Faces = faces;
+        if (faces && p.All.FirstOrDefault(x => x.Name == it.Member) is ManualSlab ms && p.Plan.Count(ms.Name) == 1) p.Plan.ApplyGeometry(ms, it, lv);
         return it;
     }
 }

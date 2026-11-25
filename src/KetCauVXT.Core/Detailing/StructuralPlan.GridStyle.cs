@@ -27,6 +27,38 @@ public partial class StructuralPlan
 
     public static string GridName(bool xDir, int index) => xDir ? NameX(index) : NameY(index);
 
+    /// <summary>[Tên trục] tên người dùng đặt / nhận từ bản vẽ AutoCAD theo thứ tự trục (null / "" = tên mặc định 1, 2… / A, B…).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<string> NamesX { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<string> NamesY { get; set; }
+
+    /// <summary>Tên hiển thị của trục (tên đặt riêng hoặc mặc định).</summary>
+    public string AxisLabel(bool xDir, int index)
+    {
+        var l = xDir ? NamesX : NamesY;
+        return l != null && index >= 0 && index < l.Count && !string.IsNullOrWhiteSpace(l[index]) ? l[index].Trim() : GridName(xDir, index);
+    }
+
+    /// <summary>Đặt tên trục (rỗng = về tên mặc định).</summary>
+    public void SetAxisLabel(bool xDir, int index, string name)
+    {
+        if (index < 0) return;
+        var l = (xDir ? NamesX : NamesY) ?? new List<string>();
+        while (l.Count <= index) l.Add("");
+        name = (name ?? "").Trim();
+        l[index] = name == GridName(xDir, index) ? "" : name;
+        if (l.All(string.IsNullOrEmpty)) l = null;
+        if (xDir) NamesX = l; else NamesY = l;
+    }
+
+    /// <summary>Đặt toàn bộ tên trục một phương (danh sách theo thứ tự trục).</summary>
+    public void SetAxisLabels(bool xDir, IList<string> names)
+    {
+        if (xDir) NamesX = null; else NamesY = null;
+        for (int i = 0; i < (names?.Count ?? 0); i++) SetAxisLabel(xDir, i, names[i]);
+    }
+
     /// <summary>Kiểu của trục (không có → mặc định, không thêm vào danh sách).</summary>
     public PlanGridStyle StyleOf(bool xDir, int index)
     {

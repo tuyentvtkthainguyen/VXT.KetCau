@@ -15,7 +15,7 @@ public sealed partial class DetailingPlanCanvas
     internal sealed class ImportOptions
     {
         public ArchLayerKeys Keys = new();
-        public bool AlignOrigin = true, Replace, AutoSlabs = true, MergeBeams = true;
+        public bool AlignOrigin = true, Replace, AutoSlabs = true, MergeBeams = true, UseAxes = true;
         public (double X, double Y)? Origin;
         public List<PlanLevel> CopyTo = new();
     }
@@ -30,7 +30,7 @@ public sealed partial class DetailingPlanCanvas
         public string Role { get; set; } = "";
     }
 
-    private static readonly string[] Roles = { "", "Cột", "Dầm", "Sàn" };
+    private static readonly string[] Roles = { "", "Trục", "Cột", "Dầm", "Sàn" };
 
     /// <summary>Tự kiểm tra: bỏ qua hộp thoại, dùng gợi ý.</summary>
     internal static bool AutoAcceptImport;
@@ -45,7 +45,7 @@ public sealed partial class DetailingPlanCanvas
         void Fill()
         {
             HashSet<string> Set(string role) => new(rows.Where(r => r.Role == role).Select(r => r.Layer), StringComparer.OrdinalIgnoreCase);
-            o.Keys = new ArchLayerKeys { BeamLayers = Set("Dầm"), ColumnLayers = Set("Cột"), SlabLayers = Set("Sàn") };
+            o.Keys = new ArchLayerKeys { BeamLayers = Set("Dầm"), ColumnLayers = Set("Cột"), SlabLayers = Set("Sàn"), AxisLayers = Set("Trục") };
         }
         if (AutoAcceptImport)
         {
@@ -68,8 +68,27 @@ public sealed partial class DetailingPlanCanvas
         g.Height = 280;
         DialogUi.HScroll(g, 1);
         var body = new StackPanel { Margin = new Thickness(10) };
-        body.Children.Add(DialogUi.Hint("Chọn vai trò từng layer: Cột (đa tuyến kín → tâm + b×h), Dầm (cặp nét song song → tim + bề rộng; nét đơn → tim; CUNG TRÒN / cung lồi đa tuyến → DẦM CONG), Sàn. Để trống = bỏ qua. Gợi ý theo tên layer (COT/COLUMN, DAM/BEAM/GIANG, SAN/SLAB, layer chuẩn VXT-…) và hình (nhiều đa tuyến kín cỡ cột). Chữ \"D1 220x400\", \"C1\", \"S1\" gần cấu kiện → tên, tiết diện."));
+        body.Children.Add(DialogUi.Hint("Chọn vai trò từng layer: Trục (đường trục + chữ tên trục trong bong bóng → hệ trục triển khai), Cột (đa tuyến kín → tâm + b×h), Dầm (cặp nét song song → tim + bề rộng; nét đơn → tim; CUNG TRÒN / cung lồi đa tuyến → DẦM CONG), Sàn. Để trống = bỏ qua. Gợi ý theo tên layer (COT/COLUMN, DAM/BEAM/GIANG, SAN/SLAB, layer chuẩn VXT-…) và hình (nhiều đa tuyến kín cỡ cột). Chữ \"D1 220x400\", \"C1\", \"S1\" gần cấu kiện → tên, tiết diện."));
         body.Children.Add(g);
+        // [Trục từ AutoCAD] layer vai trò "Trục" (hoặc trục chọn trong AutoCAD) → hệ trục + tên trục triển khai
+        var chkAxes = new CheckBox { IsChecked = true, Margin = new Thickness(0, 6, 0, 2) };
+        var axInfo = new TextBlock { Foreground = Brushes.DimGray, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(20, 0, 0, 2) };
+        void AxisPreview()
+        {
+            DialogUi.Commit(g);
+            var ks = new ArchLayerKeys { AxisLayers = new(rows.Where(r => r.Role == "Trục").Select(r => r.Layer), StringComparer.OrdinalIgnoreCase) };
+            var tx = ents.Where(e => e.Type == DxfEntityType.Text && !string.IsNullOrWhiteSpace(e.Text) && e.Points.Count > 0)
+                         .Select(e => (X: e.Points[0].X, Y: e.Points[0].Y, S: DxfReader.CleanMText(e.Text).Trim(), Layer: e.Layer ?? "")).ToList();
+            var ax = PlanCadGeom.Axes(ents.Where(e => ks.IsAxis(e.Layer)), tx);
+            if (ax.X.Count < 2) { axInfo.Text = "Chưa nhận được trục (chọn vai trò \"Trục\" cho layer đường trục, hoặc chọn trục khi chạy lệnh VXT_MB_KC trong AutoCAD)."; chkAxes.IsEnabled = false; return; }
+            chkAxes.IsEnabled = true;
+            string N(List<(double C, string Name)> l, bool x) => string.Join(" ", l.Select((a, i) => string.IsNullOrEmpty(a.Name) ? StructuralPlan.GridName(x, i) + "?" : a.Name));
+            axInfo.Text = $"Nhận {ax.X.Count} trục X: {N(ax.X, true)}  ·  {ax.Y.Count} trục Y: {N(ax.Y, false)}" + (Plan.HasGrid ? "  – sẽ THAY hệ trục hiện tại." : "") + " (\"?\" = không thấy chữ tên, dùng tên mặc định)";
+        }
+        chkAxes.Content = "Dùng trục và tên trục trên bản vẽ AutoCAD làm hệ trục triển khai (gốc = giao trục đầu)";
+        g.CellEditEnding += (s, e) => Dispatcher.BeginInvoke(new Action(AxisPreview), System.Windows.Threading.DispatcherPriority.Background);
+        body.Children.Add(chkAxes); body.Children.Add(axInfo);
+        AxisPreview();
         var rbGrid = new RadioButton { Content = "Dời gốc về giao trục đầu (điểm trái – dưới nhất của cột / dầm trùng trục 1-A)", IsChecked = !hasUnderlay, Margin = new Thickness(0, 6, 0, 2), GroupName = "org" };
         var rbUnder = new RadioButton { Content = "Đặt theo ánh xạ (xref) kiến trúc của tầng – bản vẽ kết cấu cùng toạ độ với mặt bằng kiến trúc" + (hasUnderlay ? $" (dời {lv.UnderlayDx:0.###}; {lv.UnderlayDy:0.###} m)" : " – tầng chưa gắn ánh xạ"), IsChecked = hasUnderlay, IsEnabled = hasUnderlay, Margin = new Thickness(0, 2, 0, 2), GroupName = "org" };
         var rbKeep = new RadioButton { Content = "Giữ toạ độ bản vẽ", Margin = new Thickness(0, 2, 0, 2), GroupName = "org" };
@@ -100,6 +119,7 @@ public sealed partial class DetailingPlanCanvas
         Fill();
         o.AutoSlabs = chkSlab.IsChecked == true;
         o.MergeBeams = chkMerge.IsChecked == true;
+        o.UseAxes = chkAxes.IsChecked == true && chkAxes.IsEnabled;
         o.Replace = chkReplace.IsChecked == true;
         if (rbUnder.IsChecked == true) { o.AlignOrigin = false; o.Origin = (-lv.UnderlayDx, -lv.UnderlayDy); }
         else if (rbKeep.IsChecked == true) { o.AlignOrigin = false; o.Origin = (0, 0); }

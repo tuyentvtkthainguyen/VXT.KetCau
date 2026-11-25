@@ -27,6 +27,18 @@ public static class PlanGridEdit
     {
         var order = cs.Select((v, i) => (V: v, N: names[i])).OrderBy(t => t.V).Select(t => t.N).ToList();
         pl.RemapStyles(x, order);
+        // tên trục đặt riêng đi theo trục
+        var old = x ? pl.NamesX : pl.NamesY;
+        if (old != null)
+        {
+            string Lab(string defName)
+            {
+                if (defName == null) return "";
+                for (int i = 0; i < old.Count; i++) if (StructuralPlan.GridName(x, i) == defName) return old[i] ?? "";
+                return "";
+            }
+            pl.SetAxisLabels(x, order.Select(Lab).ToList());
+        }
     }
 
     private static void Set(StructuralPlan pl, bool x, List<double> c)

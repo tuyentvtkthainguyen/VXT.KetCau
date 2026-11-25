@@ -111,7 +111,7 @@ public sealed partial class DetailingPlanCanvas
                 }
                 string member = _member.SelectedItem as string;
                 if (member == NewMember) member = "";
-                var it = PlanOutline.PlaceSlab(P, lv, poly, member ?? "");
+                var it = PlanOutline.PlaceSlab(P, lv, poly, member ?? "", OutlineMode == 1);
                 Plan.SyncQuantities(P);
                 Done(it);
                 _status.Text = $"Đã tạo sàn {it.Member} theo {(OutlineMode == 1 ? "mép" : "tim")} dầm, biên {poly.Count} đỉnh, diện tích {Math.Abs(PlanOutline.Area(poly)):0.##} m²" + (it.IsPolygon ? " (sàn đa giác)." : " (ô chữ nhật).");
@@ -183,8 +183,12 @@ public sealed partial class DetailingPlanCanvas
                 var (x0, y0, x1, y1) = bay.Value;
                 string member = _member.SelectedItem as string;
                 if (member == NewMember) member = "";
-                var it = Plan.Place(P, lv, PlanKinds.Slab, x0, y0, x1, y1, member ?? "");
+                // [Ô sàn theo mép dầm] thu mỗi cạnh có dầm nửa bề rộng dầm (cạnh chỉ có trục giữ nguyên)
+                var poly = new List<double[]> { new[] { x0, y0 }, new[] { x1, y0 }, new[] { x1, y1 }, new[] { x0, y1 } };
+                var ins = PlanOutline.InsetToBeamFaces(P, lv, poly);
+                var it = ins != null && ins.Count == 4 ? PlanOutline.PlaceSlab(P, lv, ins, member ?? "", true) : Plan.Place(P, lv, PlanKinds.Slab, x0, y0, x1, y1, member ?? "");
                 Done(it);
+                _status.Text = $"Đã đặt sàn {it.Member} {Dim(it.MaxX - it.MinX)}x{Dim(it.MaxY - it.MinY)}" + (it.Faces ? " (biên theo mép dầm; nhịp tính theo tim dầm)." : ".");
                 return true;
             }
             case ToolCanopyDoor:
@@ -363,8 +367,9 @@ public sealed partial class DetailingPlanCanvas
         var opt = AskImportOptions(lv, ents, source);
         if (opt == null) return;
         _undo.Push(Plan);
-        var r = StructuralPlanImport.Import(P, lv, ents, opt.AlignOrigin, opt.Replace, opt.Keys, opt.Origin, opt.AutoSlabs, opt.MergeBeams);
+        var r = StructuralPlanImport.Import(P, lv, ents, opt.AlignOrigin, opt.Replace, opt.Keys, opt.Origin, opt.AutoSlabs, opt.MergeBeams, opt.UseAxes);
         int copied = opt.CopyTo.Count > 0 ? PlanCopy.CopyTo(P, lv, opt.CopyTo, opt.Replace) : 0;
+        if (r.AxesX > 0) { _sx.Text = Plan.SpansX; _sy.Text = Plan.SpansY; }
         string gridMsg = GridAfterImport();   // [Hệ trục trước] chưa có trục → tạo từ cột / dầm vừa nhập
         _changed(); FillMembers(); _fitted = false; UpdateHint(); Redraw();
         _status.Text = (source ?? "") + ": " + string.Join(" ", r.Log) + (copied > 0 ? $" Sao chép sang {string.Join(", ", opt.CopyTo.Select(l => l.Name))} ({copied} vị trí)." : "")

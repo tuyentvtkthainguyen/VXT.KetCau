@@ -75,6 +75,13 @@ public class PlanItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<double[]> Outline { get; set; }
     [JsonIgnore] public bool IsPolygon => Outline != null && Outline.Count >= 3;
+    /// <summary>[Ô sàn theo mép dầm] biên X1..Y2 (và Outline) là MÉP TRONG dầm, không phải tim dầm / trục. Tính toán ô sàn và thép
+    /// (neo vào dầm) quy về tim: cộng thêm nửa bề rộng dầm mỗi cạnh – xem AxisRect.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Faces { get; set; }
+    /// <summary>Hình chữ nhật quy về tim dầm (m): ô theo mép dầm nở ra bw/2 mỗi cạnh; ô thường giữ nguyên.</summary>
+    public (double X0, double Y0, double X1, double Y1) AxisRect(double bw) =>
+        Faces ? (MinX - bw / 2, MinY - bw / 2, MaxX + bw / 2, MaxY + bw / 2) : (MinX, MinY, MaxX, MaxY);
 
     [JsonIgnore] public double Length => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
     [JsonIgnore] public double MinX => Math.Min(X1, X2);
@@ -420,7 +427,7 @@ public partial class StructuralPlan
                 if (it.Length > 0.5) { st.Length = Math.Round(it.Length, 3); return "dài " + Dt.F(st.Length) + " m"; }
                 break;
             case ManualSlab s when PlanKinds.IsRect(it.Kind):
-                double w = it.MaxX - it.MinX, h = it.MaxY - it.MinY;
+                double w = it.MaxX - it.MinX + (it.Faces ? s.BeamWidth : 0), h = it.MaxY - it.MinY + (it.Faces ? s.BeamWidth : 0);   // nhịp ô sàn tính theo tim dầm
                 if (w > 0.3 && h > 0.3) { s.Lx = Math.Round(Math.Min(w, h), 3); s.Ly = Math.Round(Math.Max(w, h), 3); return "ô " + Dt.F(s.Lx) + " × " + Dt.F(s.Ly) + " m"; }
                 break;
             case ManualLintel l when PlanKinds.IsSegment(it.Kind):
