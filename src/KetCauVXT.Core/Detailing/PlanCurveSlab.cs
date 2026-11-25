@@ -460,6 +460,139 @@ public static class PlanOutline
         return r;
     }
 
+    /// <summary>[Biên theo mép dầm] Thu đường biên tim dầm vào trong mỗi cạnh nửa bề rộng dầm nằm trên cạnh đó
+    /// (cạnh không nằm trên dầm / lanh tô giữ nguyên). null nếu đa giác suy biến.</summary>
+    public static List<double[]> InsetToBeamFaces(DetailingProject p, PlanLevel lv, List<double[]> poly, double defB = 0.22)
+    {
+        if (poly == null || poly.Count < 3 || lv == null) return null;
+        int n = poly.Count;
+        var d = new double[n];
+        var segs = lv.Items.Where(i => i.Kind == PlanKinds.Beam || i.Kind == PlanKinds.Lintel).ToList();
+        for (int i = 0; i < n; i++)
+        {
+            var a = poly[i]; var b = poly[(i + 1) % n];
+            double mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+            var on = segs.Select(it => (It: it, D: PlanArc.Dist(it, mx, my))).Where(t => t.D < 0.05).OrderBy(t => t.D).Select(t => t.It).FirstOrDefault();
+            if (on == null) continue;
+            var m = p?.All.FirstOrDefault(x => x.Name == on.Member);
+            double w = m switch { ManualBeam mb when mb.B > 0 => mb.B, ManualLintel ml when ml.Bw > 0 => ml.Bw, _ => defB };
+            d[i] = w / 2;
+        }
+        return Offset(poly, d);
+    }
+
+    /// <summary>Dời từng cạnh đa giác vào trong một khoảng d[i] (cạnh i nối đỉnh i → i+1); đỉnh mới = giao hai cạnh kề.</summary>
+    public static List<double[]> Offset(List<double[]> poly, double[] d)
+    {
+        int n = poly.Count;
+        double A0 = Area(poly);
+        if (Math.Abs(A0) < 1e-9) return null;
+        double sg = A0 > 0 ? 1 : -1;
+        var P = new (double X, double Y)[n]; var U = new (double X, double Y)[n];
+        for (int i = 0; i < n; i++)
+        {
+            var a = poly[i]; var b = poly[(i + 1) % n];
+            double L = Math.Sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]));
+            if (L < 1e-9) return null;
+            double ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, nx = -uy * sg, ny = ux * sg;
+            U[i] = (ux, uy); P[i] = (a[0] + nx * d[i], a[1] + ny * d[i]);
+        }
+        var r = new List<double[]>();
+        for (int i = 0; i < n; i++)
+        {
+            int j = (i - 1 + n) % n;
+            double cr = U[j].X * U[i].Y - U[j].Y * U[i].X;
+            if (Math.Abs(cr) < 1e-9) { r.Add(new[] { P[i].X, P[i].Y }); continue; }
+            double t = ((P[i].X - P[j].X) * U[i].Y - (P[i].Y - P[j].Y) * U[i].X) / cr;
+            r.Add(new[] { Math.Round(P[j].X + U[j].X * t, 4), Math.Round(P[j].Y + U[j].Y * t, 4) });
+        }
+        double A1 = Area(r);
+        if (A1 * A0 <= 0 || Math.Abs(A1) > Math.Abs(A0) + 1e-9) return null;
+        return Simplify(r);
+    }
+
+    /// <summary>[Bắt điểm mép / giữa dầm] Điểm gần (x, y) trong tol: góc giao mép dầm (mép trong ô), điểm giữa dầm, đầu mép dầm,
+    /// sau đó chân vuông góc trên mép dầm (≤ tol/2). Trả (X, Y, loại) hoặc null. Chỉ dầm / lanh tô thẳng.</summary>
+    public static (double X, double Y, string Kind)? FaceSnap(DetailingProject p, PlanLevel lv, double x, double y, double tol)
+    {
+        if (lv == null) return null;
+        var edges = new List<(double Ax, double Ay, double Bx, double By)>();
+        (double X, double Y, string K)? best = null; double bd = tol;
+        void Try(double px, double py, string k)
+        {
+            double d = Math.Sqrt((px - x) * (px - x) + (py - y) * (py - y));
+            if (d < bd - 1e-12) { bd = d; best = (px, py, k); }
+        }
+        foreach (var it in lv.Items.Where(i => (i.Kind == PlanKinds.Beam || i.Kind == PlanKinds.Lintel) && !i.IsCurved && i.Length > 1e-3))
+        {
+            var m = p?.All.FirstOrDefault(q => q.Name == it.Member);
+            double h = (m switch { ManualBeam mb when mb.B > 0 => mb.B, ManualLintel ml when ml.Bw > 0 => ml.Bw, _ => 0.22 }) / 2;
+            double L = it.Length, ux = (it.X2 - it.X1) / L, uy = (it.Y2 - it.Y1) / L, nx = -uy, ny = ux;
+            Try((it.X1 + it.X2) / 2, (it.Y1 + it.Y2) / 2, "giữa dầm");
+            foreach (int sgn in new[] { 1, -1 })
+            {
+                // mép kéo dài thêm h hai đầu để giao được với mép dầm vuông góc tại nút
+                double ax = it.X1 + sgn * nx * h - ux * h, ay = it.Y1 + sgn * ny * h - uy * h, bx = it.X2 + sgn * nx * h + ux * h, by = it.Y2 + sgn * ny * h + uy * h;
+                edges.Add((ax, ay, bx, by));
+                Try(it.X1 + sgn * nx * h, it.Y1 + sgn * ny * h, "đầu mép dầm"); Try(it.X2 + sgn * nx * h, it.Y2 + sgn * ny * h, "đầu mép dầm");
+            }
+        }
+        for (int i = 0; i < edges.Count; i++)
+            for (int j = i + 1; j < edges.Count; j++)
+            {
+                var a = edges[i]; var b = edges[j];
+                double rx = a.Bx - a.Ax, ry = a.By - a.Ay, sx = b.Bx - b.Ax, sy = b.By - b.Ay, cr = rx * sy - ry * sx;
+                if (Math.Abs(cr) < 1e-9) continue;
+                double t = ((b.Ax - a.Ax) * sy - (b.Ay - a.Ay) * sx) / cr, u = ((b.Ax - a.Ax) * ry - (b.Ay - a.Ay) * rx) / cr;
+                if (t < -1e-9 || t > 1 + 1e-9 || u < -1e-9 || u > 1 + 1e-9) continue;
+                double px = a.Ax + rx * t, py = a.Ay + ry * t;
+                double d = Math.Sqrt((px - x) * (px - x) + (py - y) * (py - y));
+                if (d <= bd + 1e-9) { bd = d - 1e-9; best = (px, py, "góc mép dầm"); }   // góc mép ưu tiên khi trùng khoảng cách
+            }
+        if (best != null) return (Math.Round(best.Value.X, 4), Math.Round(best.Value.Y, 4), best.Value.K);
+        double bt = tol / 2;
+        foreach (var e in edges)
+        {
+            double L = Math.Sqrt((e.Bx - e.Ax) * (e.Bx - e.Ax) + (e.By - e.Ay) * (e.By - e.Ay));
+            double ux = (e.Bx - e.Ax) / L, uy = (e.By - e.Ay) / L;
+            double t = Math.Clamp((x - e.Ax) * ux + (y - e.Ay) * uy, 0, L);
+            double px = e.Ax + ux * t, py = e.Ay + uy * t, d = Math.Sqrt((px - x) * (px - x) + (py - y) * (py - y));
+            if (d < bt) { bt = d; best = (px, py, "trên mép dầm"); }
+        }
+        return best == null ? null : (Math.Round(best.Value.X, 4), Math.Round(best.Value.Y, 4), best.Value.K);
+    }
+
+    /// <summary>Đa giác có hai cạnh không kề nhau cắt nhau.</summary>
+    public static bool SelfIntersects(List<double[]> p)
+    {
+        int n = p.Count;
+        static double Cr(double[] a, double[] b, double[] c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++)
+            {
+                if (j == i + 1 || (i == 0 && j == n - 1)) continue;
+                var a = p[i]; var b = p[(i + 1) % n]; var c = p[j]; var d = p[(j + 1) % n];
+                double d1 = Cr(a, b, c), d2 = Cr(a, b, d), d3 = Cr(c, d, a), d4 = Cr(c, d, b);
+                if (((d1 > 1e-9 && d2 < -1e-9) || (d1 < -1e-9 && d2 > 1e-9)) && ((d3 > 1e-9 && d4 < -1e-9) || (d3 < -1e-9 && d4 > 1e-9))) return true;
+            }
+        return false;
+    }
+
+    /// <summary>Đọc toạ độ đỉnh "x,y; x,y …" (m, dấu chấm thập phân; mỗi đỉnh một dòng cũng được). null nếu lỗi hoặc &lt; 3 đỉnh.</summary>
+    public static List<double[]> ParseCoords(string t)
+    {
+        var r = new List<double[]>();
+        foreach (var part in (t ?? "").Split(new[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var xy = part.Split(new[] { ',', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (xy.Length == 0) continue;
+            if (xy.Length != 2 || !double.TryParse(xy[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double x)
+                || !double.TryParse(xy[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double y)) return null;
+            r.Add(new[] { x, y });
+        }
+        return r.Count >= 3 ? r : null;
+    }
+
     /// <summary>Đặt ô sàn theo biên dạng (đa giác): hình bao = X1..Y2. Đa giác là hình chữ nhật song song trục → sàn chữ nhật thường.</summary>
     public static PlanItem PlaceSlab(DetailingProject p, PlanLevel lv, List<double[]> poly, string member = "")
     {

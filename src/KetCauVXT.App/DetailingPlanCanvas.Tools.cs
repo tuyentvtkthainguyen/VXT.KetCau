@@ -102,13 +102,19 @@ public sealed partial class DetailingPlanCanvas
             {
                 // [Sàn biên dạng] bấm vào trong vùng kín bao bởi tim dầm (thẳng / cong, chữ L, đa giác) → ô sàn theo đường biên
                 var poly = PlanOutline.Region(lv, w.X, w.Y);
-                if (poly == null) { _status.Text = "Không tìm thấy đường biên kín bao quanh điểm bấm – cần các dầm (thẳng hoặc cong) khép kín quanh ô sàn."; return true; }
+                if (poly == null) { _status.Text = "Không tìm thấy đường biên kín bao quanh điểm bấm – cần các dầm (thẳng hoặc cong) khép kín quanh ô sàn. Vùng không kín: chọn \"Vẽ đa giác\"."; return true; }
+                if (OutlineMode == 1)
+                {
+                    var ins = PlanOutline.InsetToBeamFaces(P, lv, poly);
+                    if (ins == null) { _status.Text = "Không thu được biên theo mép dầm (ô quá nhỏ so với bề rộng dầm)."; return true; }
+                    poly = ins;
+                }
                 string member = _member.SelectedItem as string;
                 if (member == NewMember) member = "";
                 var it = PlanOutline.PlaceSlab(P, lv, poly, member ?? "");
                 Plan.SyncQuantities(P);
                 Done(it);
-                _status.Text = $"Đã tạo sàn {it.Member} theo biên dạng {poly.Count} đỉnh, diện tích {Math.Abs(PlanOutline.Area(poly)):0.##} m²" + (it.IsPolygon ? " (sàn đa giác)." : " (ô chữ nhật).");
+                _status.Text = $"Đã tạo sàn {it.Member} theo {(OutlineMode == 1 ? "mép" : "tim")} dầm, biên {poly.Count} đỉnh, diện tích {Math.Abs(PlanOutline.Area(poly)):0.##} m²" + (it.IsPolygon ? " (sàn đa giác)." : " (ô chữ nhật).");
                 return true;
             }
             case ToolDropSlab:

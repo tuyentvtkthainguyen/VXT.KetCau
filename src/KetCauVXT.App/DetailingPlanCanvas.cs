@@ -68,10 +68,11 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                      (ToolSlabBay, "Sàn trong ô dầm"), (ToolDropSlab, "Sàn hạ cốt"), (ToolStairBay, "Ô cầu thang"), (PlanKinds.Void, "Giếng trời"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), (ToolCallout, "Trích chi tiết"), ("Xoa", "Xoá") })
         {
             var rb = new RadioButton { Content = label, GroupName = "plantool", Margin = new Thickness(0, 2, 10, 2), IsChecked = key == "Chon", Tag = key };
-            rb.Checked += (s, e) => { _tool = (string)rb.Tag; _first = null; _moveItem = null; FillMembers(); UpdateHint(); Redraw(); };
+            rb.Checked += (s, e) => { _tool = (string)rb.Tag; _first = null; _moveItem = null; _polyPts.Clear(); SyncOutlineMode(); FillMembers(); UpdateHint(); Redraw(); };
             _tools[key] = rb; r3.Children.Add(rb);
         }
         r3.Children.Add(Lbl("  Cấu kiện:")); r3.Children.Add(_member);
+        r3.Children.Add(BuildOutlineMode());
         top.Children.Add(r3);
         top.Children.Add(BuildToolsRow());
         top.Children.Add(_status);
@@ -90,10 +91,12 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         _cv.MouseWheel += OnWheel;
         _cv.MouseDown += OnDown;
         _cv.MouseMove += OnMove;
-        _cv.MouseUp += (s, e) => { if (_panFrom != null) { _panFrom = null; _cv.ReleaseMouseCapture(); } else if (_gripItem != null) GripUp(); else WinUp(e); };
+        _cv.MouseUp += (s, e) => { if (_panFrom != null) { _panFrom = null; _cv.ReleaseMouseCapture(); } else if (_gripItem != null) GripUp(); else if (PolyUp(e.GetPosition(_cv))) { } else WinUp(e); };
         _cv.KeyDown += (s, e) =>
         {
             if (e.Key == Key.Escape && _gripItem != null) { _gripItem = null; _cv.ReleaseMouseCapture(); Undo(); return; }
+            if (_tool == ToolSlabOutline && _polyPts.Count > 0 && (e.Key == Key.Enter || e.Key == Key.Escape || e.Key == Key.Back))
+            { PolyKey(e.Key); e.Handled = true; return; }
             if (e.Key == Key.Escape) { _first = null; _sel = null; _moveItem = null; _multi.Clear(); _winFrom = null; Redraw(); UpdateHint(); }
             else if (e.Key == Key.Delete && _multi.Count > 0) DeleteMulti();
             else if (e.Key == Key.Delete && _sel != null) DeleteItem(_sel);
@@ -149,7 +152,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
 
     private void FillMembers()
     {
-        string kind = _tool is ToolSlabBay or ToolDropSlab ? PlanKinds.Slab : _tool == ToolStairBay ? PlanKinds.Stair : _tool == ToolCurvedBeam ? PlanKinds.Beam : _tool;
+        string kind = _tool is ToolSlabBay or ToolDropSlab or ToolSlabOutline ? PlanKinds.Slab : _tool == ToolStairBay ? PlanKinds.Stair : _tool == ToolCurvedBeam ? PlanKinds.Beam : _tool;
         if (PlanKinds.NoMember(kind)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
         if (!PlanKinds.All.Contains(kind)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
         _member.IsEnabled = true;
@@ -169,7 +172,9 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                                           : "Mặt cắt: bấm điểm cuối đường cắt – Esc huỷ. Chuột phải lên đường cắt: đổi tên / xoá.",
             ToolCurvedBeam => _first == null ? "Dầm cong: bấm điểm đầu (bắt giao trục / tâm cột)." : _curveEnd == null ? "Dầm cong: bấm điểm cuối – Esc huỷ." : "Dầm cong: bấm một điểm bất kỳ trên cung (định độ vồng) – Esc huỷ.",
             ToolSplitBeam => "Chia dầm: bấm lên dầm tại vị trí chia (bắt giao trục / tâm cột) – đoạn sau thành dầm mới cùng tiết diện. Mặc định dầm thẳng hàng nối liền là MỘT dầm nhiều nhịp.",
-            ToolSlabOutline => "Sàn theo biên: bấm vào bên trong vùng khép kín bởi tim dầm (thẳng, cong, chữ L, đa giác) – phần mềm dò đường bo viền và tạo ô sàn đúng biên dạng.",
+            ToolSlabOutline => OutlineMode == 2
+                ? (_polyPts.Count == 0 ? "Sàn vẽ đa giác: bấm lần lượt các đỉnh biên sàn (bắt giao trục, tâm cột, đầu / mép dầm; Shift = vuông góc) hoặc nút \"Nhập toạ độ…\"." : $"Sàn vẽ đa giác: {_polyPts.Count} đỉnh – bấm đỉnh tiếp; bấm lại đỉnh đầu / bấm đúp / Enter để khép kín; Backspace bỏ đỉnh cuối; Esc huỷ.")
+                : "Sàn theo biên: bấm vào bên trong vùng khép kín bởi dầm (thẳng, cong, chữ L, đa giác) – dò đường bo viền theo " + (OutlineMode == 1 ? "MÉP dầm (trừ nửa bề rộng dầm mỗi cạnh)." : "TIM dầm."),
             ToolDropSlab => "Sàn hạ cốt: bấm vào ô sàn (hoặc ô kín bao bởi dầm) → nhập độ hạ (mm, vd. 50 sàn WC, 100 lô gia); nhập 0 để bỏ hạ cốt.",
             ToolStairBay => "Ô cầu thang: bấm vào bên trong ô dầm của thang – tạo ô cầu thang theo kích thước ô (bỏ sàn cũ trong ô). Vẽ ô tuỳ ý: công cụ Cầu thang.",
             PlanKinds.Void => _first == null ? "Giếng trời / ô trống: bấm vào trong ô dầm (lấy cả ô) hoặc bấm góc thứ nhất ở chỗ không kín để vẽ hình chữ nhật." : "Giếng trời: bấm góc đối diện – Esc huỷ.",
@@ -288,6 +293,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         if (e.ChangedButton != MouseButton.Left) return;
         if (_tool != "Chon") _undo.Push(Plan);
         if (HandleCalloutTool(lv, w, tol)) return;
+        if (_tool == ToolSlabOutline && OutlineMode == 2) { PolyClick(lv, w, tol, p, e.ClickCount); return; }
         if (HandleExtraTool(lv, w, tol)) return;
         if (_tool == "Chon")
         {
@@ -388,6 +394,9 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             {
                 var other = _gripEnd == 1 ? (_gripItem.X2, _gripItem.Y2) : (_gripItem.X1, _gripItem.Y1);
                 gs = PlanSnap.Snap(Plan, glv, gp.X, gp.Y, 12 / _k, other, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
+                // không có điểm mạnh → bắt giữa dầm / mép dầm khác (đầu dầm tựa vào mép dầm)
+                if ((gs.Kind == PlanSnap.KindFree || gs.Kind == PlanSnap.KindGridLine) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+                    && PlanOutline.FaceSnap(P, glv, gp.X, gp.Y, 12 / _k) is { } fs) gs = (fs.X, fs.Y, fs.Kind);
             }
             finally { glv.Items.Insert(gi, _gripItem); }
             if (PlanGrip.Drag(_gripItem, _gripEnd, gs.X, gs.Y)) Redraw();
@@ -395,7 +404,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         }
         if (WinMove(p)) return;
         var w = ToW(p);
-        _mouseW = _tool == ToolSection ? w : SnapW(Level, w, 12 / _k);
+        _mouseW = _tool == ToolSection ? w : _tool == ToolSlabOutline && OutlineMode == 2 && Level != null ? PolySnap(Level, w, 12 / _k) : SnapW(Level, w, 12 / _k);
         if (_first != null || _moveItem != null || PlanKinds.All.Contains(_tool)) Redraw();
     }
 
@@ -562,6 +571,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             Text(((a.X + b.X) / 2), ((a.Y + b.Y) / 2), Dim(Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y))), br, 11);
         }
         DrawMovePreview();
+        DrawPolyPreview();
         DrawMulti();
         if (PlanKinds.All.Contains(_tool))
         {
