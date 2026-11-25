@@ -46,8 +46,7 @@ public partial class StructuralPlan
         if (index < 0) return;
         var l = (xDir ? NamesX : NamesY) ?? new List<string>();
         while (l.Count <= index) l.Add("");
-        name = (name ?? "").Trim();
-        l[index] = name == GridName(xDir, index) ? "" : name;
+        l[index] = (name ?? "").Trim();   // lưu cả tên trùng mặc định: tên đi theo trục khi thêm / bớt trục
         if (l.All(string.IsNullOrEmpty)) l = null;
         if (xDir) NamesX = l; else NamesY = l;
     }

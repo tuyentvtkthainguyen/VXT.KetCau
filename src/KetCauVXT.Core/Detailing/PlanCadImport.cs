@@ -595,11 +595,18 @@ public static class StructuralPlanImport
         {
             // cùng tên; hoặc hai đoạn không ghi tên (cấu kiện tự tạo trong lần nhập) cùng tiết diện
             var created = new HashSet<string>(res.Items.Where(i => i.Kind == PlanKinds.Beam).Select(i => i.Member).Where(n => !namedBeams.Contains(n)));
-            (double, double)? SecOf(string n) => p.All.FirstOrDefault(m => m.Name == n) is ManualBeam mb ? (Math.Round(mb.B, 3), Math.Round(mb.H, 3)) : null;
+            // dầm không ghi tên: chiều cao tự gợi ý theo từng nhịp (L/12) → chỉ so bề rộng; gộp xong chiều cao lấy theo nhịp lớn nhất
+            double? BOf(string n) => p.All.FirstOrDefault(m => m.Name == n) is ManualBeam mb ? Math.Round(mb.B, 3) : null;
             int nm = PlanBeamMerge.Merge(p, lv, true, res.Items.Where(i => i.Kind == PlanKinds.Beam).ToList(), null,
-                (a, b) => a.Member == b.Member || (created.Contains(a.Member) && created.Contains(b.Member) && Equals(SecOf(a.Member), SecOf(b.Member))));
+                (a, b) => a.Member == b.Member || (created.Contains(a.Member) && created.Contains(b.Member) && Equals(BOf(a.Member), BOf(b.Member))));
             if (nm > 0)
             {
+                foreach (var it in lv.Items.Where(i => i.Kind == PlanKinds.Beam && !i.IsCurved && created.Contains(i.Member)))
+                    if (p.All.FirstOrDefault(m => m.Name == it.Member) is ManualBeam mbh)
+                    {
+                        var spans = plan.BeamSpans(it, lv);
+                        if (spans.Count > 0) mbh.H = Math.Max(mbh.H, Math.Max(0.30, Math.Round(Math.Ceiling(spans.Max() / 12 / 0.05) * 0.05, 3)));
+                    }
                 res.Items.RemoveAll(i => i.Kind == PlanKinds.Beam && !lv.Items.Contains(i));
                 res.Beams -= nm;
                 res.Log.Add($"Dầm liên tục: gộp {nm} đoạn thẳng hàng nối liền → {res.Beams} dầm (nhịp chia theo trục / cột; chia lại bằng công cụ \"Chia dầm\").");

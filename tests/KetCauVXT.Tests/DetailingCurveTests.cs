@@ -227,7 +227,7 @@ public static class DetailingCurveTests
             check("Sàn theo mép dầm: nhịp tính toán Lx = 3,6 m (tim dầm)", ms1?.Lx ?? 0, 3.6, 1e-6);
             // tên trục đi theo trục khi thêm trục
             PlanGridEdit.Insert(pa.Plan, true, 1.8);
-            check("Thêm trục: trục cũ '2' giữ tên", B(pa.Plan.AxisLabel(true, 2) == "2" && pa.Plan.AxisLabel(true, 3) == "3"), 1, 0);
+            check("Thêm trục: trục cũ '2' giữ tên, trục chèn tên 1'", B(pa.Plan.AxisLabel(true, 2) == "2" && pa.Plan.AxisLabel(true, 3) == "3" && pa.Plan.AxisLabel(true, 1) == "1'"), 1, 0);
             pa.Plan.SetAxisLabel(true, 1, "1'");
             check("Đổi tên trục 1'", B(pa.Plan.AxisLabel(true, 1) == "1'"), 1, 0);
             // dầm vẽ thêm nối liền, cùng tiết diện, khác tên đang chọn → nhập vào dầm có sẵn

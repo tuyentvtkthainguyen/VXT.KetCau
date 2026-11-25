@@ -37,7 +37,17 @@ public static class PlanGridEdit
                 for (int i = 0; i < old.Count; i++) if (StructuralPlan.GridName(x, i) == defName) return old[i] ?? "";
                 return "";
             }
-            pl.SetAxisLabels(x, order.Select(Lab).ToList());
+            var labs = order.Select(Lab).ToList();
+            // trục chèn thêm: tên trục trước + ' (vd. 1', A') – chưa trùng tên khác
+            for (int i = 0; i < labs.Count; i++)
+                if (order[i] == null)
+                {
+                    string b = i > 0 ? (string.IsNullOrEmpty(labs[i - 1]) ? StructuralPlan.GridName(x, i - 1) : labs[i - 1]) : StructuralPlan.GridName(x, 0);
+                    string c = b + "'";
+                    while (labs.Contains(c)) c += "'";
+                    labs[i] = c;
+                }
+            pl.SetAxisLabels(x, labs);
         }
     }
 
