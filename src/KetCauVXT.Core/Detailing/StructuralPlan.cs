@@ -15,17 +15,21 @@ namespace KetCauVXT.Detailing;
 public static class PlanKinds
 {
     public const string Column = "Cot", Footing = "Mong", Beam = "Dam", Slab = "San", Lintel = "LanhTo", Canopy = "OVang", Stair = "CauThang";
-    public static readonly string[] All = { Column, Footing, Beam, Slab, Lintel, Canopy, Stair };
+    /// <summary>[Giếng trời] ô trống không sàn: giếng trời, ô thông tầng, ô kỹ thuật (không gán cấu kiện; nhãn trong PlanItem.Label).</summary>
+    public const string Void = "GiengTroi";
+    public static readonly string[] All = { Column, Footing, Beam, Slab, Lintel, Canopy, Stair, Void };
 
     public static string Title(string k) => k switch
     {
-        Column => "Cột", Footing => "Móng", Beam => "Dầm", Slab => "Sàn", Lintel => "Lanh tô", Canopy => "Ô văng", Stair => "Cầu thang", _ => k
+        Column => "Cột", Footing => "Móng", Beam => "Dầm", Slab => "Sàn", Lintel => "Lanh tô", Canopy => "Ô văng", Stair => "Cầu thang", Void => "Giếng trời", _ => k
     };
 
     /// <summary>Đặt bằng 1 điểm (cột, móng) / đoạn thẳng (dầm, lanh tô, móng băng) / hình chữ nhật (sàn, ô văng, cầu thang, móng bè, bể).</summary>
     public static bool IsPoint(string k) => k == Column || k == Footing;
     public static bool IsSegment(string k) => k == Beam || k == Lintel;
-    public static bool IsRect(string k) => k == Slab || k == Canopy || k == Stair;
+    public static bool IsRect(string k) => k == Slab || k == Canopy || k == Stair || k == Void;
+    /// <summary>Loại vị trí không gắn cấu kiện hồ sơ.</summary>
+    public static bool NoMember(string k) => k == Void;
 
     /// <summary>Nhóm cấu kiện (khoá DetailingProject.Groups) tạo mới mặc định cho loại vị trí.</summary>
     public static string GroupKey(string k) => k switch
@@ -65,6 +69,8 @@ public class PlanItem
     /// <summary>[Dầm cong] độ vồng (m) tại giữa cung, dương = lệch về bên trái hướng 1→2; 0 = dầm thẳng. Hình học: <see cref="PlanArc"/>.</summary>
     public double Bulge { get; set; }
     [JsonIgnore] public bool IsCurved => Math.Abs(Bulge) > 1e-4 && Length > 1e-6;
+    /// <summary>[Sàn hạ cốt] độ hạ mặt sàn (m, dương = thấp hơn cao độ mặt bằng) – sàn WC, lô gia, sân phơi…; 0 = không hạ.</summary>
+    public double Drop { get; set; }
 
     [JsonIgnore] public double Length => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
     [JsonIgnore] public double MinX => Math.Min(X1, X2);
@@ -382,6 +388,7 @@ public partial class StructuralPlan
     /// Trả về cấu kiện (có sẵn hoặc mới). newName: tên muốn đặt (rỗng = tự đánh số D1, D2…).</summary>
     public IDetailMember EnsureMember(DetailingProject p, PlanItem it, PlanLevel lv = null, string newName = null)
     {
+        if (PlanKinds.NoMember(it.Kind)) { it.Member = ""; return null; }   // giếng trời / ô trống: không có cấu kiện
         if (!string.IsNullOrEmpty(it.Member))
         {
             var ex = p.All.FirstOrDefault(m => m.Name == it.Member);

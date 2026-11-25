@@ -121,7 +121,7 @@ public static class PlanAutoSlab
         double y0 = beams.Min(b => Math.Min(b.Ay, b.By)), y1 = beams.Max(b => Math.Max(b.Ay, b.By));
         var cells = ImportGeometry.RectCells(beams, x0, y0, x1, y1, true, log, "Sàn từ dầm")
                                   .Where(c => c.x1 - c.x0 > 0.5 && c.y1 - c.y0 > 0.5).ToList();
-        var existing = lv.Items.Where(i => i.Kind == PlanKinds.Slab || i.Kind == PlanKinds.Stair).ToList();
+        var existing = lv.Items.Where(i => i.Kind == PlanKinds.Slab || i.Kind == PlanKinds.Stair || i.Kind == PlanKinds.Void).ToList();   // bỏ ô đã có sàn, ô thang, giếng trời
         cells = cells.Where(c => !existing.Any(e => (c.x0 + c.x1) / 2 > e.MinX && (c.x0 + c.x1) / 2 < e.MaxX && (c.y0 + c.y1) / 2 > e.MinY && (c.y0 + c.y1) / 2 < e.MaxY)).ToList();
         int made = 0;
         foreach (var g in cells.GroupBy(c => (Math.Round(Math.Min(c.x1 - c.x0, c.y1 - c.y0), 2), Math.Round(Math.Max(c.x1 - c.x0, c.y1 - c.y0), 2)))
@@ -158,7 +158,7 @@ public static class PlanCopy
             foreach (var it in src.Items)
             {
                 if (it.Kind == PlanKinds.Footing && !t.IsFoundation) continue;
-                t.Items.Add(new PlanItem { Kind = it.Kind, Member = it.Member, X1 = it.X1, Y1 = it.Y1, X2 = it.X2, Y2 = it.Y2, Rotation = it.Rotation, Label = it.Label, Bulge = it.Bulge });
+                t.Items.Add(new PlanItem { Kind = it.Kind, Member = it.Member, X1 = it.X1, Y1 = it.Y1, X2 = it.X2, Y2 = it.Y2, Rotation = it.Rotation, Label = it.Label, Bulge = it.Bulge, Drop = it.Drop });
                 n++;
             }
             if (copySections && p.Plan.Sections != null)

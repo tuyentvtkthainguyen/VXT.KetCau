@@ -64,7 +64,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         var r3 = new WrapPanel();
         foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (ToolCurvedBeam, "Dầm cong"), (PlanKinds.Slab, "Sàn"),
                      (PlanKinds.Lintel, "Lanh tô"), (PlanKinds.Canopy, "Ô văng"), (PlanKinds.Stair, "Cầu thang"), (ToolSection, "Mặt cắt"),
-                     (ToolSlabBay, "Sàn trong ô dầm"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), (ToolCallout, "Trích chi tiết"), ("Xoa", "Xoá") })
+                     (ToolSlabBay, "Sàn trong ô dầm"), (ToolDropSlab, "Sàn hạ cốt"), (ToolStairBay, "Ô cầu thang"), (PlanKinds.Void, "Giếng trời"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), (ToolCallout, "Trích chi tiết"), ("Xoa", "Xoá") })
         {
             var rb = new RadioButton { Content = label, GroupName = "plantool", Margin = new Thickness(0, 2, 10, 2), IsChecked = key == "Chon", Tag = key };
             rb.Checked += (s, e) => { _tool = (string)rb.Tag; _first = null; _moveItem = null; FillMembers(); UpdateHint(); Redraw(); };
@@ -147,7 +147,8 @@ public sealed partial class DetailingPlanCanvas : DockPanel
 
     private void FillMembers()
     {
-        string kind = _tool == ToolSlabBay ? PlanKinds.Slab : _tool == ToolCurvedBeam ? PlanKinds.Beam : _tool;
+        string kind = _tool is ToolSlabBay or ToolDropSlab ? PlanKinds.Slab : _tool == ToolStairBay ? PlanKinds.Stair : _tool == ToolCurvedBeam ? PlanKinds.Beam : _tool;
+        if (PlanKinds.NoMember(kind)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
         if (!PlanKinds.All.Contains(kind)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
         _member.IsEnabled = true;
         var names = new List<string> { NewMember };
@@ -165,6 +166,9 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             ToolSection => _first == null ? "Mặt cắt: bấm điểm đầu đường cắt (cắt qua ô sàn điển hình, vuông góc dầm) – mặt cắt thép sàn tl 1/25 xuất cùng mặt bằng."
                                           : "Mặt cắt: bấm điểm cuối đường cắt – Esc huỷ. Chuột phải lên đường cắt: đổi tên / xoá.",
             ToolCurvedBeam => _first == null ? "Dầm cong: bấm điểm đầu (bắt giao trục / tâm cột)." : _curveEnd == null ? "Dầm cong: bấm điểm cuối – Esc huỷ." : "Dầm cong: bấm một điểm bất kỳ trên cung (định độ vồng) – Esc huỷ.",
+            ToolDropSlab => "Sàn hạ cốt: bấm vào ô sàn (hoặc ô kín bao bởi dầm) → nhập độ hạ (mm, vd. 50 sàn WC, 100 lô gia); nhập 0 để bỏ hạ cốt.",
+            ToolStairBay => "Ô cầu thang: bấm vào bên trong ô dầm của thang – tạo ô cầu thang theo kích thước ô (bỏ sàn cũ trong ô). Vẽ ô tuỳ ý: công cụ Cầu thang.",
+            PlanKinds.Void => _first == null ? "Giếng trời / ô trống: bấm vào trong ô dầm (lấy cả ô) hoặc bấm góc thứ nhất ở chỗ không kín để vẽ hình chữ nhật." : "Giếng trời: bấm góc đối diện – Esc huỷ.",
             ToolSlabBay => "Sàn trong ô dầm: bấm vào bên trong ô được bao bởi dầm (hoặc trục) – tự lấy kích thước ô.",
             ToolCanopyDoor => "Ô văng trên cửa: bấm vào ô cửa của ánh xạ kiến trúc (cửa ở tường ngoài) – tạo ô văng OV… liền lanh tô, vươn ra phía ngoài.",
             ToolCallout => CalloutHint(),
@@ -418,6 +422,15 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                 _status.Text = string.IsNullOrEmpty(msg) ? "Không suy được kích thước từ vị trí này." : m.Name + ": " + msg;
                 _changed();
             }));
+        if (it.Kind == PlanKinds.Slab)
+            cm.Items.Add(I(it.Drop > 1e-4 ? $"Sàn hạ cốt −{Dim(it.Drop)} mm – sửa / bỏ…" : "Hạ cốt sàn này…", () => AskDrop(it)));
+        if (it.Kind == PlanKinds.Void)
+            cm.Items.Add(I("Đổi tên ô trống (giếng trời / ô thông tầng / ô kỹ thuật)…", () =>
+            {
+                string n = DialogUi.InputBox(_owner, "Ô trống", "Tên ô trống:", string.IsNullOrWhiteSpace(it.Label) ? "Giếng trời" : it.Label);
+                if (n == null) return;
+                _undo.Push(Plan); it.Label = n.Trim(); _changed(); Redraw();
+            }));
         cm.Items.Add(new Separator());
         cm.Items.Add(I("Xoá vị trí khỏi mặt bằng", () => DeleteItem(it)));
         return cm;
@@ -571,10 +584,21 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             case PlanKinds.Slab:
                 RectW(it.MinX, it.MinY, it.MaxX, it.MaxY, br, 0.8, new SolidColorBrush(Color.FromArgb(sel ? (byte)60 : (byte)25, 0x1E, 0x90, 0xFF)));
                 Text((it.X1 + it.X2) / 2, (it.Y1 + it.Y2) / 2, nm + (m is ManualSlab s ? " h=" + Dim(s.T) : ""), br, 12);
+                if (it.Drop > 1e-4)
+                {
+                    double o = Math.Min(0.15, Math.Min(it.MaxX - it.MinX, it.MaxY - it.MinY) / 6);
+                    RectW(it.MinX + o, it.MinY + o, it.MaxX - o, it.MaxY - o, Brushes.DarkMagenta, 1, new SolidColorBrush(Color.FromArgb(30, 0x8B, 0x00, 0x8B)), true);
+                    Text((it.X1 + it.X2) / 2, (it.Y1 + it.Y2) / 2 - 0.35, "hạ cốt −" + Dim(it.Drop), Brushes.DarkMagenta, 11);
+                }
                 break;
             case PlanKinds.Canopy:
                 RectW(it.MinX, it.MinY, it.MaxX, it.MaxY, br, 1, new SolidColorBrush(Color.FromArgb(70, 0xA0, 0x52, 0x2D)));
                 Text((it.X1 + it.X2) / 2, (it.Y1 + it.Y2) / 2, "Ô văng " + nm, br, 10);
+                break;
+            case PlanKinds.Void:
+                RectW(it.MinX, it.MinY, it.MaxX, it.MaxY, sel ? Brushes.DodgerBlue : Brushes.Teal, 1.2, new SolidColorBrush(Color.FromArgb(sel ? (byte)70 : (byte)40, 0x00, 0x80, 0x80)));
+                Line(it.MinX, it.MinY, it.MaxX, it.MaxY, Brushes.Teal, 0.8, false); Line(it.MinX, it.MaxY, it.MaxX, it.MinY, Brushes.Teal, 0.8, false);
+                Text((it.X1 + it.X2) / 2, (it.Y1 + it.Y2) / 2, (string.IsNullOrWhiteSpace(it.Label) ? "Giếng trời" : it.Label) + " " + Dim(it.MaxX - it.MinX) + "x" + Dim(it.MaxY - it.MinY), Brushes.Teal, 11);
                 break;
             case PlanKinds.Stair:
                 RectW(it.MinX, it.MinY, it.MaxX, it.MaxY, br, 1, null);

@@ -142,3 +142,21 @@ public sealed partial class DetailingPlanCanvas
         _status.Text = $"Đã sao chép {n} vị trí của {src.Name} sang {string.Join(", ", targets.Select(t => t.Name))} (dùng chung cấu kiện – SL đã cập nhật).";
     }
 }
+
+public sealed partial class DetailingPlanCanvas
+{
+    /// <summary>[Sàn hạ cốt] nhập độ hạ (mm) cho vị trí sàn; 0 = bỏ hạ cốt.</summary>
+    private void AskDrop(PlanItem slab, bool pushUndo = true)
+    {
+        if (slab == null) return;
+        string s = DialogUi.InputBox(_owner, "Sàn hạ cốt", "Độ hạ mặt sàn so với cao độ mặt bằng (mm) – vd. 50 sàn WC, 100 lô gia / sân phơi; 0 = không hạ:",
+                                     slab.Drop > 1e-4 ? Dim(slab.Drop) : "50");
+        if (s == null) return;
+        double mm = DialogUi.ParseNum(s, 0);
+        if (mm < 0 || mm > 1500) { _status.Text = "Độ hạ 0…1500 mm."; return; }
+        if (pushUndo) _undo.Push(Plan);
+        slab.Drop = Math.Round(mm / 1000, 4);
+        _changed(); Redraw();
+        _status.Text = slab.Drop > 0 ? $"Sàn {slab.Member} hạ cốt −{mm:0} mm (bản vẽ: biên nét đứt + \"SÀN HẠ COS -{mm:0}\")." : "Đã bỏ hạ cốt sàn " + slab.Member + ".";
+    }
+}

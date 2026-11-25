@@ -15,7 +15,7 @@ namespace KetCauVXT.App;
 /// vẽ trong AutoCAD (DXF / DWG hoặc lệnh VXT_MB_KC), liên kết hai chiều với cây thư mục cấu kiện.</summary>
 public sealed partial class DetailingPlanCanvas
 {
-    public const string ToolSlabBay = "SanO", ToolCanopyDoor = "OVCua", ToolMove = "DiChuyen", ToolCurvedBeam = "DamCong";
+    public const string ToolSlabBay = "SanO", ToolCanopyDoor = "OVCua", ToolMove = "DiChuyen", ToolCurvedBeam = "DamCong", ToolDropSlab = "SanHa", ToolStairBay = "ThangO";
     private (double X, double Y)? _curveEnd;   // [Dầm cong] điểm cuối (chờ điểm trên cung)
 
     /// <summary>Thư mục hồ sơ (để lưu / tìm ánh xạ theo đường dẫn tương đối).</summary>
@@ -83,6 +83,43 @@ public sealed partial class DetailingPlanCanvas
     {
         switch (_tool)
         {
+            case ToolDropSlab:
+            {
+                // [Sàn hạ cốt] ô sàn có sẵn tại điểm bấm, hoặc tạo sàn trong ô dầm rồi hạ
+                var slab = lv.Items.Where(i => i.Kind == PlanKinds.Slab && w.X >= i.MinX && w.X <= i.MaxX && w.Y >= i.MinY && w.Y <= i.MaxY)
+                                   .OrderBy(i => (i.MaxX - i.MinX) * (i.MaxY - i.MinY)).FirstOrDefault();
+                if (slab == null)
+                {
+                    var bay = PlanSnap.BayAt(Plan, lv, w.X, w.Y);
+                    if (bay == null) { _status.Text = "Không có ô sàn / ô dầm kín tại điểm bấm."; return true; }
+                    var (x0, y0, x1, y1) = bay.Value;
+                    string member = _member.SelectedItem as string;
+                    if (member == NewMember) member = "";
+                    slab = Plan.Place(P, lv, PlanKinds.Slab, x0, y0, x1, y1, member ?? "");
+                }
+                AskDrop(slab, false);
+                Done(slab);
+                return true;
+            }
+            case ToolStairBay:
+            case PlanKinds.Void when _first == null && PlanSnap.BayAt(Plan, lv, w.X, w.Y) != null && !lv.Items.Any(i => i.Kind == PlanKinds.Void && w.X >= i.MinX && w.X <= i.MaxX && w.Y >= i.MinY && w.Y <= i.MaxY):
+            {
+                // [Ô cầu thang / giếng trời] lấy cả ô dầm; ô thang / ô trống không có sàn → bỏ vị trí sàn cũ trong ô
+                var bay = PlanSnap.BayAt(Plan, lv, w.X, w.Y);
+                if (bay == null) { _status.Text = "Không tìm thấy ô kín bao quanh điểm bấm (cần dầm hoặc trục ở cả 4 phía)."; return true; }
+                var (x0, y0, x1, y1) = bay.Value;
+                var old = lv.Items.Where(i => i.Kind == PlanKinds.Slab && (i.MinX + i.MaxX) / 2 > x0 && (i.MinX + i.MaxX) / 2 < x1 && (i.MinY + i.MaxY) / 2 > y0 && (i.MinY + i.MaxY) / 2 < y1).ToList();
+                foreach (var o in old) lv.Items.Remove(o);
+                string kind = _tool == ToolStairBay ? PlanKinds.Stair : PlanKinds.Void;
+                string member = kind == PlanKinds.Void ? "" : _member.SelectedItem as string;
+                if (member == NewMember) member = "";
+                var it = Plan.Place(P, lv, kind, x0, y0, x1, y1, member ?? "");
+                if (kind == PlanKinds.Void) it.Label = "Giếng trời";
+                Plan.SyncQuantities(P);
+                Done(it);
+                if (old.Count > 0) _status.Text = $"{PlanKinds.Title(kind)} {Dim(x1 - x0)}x{Dim(y1 - y0)}: đã bỏ {old.Count} vị trí sàn trong ô (SL sàn cập nhật).";
+                return true;
+            }
             case ToolCurvedBeam:
             {
                 if (_first == null) { _curveEnd = null; _first = SnapW(lv, w, tol); UpdateHint(); Redraw(); return true; }

@@ -30,7 +30,7 @@ public sealed class CadSeg
 /// <summary>Kết quả nhập mặt bằng kết cấu.</summary>
 public sealed class PlanImportResult
 {
-    public int Beams, Columns, Slabs, NewMembers, CurvedBeams;
+    public int Beams, Columns, Slabs, NewMembers, CurvedBeams, Voids, Stairs;
     public List<string> Log { get; } = new();
     public List<PlanItem> Items { get; } = new();
     public double OffsetX, OffsetY;
@@ -527,7 +527,47 @@ public static class StructuralPlanImport
         plan.SyncQuantities(p);
         res.Log.Add("Nhập mặt bằng kết cấu vào " + lv.Name + ": " + res + (res.CurvedBeams > 0 ? $" (trong đó {res.CurvedBeams} dầm cong)" : "")
                     + (origin != null ? $" – đặt theo ánh xạ (dời {Dt.F(-ox, "0.###")}; {Dt.F(-oy, "0.###")} m)" : alignOrigin && (Math.Abs(ox) + Math.Abs(oy) > 1e-6) ? $" – dời gốc ({Dt.F(ox, "0.###")}; {Dt.F(oy, "0.###")}) m về giao trục đầu" : ""));
+        // ---- [Giếng trời / ô cầu thang / sàn hạ cốt] chữ trong ô dầm: "GIẾNG TRỜI", "THÔNG TẦNG", "Ô TRỐNG", "Ô KỸ THUẬT" → ô trống;
+        //      "CẦU THANG", "Ô THANG" → ô cầu thang; "HẠ COS -50", "HẠ CỐT 50", "SÀN WC -50" → độ hạ sàn (áp sau khi tạo sàn) ----
+        var drops = new List<(double X, double Y, double D)>();
+        for (int i = 0; i < texts.Count; i++)
+        {
+            if (usedText.Contains(i)) continue;
+            string n = ArchPlanReader.Norm(texts[i].S);
+            double tx = texts[i].X - ox, ty = texts[i].Y - oy;
+            var dm = Regex.Match(n, @"(HA\s*CO[ST]|HA\s*COTE|SAN\s*HA|WC)\D{0,6}(\d{2,4})");
+            if (dm.Success) { drops.Add((tx, ty, double.Parse(dm.Groups[2].Value, CultureInfo.InvariantCulture) / 1000)); usedText.Add(i); continue; }
+            bool isVoid = Regex.IsMatch(n, @"GIENG\s*TROI|THONG\s*TANG|O\s*TRONG|O\s*KY\s*THUAT|LO\s*MO\s*SAN");
+            bool isStair = !isVoid && Regex.IsMatch(n, @"^(O\s*)?CAU\s*THANG|^O\s*THANG");
+            if (!isVoid && !isStair) continue;
+            var bay = PlanSnap.BayAt(plan, lv, tx, ty);
+            if (bay == null) continue;
+            var (bx0, by0, bx1, by1) = bay.Value;
+            if (lv.Items.Any(q => (q.Kind == PlanKinds.Void || q.Kind == PlanKinds.Stair) && tx > q.MinX && tx < q.MaxX && ty > q.MinY && ty < q.MaxY)) continue;
+            lv.Items.RemoveAll(q => q.Kind == PlanKinds.Slab && (q.MinX + q.MaxX) / 2 > bx0 && (q.MinX + q.MaxX) / 2 < bx1 && (q.MinY + q.MaxY) / 2 > by0 && (q.MinY + q.MaxY) / 2 < by1);
+            if (isVoid)
+            {
+                var it = new PlanItem { Kind = PlanKinds.Void, X1 = bx0, Y1 = by0, X2 = bx1, Y2 = by1, Label = CultureInfo.GetCultureInfo("vi-VN").TextInfo.ToTitleCase(texts[i].S.Trim().ToLowerInvariant()) };
+                lv.Items.Add(it); res.Items.Add(it); res.Voids++;
+            }
+            else
+            {
+                var m = Member(PlanKinds.Stair, "", null, "CauThang");
+                var it = new PlanItem { Kind = PlanKinds.Stair, Member = m.Name, X1 = bx0, Y1 = by0, X2 = bx1, Y2 = by1 };
+                lv.Items.Add(it); res.Items.Add(it); res.Stairs++;
+                if (res.Items.Count(q => q.Member == m.Name) == 1) plan.ApplyGeometry(m, it, lv);
+            }
+            usedText.Add(i);
+        }
+        if (res.Voids + res.Stairs > 0) res.Log.Add($"Ô trống / giếng trời: {res.Voids}, ô cầu thang: {res.Stairs} (đọc theo chữ trong ô dầm).");
         if (autoSlabs) { int ns = PlanAutoSlab.Create(p, lv, res.Log); res.Slabs += ns; }
+        int nd = 0;
+        foreach (var (dx, dy, d) in drops)
+        {
+            var sl = lv.Items.Where(q => q.Kind == PlanKinds.Slab && dx > q.MinX && dx < q.MaxX && dy > q.MinY && dy < q.MaxY).OrderBy(q => (q.MaxX - q.MinX) * (q.MaxY - q.MinY)).FirstOrDefault();
+            if (sl != null && d > 0 && d < 1.5) { sl.Drop = Math.Round(d, 4); nd++; }
+        }
+        if (nd > 0) res.Log.Add($"Sàn hạ cốt: {nd} ô (đọc chữ \"HẠ COS …\").");
         return res;
     }
 

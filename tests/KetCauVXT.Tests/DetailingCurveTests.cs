@@ -42,6 +42,8 @@ public static class DetailingCurveTests
         // dầm cong vẽ 1 nét đa tuyến có cung lồi: (0,-2000) → (8000,-2000) bulge −0,25 (CW, vồng xuống)
         ents.Add("{\"t\":\"line\",\"layer\":\"KC_DAM\",\"pts\":[[0,-2000],[8000,-2000]],\"bulges\":[-0.25,0]}");
         ents.Add("{\"t\":\"text\",\"layer\":\"CHU\",\"x\":2000,\"y\":5300,\"s\":\"D1 220x400\"}");
+        ents.Add("{\"t\":\"text\",\"layer\":\"CHU\",\"x\":1500,\"y\":2500,\"s\":\"GIẾNG TRỜI\"}");      // ô 1 → giếng trời
+        ents.Add("{\"t\":\"text\",\"layer\":\"CHU\",\"x\":6000,\"y\":2000,\"s\":\"SÀN HẠ COS -50\"}");  // ô 2 → sàn hạ cốt 50
         string json = "{\"kind\":\"matbang\",\"unit\":\"mm\",\"entities\":[" + string.Join(",", ents) + "]}";
         var log = new List<string>();
         var dx = StructuralPlanImport.ParseExchange(json, log);
@@ -72,8 +74,10 @@ public static class DetailingCurveTests
         var bulgeBeam = lv.Items.First(i => i.IsCurved && i.Y1 < -1);
         check("Dầm cong đa tuyến: độ vồng = −b·c/2 → vồng xuống 1,0 m", bulgeBeam.Bulge, -1.0, 1e-3);
         check("Nhập: dầm thẳng 2 nét (5 dầm)", lv.Items.Count(i => i.Kind == PlanKinds.Beam && !i.IsCurved), 5, 0);
-        check("Tạo sàn từ dầm: 2 ô 4 × 5 m", lv.Items.Count(i => i.Kind == PlanKinds.Slab), 2, 0);
-        check("Tạo sàn từ dầm: ô cùng kích thước dùng chung một cấu kiện", lv.Items.Where(i => i.Kind == PlanKinds.Slab).Select(i => i.Member).Distinct().Count(), 1, 0);
+        check("Giếng trời: chữ \"GIẾNG TRỜI\" trong ô dầm → ô trống 4 × 5 m", lv.Items.Count(i => i.Kind == PlanKinds.Void && Math.Abs(i.MaxX - i.MinX - 4) < 1e-6), 1, 0);
+        check("Tạo sàn từ dầm: bỏ ô giếng trời → 1 ô sàn", lv.Items.Count(i => i.Kind == PlanKinds.Slab), 1, 0);
+        check("Sàn hạ cốt: chữ \"SÀN HẠ COS -50\" → hạ 50 mm", lv.Items.First(i => i.Kind == PlanKinds.Slab).Drop, 0.05, 1e-9);
+        check("Giếng trời: không gán cấu kiện", B(lv.Items.Where(i => i.Kind == PlanKinds.Void).All(i => i.Member == "")), 1, 0);
         int again = PlanAutoSlab.Create(p, lv);
         check("Tạo sàn từ dầm lần 2: không tạo trùng", again, 0, 0);
 
@@ -83,7 +87,16 @@ public static class DetailingCurveTests
         check("Sao chép sang tầng có sẵn: đủ vị trí", n, lv.Items.Count, 0);
         check("Sao chép: dầm cong giữ độ vồng", B(mai.Items.Count(i => i.IsCurved) == 2), 1, 0);
         var slabM = p.All.First(m => m.Name == lv.Items.First(i => i.Kind == PlanKinds.Slab).Member);
-        check("Sao chép: SL sàn dùng chung = 4 vị trí", slabM.Quantity, 4, 0);
+        check("Sao chép: SL sàn dùng chung = 2 vị trí", slabM.Quantity, 2, 0);
+        check("Sao chép: giữ giếng trời + độ hạ sàn", B(mai.Items.Any(i => i.Kind == PlanKinds.Void) && mai.Items.First(i => i.Kind == PlanKinds.Slab).Drop > 0.04), 1, 0);
+        // ô cầu thang trong ô dầm (chữ) + tạo sàn bỏ ô thang
+        var t3 = new PlanLevel { Name = "Tầng 3", Elevation = 7.2 };
+        p.Plan.Levels.Insert(2, t3);
+        var dx2 = dx.Where(e => e.Type != DxfEntityType.Text).ToList();
+        dx2.Add(new DxfEntity { Type = DxfEntityType.Text, Layer = "CHU", Text = "Ô CẦU THANG", Points = new() { (2.0, 2.5) } });
+        var r3 = StructuralPlanImport.Import(p, t3, dx2, true, false, keys, (0, 0), true);
+        check("Ô cầu thang: chữ trong ô dầm → vị trí cầu thang 4 × 5 m", t3.Items.Count(i => i.Kind == PlanKinds.Stair), 1, 0);
+        check("Ô cầu thang: tạo sàn bỏ ô thang → 1 ô sàn", t3.Items.Count(i => i.Kind == PlanKinds.Slab), 1, 0);
 
         // xuất DXF: dầm cong = ARC trên layer bê tông
         var map = StructuralPlanDrawing.Map(p, new());
@@ -97,6 +110,7 @@ public static class DetailingCurveTests
                     if (lines[j] == "8") { if (lines[j + 1] == "BE_TONG") arcs++; break; }
             }
         Console.WriteLine($"   · DXF mặt bằng: {arcs} ARC trên BE_TONG");
+        check("Xuất DXF: ghi sàn hạ cốt \"… HẠ COS -50\"", B(dxf.Contains("COS -50")), 1, 0);
         check("Xuất DXF: mỗi dầm cong 2 cung mép (ARC, layer BE_TONG)", arcs, 4, 0);
     }
 }

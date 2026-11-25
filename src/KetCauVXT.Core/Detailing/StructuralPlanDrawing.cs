@@ -150,7 +150,7 @@ public static class StructuralPlanDrawing
         ys = ys.Where((_, gj) => plan.GridVisible(false, gj, lvName)).ToList();
 
         // cấu kiện: móng / sàn / ô văng / cầu thang trước (nằm dưới), dầm, lanh tô, cột sau cùng
-        int Order(PlanItem it) => it.Kind switch { PlanKinds.Footing => 0, PlanKinds.Slab => 1, PlanKinds.Stair => 2, PlanKinds.Canopy => 3, PlanKinds.Beam => 4, PlanKinds.Lintel => 5, _ => 6 };
+        int Order(PlanItem it) => it.Kind switch { PlanKinds.Footing => 0, PlanKinds.Slab => 1, PlanKinds.Void => 1, PlanKinds.Stair => 2, PlanKinds.Canopy => 3, PlanKinds.Beam => 4, PlanKinds.Lintel => 5, _ => 6 };
         var labeledCols = new HashSet<string>();
         // vùng chiếm chỗ: thân cột + nhãn cột, thân dầm (trục song song) giữ trước ⇒ nhãn dầm, lanh tô, ô văng, thép sàn tránh đè
         var tags = new TagLayout(0.25 * th);
@@ -183,6 +183,7 @@ public static class StructuralPlanDrawing
                 case PlanKinds.Footing: DrawFooting(w, it, map); break;
                 case PlanKinds.Slab: DrawRectMember(w, it, map); break;
                 case PlanKinds.Stair: DrawStair(w, it); break;
+                case PlanKinds.Void: DrawVoid(w, it); break;
                 case PlanKinds.Canopy: DrawCanopy(w, it); break;
                 case PlanKinds.Beam: DrawBeam(w, it, map, lv.IsFoundation, plan); break;
                 case PlanKinds.Lintel: DrawLintel(w, it, map); break;
@@ -464,6 +465,19 @@ public static class StructuralPlanDrawing
         w.Text(Lay.Chu, cc.Item1, cc.Item2, 0.9 * th, cap, 0, pick == 3 ? 0 : 1, cc.Item3);
     }
 
+    /// <summary>[Giếng trời] ô trống: biên ô + hai đường chéo (KY_HIEU) + chữ GIẾNG TRỜI / Ô TRỐNG / Ô KỸ THUẬT.</summary>
+    private static void DrawVoid(DxfWriter w, PlanItem it)
+    {
+        double th = w.Th;
+        double x0 = it.MinX * 1000, y0 = it.MinY * 1000, x1 = it.MaxX * 1000, y1 = it.MaxY * 1000;
+        w.Rect(Lay.BeTong, x0, y0, x1, y1);
+        w.Line(Lay.KyHieu, x0, y0, x1, y1);
+        w.Line(Lay.KyHieu, x0, y1, x1, y0);
+        string t = string.IsNullOrWhiteSpace(it.Label) ? "GIẾNG TRỜI" : it.Label.Trim().ToUpperInvariant();
+        w.Text(Lay.Chu, (x0 + x1) / 2, (y0 + y1) / 2 + 0.6 * th, th, t, 0, 1, 0);
+        w.Text(Lay.Chu, (x0 + x1) / 2, (y0 + y1) / 2 - 0.6 * th, 0.8 * th, DxfWriter.N0(x1 - x0) + "x" + DxfWriter.N0(y1 - y0), 0, 1, 3);
+    }
+
     private static void DrawStair(DxfWriter w, PlanItem it)
     {
         double th = w.Th;
@@ -506,6 +520,13 @@ public static class StructuralPlanDrawing
         // ô tên sàn + chiều dày: giữ chỗ để thép sàn trên mặt bằng không đè
         _tags?.Reserve(new Rect2(cx - 2.2 * th - 0.35 * th * nm.Length, cy - 2.8 * th, cx + 2.2 * th + 0.35 * th * nm.Length, cy + 1.6 * th));
         if (t > 0) w.Text(Lay.Chu, cx, cy - 1.6 * th, 0.8 * th, "h=" + DxfWriter.N0(t * 1000), 0, 1, 3);
+        if (it.Drop > 1e-4)
+        {
+            // [Sàn hạ cốt] biên trong nét đứt + ghi "SÀN HẠ COS -50"
+            double o = Math.Min(150, Math.Min(x1 - x0, y1 - y0) / 6);
+            w.Rect(Lay.KyHieu, x0 + o, y0 + o, x1 - o, y1 - o, "DASHED");
+            w.Text(Lay.Chu, cx, cy - 2.8 * th, 0.8 * th, "SÀN HẠ COS -" + DxfWriter.N0(it.Drop * 1000), 0, 1, 3);
+        }
         if (m is ManualSlab sl) DrawSlabBars(w, x0, y0, x1, y1, sl, v.R);
         else if (m is ManualSlabPlan spl) w.Text(Lay.Chu, cx, cy - 2.8 * th, 0.8 * th, "THÉP SÀN XEM MẶT BẰNG THÉP " + (spl.Name ?? "").ToUpperInvariant(), 0, 1, 3);
     }
