@@ -30,7 +30,7 @@ public sealed class CadSeg
 /// <summary>Kết quả nhập mặt bằng kết cấu.</summary>
 public sealed class PlanImportResult
 {
-    public int Beams, Columns, Slabs, NewMembers;
+    public int Beams, Columns, Slabs, NewMembers, CurvedBeams;
     public List<string> Log { get; } = new();
     public List<PlanItem> Items { get; } = new();
     public double OffsetX, OffsetY;
@@ -152,11 +152,17 @@ public sealed class ArchLayerKeys
     }
     // layer chuẩn VXT-… (lệnh VXT_CHUANLAYER / "Chuẩn hoá layer") quyết định trước từ khoá
     private static string Std(string l) => KetCauVXT.Import.Arch.StdLayers.CategoryOf(l);
+    /// <summary>[Nhận diện layer] Danh sách layer người dùng chỉ định (khớp đúng tên, không phân biệt hoa thường) – khác null thì quyết định thay từ khoá.</summary>
+    public HashSet<string> BeamLayers, ColumnLayers, SlabLayers;
+    private static bool In(HashSet<string> set, string l) => set.Contains((l ?? "").Trim());
     public bool IsWall(string l) { string c = Std(l); return c.Length > 0 ? c == "Tuong" : Has(l, Wall) && !Has(l, Door); }
     public bool IsDoor(string l) { string c = Std(l); return c.Length > 0 ? c == "Cua" : Has(l, Door); }
-    public bool IsBeam(string l) { string c = Std(l); return c.Length > 0 ? c == "Dam" : Has(l, Beam); }
-    public bool IsColumn(string l) { string c = Std(l); return c.Length > 0 ? c == "Cot" : Has(l, Column) && !Has(l, Beam); }
-    public bool IsSlab(string l) { string c = Std(l); return c.Length > 0 ? c == "San" : Has(l, Slab); }
+    public bool IsBeam(string l) { if (BeamLayers != null) return In(BeamLayers, l); string c = Std(l); return c.Length > 0 ? c == "Dam" : Has(l, Beam); }
+    public bool IsColumn(string l) { if (ColumnLayers != null) return In(ColumnLayers, l); string c = Std(l); return c.Length > 0 ? c == "Cot" : Has(l, Column) && !Has(l, Beam); }
+    public bool IsSlab(string l) { if (SlabLayers != null) return In(SlabLayers, l); string c = Std(l); return c.Length > 0 ? c == "San" : Has(l, Slab); }
+
+    /// <summary>Gợi ý vai trò của layer theo tên: "Dầm" | "Cột" | "Sàn" | "".</summary>
+    public string Suggest(string layer) => IsColumn(layer) ? "Cột" : IsBeam(layer) ? "Dầm" : IsSlab(layer) ? "Sàn" : "";
     public static bool DoorBlock(string block)
     {
         string n = ArchPlanReader.Norm(block);
@@ -174,7 +180,7 @@ public sealed class ArchLayerKeys
 public static class PlanCadGeom
 {
     /// <summary>Các đoạn thẳng của LINE / POLYLINE (bỏ chữ, đường tròn).</summary>
-    public static IEnumerable<CadSeg> Segments(IEnumerable<DxfEntity> ents)
+    public static IEnumerable<CadSeg> Segments(IEnumerable<DxfEntity> ents, bool skipArcs = false)
     {
         foreach (var e in ents ?? Enumerable.Empty<DxfEntity>())
         {
@@ -184,6 +190,7 @@ public static class PlanCadGeom
             int n = p.Count - 1 + (e.Closed && p.Count > 2 ? 1 : 0);
             for (int i = 0; i < n; i++)
             {
+                if (skipArcs && e.Arcs != null && e.Arcs.Any(a => i >= a.I0 && i < a.I1)) continue;   // đoạn thuộc cung → dầm cong
                 var a = p[i]; var b = p[(i + 1) % p.Count];
                 var s = new CadSeg { X1 = a.X, Y1 = a.Y, X2 = b.X, Y2 = b.Y, Layer = e.Layer ?? "" };
                 if (s.Length > 1e-4) yield return s;
@@ -239,6 +246,98 @@ public static class PlanCadGeom
 
     public static double DistToSeg(double x, double y, CadSeg s) => StructuralPlan.DistSeg(x, y, s.X1, s.Y1, s.X2, s.Y2);
 
+    /// <summary>Một dầm cong đọc từ bản vẽ: 2 đầu, độ vồng, bề rộng (0 = vẽ 1 nét tim).</summary>
+    public sealed record ArcBeam(double X1, double Y1, double X2, double Y2, double Bulge, double Width);
+
+    /// <summary>Cung tròn (ARC, cung lồi của đa tuyến) trên các thực thể → dầm cong: hai cung đồng tâm cách nhau 0,1–0,6 m chồng ≥ 50 %
+    /// → tim (bán kính trung bình, phạm vi hợp hai cung) + bề rộng; cung đơn dài ≥ 0,8 m → tim.</summary>
+    public static List<ArcBeam> ArcBeams(IEnumerable<DxfEntity> ents)
+    {
+        var arcs = new List<(double Cx, double Cy, double R, double S, double E)>();   // CCW: góc đầu S, góc cuối E > S
+        foreach (var e in ents ?? Enumerable.Empty<DxfEntity>())
+        {
+            if (e.Arcs == null || e.Points == null || e.Points.Count < 2) continue;
+            int n = e.Points.Count;
+            foreach (var sp in e.Arcs)
+            {
+                if (sp.R < 0.2 || sp.I1 <= sp.I0) continue;
+                double a0 = Math.Atan2(e.Points[sp.I0].Y - sp.Cy, e.Points[sp.I0].X - sp.Cx), sw = 0, prev = a0;
+                for (int k = sp.I0 + 1; k <= sp.I1; k++)
+                {
+                    var q = e.Points[k % n];
+                    double a = Math.Atan2(q.Y - sp.Cy, q.X - sp.Cx), d = a - prev;
+                    while (d > Math.PI) d -= 2 * Math.PI;
+                    while (d < -Math.PI) d += 2 * Math.PI;
+                    sw += d; prev = a;
+                }
+                if (Math.Abs(sw) < 1e-3 || Math.Abs(sw) > 2 * Math.PI - 1e-3) continue;   // đường tròn kín: không phải dầm
+                double S = sw > 0 ? a0 : a0 + sw;
+                arcs.Add((sp.Cx, sp.Cy, sp.R, S, S + Math.Abs(sw)));
+            }
+        }
+        var res = new List<ArcBeam>();
+        var used = new bool[arcs.Count];
+        var order = Enumerable.Range(0, arcs.Count).OrderByDescending(i => arcs[i].R * (arcs[i].E - arcs[i].S)).ToList();
+        foreach (int i in order)
+        {
+            if (used[i]) continue;
+            var a = arcs[i];
+            int bj = -1; double bdR = double.MaxValue; double lo = 0, hi = 0;
+            for (int j = 0; j < arcs.Count; j++)
+            {
+                if (j == i || used[j]) continue;
+                var b = arcs[j];
+                if (Math.Abs(a.Cx - b.Cx) > 0.03 || Math.Abs(a.Cy - b.Cy) > 0.03) continue;
+                double dR = Math.Abs(a.R - b.R);
+                if (dR < 0.10 - 1e-6 || dR > 0.60 + 1e-6) continue;
+                double s2 = b.S, e2 = b.E;
+                while (s2 < a.S - Math.PI) { s2 += 2 * Math.PI; e2 += 2 * Math.PI; }
+                while (s2 > a.S + Math.PI) { s2 -= 2 * Math.PI; e2 -= 2 * Math.PI; }
+                double ov = Math.Min(a.E, e2) - Math.Max(a.S, s2);
+                if (ov < 0.5 * Math.Min(a.E - a.S, e2 - s2)) continue;
+                if (dR < bdR) { bdR = dR; bj = j; lo = Math.Min(a.S, s2); hi = Math.Max(a.E, e2); }
+            }
+            if (bj >= 0)
+            {
+                used[i] = used[bj] = true;
+                var b = arcs[bj];
+                double R = (a.R + b.R) / 2;
+                var g = PlanArc.FromArc((a.Cx + b.Cx) / 2, (a.Cy + b.Cy) / 2, R, lo, hi - lo);
+                res.Add(new ArcBeam(Math.Round(g.X1, 4), Math.Round(g.Y1, 4), Math.Round(g.X2, 4), Math.Round(g.Y2, 4), g.Bulge, Math.Round(bdR, 4)));
+            }
+        }
+        for (int i = 0; i < arcs.Count; i++)
+        {
+            if (used[i]) continue;
+            var a = arcs[i];
+            if (a.R * (a.E - a.S) < 0.8) continue;
+            var g = PlanArc.FromArc(a.Cx, a.Cy, a.R, a.S, a.E - a.S);
+            res.Add(new ArcBeam(Math.Round(g.X1, 4), Math.Round(g.Y1, 4), Math.Round(g.X2, 4), Math.Round(g.Y2, 4), g.Bulge, 0));
+        }
+        return res;
+    }
+
+    /// <summary>[Nhận diện layer] Thống kê layer của bản vẽ: số nét, đa tuyến kín cỡ cột (0,1–1,5 m), cung, chữ + gợi ý vai trò
+    /// (theo tên layer; không có tên gợi ý: layer nhiều đa tuyến kín cỡ cột → "Cột").</summary>
+    public static List<(string Layer, int Lines, int ColRects, int Arcs, int Texts, string Suggest)> LayerStats(IEnumerable<DxfEntity> ents, ArchLayerKeys keys = null)
+    {
+        keys ??= new ArchLayerKeys();
+        var res = new List<(string, int, int, int, int, string)>();
+        foreach (var g in (ents ?? Enumerable.Empty<DxfEntity>()).GroupBy(e => e.Layer ?? "", StringComparer.OrdinalIgnoreCase).OrderBy(g => g.Key))
+        {
+            int lines = g.Count(e => e.Type is DxfEntityType.Line or DxfEntityType.Polyline);
+            int rects = g.Count(e => e.Type == DxfEntityType.Polyline && e.Closed && e.Points.Count >= 4 && e.Arcs == null
+                                     && e.Points.Max(q => q.X) - e.Points.Min(q => q.X) is >= 0.1 and <= 1.5
+                                     && e.Points.Max(q => q.Y) - e.Points.Min(q => q.Y) is >= 0.1 and <= 1.5);
+            int arcs = g.Sum(e => e.Arcs?.Count ?? 0);
+            int texts = g.Count(e => e.Type == DxfEntityType.Text);
+            string sg = keys.Suggest(g.Key);
+            if (sg.Length == 0 && rects >= 2 && rects >= 0.6 * Math.Max(1, lines)) sg = "Cột";
+            res.Add((g.Key, lines, rects, arcs, texts, sg));
+        }
+        return res;
+    }
+
     /// <summary>Kích thước "220x400", "220 x 400", "220×400" (mm) trong chữ; null nếu không có.</summary>
     public static (double B, double H)? Section(string text)
     {
@@ -270,7 +369,8 @@ public static class StructuralPlanImport
 
     /// <summary>Nhập vào mặt bằng lv. alignOrigin: dời sao cho điểm trái – dưới nhất của cột / dầm trùng gốc trục 1-A (0; 0)
     /// (khi bản vẽ dùng toạ độ tuỳ ý); replace: xoá vị trí dầm / cột / sàn cũ của mặt bằng trước khi nhập.</summary>
-    public static PlanImportResult Import(DetailingProject p, PlanLevel lv, List<DxfEntity> ents, bool alignOrigin = true, bool replace = false, ArchLayerKeys keys = null)
+    public static PlanImportResult Import(DetailingProject p, PlanLevel lv, List<DxfEntity> ents, bool alignOrigin = true, bool replace = false, ArchLayerKeys keys = null,
+                                          (double X, double Y)? origin = null, bool autoSlabs = false)
     {
         keys ??= new ArchLayerKeys();
         var res = new PlanImportResult();
@@ -294,19 +394,22 @@ public static class StructuralPlanImport
             cols.Add((cx, cy, Math.Round(b, 3), Math.Round(h, 3)));
         }
         // ---- dầm: cặp nét song song (tim + b), nét đơn (tim) ----
-        var beamSegs = PlanCadGeom.Segments(ents.Where(e => keys.IsBeam(e.Layer))).ToList();
+        var beamSegs = PlanCadGeom.Segments(ents.Where(e => keys.IsBeam(e.Layer)), true).ToList();
         var singles = new List<CadSeg>();
         var beams = PlanCadGeom.PairParallel(beamSegs, 0.10, 0.60, singles).Select(t => (S: t.Center, B: t.T)).ToList();
         foreach (var s in singles.Where(q => q.Length >= 0.8)) beams.Add((s, 0));
+        // ---- dầm cong: cung tròn trên layer dầm (ARC, cung lồi đa tuyến) – cặp cung đồng tâm → tim + bề rộng ----
+        var arcBeams = PlanCadGeom.ArcBeams(ents.Where(e => keys.IsBeam(e.Layer)));
 
         // gốc toạ độ
         double ox = 0, oy = 0;
         if (alignOrigin)
         {
-            var xsAll = cols.Select(c => c.X).Concat(beams.SelectMany(b => new[] { b.S.X1, b.S.X2 })).ToList();
-            var ysAll = cols.Select(c => c.Y).Concat(beams.SelectMany(b => new[] { b.S.Y1, b.S.Y2 })).ToList();
+            var xsAll = cols.Select(c => c.X).Concat(beams.SelectMany(b => new[] { b.S.X1, b.S.X2 })).Concat(arcBeams.SelectMany(a => new[] { a.X1, a.X2 })).ToList();
+            var ysAll = cols.Select(c => c.Y).Concat(beams.SelectMany(b => new[] { b.S.Y1, b.S.Y2 })).Concat(arcBeams.SelectMany(a => new[] { a.Y1, a.Y2 })).ToList();
             if (xsAll.Count > 0) { ox = xsAll.Min(); oy = ysAll.Min(); }
         }
+        if (origin is { } og) { ox = og.X; oy = og.Y; }   // theo ánh xạ / gốc chỉ định
         res.OffsetX = ox; res.OffsetY = oy;
         if (replace) lv.Items.RemoveAll(i => i.Kind == PlanKinds.Beam || i.Kind == PlanKinds.Column || i.Kind == PlanKinds.Slab);
 
@@ -392,6 +495,21 @@ public static class StructuralPlanImport
             lv.Items.Add(it); res.Items.Add(it); res.Beams++;
             if (m is ManualBeam mb && res.Items.Count(i => i.Member == m.Name) == 1) plan.ApplyGeometry(mb, it, lv);
         }
+        foreach (var ab in arcBeams)
+        {
+            var mid = PlanArc.Mid(new PlanItem { X1 = ab.X1, Y1 = ab.Y1, X2 = ab.X2, Y2 = ab.Y2, Bulge = ab.Bulge });
+            int ti = NearText(mid.X, mid.Y, 1.2, IsBeamName);
+            string nm = ti >= 0 ? PlanCadGeom.MemberName(texts[ti].S) : "";
+            var sec = ti >= 0 ? PlanCadGeom.Section(texts[ti].S) : null;
+            if (ti >= 0) usedText.Add(ti);
+            var it = new PlanItem { Kind = PlanKinds.Beam, X1 = Math.Round(ab.X1 - ox, 4), Y1 = Math.Round(ab.Y1 - oy, 4), X2 = Math.Round(ab.X2 - ox, 4), Y2 = Math.Round(ab.Y2 - oy, 4), Bulge = Math.Round(ab.Bulge, 4) };
+            double arcLen = PlanArc.Length(it);
+            if (sec == null && ab.Width > 0) sec = (Math.Round(ab.Width, 3), Math.Max(0.30, Math.Round(Math.Ceiling(arcLen / 12 / 0.05) * 0.05, 3)));
+            var m = Member(PlanKinds.Beam, nm, sec, "Dam");
+            it.Member = m.Name;
+            lv.Items.Add(it); res.Items.Add(it); res.Beams++; res.CurvedBeams++;
+            if (m is ManualBeam mb && res.Items.Count(i => i.Member == m.Name) == 1) plan.ApplyGeometry(mb, it, lv);
+        }
         // ---- sàn: chữ S… nằm trong ô dầm ----
         for (int i = 0; i < texts.Count; i++)
         {
@@ -407,7 +525,9 @@ public static class StructuralPlanImport
             usedText.Add(i);
         }
         plan.SyncQuantities(p);
-        res.Log.Add("Nhập mặt bằng kết cấu vào " + lv.Name + ": " + res + (alignOrigin && (Math.Abs(ox) + Math.Abs(oy) > 1e-6) ? $" – dời gốc ({Dt.F(ox, "0.###")}; {Dt.F(oy, "0.###")}) m về giao trục đầu" : ""));
+        res.Log.Add("Nhập mặt bằng kết cấu vào " + lv.Name + ": " + res + (res.CurvedBeams > 0 ? $" (trong đó {res.CurvedBeams} dầm cong)" : "")
+                    + (origin != null ? $" – đặt theo ánh xạ (dời {Dt.F(-ox, "0.###")}; {Dt.F(-oy, "0.###")} m)" : alignOrigin && (Math.Abs(ox) + Math.Abs(oy) > 1e-6) ? $" – dời gốc ({Dt.F(ox, "0.###")}; {Dt.F(oy, "0.###")}) m về giao trục đầu" : ""));
+        if (autoSlabs) { int ns = PlanAutoSlab.Create(p, lv, res.Log); res.Slabs += ns; }
         return res;
     }
 
@@ -426,6 +546,31 @@ public static class StructuralPlanImport
             return f.FullName;
         }
         catch { return null; }
+    }
+
+    /// <summary>Đa tuyến có cung lồi (bulge – quy ước AutoCAD: θ = 4·atan(b), dương = ngược chiều kim đồng hồ) → điểm chia + đoạn cung.</summary>
+    public static (List<(double X, double Y)> Pts, List<DxfArcSpan> Arcs) Tessellate(List<(double X, double Y)> v, List<double> bulge, bool closed)
+    {
+        var pts = new List<(double X, double Y)>();
+        var arcs = new List<DxfArcSpan>();
+        int n = v.Count, segs = closed ? n : n - 1;
+        for (int i = 0; i < n; i++)
+        {
+            pts.Add(v[i]);
+            if (i >= segs) continue;
+            double b = i < bulge.Count ? bulge[i] : 0;
+            if (Math.Abs(b) < 1e-9) continue;
+            var a = v[i]; var c = v[(i + 1) % n];
+            double ch = Math.Sqrt((c.X - a.X) * (c.X - a.X) + (c.Y - a.Y) * (c.Y - a.Y));
+            var g = PlanArc.Geom(a.X, a.Y, c.X, c.Y, -b * ch / 2);   // bulge dương (CCW) ↔ độ vồng âm (lệch phải)
+            if (g == null) continue;
+            var (cx, cy, R, a0, sw) = g.Value;
+            int m = Math.Max(2, (int)Math.Ceiling(Math.Abs(sw) / (Math.PI / 18)));
+            int i0 = pts.Count - 1;
+            for (int j = 1; j < m; j++) { double t = a0 + sw * j / m; pts.Add((cx + R * Math.Cos(t), cy + R * Math.Sin(t))); }
+            arcs.Add(new DxfArcSpan { I0 = i0, I1 = pts.Count, Cx = cx, Cy = cy, R = R });   // I1 = chỉ số đỉnh kế tiếp (thêm ở vòng sau / = Count khi khép)
+        }
+        return (pts, arcs.Count > 0 ? arcs : null);
     }
 
     /// <summary>Đọc dữ liệu VXT_MB_KC → thực thể (m). Lỗi ghi vào log.</summary>
@@ -463,7 +608,17 @@ public static class StructuralPlanImport
                             pts.Add((qx * k, qy * k));
                 if (pts.Count < 2) continue;
                 bool closed = e.TryGetProperty("closed", out var cl) && cl.ValueKind == JsonValueKind.True;
-                ents.Add(new DxfEntity { Type = pts.Count == 2 && !closed ? DxfEntityType.Line : DxfEntityType.Polyline, Layer = layer, Points = pts, Closed = closed,
+                List<DxfArcSpan> spans = null;
+                // [Dầm cong] ARC: "arc":[cx,cy,r]; đa tuyến có cung lồi: "bulges":[b0,b1,…]
+                if (e.TryGetProperty("arc", out var ar) && ar.ValueKind == JsonValueKind.Array && ar.GetArrayLength() >= 3
+                    && ar[0].TryGetDouble(out double acx) && ar[1].TryGetDouble(out double acy) && ar[2].TryGetDouble(out double ar0))
+                    spans = new List<DxfArcSpan> { new DxfArcSpan { I0 = 0, I1 = pts.Count - 1, Cx = acx * k, Cy = acy * k, R = ar0 * k } };
+                else if (e.TryGetProperty("bulges", out var bg) && bg.ValueKind == JsonValueKind.Array && bg.GetArrayLength() == pts.Count)
+                {
+                    var bs = bg.EnumerateArray().Select(v => v.TryGetDouble(out double d) ? d : 0).ToList();
+                    if (bs.Any(b => Math.Abs(b) > 1e-9)) (pts, spans) = Tessellate(pts, bs, closed);
+                }
+                ents.Add(new DxfEntity { Type = pts.Count == 2 && !closed ? DxfEntityType.Line : DxfEntityType.Polyline, Layer = layer, Points = pts, Closed = closed, Arcs = spans,
                     Block = e.TryGetProperty("block", out var bl) ? bl.GetString() ?? "" : "" });
             }
         }

@@ -76,8 +76,17 @@ namespace KetCauVXT.AcadLink
             if (pl != null)
             {
                 var pts = new List<double[]>();
-                for (int i = 0; i < pl.NumberOfVertices; i++) { var p = pl.GetPoint2dAt(i); pts.Add(new[] { p.X * k, p.Y * k }); }
-                if (pts.Count >= 2) { Seg(w, layer, block, pts, pl.Closed); return 1; }
+                var bulges = new List<double>();
+                bool anyBulge = false;
+                for (int i = 0; i < pl.NumberOfVertices; i++)
+                {
+                    var p = pl.GetPoint2dAt(i); pts.Add(new[] { p.X * k, p.Y * k });
+                    double b = 0;
+                    try { b = pl.GetBulgeAt(i); } catch { }
+                    bulges.Add(b); if (Math.Abs(b) > 1e-9) anyBulge = true;
+                }
+                // cung lồi (bulge) của đa tuyến → Việt Const nhận dầm cong
+                if (pts.Count >= 2) { Seg(w, layer, block, pts, pl.Closed, anyBulge ? bulges : null); return 1; }
                 return 0;
             }
             var arc = e as Arc;
@@ -92,7 +101,8 @@ namespace KetCauVXT.AcadLink
                     double a = a0 + (a1 - a0) * i / m;
                     pts.Add(new[] { (arc.Center.X + arc.Radius * Math.Cos(a)) * k, (arc.Center.Y + arc.Radius * Math.Sin(a)) * k });
                 }
-                Seg(w, layer, block, pts, false);
+                // tâm + bán kính đúng để Việt Const nhận DẦM CONG (điểm chia giữ cho bản cũ)
+                Seg(w, layer, block, pts, false, null, new[] { arc.Center.X * k, arc.Center.Y * k, arc.Radius * k });
                 return 1;
             }
             var t = e as DBText;
@@ -129,7 +139,7 @@ namespace KetCauVXT.AcadLink
 
         private static double[] P(Point3d p, double k) { return new[] { p.X * k, p.Y * k }; }
 
-        private static void Seg(JsonOut w, string layer, string block, List<double[]> pts, bool closed)
+        private static void Seg(JsonOut w, string layer, string block, List<double[]> pts, bool closed, List<double> bulges = null, double[] arc = null)
         {
             w.BeginObject();
             w.Prop("t", "line");
@@ -137,6 +147,8 @@ namespace KetCauVXT.AcadLink
             if (!string.IsNullOrEmpty(block)) w.Prop("block", block);
             w.Points("pts", pts);
             w.Prop("closed", closed);
+            if (bulges != null) w.Numbers("bulges", bulges);
+            if (arc != null) w.Numbers("arc", arc);
             w.EndObject();
         }
 

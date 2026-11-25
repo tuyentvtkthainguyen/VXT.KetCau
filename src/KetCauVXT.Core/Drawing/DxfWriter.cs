@@ -249,9 +249,9 @@ public sealed partial class DxfWriter
     }
 
     /// <summary>Cung tròn, góc độ ngược chiều kim đồng hồ từ a1 tới a2.</summary>
-    public void Arc(string layer, double cx, double cy, double r, double a1, double a2)
+    public void Arc(string layer, double cx, double cy, double r, double a1, double a2, string ltype = null)
     {
-        var e = Add("ARC", layer, new Rect2(cx - r, cy - r, cx + r, cy + r));
+        var e = Add("ARC", layer, new Rect2(cx - r, cy - r, cx + r, cy + r), ltype);
         e.Codes.Add((10, cx)); e.Codes.Add((20, cy)); e.Codes.Add((30, 0.0)); e.Codes.Add((40, r));
         e.Codes.Add((50, a1)); e.Codes.Add((51, a2));
     }

@@ -62,6 +62,9 @@ public class PlanItem
     public double Rotation { get; set; }
     /// <summary>Nhãn hiển thị thêm (tuỳ chọn), vd. "trục 2".</summary>
     public string Label { get; set; } = "";
+    /// <summary>[Dầm cong] độ vồng (m) tại giữa cung, dương = lệch về bên trái hướng 1→2; 0 = dầm thẳng. Hình học: <see cref="PlanArc"/>.</summary>
+    public double Bulge { get; set; }
+    [JsonIgnore] public bool IsCurved => Math.Abs(Bulge) > 1e-4 && Length > 1e-6;
 
     [JsonIgnore] public double Length => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
     [JsonIgnore] public double MinX => Math.Min(X1, X2);
@@ -343,6 +346,7 @@ public partial class StructuralPlan
     /// <summary>Nhịp dầm theo đoạn đặt: cắt tại các trục vuông góc nằm trong đoạn (và các cột đặt trên cùng mặt bằng nằm trên đoạn). Trả về các nhịp (m).</summary>
     public List<double> BeamSpans(PlanItem it, PlanLevel lv = null)
     {
+        if (it.IsCurved) return new List<double> { Math.Round(PlanArc.Length(it), 3) };   // dầm cong: một nhịp theo chiều dài cung
         double len = it.Length;
         if (len < 1e-6) return new List<double>();
         double ux = (it.X2 - it.X1) / len, uy = (it.Y2 - it.Y1) / len;
@@ -452,7 +456,7 @@ public partial class StructuralPlan
         {
             double d;
             if (PlanKinds.IsPoint(it.Kind)) d = Math.Sqrt((it.X1 - x) * (it.X1 - x) + (it.Y1 - y) * (it.Y1 - y));
-            else if (PlanKinds.IsSegment(it.Kind)) d = DistSeg(x, y, it.X1, it.Y1, it.X2, it.Y2);
+            else if (PlanKinds.IsSegment(it.Kind)) d = it.IsCurved ? PlanArc.Dist(it, x, y) : DistSeg(x, y, it.X1, it.Y1, it.X2, it.Y2);
             // hình chữ nhật (sàn, ô văng, cầu thang): chỉ chọn khi không có cột / móng / dầm gần; ô nhỏ hơn được ưu tiên
             else d = x >= it.MinX && x <= it.MaxX && y >= it.MinY && y <= it.MaxY ? tol * (0.9 + 0.09 * Math.Min(1, (it.MaxX - it.MinX) * (it.MaxY - it.MinY) / 200)) : double.MaxValue;
             if (d < bd) { bd = d; best = it; }

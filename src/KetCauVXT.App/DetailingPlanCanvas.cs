@@ -62,7 +62,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         r2.Children.Add(Btn("Vừa khung", () => { _fitted = false; Redraw(); }, "Thu phóng vừa khung"));
         top.Children.Add(r2);
         var r3 = new WrapPanel();
-        foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (PlanKinds.Slab, "Sàn"),
+        foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (ToolCurvedBeam, "Dầm cong"), (PlanKinds.Slab, "Sàn"),
                      (PlanKinds.Lintel, "Lanh tô"), (PlanKinds.Canopy, "Ô văng"), (PlanKinds.Stair, "Cầu thang"), (ToolSection, "Mặt cắt"),
                      (ToolSlabBay, "Sàn trong ô dầm"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), (ToolCallout, "Trích chi tiết"), ("Xoa", "Xoá") })
         {
@@ -147,7 +147,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
 
     private void FillMembers()
     {
-        string kind = _tool == ToolSlabBay ? PlanKinds.Slab : _tool;
+        string kind = _tool == ToolSlabBay ? PlanKinds.Slab : _tool == ToolCurvedBeam ? PlanKinds.Beam : _tool;
         if (!PlanKinds.All.Contains(kind)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
         _member.IsEnabled = true;
         var names = new List<string> { NewMember };
@@ -164,6 +164,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             "Xoa" => "Xoá: bấm vào vị trí cấu kiện (hoặc đường cắt) cần xoá khỏi mặt bằng (cấu kiện trong hồ sơ vẫn giữ).",
             ToolSection => _first == null ? "Mặt cắt: bấm điểm đầu đường cắt (cắt qua ô sàn điển hình, vuông góc dầm) – mặt cắt thép sàn tl 1/25 xuất cùng mặt bằng."
                                           : "Mặt cắt: bấm điểm cuối đường cắt – Esc huỷ. Chuột phải lên đường cắt: đổi tên / xoá.",
+            ToolCurvedBeam => _first == null ? "Dầm cong: bấm điểm đầu (bắt giao trục / tâm cột)." : _curveEnd == null ? "Dầm cong: bấm điểm cuối – Esc huỷ." : "Dầm cong: bấm một điểm bất kỳ trên cung (định độ vồng) – Esc huỷ.",
             ToolSlabBay => "Sàn trong ô dầm: bấm vào bên trong ô được bao bởi dầm (hoặc trục) – tự lấy kích thước ô.",
             ToolCanopyDoor => "Ô văng trên cửa: bấm vào ô cửa của ánh xạ kiến trúc (cửa ở tường ngoài) – tạo ô văng OV… liền lanh tô, vươn ra phía ngoài.",
             ToolCallout => CalloutHint(),
@@ -486,7 +487,21 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         }
         DrawCallouts(lv);   // khung chi tiết trích
         // xem trước khi vẽ
-        if (_first != null)
+        if (_first != null && _tool == ToolCurvedBeam)
+        {
+            var a = _first.Value; var br = Brushes.DodgerBlue;
+            if (_curveEnd == null) Line(a.X, a.Y, _mouseW.X, _mouseW.Y, br, 2, true);
+            else
+            {
+                var e2 = _curveEnd.Value;
+                var tmp = new PlanItem { Kind = PlanKinds.Beam, X1 = a.X, Y1 = a.Y, X2 = e2.X, Y2 = e2.Y, Bulge = PlanArc.SagittaFrom3(a.X, a.Y, e2.X, e2.Y, _mouseW.X, _mouseW.Y) };
+                var pts = PlanArc.Path(tmp, 48);
+                for (int i = 0; i + 1 < pts.Count; i++) Line(pts[i].X, pts[i].Y, pts[i + 1].X, pts[i + 1].Y, br, 2, false);
+                var gg = PlanArc.Geom(tmp);
+                if (gg != null) Text(_mouseW.X, _mouseW.Y + 0.3, "R=" + Dim(gg.Value.R) + " f=" + Dim(Math.Abs(tmp.Bulge)), br, 11);
+            }
+        }
+        else if (_first != null)
         {
             var a = _first.Value; var b = _mouseW;
             var br = Brushes.DodgerBlue;
@@ -527,6 +542,18 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                 if (m is ManualFooting f) { L = f.L > 0 ? f.L : 1.2; B = f.B > 0 ? f.B : 1.2; }
                 RectW(it.X1 - L / 2, it.Y1 - B / 2, it.X1 + L / 2, it.Y1 + B / 2, br, 1.2, null, true);
                 Text(it.X1 - L / 2, it.Y1 + B / 2 + 0.05, nm, br, 11, false);
+                break;
+            }
+            case PlanKinds.Beam when it.IsCurved:
+            {
+                // [Dầm cong] tim cung + nhãn tại giữa cung
+                double b = m is ManualBeam mbc ? mbc.B : 0.22;
+                var pl = new Shapes.Polyline { Stroke = br, StrokeThickness = Math.Max(2, b * _k), Opacity = 0.55, IsHitTestVisible = false, StrokeLineJoin = PenLineJoin.Round };
+                foreach (var q in PlanArc.Path(it, 48)) pl.Points.Add(ToS(q.X, q.Y));
+                _cv.Children.Add(pl);
+                var mid = PlanArc.Mid(it);
+                var g = PlanArc.Geom(it);
+                Text(mid.X, mid.Y + b / 2 + 0.05, nm + (m is ManualBeam mbc2 ? $" ({Dim(mbc2.B)}x{Dim(mbc2.H)})" : "") + (g != null ? " R=" + Dim(g.Value.R) : ""), br, 11);
                 break;
             }
             case PlanKinds.Beam:

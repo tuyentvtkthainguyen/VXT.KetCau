@@ -383,6 +383,7 @@ public static class StructuralPlanDrawing
                 label += $" – B={DxfWriter.N0(bb)}";
                 break;
         }
+        if (it.IsCurved) { CurvedBeam(w, it, b, foundation ? null : "DASHED", label); return; }   // [Dầm cong] ARC trên layer BE_TONG
         // dầm dưới sàn: nét đứt; dầm móng / giằng móng: nét liền
         DoubleLine(w, it, b, foundation ? null : "DASHED");
         var (ux, uy, nx, ny, ang) = Dir(it);
@@ -400,6 +401,26 @@ public static class StructuralPlanDrawing
             double g = StructuralPlan.Nearest(plan.Xs, it.X1) * 1000;
             if (Math.Abs(g - it.X1 * 1000) > 5) w.Dim(g, qy, it.X1 * 1000, qy, 0);
         }
+    }
+
+    /// <summary>[Dầm cong] hai mép dầm là cung tròn (ARC) đồng tâm R ± b/2 trên layer bê tông, nhãn tại giữa cung kèm bán kính tim.</summary>
+    private static void CurvedBeam(DxfWriter w, PlanItem it, double bMm, string ltype, string label)
+    {
+        var g = PlanArc.Geom(it);
+        if (g == null) return;
+        var (cx, cy, R, a0, sw) = g.Value;
+        double s0 = sw > 0 ? a0 : a0 + sw, s1 = sw > 0 ? a0 + sw : a0;
+        double d0 = s0 * 180 / Math.PI, d1 = s1 * 180 / Math.PI;
+        double Rm = R * 1000;
+        foreach (double r in new[] { Rm - bMm / 2, Rm + bMm / 2 })
+            if (r > 1) w.Arc(Lay.BeTong, cx * 1000, cy * 1000, r, d0, d1, ltype);
+        double am = a0 + sw / 2, th = w.Th;
+        double off = Rm + bMm / 2 + 0.5 * th;
+        double tx = cx * 1000 + off * Math.Cos(am), ty = cy * 1000 + off * Math.Sin(am);
+        double ang = am * 180 / Math.PI - 90;
+        while (ang > 90) ang -= 180;
+        while (ang < -90) ang += 180;
+        w.Text(Lay.Chu, tx, ty, th, label + " R=" + DxfWriter.N0(Rm), ang, 1, 0);
     }
 
     private static void DrawLintel(DxfWriter w, PlanItem it, Dictionary<string, (IDetailMember M, DetailResult R)> map)

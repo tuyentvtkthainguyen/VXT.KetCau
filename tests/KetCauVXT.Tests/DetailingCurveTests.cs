@@ -1,0 +1,102 @@
+using KetCauVXT.Detailing;
+using KetCauVXT.Import;
+
+namespace KetCauVXT.Tests;
+
+/// <summary>[Triển khai] Nhận diện layer cột / dầm, dầm cong từ cung tròn (ARC, cung lồi đa tuyến) của AutoCAD, tạo sàn từ dầm,
+/// sao chép mặt bằng sang tầng có sẵn, xuất dầm cong thành ARC trên layer bê tông.</summary>
+public static class DetailingCurveTests
+{
+    private static double B(bool x) => x ? 1 : 0;
+
+    public static void Run(Action<string, double, double, double> check)
+    {
+        var cul = System.Threading.Thread.CurrentThread.CurrentCulture;
+        System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;   // số trong JSON thử
+        try { RunCore(check); } finally { System.Threading.Thread.CurrentThread.CurrentCulture = cul; }
+    }
+
+    private static void RunCore(Action<string, double, double, double> check)
+    {
+        // ---- hình học cung ----
+        double s = PlanArc.SagittaFrom3(0, 0, 4, 0, 2, 1);
+        check("Dầm cong: độ vồng qua 3 điểm (0,0)-(4,0)-(2,1) = +1", s, 1, 1e-9);
+        var g = PlanArc.Geom(0, 0, 4, 0, 1).Value;
+        check("Dầm cong: R = 2,5 m", g.R, 2.5, 1e-9);
+        check("Dầm cong: chiều dài cung", PlanArc.Length(new PlanItem { X1 = 0, Y1 = 0, X2 = 4, Y2 = 0, Bulge = 1 }), 2.5 * 2 * Math.Asin(2 / 2.5), 1e-9);
+        var fa = PlanArc.FromArc(0, 0, 3, 0, Math.PI / 2);
+        check("Dầm cong: cung tâm (0,0) R3 90° → độ vồng 3·(1−cos45°)", Math.Abs(fa.Bulge), 3 * (1 - Math.Cos(Math.PI / 4)), 1e-9);
+
+        // ---- dữ liệu VXT_MB_KC: lưới 2 nhịp 4 m × 5 m, cột, dầm 2 nét, dầm cong (ARC đôi + đa tuyến cung lồi) ----
+        string L(string layer, double x1, double y1, double x2, double y2) => $"{{\"t\":\"line\",\"layer\":\"{layer}\",\"pts\":[[{x1},{y1}],[{x2},{y2}]]}}";
+        string Col(double x, double y) => $"{{\"t\":\"line\",\"layer\":\"S-COT\",\"pts\":[[{x - 110},{y - 110}],[{x + 110},{y - 110}],[{x + 110},{y + 110}],[{x - 110},{y + 110}]],\"closed\":true}}";
+        var ents = new List<string>();
+        foreach (var x in new[] { 0.0, 4000, 8000 }) foreach (var y in new[] { 0.0, 5000 }) ents.Add(Col(x, y));
+        // dầm X (y=0, y=5000) và Y (x=0, 4000, 8000), 2 nét cách 220
+        foreach (var y in new[] { 0.0, 5000 }) { ents.Add(L("KC_DAM", 0, y - 110, 8000, y - 110)); ents.Add(L("KC_DAM", 0, y + 110, 8000, y + 110)); }
+        foreach (var x in new[] { 0.0, 4000, 8000 }) { ents.Add(L("KC_DAM", x - 110, 0, x - 110, 5000)); ents.Add(L("KC_DAM", x + 110, 0, x + 110, 5000)); }
+        // dầm cong ban công: tâm (4000, 5000), R 3890 / 4110, 30°…150° (ARC đôi)
+        double cx = 4000, cy = 5000, a0 = Math.PI / 6, a1 = 5 * Math.PI / 6;
+        string Arc(double r) { var pts = Enumerable.Range(0, 13).Select(i => { double a = a0 + (a1 - a0) * i / 12; return $"[{cx + r * Math.Cos(a)},{cy + r * Math.Sin(a)}]"; }); return $"{{\"t\":\"line\",\"layer\":\"KC_DAM\",\"pts\":[{string.Join(",", pts)}],\"arc\":[{cx},{cy},{r}]}}"; }
+        ents.Add(Arc(3890)); ents.Add(Arc(4110));
+        // dầm cong vẽ 1 nét đa tuyến có cung lồi: (0,-2000) → (8000,-2000) bulge −0,25 (CW, vồng xuống)
+        ents.Add("{\"t\":\"line\",\"layer\":\"KC_DAM\",\"pts\":[[0,-2000],[8000,-2000]],\"bulges\":[-0.25,0]}");
+        ents.Add("{\"t\":\"text\",\"layer\":\"CHU\",\"x\":2000,\"y\":5300,\"s\":\"D1 220x400\"}");
+        string json = "{\"kind\":\"matbang\",\"unit\":\"mm\",\"entities\":[" + string.Join(",", ents) + "]}";
+        var log = new List<string>();
+        var dx = StructuralPlanImport.ParseExchange(json, log);
+        check("VXT_MB_KC: đọc đủ thực thể", dx.Count, ents.Count, 0);
+        check("VXT_MB_KC: \"arc\" → đoạn cung (tâm, R đúng)", B(dx.Count(e => e.Arcs != null && Math.Abs(e.Arcs[0].R - 3.89) < 1e-9) == 1), 1, 0);
+        check("VXT_MB_KC: \"bulges\" → điểm chia cung lồi", B(dx.Any(e => e.Arcs != null && e.Points.Count > 4 && Math.Abs(e.Points[0].Y + 2) < 1e-9)), 1, 0);
+
+        // nhận diện layer
+        var stats = PlanCadGeom.LayerStats(dx);
+        Console.WriteLine("   · Layer: " + string.Join("; ", stats.Select(t => $"{t.Layer} [{t.Suggest}] nét {t.Lines}, kín cỡ cột {t.ColRects}, cung {t.Arcs}")));
+        check("Nhận diện layer: KC_DAM → Dầm (từ khoá)", B(stats.First(t => t.Layer == "KC_DAM").Suggest == "Dầm"), 1, 0);
+        check("Nhận diện layer: S-COT → Cột", B(stats.First(t => t.Layer == "S-COT").Suggest == "Cột"), 1, 0);
+
+        var p = new DetailingProject();
+        p.Plan.SpansX = "4 4"; p.Plan.SpansY = "5";
+        var lv = p.Plan.Levels.First(l => l.Name == "Tầng 2");
+        var keys = new ArchLayerKeys { BeamLayers = new(new[] { "KC_DAM" }, StringComparer.OrdinalIgnoreCase), ColumnLayers = new(new[] { "S-COT" }, StringComparer.OrdinalIgnoreCase), SlabLayers = new() };
+        var r = StructuralPlanImport.Import(p, lv, dx, true, false, keys, (0, -0.0), true);
+        Console.WriteLine("   · " + string.Join(" | ", r.Log));
+        check("Nhập: 6 cột", r.Columns, 6, 0);
+        check("Nhập: 2 dầm cong (ARC đôi + đa tuyến cung lồi)", r.CurvedBeams, 2, 0);
+        var arcBeam = lv.Items.First(i => i.IsCurved && i.Y1 > 4);
+        var ag = PlanArc.Geom(arcBeam).Value;
+        check("Dầm cong ARC đôi: bán kính tim 4,0 m", ag.R, 4.0, 1e-3);
+        var mb = p.All.OfType<ManualBeam>().First(m => m.Name == arcBeam.Member);
+        check("Dầm cong ARC đôi: bề rộng = khoảng cách 2 cung 220 mm", mb.B, 0.22, 1e-6);
+        check("Dầm cong: nhịp = chiều dài cung 4·(2π/3)", p.Plan.BeamSpans(arcBeam, lv)[0], Math.Round(4 * 2 * Math.PI / 3, 3), 2e-3);
+        var bulgeBeam = lv.Items.First(i => i.IsCurved && i.Y1 < -1);
+        check("Dầm cong đa tuyến: độ vồng = −b·c/2 → vồng xuống 1,0 m", bulgeBeam.Bulge, -1.0, 1e-3);
+        check("Nhập: dầm thẳng 2 nét (5 dầm)", lv.Items.Count(i => i.Kind == PlanKinds.Beam && !i.IsCurved), 5, 0);
+        check("Tạo sàn từ dầm: 2 ô 4 × 5 m", lv.Items.Count(i => i.Kind == PlanKinds.Slab), 2, 0);
+        check("Tạo sàn từ dầm: ô cùng kích thước dùng chung một cấu kiện", lv.Items.Where(i => i.Kind == PlanKinds.Slab).Select(i => i.Member).Distinct().Count(), 1, 0);
+        int again = PlanAutoSlab.Create(p, lv);
+        check("Tạo sàn từ dầm lần 2: không tạo trùng", again, 0, 0);
+
+        // sao chép sang tầng có sẵn
+        var mai = p.Plan.Levels.First(l => l.Name == "Mái");
+        int n = PlanCopy.CopyTo(p, lv, new[] { mai }, true);
+        check("Sao chép sang tầng có sẵn: đủ vị trí", n, lv.Items.Count, 0);
+        check("Sao chép: dầm cong giữ độ vồng", B(mai.Items.Count(i => i.IsCurved) == 2), 1, 0);
+        var slabM = p.All.First(m => m.Name == lv.Items.First(i => i.Kind == PlanKinds.Slab).Member);
+        check("Sao chép: SL sàn dùng chung = 4 vị trí", slabM.Quantity, 4, 0);
+
+        // xuất DXF: dầm cong = ARC trên layer bê tông
+        var map = StructuralPlanDrawing.Map(p, new());
+        string dxf = StructuralPlanDrawing.Level(p.Plan, lv, map, StructuralPlanDrawing.LevelTitle(lv), false).ToDxfString();
+        var lines = dxf.Replace("\r", "").Split('\n').Select(q => q.Trim()).ToList();
+        int arcs = 0;
+        for (int i = 0; i + 1 < lines.Count; i++)
+            if (lines[i] == "0" && lines[i + 1] == "ARC")
+            {
+                for (int j = i + 2; j + 1 < lines.Count && !(lines[j] == "0" && j > i + 2); j += 2)
+                    if (lines[j] == "8") { if (lines[j + 1] == "BE_TONG") arcs++; break; }
+            }
+        Console.WriteLine($"   · DXF mặt bằng: {arcs} ARC trên BE_TONG");
+        check("Xuất DXF: mỗi dầm cong 2 cung mép (ARC, layer BE_TONG)", arcs, 4, 0);
+    }
+}

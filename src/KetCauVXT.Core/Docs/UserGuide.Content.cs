@@ -785,6 +785,14 @@ public static partial class UserGuide
                 "**Kết quả về AutoCAD**: Tệp → *Gửi kết quả về AutoCAD* (hoặc tab Triển khai → *Kết quả về AutoCAD…*). Trong AutoCAD gõ **VXT_NHAN**: vẽ tên cấu kiện, tiết diện, thép dầm / cột / sàn, khung móng / đài cọc lên lớp VXT-KQ-COT, -DAM, -SAN, -MONG đúng vị trí trên bản vẽ gốc (có bản vẽ liên kết) hoặc tại điểm chèn.",
                 "**VXT_CHEN**: chèn bản vẽ triển khai dạng **chi tiết rời** – không lồng khung tờ, khung tên; mỗi chi tiết (mặt bằng, mặt đứng dầm, mặt cắt, bảng thép…) nằm trong một khung chữ nhật lớp KHUNG_CHI_TIET để phân biệt. Người dùng tự dàn trang in (Layout / viewport). Xuất bản vẽ DXF trong chương trình cũng có tuỳ chọn \"Chi tiết rời – không lồng khung tên\".");
 
+        c.Sec("trien-khai.nhap-cad-dam-cong", "Triển khai: nhập mặt bằng kết cấu từ AutoCAD – nhận diện layer, dầm cong, sàn từ dầm, sao chép tầng")
+            .Steps("Trong AutoCAD gõ **VXT_MB_KC** (hoặc trong Triển khai hồ sơ – Mặt bằng kết cấu bấm **Nhập MB kết cấu từ CAD…** chọn file DXF/DWG).",
+                "Hộp thoại **nhận diện layer**: bảng các layer của bản vẽ (số nét, đa tuyến kín cỡ cột, cung tròn, chữ) với vai trò gợi ý – **Cột** (đa tuyến kín → tâm + b×h), **Dầm** (cặp nét song song → tim + bề rộng; nét đơn → tim; **cung tròn ARC / cung lồi đa tuyến → DẦM CONG**, cặp cung đồng tâm → bề rộng), **Sàn**; sửa vai trò nếu cần.",
+                "**Gốc toạ độ**: dời về giao trục đầu, **đặt theo ánh xạ (xref) kiến trúc của tầng** (bản vẽ kết cấu cùng toạ độ mặt bằng kiến trúc) hoặc giữ toạ độ bản vẽ.",
+                "Tích **Tạo mặt bằng sàn từ mặt bằng dầm đã nhận**: ô kín bao bởi dầm → ô sàn, ô cùng kích thước dùng chung S1, S2…; chọn các tầng giống nhau để **sao chép** mặt bằng vừa nhập.")
+            .Bullets("Công cụ **Dầm cong** trên mặt bằng: bấm điểm đầu, điểm cuối, một điểm trên cung (hiện R, độ vồng); nhịp dầm = chiều dài cung. Xuất bản vẽ: hai mép dầm cong là **ARC trên layer BE_TONG** kèm nhãn R.",
+                "**▦ Tạo sàn từ dầm** (mặt bằng đang xem) và **⧉ Sao chép sang tầng có sẵn…** (dùng chung cấu kiện, SL tự cập nhật); **⧉ Nhân bản tầng…** để tạo tầng mới giống tầng đang xem.");
+
         c.Sec("khoi-tao.khai-bao-tung-buoc", "Bảng khai báo từng bước – mỗi thông số một bảng")
             .Steps("Menu **Khai báo → 📋 Bảng khai báo từng bước…** (hoặc nút cùng tên đầu thẻ Công trình): một khung liệt kê đủ các mục theo thứ tự – 1. Công trình (thông tin, cấp công trình, lưới trục và tầng, tiết diện mặc định, địa điểm), 2. Vật liệu – tiết diện, 3. Địa chất, 4. Tải trọng (tải mặc định, gió, trường hợp tải, tổ hợp), 5. Động đất – dao động.",
                 "Mỗi dòng có **tình trạng** (⚠ = còn thiếu, ví dụ ô trống, chưa chọn vùng gió, chưa có tổ hợp) và nút **Mở bảng…**: bật ra hộp thoại dạng bảng của riêng mục đó (Thông số | Giá trị, hoặc bảng vật liệu, tiết diện, tổ hợp…). Sửa trong bảng = sửa ô tương ứng ở khung trái.",

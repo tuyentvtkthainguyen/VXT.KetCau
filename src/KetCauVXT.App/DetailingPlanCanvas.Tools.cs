@@ -15,7 +15,8 @@ namespace KetCauVXT.App;
 /// vẽ trong AutoCAD (DXF / DWG hoặc lệnh VXT_MB_KC), liên kết hai chiều với cây thư mục cấu kiện.</summary>
 public sealed partial class DetailingPlanCanvas
 {
-    public const string ToolSlabBay = "SanO", ToolCanopyDoor = "OVCua", ToolMove = "DiChuyen";
+    public const string ToolSlabBay = "SanO", ToolCanopyDoor = "OVCua", ToolMove = "DiChuyen", ToolCurvedBeam = "DamCong";
+    private (double X, double Y)? _curveEnd;   // [Dầm cong] điểm cuối (chờ điểm trên cung)
 
     /// <summary>Thư mục hồ sơ (để lưu / tìm ánh xạ theo đường dẫn tương đối).</summary>
     public Func<string> ProjectDir { get; set; }
@@ -40,7 +41,9 @@ public sealed partial class DetailingPlanCanvas
         r.Children.Add(Btn("Lanh tô từ cửa mô hình", LintelsFromModel, "Đặt lanh tô cho mọi cửa gắn tường của mô hình (chế độ Thiết kế, giao diện kiểu Revit) lên mặt bằng lanh tô các tầng – gộp cửa giống nhau thành LT1, LT2…"));
         r.Children.Add(Btn("Lỗ xuyên từ điện nước", PenetrationsFromModel, "Chuyển lỗ xuyên dầm / sàn có cảnh báo của bộ môn điện nước (mô hình ở chế độ Thiết kế) vào dầm / sàn hồ sơ cùng tên: lỗ trên mặt đứng, thép gia cường LX / LS, kiểm tra cắt tại lỗ"));
         r.Children.Add(Btn("Lanh tô theo cửa KT", LintelsFromDoors, "Đề xuất lanh tô cho mọi ô cửa của ánh xạ kiến trúc tầng này (gộp các cửa giống nhau thành LT1, LT2…)"));
-        r.Children.Add(Btn("Nhập MB kết cấu từ CAD…", ImportCadPlan, "Nhập mặt bằng kết cấu vẽ trong AutoCAD (DXF/DWG): dầm (layer DAM/BEAM), cột (COT/COLUMN), chữ tên D1 220x400, C1, S1…"));
+        r.Children.Add(Btn("Nhập MB kết cấu từ CAD…", ImportCadPlan, "Nhập mặt bằng kết cấu vẽ trong AutoCAD (DXF/DWG): nhận diện layer cột, dầm (cả dầm cong – cung tròn), sàn; chữ tên D1 220x400, C1, S1…; đặt theo ánh xạ kiến trúc; tạo sàn từ dầm"));
+        r.Children.Add(Btn("▦ Tạo sàn từ dầm", AutoSlabsHere, "Tạo ô sàn trong mọi ô kín bao bởi dầm của mặt bằng đang xem; ô cùng kích thước dùng chung cấu kiện S1, S2…"));
+        r.Children.Add(Btn("⧉ Sao chép sang tầng có sẵn…", CopyToLevelsDialog, "Sao toàn bộ vị trí cấu kiện của mặt bằng đang xem sang các mặt bằng có sẵn giống nhau (dùng chung cấu kiện, SL tự cập nhật)"));
         return r;
     }
 
@@ -80,6 +83,28 @@ public sealed partial class DetailingPlanCanvas
     {
         switch (_tool)
         {
+            case ToolCurvedBeam:
+            {
+                if (_first == null) { _curveEnd = null; _first = SnapW(lv, w, tol); UpdateHint(); Redraw(); return true; }
+                if (_curveEnd == null)
+                {
+                    var e1 = SnapW(lv, w, tol);
+                    if (Math.Abs(e1.X - _first.Value.X) + Math.Abs(e1.Y - _first.Value.Y) < 0.05) return true;
+                    _curveEnd = e1; UpdateHint(); Redraw(); return true;
+                }
+                var a = _first.Value; var b = _curveEnd.Value;
+                double s = PlanArc.SagittaFrom3(a.X, a.Y, b.X, b.Y, w.X, w.Y);
+                _first = null; _curveEnd = null;
+                if (Math.Abs(s) < 0.01) { _status.Text = "Điểm thứ ba gần như thẳng hàng – bấm xa dây cung hơn (hoặc dùng công cụ Dầm cho dầm thẳng)."; Redraw(); return true; }
+                string member = _member.SelectedItem as string;
+                if (member == NewMember) member = "";
+                var it = Plan.Place(P, lv, PlanKinds.Beam, a.X, a.Y, b.X, b.Y, member ?? "");
+                it.Bulge = Math.Round(s, 4);
+                var m = P.All.FirstOrDefault(x => x.Name == it.Member);
+                if (m != null && Plan.Count(m.Name) == 1) Plan.ApplyGeometry(m, it, lv);   // nhịp = chiều dài cung
+                Done(it);
+                return true;
+            }
             case ToolSlabBay:
             {
                 var bay = PlanSnap.BayAt(Plan, lv, w.X, w.Y);
@@ -257,17 +282,20 @@ public sealed partial class DetailingPlanCanvas
         ImportEntities(ents, Path.GetFileName(dlg.FileName), log);
     }
 
-    /// <summary>Nhập thực thể (từ file hoặc lệnh VXT_MB_KC) vào mặt bằng đang xem.</summary>
+    /// <summary>Nhập thực thể (từ file hoặc lệnh VXT_MB_KC) vào mặt bằng đang xem: hộp thoại nhận diện layer (cột, dầm, sàn),
+    /// gốc toạ độ (giao trục đầu / theo ánh xạ kiến trúc / giữ nguyên), tạo sàn từ dầm, sao chép sang tầng giống nhau – DetailingPlanCanvas.Import.cs.</summary>
     public void ImportEntities(List<KetCauVXT.Import.DxfEntity> ents, string source, List<string> log = null)
     {
         var lv = Level; if (lv == null) return;
         if (ents == null || ents.Count == 0) { MessageBox.Show(_owner, "Không có đối tượng để nhập" + (log?.Count > 0 ? ": " + log[0] : "."), "Nhập mặt bằng kết cấu"); return; }
-        bool replace = lv.Items.Any(i => i.Kind == PlanKinds.Beam || i.Kind == PlanKinds.Column)
-                       && MessageBox.Show(_owner, "Mặt bằng " + lv.Name + " đã có dầm / cột. Xoá vị trí dầm, cột, sàn cũ trước khi nhập?", "Nhập mặt bằng kết cấu", MessageBoxButton.YesNo) == MessageBoxResult.Yes;
+        var opt = AskImportOptions(lv, ents, source);
+        if (opt == null) return;
         _undo.Push(Plan);
-        var r = StructuralPlanImport.Import(P, lv, ents, true, replace);
+        var r = StructuralPlanImport.Import(P, lv, ents, opt.AlignOrigin, opt.Replace, opt.Keys, opt.Origin, opt.AutoSlabs);
+        int copied = opt.CopyTo.Count > 0 ? PlanCopy.CopyTo(P, lv, opt.CopyTo, opt.Replace) : 0;
         _changed(); FillMembers(); _fitted = false; UpdateHint(); Redraw();
-        _status.Text = (source ?? "") + ": " + string.Join(" ", r.Log) + (log?.Count > 0 ? " (" + log[0] + ")" : "");
+        _status.Text = (source ?? "") + ": " + string.Join(" ", r.Log) + (copied > 0 ? $" Sao chép sang {string.Join(", ", opt.CopyTo.Select(l => l.Name))} ({copied} vị trí)." : "")
+                       + (log?.Count > 0 ? " (" + log[0] + ")" : "");
     }
 
     // ------------------------------------------------------------------
