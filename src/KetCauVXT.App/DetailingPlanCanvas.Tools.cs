@@ -15,7 +15,7 @@ namespace KetCauVXT.App;
 /// vẽ trong AutoCAD (DXF / DWG hoặc lệnh VXT_MB_KC), liên kết hai chiều với cây thư mục cấu kiện.</summary>
 public sealed partial class DetailingPlanCanvas
 {
-    public const string ToolSlabBay = "SanO", ToolCanopyDoor = "OVCua", ToolMove = "DiChuyen", ToolCurvedBeam = "DamCong", ToolDropSlab = "SanHa", ToolStairBay = "ThangO", ToolSplitBeam = "ChiaDam";
+    public const string ToolSlabBay = "SanO", ToolCanopyDoor = "OVCua", ToolMove = "DiChuyen", ToolCurvedBeam = "DamCong", ToolDropSlab = "SanHa", ToolStairBay = "ThangO", ToolSplitBeam = "ChiaDam", ToolSlabOutline = "SanBien";
     private (double X, double Y)? _curveEnd;   // [Dầm cong] điểm cuối (chờ điểm trên cung)
 
     /// <summary>Thư mục hồ sơ (để lưu / tìm ánh xạ theo đường dẫn tương đối).</summary>
@@ -96,6 +96,19 @@ public sealed partial class DetailingPlanCanvas
                 if (it2 == null) { _status.Text = "Điểm chia quá gần đầu dầm."; return true; }
                 _sel = it2; _changed(); FillMembers(); UpdateHint(); Redraw();
                 _status.Text = $"Đã chia dầm {old} tại ({it2.X1:0.###}; {it2.Y1:0.###}): {old} nhịp {string.Join("; ", Plan.BeamSpans(hit, lv).Select(v => v.ToString("0.###", CultureInfo.InvariantCulture)))} m, {it2.Member} nhịp {string.Join("; ", Plan.BeamSpans(it2, lv).Select(v => v.ToString("0.###", CultureInfo.InvariantCulture)))} m.";
+                return true;
+            }
+            case ToolSlabOutline:
+            {
+                // [Sàn biên dạng] bấm vào trong vùng kín bao bởi tim dầm (thẳng / cong, chữ L, đa giác) → ô sàn theo đường biên
+                var poly = PlanOutline.Region(lv, w.X, w.Y);
+                if (poly == null) { _status.Text = "Không tìm thấy đường biên kín bao quanh điểm bấm – cần các dầm (thẳng hoặc cong) khép kín quanh ô sàn."; return true; }
+                string member = _member.SelectedItem as string;
+                if (member == NewMember) member = "";
+                var it = PlanOutline.PlaceSlab(P, lv, poly, member ?? "");
+                Plan.SyncQuantities(P);
+                Done(it);
+                _status.Text = $"Đã tạo sàn {it.Member} theo biên dạng {poly.Count} đỉnh, diện tích {Math.Abs(PlanOutline.Area(poly)):0.##} m²" + (it.IsPolygon ? " (sàn đa giác)." : " (ô chữ nhật).");
                 return true;
             }
             case ToolDropSlab:
@@ -211,6 +224,7 @@ public sealed partial class DetailingPlanCanvas
         var it = _moveItem;
         if (PlanKinds.IsPoint(it.Kind)) RectW(it.X1 + dx - 0.15, it.Y1 + dy - 0.15, it.X1 + dx + 0.15, it.Y1 + dy + 0.15, br, 1.5, null, true);
         else if (PlanKinds.IsSegment(it.Kind)) Line(it.X1 + dx, it.Y1 + dy, it.X2 + dx, it.Y2 + dy, br, 2, true);
+        else if (it.IsPolygon) PolyW(it.Outline.Select(q => (q[0] + dx, q[1] + dy)).ToList(), br, 1.5, null, true);
         else RectW(it.MinX + dx, it.MinY + dy, it.MaxX + dx, it.MaxY + dy, br, 1.5, null, true);
     }
 

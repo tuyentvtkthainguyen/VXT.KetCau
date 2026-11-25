@@ -118,6 +118,47 @@ public static class DetailingCurveTests
         int nmg = PlanBeamMerge.Merge(p, t4, false);
         check("Gộp dầm thẳng hàng (cùng tiết diện) → lại 1 dầm, cấu kiện thừa bị xoá", B(nmg == 1 && t4.Items.Count(i => i.Kind == PlanKinds.Beam) == 1 && p.Beams.All(b => b.Name != m2)), 1, 0);
 
+        // [Nắm kéo đầu dầm] kéo đầu 2 từ trục 3 (x=8) ra x=10 → dài 10 m, nhịp cập nhật; kéo về 8; dầm cùng tên kéo chạm → gộp
+        var bg = t4.Items.First(i => i.Kind == PlanKinds.Beam);
+        check("Nắm kéo: bắt đúng đầu 2 của dầm", PlanGrip.At(bg, 7.95, 0.03, 0.2), 2, 0);
+        check("Nắm kéo: điểm giữa dầm không phải ô nắm", PlanGrip.At(bg, 4.0, 0.0, 0.2), 0, 0);
+        PlanGrip.Drag(bg, 2, 10.0, 0.0); PlanGrip.Finish(p, t4, bg);
+        check("Nắm kéo: dầm dài 10 m, tổng nhịp 10 m", p.Plan.BeamSpans(bg, t4).Sum(), 10, 1e-6);
+        PlanGrip.Drag(bg, 2, 8.0, 0.0); PlanGrip.Finish(p, t4, bg);
+        var bx = p.Plan.Place(p, t4, PlanKinds.Beam, 9.0, 0.0, 12.0, 0.0, bg.Member);
+        PlanGrip.Drag(bx, 1, 8.0, 0.0);
+        string gm = PlanGrip.Finish(p, t4, bx);
+        var bgs = t4.Items.Where(i => i.Kind == PlanKinds.Beam).ToList();
+        check("Nắm kéo chạm dầm thẳng hàng cùng tên → gộp 1 dầm dài 12 m", B(bgs.Count == 1 && Math.Abs(bgs[0].Length - 12) < 1e-6), 1, 0);
+        var bc = new PlanItem { Kind = PlanKinds.Beam, X1 = 0, Y1 = 0, X2 = 4, Y2 = 0, Bulge = -1 };
+        PlanGrip.Drag(bc, 2, 8, 0);
+        check("Nắm kéo dầm cong: giữ tỷ lệ độ võng / dây cung (−1 → −2)", bc.Bulge, -2, 1e-9);
+
+        // [Sàn theo biên dạng] mặt bằng chữ L và ô có cạnh cong: bấm trong vùng → dò đường bo viền theo tim dầm
+        var t5 = new PlanLevel { Name = "Tầng 5", Elevation = 14.4 };
+        p.Plan.Levels.Insert(4, t5);
+        var Lp = new[] { (0.0, 0.0), (6.0, 0.0), (6.0, 3.0), (3.0, 3.0), (3.0, 6.0), (0.0, 6.0) };
+        for (int i = 0; i < Lp.Length; i++)
+            p.Plan.Place(p, t5, PlanKinds.Beam, Lp[i].Item1, Lp[i].Item2, Lp[(i + 1) % Lp.Length].Item1, Lp[(i + 1) % Lp.Length].Item2, "");
+        var polyL = PlanOutline.Region(t5, 1.0, 1.0);
+        check("Sàn chữ L: đường biên 6 đỉnh", polyL?.Count ?? 0, 6, 0);
+        check("Sàn chữ L: diện tích 27 m²", Math.Abs(PlanOutline.Area(polyL)), 27, 1e-6);
+        var sL = PlanOutline.PlaceSlab(p, t5, polyL, "");
+        check("Sàn chữ L: ô sàn đa giác (Outline), không phải hình chữ nhật", B(sL.IsPolygon && t5.Items.Contains(sL)), 1, 0);
+        check("Sàn chữ L: bấm vào chỗ khuyết (4.5; 4.5) không chọn được sàn", B(StructuralPlan.HitTest(t5, 4.5, 4.5, 0.1)?.Kind == PlanKinds.Slab), 0, 0);
+        check("Sàn ngoài vùng kín → không có biên", B(PlanOutline.Region(t5, 5.0, 5.0) == null), 1, 0);
+        var t6 = new PlanLevel { Name = "Tầng 6", Elevation = 18.0 };
+        p.Plan.Levels.Insert(5, t6);
+        p.Plan.Place(p, t6, PlanKinds.Beam, 0, 0, 4, 0, ""); p.Plan.Place(p, t6, PlanKinds.Beam, 4, 0, 4, 4, ""); p.Plan.Place(p, t6, PlanKinds.Beam, 0, 4, 0, 0, "");
+        var arcB = p.Plan.Place(p, t6, PlanKinds.Beam, 4, 4, 0, 4, ""); arcB.Bulge = -1;   // cung vồng lên trên
+        var polyC = PlanOutline.Region(t6, 2.0, 4.5);
+        double aC = polyC == null ? 0 : Math.Abs(PlanOutline.Area(polyC));
+        Console.WriteLine($"   · Sàn cạnh cong: {polyC?.Count ?? 0} đỉnh, A = {aC:0.###} m² (chính xác 18.795)");
+        check("Sàn cạnh cong: bấm trong phần vồng → diện tích ≈ 16 + 2,795 m²", aC, 18.795, 0.08);
+        var sC = PlanOutline.PlaceSlab(p, t6, polyC, "");
+        string dxf5 = StructuralPlanDrawing.Level(p.Plan, t5, StructuralPlanDrawing.Map(p, new()), StructuralPlanDrawing.LevelTitle(t5), false).ToDxfString();
+        check("Xuất DXF: sàn biên dạng có ghi chú", B(dxf5.Contains(KetCauVXT.Drawing.DxfWriter.Encode("SÀN BIÊN DẠNG"))), 1, 0);
+
         // xuất DXF: dầm cong = ARC trên layer bê tông
         var map = StructuralPlanDrawing.Map(p, new());
         string dxf = StructuralPlanDrawing.Level(p.Plan, lv, map, StructuralPlanDrawing.LevelTitle(lv), false).ToDxfString();

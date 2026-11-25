@@ -501,6 +501,21 @@ public static class StructuralPlanDrawing
         double cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
         var m = map.TryGetValue(it.Member ?? "", out var v) ? v.M : null;
         string nm = string.IsNullOrEmpty(it.Member) ? "S?" : it.Member;
+        if (it.IsPolygon)
+        {
+            // [Sàn biên dạng] đường biên theo trục dầm (nét mảnh ký hiệu), tên sàn tại trọng tâm, thép ghi chú
+            var pts = it.Outline.Select(q => (q[0] * 1000, q[1] * 1000)).ToList();
+            w.Polyline(Lay.KyHieu, pts, true, 0, "DASHED");
+            var (gx, gy) = PlanOutline.Centroid(it.Outline);
+            if (PlanOutline.Inside(it.Outline, gx, gy)) { cx = gx * 1000; cy = gy * 1000; }
+            double tp = m switch { ManualSlab s => s.T, ManualSlabPlan sp => sp.T, _ => 0 };
+            FramingPlan.SlabNameBox(w, cx, cy, nm);
+            _tags?.Reserve(new Rect2(cx - 2.2 * th - 0.35 * th * nm.Length, cy - 2.8 * th, cx + 2.2 * th + 0.35 * th * nm.Length, cy + 1.6 * th));
+            if (tp > 0) w.Text(Lay.Chu, cx, cy - 1.6 * th, 0.8 * th, "h=" + DxfWriter.N0(tp * 1000), 0, 1, 3);
+            if (it.Drop > 1e-4) w.Text(Lay.Chu, cx, cy - 2.8 * th, 0.8 * th, "SÀN HẠ COS -" + DxfWriter.N0(it.Drop * 1000), 0, 1, 3);
+            w.Text(Lay.Chu, cx, cy - (it.Drop > 1e-4 ? 4.0 : 2.8) * th, 0.7 * th, "SÀN BIÊN DẠNG – THÉP XEM CHI TIẾT", 0, 1, 3);
+            return;
+        }
         switch (m)
         {
             case RaftInput rf:

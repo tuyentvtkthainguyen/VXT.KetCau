@@ -158,7 +158,8 @@ public static class PlanCopy
             foreach (var it in src.Items)
             {
                 if (it.Kind == PlanKinds.Footing && !t.IsFoundation) continue;
-                t.Items.Add(new PlanItem { Kind = it.Kind, Member = it.Member, X1 = it.X1, Y1 = it.Y1, X2 = it.X2, Y2 = it.Y2, Rotation = it.Rotation, Label = it.Label, Bulge = it.Bulge, Drop = it.Drop });
+                t.Items.Add(new PlanItem { Kind = it.Kind, Member = it.Member, X1 = it.X1, Y1 = it.Y1, X2 = it.X2, Y2 = it.Y2, Rotation = it.Rotation, Label = it.Label, Bulge = it.Bulge, Drop = it.Drop,
+                    Outline = it.Outline?.Select(q => new[] { q[0], q[1] }).ToList() });
                 n++;
             }
             if (copySections && p.Plan.Sections != null)
@@ -310,5 +311,202 @@ public static class PlanBeamMerge
         else p.Plan.EnsureMember(p, it2, lv);
         p.Plan.SyncQuantities(p);
         return it2;
+    }
+}
+
+/// <summary>[Biên dạng sàn] Pick đường bo viền: bấm vào trong vùng kín bao bởi dầm (thẳng + cong, chia cung thành đoạn ngắn) →
+/// đa giác biên ô sàn (vùng nhỏ nhất chứa điểm bấm); hỗ trợ ô chữ L, ô xiên, ô giáp dầm cong.</summary>
+public static class PlanOutline
+{
+    /// <summary>Trọng tâm diện tích đa giác.</summary>
+    public static (double X, double Y) Centroid(IList<double[]> poly)
+    {
+        double a = 0, cx = 0, cy = 0; int n = poly.Count;
+        for (int i = 0; i < n; i++)
+        {
+            var p = poly[i]; var q = poly[(i + 1) % n];
+            double c = p[0] * q[1] - q[0] * p[1];
+            a += c; cx += (p[0] + q[0]) * c; cy += (p[1] + q[1]) * c;
+        }
+        if (Math.Abs(a) < 1e-12) return (poly.Average(p => p[0]), poly.Average(p => p[1]));
+        return (cx / (3 * a), cy / (3 * a));
+    }
+
+    public static bool Inside(List<double[]> poly, double x, double y)
+    {
+        bool c = false;
+        for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++)
+            if ((poly[i][1] > y) != (poly[j][1] > y) && x < (poly[j][0] - poly[i][0]) * (y - poly[i][1]) / (poly[j][1] - poly[i][1] + 1e-300) + poly[i][0]) c = !c;
+        return c;
+    }
+
+    public static double Area(List<double[]> poly)
+    {
+        double a = 0;
+        for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++) a += poly[j][0] * poly[i][1] - poly[i][0] * poly[j][1];
+        return a / 2;
+    }
+
+    /// <summary>Vùng kín nhỏ nhất bao điểm (x, y) tạo bởi tim dầm của mặt bằng (bỏ nhánh cụt); null nếu không có.</summary>
+    public static List<double[]> Region(PlanLevel lv, double x, double y)
+    {
+        var segs = new List<(double X1, double Y1, double X2, double Y2)>();
+        foreach (var it in lv?.Items ?? new())
+        {
+            if (it.Kind != PlanKinds.Beam && it.Kind != PlanKinds.Lintel) continue;
+            var pts = PlanArc.Path(it, 24);
+            for (int i = 0; i + 1 < pts.Count; i++) segs.Add((pts[i].X, pts[i].Y, pts[i + 1].X, pts[i + 1].Y));
+        }
+        if (segs.Count < 3) return null;
+        // chia đoạn tại giao điểm
+        var cuts = segs.Select(_ => new List<double> { 0, 1 }).ToList();
+        for (int i = 0; i < segs.Count; i++)
+            for (int j = i + 1; j < segs.Count; j++)
+            {
+                var a = segs[i]; var b = segs[j];
+                double rx = a.X2 - a.X1, ry = a.Y2 - a.Y1, sx = b.X2 - b.X1, sy = b.Y2 - b.Y1, den = rx * sy - ry * sx;
+                if (Math.Abs(den) < 1e-12) continue;
+                double qx = b.X1 - a.X1, qy = b.Y1 - a.Y1;
+                double t = (qx * sy - qy * sx) / den, u = (qx * ry - qy * rx) / den;
+                double ta = 0.02 / Math.Max(1e-9, Math.Sqrt(rx * rx + ry * ry)), tb = 0.02 / Math.Max(1e-9, Math.Sqrt(sx * sx + sy * sy));   // bắt 2 cm ở đầu đoạn
+                if (t < -ta || t > 1 + ta || u < -tb || u > 1 + tb) continue;
+                cuts[i].Add(Math.Clamp(t, 0, 1)); cuts[j].Add(Math.Clamp(u, 0, 1));
+            }
+        var nodes = new List<(double X, double Y)>();
+        int Node(double px, double py)
+        {
+            for (int k = 0; k < nodes.Count; k++) if (Math.Abs(nodes[k].X - px) < 0.02 && Math.Abs(nodes[k].Y - py) < 0.02) return k;
+            nodes.Add((px, py)); return nodes.Count - 1;
+        }
+        var edges = new HashSet<(int, int)>();
+        for (int i = 0; i < segs.Count; i++)
+        {
+            var s = segs[i];
+            var ts = cuts[i].Distinct().OrderBy(t => t).ToList();
+            int prev = Node(s.X1 + (s.X2 - s.X1) * ts[0], s.Y1 + (s.Y2 - s.Y1) * ts[0]);
+            for (int k = 1; k < ts.Count; k++)
+            {
+                int n = Node(s.X1 + (s.X2 - s.X1) * ts[k], s.Y1 + (s.Y2 - s.Y1) * ts[k]);
+                if (n != prev) { edges.Add((Math.Min(n, prev), Math.Max(n, prev))); }
+                prev = n;
+            }
+        }
+        // bỏ nhánh cụt (nút bậc 1) lặp lại
+        var adj = new Dictionary<int, HashSet<int>>();
+        foreach (var (a, b) in edges) { (adj.TryGetValue(a, out var la) ? la : adj[a] = new()).Add(b); (adj.TryGetValue(b, out var lb) ? lb : adj[b] = new()).Add(a); }
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var k in adj.Keys.ToList())
+                if (adj.TryGetValue(k, out var l) && l.Count <= 1) { foreach (var o in l) adj[o].Remove(k); adj.Remove(k); changed = true; }
+        }
+        if (adj.Count < 3) return null;
+        // duyệt mặt: tại mỗi nút đi tiếp cạnh quay trái nhiều nhất (theo thứ tự góc)
+        double Ang(int a, int b) => Math.Atan2(nodes[b].Y - nodes[a].Y, nodes[b].X - nodes[a].X);
+        var used = new HashSet<(int, int)>();
+        List<double[]> best = null; double bestA = double.MaxValue;
+        foreach (var a in adj.Keys)
+            foreach (var b in adj[a])
+            {
+                if (used.Contains((a, b))) continue;
+                var face = new List<int>();
+                int u = a, v = b, guard = 0;
+                while (guard++ < 10000)
+                {
+                    used.Add((u, v));
+                    face.Add(u);
+                    // cạnh kế tiếp: từ v, góc quay so với hướng ngược (v→u) theo chiều kim đồng hồ nhỏ nhất → mặt bên trái
+                    double back = Ang(v, u);
+                    int w = -1; double bestTurn = double.MaxValue;
+                    foreach (var c in adj[v])
+                    {
+                        if (c == u && adj[v].Count > 1) continue;
+                        double t = back - Ang(v, c);
+                        while (t <= 1e-9) t += 2 * Math.PI;
+                        while (t > 2 * Math.PI) t -= 2 * Math.PI;
+                        if (t < bestTurn) { bestTurn = t; w = c; }
+                    }
+                    if (w < 0) break;
+                    u = v; v = w;
+                    if (u == a && v == b) break;
+                }
+                if (face.Count < 3) continue;
+                var poly = face.Select(k => new[] { Math.Round(nodes[k].X, 4), Math.Round(nodes[k].Y, 4) }).ToList();
+                double ar = Area(poly);
+                if (ar <= 1e-4) continue;   // mặt ngoài (chiều kim đồng hồ)
+                if (!Inside(poly, x, y)) continue;
+                if (ar < bestA) { bestA = ar; best = poly; }
+            }
+        return best == null ? null : Simplify(best);
+    }
+
+    /// <summary>Bỏ đỉnh thẳng hàng.</summary>
+    public static List<double[]> Simplify(List<double[]> p)
+    {
+        var r = new List<double[]>(p);
+        bool ch = true;
+        while (ch && r.Count > 3)
+        {
+            ch = false;
+            for (int i = 0; i < r.Count; i++)
+            {
+                var a = r[(i - 1 + r.Count) % r.Count]; var b = r[i]; var c = r[(i + 1) % r.Count];
+                double cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+                double L = Math.Sqrt((c[0] - a[0]) * (c[0] - a[0]) + (c[1] - a[1]) * (c[1] - a[1]));
+                if (Math.Abs(cr) < 1e-4 * Math.Max(L, 1e-9)) { r.RemoveAt(i); ch = true; break; }
+            }
+        }
+        return r;
+    }
+
+    /// <summary>Đặt ô sàn theo biên dạng (đa giác): hình bao = X1..Y2. Đa giác là hình chữ nhật song song trục → sàn chữ nhật thường.</summary>
+    public static PlanItem PlaceSlab(DetailingProject p, PlanLevel lv, List<double[]> poly, string member = "")
+    {
+        double x0 = poly.Min(q => q[0]), x1 = poly.Max(q => q[0]), y0 = poly.Min(q => q[1]), y1 = poly.Max(q => q[1]);
+        bool rect = poly.Count == 4 && Math.Abs(Math.Abs(Area(poly)) - (x1 - x0) * (y1 - y0)) < 1e-4;
+        var it = p.Plan.Place(p, lv, PlanKinds.Slab, x0, y0, x1, y1, member ?? "");
+        if (!rect) it.Outline = poly.Select(q => new[] { q[0], q[1] }).ToList();
+        return it;
+    }
+}
+
+/// <summary>[Nắm kéo đầu dầm] Kéo đầu mút dầm / lanh tô (thẳng hoặc cong) để đổi chiều dài; dầm cong giữ tỷ lệ độ võng / dây cung.
+/// Kết thúc: dầm chạm dầm thẳng hàng cùng cấu kiện → gộp thành một dầm; cấu kiện chỉ đặt một vị trí → cập nhật nhịp theo hình học.</summary>
+public static class PlanGrip
+{
+    /// <summary>Đầu mút gần điểm (x, y) trong phạm vi tol: 1 = đầu 1, 2 = đầu 2, 0 = không.</summary>
+    public static int At(PlanItem it, double x, double y, double tol)
+    {
+        if (it == null || !PlanKinds.IsSegment(it.Kind)) return 0;
+        double d1 = Math.Sqrt((it.X1 - x) * (it.X1 - x) + (it.Y1 - y) * (it.Y1 - y));
+        double d2 = Math.Sqrt((it.X2 - x) * (it.X2 - x) + (it.Y2 - y) * (it.Y2 - y));
+        if (Math.Min(d1, d2) > tol) return 0;
+        return d1 <= d2 ? 1 : 2;
+    }
+
+    /// <summary>Đặt đầu mút end tại (x, y). Trả false nếu dầm còn quá ngắn (&lt; 0,1 m) – giữ nguyên.</summary>
+    public static bool Drag(PlanItem it, int end, double x, double y)
+    {
+        if (it == null || end is not (1 or 2)) return false;
+        double c0 = it.Length;
+        double nx1 = end == 1 ? x : it.X1, ny1 = end == 1 ? y : it.Y1, nx2 = end == 2 ? x : it.X2, ny2 = end == 2 ? y : it.Y2;
+        double c1 = Math.Sqrt((nx2 - nx1) * (nx2 - nx1) + (ny2 - ny1) * (ny2 - ny1));
+        if (c1 < 0.1) return false;
+        if (it.IsCurved && c0 > 1e-6) it.Bulge = Math.Round(it.Bulge * c1 / c0, 4);
+        it.X1 = Math.Round(nx1, 4); it.Y1 = Math.Round(ny1, 4); it.X2 = Math.Round(nx2, 4); it.Y2 = Math.Round(ny2, 4);
+        return true;
+    }
+
+    /// <summary>Hoàn tất kéo: gộp với dầm thẳng hàng cùng cấu kiện nếu chạm, cập nhật nhịp cấu kiện.</summary>
+    public static string Finish(DetailingProject p, PlanLevel lv, PlanItem it)
+    {
+        if (p?.Plan == null || it == null) return "";
+        if (it.Kind == PlanKinds.Beam && !it.IsCurved && !string.IsNullOrEmpty(it.Member)
+            && PlanBeamMerge.Merge(p, lv, true, new[] { it }) > 0)
+            return " – đã nối liền với dầm thẳng hàng cùng tên thành một dầm";
+        var m = p.All.FirstOrDefault(x => x.Name == it.Member);
+        if (m != null && p.Plan.Count(m.Name) == 1) return " – " + p.Plan.ApplyGeometry(m, it, lv);
+        return "";
     }
 }

@@ -71,6 +71,10 @@ public class PlanItem
     [JsonIgnore] public bool IsCurved => Math.Abs(Bulge) > 1e-4 && Length > 1e-6;
     /// <summary>[Sàn hạ cốt] độ hạ mặt sàn (m, dương = thấp hơn cao độ mặt bằng) – sàn WC, lô gia, sân phơi…; 0 = không hạ.</summary>
     public double Drop { get; set; }
+    /// <summary>[Biên dạng sàn] đa giác bao ô sàn [[x,y],…] (m) khi sàn không chữ nhật – pick đường bo viền; null = chữ nhật X1..Y2 (luôn là hình bao).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<double[]> Outline { get; set; }
+    [JsonIgnore] public bool IsPolygon => Outline != null && Outline.Count >= 3;
 
     [JsonIgnore] public double Length => Math.Sqrt((X2 - X1) * (X2 - X1) + (Y2 - Y1) * (Y2 - Y1));
     [JsonIgnore] public double MinX => Math.Min(X1, X2);
@@ -465,6 +469,7 @@ public partial class StructuralPlan
             if (PlanKinds.IsPoint(it.Kind)) d = Math.Sqrt((it.X1 - x) * (it.X1 - x) + (it.Y1 - y) * (it.Y1 - y));
             else if (PlanKinds.IsSegment(it.Kind)) d = it.IsCurved ? PlanArc.Dist(it, x, y) : DistSeg(x, y, it.X1, it.Y1, it.X2, it.Y2);
             // hình chữ nhật (sàn, ô văng, cầu thang): chỉ chọn khi không có cột / móng / dầm gần; ô nhỏ hơn được ưu tiên
+            else if (it.IsPolygon) d = PlanOutline.Inside(it.Outline, x, y) ? tol * 0.95 : double.MaxValue;
             else d = x >= it.MinX && x <= it.MaxX && y >= it.MinY && y <= it.MaxY ? tol * (0.9 + 0.09 * Math.Min(1, (it.MaxX - it.MinX) * (it.MaxY - it.MinY) / 200)) : double.MaxValue;
             if (d < bd) { bd = d; best = it; }
         }

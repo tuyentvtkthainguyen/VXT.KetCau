@@ -261,6 +261,7 @@ public static class PlanSnap
         if (it == null) return;
         it.X1 = Math.Round(it.X1 + dx, 6); it.X2 = Math.Round(it.X2 + dx, 6);
         it.Y1 = Math.Round(it.Y1 + dy, 6); it.Y2 = Math.Round(it.Y2 + dy, 6);
+        if (it.Outline != null) foreach (var q in it.Outline) { q[0] = Math.Round(q[0] + dx, 6); q[1] = Math.Round(q[1] + dy, 6); }
     }
 }
 
