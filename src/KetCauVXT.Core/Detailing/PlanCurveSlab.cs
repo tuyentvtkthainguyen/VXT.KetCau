@@ -182,7 +182,8 @@ public static class PlanBeamMerge
     /// sameMemberOnly: chỉ gộp các đoạn cùng tên cấu kiện (dùng khi nhập); ngược lại gộp các đoạn cùng tiết diện b × h.
     /// seeds: chỉ gộp các chuỗi có chứa vị trí trong seeds (null = mọi dầm). Cấu kiện không còn vị trí nào sau khi gộp bị xoá khỏi hồ sơ.
     /// Trả về số vị trí đã gộp bớt.</summary>
-    public static int Merge(DetailingProject p, PlanLevel lv, bool sameMemberOnly, IEnumerable<PlanItem> seeds = null, List<string> log = null)
+    public static int Merge(DetailingProject p, PlanLevel lv, bool sameMemberOnly, IEnumerable<PlanItem> seeds = null, List<string> log = null,
+                            Func<PlanItem, PlanItem, bool> same = null)
     {
         if (p?.Plan == null || lv == null) return 0;
         var plan = p.Plan;
@@ -239,8 +240,8 @@ public static class PlanBeamMerge
                     double tc = T(c.X1, c.Y1), d = Math.Abs(-(c.X1) * uy + c.Y1 * ux - Key(g[0]).D);
                     return d < 0.05 && tc >= chain.Max(q => q.T1) - 0.01 && tc <= s.T0 + 0.01;
                 }));
-                bool same = sameMemberOnly ? s.It.Member == last.It.Member : Equals(Sec(p, s.It), Sec(p, last.It));
-                if (touch && same) chain.Add(s);
+                bool ok = same != null ? same(last.It, s.It) : sameMemberOnly ? s.It.Member == last.It.Member : Equals(Sec(p, s.It), Sec(p, last.It));
+                if (touch && ok) chain.Add(s);
                 else { Flush(); chain.Add(s); }
             }
             Flush();

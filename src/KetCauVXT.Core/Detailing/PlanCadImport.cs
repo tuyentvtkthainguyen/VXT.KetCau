@@ -474,10 +474,12 @@ public static class StructuralPlanImport
             it.X2 = it.X1; it.Y2 = it.Y1;
             lv.Items.Add(it); res.Items.Add(it); res.Columns++;
         }
+        var namedBeams = new HashSet<string>();   // tên dầm đọc từ chữ (không gộp các dầm khác tên)
         foreach (var (s, bw) in beams)
         {
             int ti = NearTextSeg(s, 1.0, IsBeamName);
             string nm = ti >= 0 ? PlanCadGeom.MemberName(texts[ti].S) : "";
+            if (nm.Length > 0) namedBeams.Add(nm);
             var sec = ti >= 0 ? PlanCadGeom.Section(texts[ti].S) : null;
             if (ti >= 0) usedText.Add(ti);
             if (sec == null && bw > 0) sec = (Math.Round(bw, 3), Math.Max(0.30, Math.Round(Math.Ceiling(s.Length / 12 / 0.05) * 0.05, 3)));
@@ -513,7 +515,11 @@ public static class StructuralPlanImport
         // ---- [Dầm liên tục] đoạn dầm thẳng hàng nối liền cùng cấu kiện → một dầm dài nhiều nhịp ----
         if (mergeBeams)
         {
-            int nm = PlanBeamMerge.Merge(p, lv, true, res.Items.Where(i => i.Kind == PlanKinds.Beam).ToList());
+            // cùng tên; hoặc hai đoạn không ghi tên (cấu kiện tự tạo trong lần nhập) cùng tiết diện
+            var created = new HashSet<string>(res.Items.Where(i => i.Kind == PlanKinds.Beam).Select(i => i.Member).Where(n => !namedBeams.Contains(n)));
+            (double, double)? SecOf(string n) => p.All.FirstOrDefault(m => m.Name == n) is ManualBeam mb ? (Math.Round(mb.B, 3), Math.Round(mb.H, 3)) : null;
+            int nm = PlanBeamMerge.Merge(p, lv, true, res.Items.Where(i => i.Kind == PlanKinds.Beam).ToList(), null,
+                (a, b) => a.Member == b.Member || (created.Contains(a.Member) && created.Contains(b.Member) && Equals(SecOf(a.Member), SecOf(b.Member))));
             if (nm > 0)
             {
                 res.Items.RemoveAll(i => i.Kind == PlanKinds.Beam && !lv.Items.Contains(i));
