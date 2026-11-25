@@ -365,9 +365,10 @@ public sealed partial class DetailingPlanCanvas
         _undo.Push(Plan);
         var r = StructuralPlanImport.Import(P, lv, ents, opt.AlignOrigin, opt.Replace, opt.Keys, opt.Origin, opt.AutoSlabs, opt.MergeBeams);
         int copied = opt.CopyTo.Count > 0 ? PlanCopy.CopyTo(P, lv, opt.CopyTo, opt.Replace) : 0;
+        string gridMsg = GridAfterImport();   // [Hệ trục trước] chưa có trục → tạo từ cột / dầm vừa nhập
         _changed(); FillMembers(); _fitted = false; UpdateHint(); Redraw();
         _status.Text = (source ?? "") + ": " + string.Join(" ", r.Log) + (copied > 0 ? $" Sao chép sang {string.Join(", ", opt.CopyTo.Select(l => l.Name))} ({copied} vị trí)." : "")
-                       + (log?.Count > 0 ? " (" + log[0] + ")" : "");
+                       + (log?.Count > 0 ? " (" + log[0] + ")" : "") + gridMsg;
     }
 
     // ------------------------------------------------------------------

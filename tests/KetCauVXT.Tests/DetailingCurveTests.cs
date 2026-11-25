@@ -173,6 +173,22 @@ public static class DetailingCurveTests
         string dxf5 = StructuralPlanDrawing.Level(p.Plan, t5, StructuralPlanDrawing.Map(p, new()), StructuralPlanDrawing.LevelTitle(t5), false).ToDxfString();
         check("Xuất DXF: sàn biên dạng có ghi chú", B(dxf5.Contains(KetCauVXT.Drawing.DxfWriter.Encode("SÀN BIÊN DẠNG"))), 1, 0);
 
+        // [Hệ trục trước] mặt bằng chưa có trục: nhận trục từ cột / dầm, dời để trục 1-A ở gốc (cả ánh xạ kiến trúc)
+        var gp = new StructuralPlan();
+        var g0 = gp.Levels[1];
+        g0.UnderlayDx = 0.5;
+        foreach (var gx in new[] { 2.0, 5.6, 9.8 }) foreach (var gy in new[] { 1.0, 5.5 }) g0.Items.Add(new PlanItem { Kind = PlanKinds.Column, X1 = gx, Y1 = gy, X2 = gx, Y2 = gy });
+        g0.Items.Add(new PlanItem { Kind = PlanKinds.Beam, X1 = 2.0, Y1 = 1.0, X2 = 9.8, Y2 = 1.0 });
+        g0.Items.Add(new PlanItem { Kind = PlanKinds.Column, X1 = 7.3, Y1 = 3.0, X2 = 7.3, Y2 = 3.0 });   // cột lẻ không thành trục
+        check("Hệ trục trước: chưa có trục", B(gp.HasGrid), 0, 0);
+        string gmsg = PlanGridFirst.Infer(gp);
+        Console.WriteLine("   · " + gmsg);
+        check("Hệ trục trước: bước trục X = 3.6 4.2", B(gp.SpansX == "3.6 4.2"), 1, 0);
+        check("Hệ trục trước: bước trục Y = 4.5", B(gp.SpansY == "4.5"), 1, 0);
+        check("Hệ trục trước: cột góc dời về giao trục 1-A (0; 0)", B(g0.Items.Any(i => i.Kind == PlanKinds.Column && Math.Abs(i.X1) < 1e-9 && Math.Abs(i.Y1) < 1e-9)), 1, 0);
+        check("Hệ trục trước: ánh xạ kiến trúc dời theo (0,5 − 2 = −1,5)", g0.UnderlayDx, -1.5, 1e-9);
+        check("Hệ trục trước: đã có trục → không tạo lại", B(PlanGridFirst.Infer(gp) == null), 1, 0);
+
         // xuất DXF: dầm cong = ARC trên layer bê tông
         var map = StructuralPlanDrawing.Map(p, new());
         string dxf = StructuralPlanDrawing.Level(p.Plan, lv, map, StructuralPlanDrawing.LevelTitle(lv), false).ToDxfString();

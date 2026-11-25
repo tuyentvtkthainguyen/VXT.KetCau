@@ -47,7 +47,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         LastChildFill = true;
         var top = new StackPanel { Margin = new Thickness(4) };
         var r1 = new WrapPanel { Margin = new Thickness(0, 0, 0, 3) };
-        r1.Children.Add(Lbl("Bước trục X (1, 2, 3…) m:")); r1.Children.Add(_sx);
+        r1.Children.Add(Lbl("① Hệ trục – bước trục X (1, 2, 3…) m:")); r1.Children.Add(_sx);
         r1.Children.Add(Lbl("Bước trục Y (A, B, C…) m:")); r1.Children.Add(_sy);
         r1.Children.Add(Btn("Áp dụng lưới", ApplyGrid, "Cập nhật lưới trục theo bước trục (vd. 3.6 4.2 hoặc 3*3.3)"));
         r1.Children.Add(Btn("Thêm trục…", AddGridLine, "Thêm một trục X hoặc Y tại toạ độ nhập (bước trục tự cập nhật); chuột phải lên trục: dời / xoá trục"));
@@ -68,7 +68,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                      (ToolSlabBay, "Sàn trong ô dầm"), (ToolDropSlab, "Sàn hạ cốt"), (ToolStairBay, "Ô cầu thang"), (PlanKinds.Void, "Giếng trời"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), (ToolCallout, "Trích chi tiết"), ("Xoa", "Xoá") })
         {
             var rb = new RadioButton { Content = label, GroupName = "plantool", Margin = new Thickness(0, 2, 10, 2), IsChecked = key == "Chon", Tag = key };
-            rb.Checked += (s, e) => { _tool = (string)rb.Tag; _first = null; _moveItem = null; _polyPts.Clear(); SyncOutlineMode(); FillMembers(); UpdateHint(); Redraw(); };
+            rb.Checked += (s, e) => { _tool = (string)rb.Tag; if (!EnsureGrid()) return; _first = null; _moveItem = null; _polyPts.Clear(); SyncOutlineMode(); FillMembers(); UpdateHint(); Redraw(); };
             _tools[key] = rb; r3.Children.Add(rb);
         }
         r3.Children.Add(Lbl("  Cấu kiện:")); r3.Children.Add(_member);
@@ -187,6 +187,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             _ => PlanKinds.Title(_tool) + (_first == null ? ": bấm góc thứ nhất của hình chữ nhật." : ": bấm góc đối diện – Esc huỷ.")
         };
         var warn = Plan.QuantityWarnings(P);
+        if (!Plan.HasGrid) t = "⚠ Chưa có hệ trục – Bước 1: nhập bước trục X / Y rồi bấm \"Áp dụng lưới\" (hoặc \"Tải mặt bằng…\") trước khi đặt cấu kiện.\n" + t;
         _status.Text = t + (warn.Count > 0 ? "\n⚠ " + string.Join("; ", warn.Take(3)) + (warn.Count > 3 ? "…" : "") : "");
         _status.Foreground = warn.Count > 0 ? Brushes.DarkOrange : Brushes.Black;
     }
