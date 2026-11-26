@@ -372,6 +372,15 @@ public static class PlanOutline
             var pts = PlanArc.Path(it, 24);
             for (int i = 0; i + 1 < pts.Count; i++) segs.Add((pts[i].X, pts[i].Y, pts[i + 1].X, pts[i + 1].Y));
         }
+        return RegionOf(segs, x, y);
+    }
+
+    /// <summary>[Biên sàn từ nét CAD] vùng kín nhỏ nhất chứa (x, y) tạo bởi các đoạn thẳng bất kỳ (nét nền kiến trúc / xref:
+    /// đường cong đã chia đoạn, zic zắc…). Chỉ xét các đoạn trong phạm vi r quanh điểm bấm.</summary>
+    public static List<double[]> RegionOf(IEnumerable<(double X1, double Y1, double X2, double Y2)> all, double x, double y, double r = 80)
+    {
+        var segs = all.Where(q => Math.Min(q.X1, q.X2) < x + r && Math.Max(q.X1, q.X2) > x - r && Math.Min(q.Y1, q.Y2) < y + r && Math.Max(q.Y1, q.Y2) > y - r
+                                  && Math.Abs(q.X2 - q.X1) + Math.Abs(q.Y2 - q.Y1) > 1e-4).ToList();
         if (segs.Count < 3) return null;
         // chia đoạn tại giao điểm
         var cuts = segs.Select(_ => new List<double> { 0, 1 }).ToList();
@@ -575,6 +584,28 @@ public static class PlanOutline
             if (d < bt) { bt = d; best = (px, py, "trên mép dầm"); }
         }
         return best == null ? null : (Math.Round(best.Value.X, 4), Math.Round(best.Value.Y, 4), best.Value.K);
+    }
+
+    /// <summary>[Cạnh cong 3 điểm] cung tròn từ a qua m đến b, chia n đoạn; trả các điểm sau a (gồm b). Ba điểm thẳng hàng → chỉ b.</summary>
+    public static List<(double X, double Y)> Arc3((double X, double Y) a, (double X, double Y) m, (double X, double Y) b, int n = 16)
+    {
+        double d = 2 * (a.X * (m.Y - b.Y) + m.X * (b.Y - a.Y) + b.X * (a.Y - m.Y));
+        if (Math.Abs(d) < 1e-9) return new() { b };
+        double a2 = a.X * a.X + a.Y * a.Y, m2 = m.X * m.X + m.Y * m.Y, b2 = b.X * b.X + b.Y * b.Y;
+        double cx = (a2 * (m.Y - b.Y) + m2 * (b.Y - a.Y) + b2 * (a.Y - m.Y)) / d;
+        double cy = (a2 * (b.X - m.X) + m2 * (a.X - b.X) + b2 * (m.X - a.X)) / d;
+        double r = Math.Sqrt((a.X - cx) * (a.X - cx) + (a.Y - cy) * (a.Y - cy));
+        double t0 = Math.Atan2(a.Y - cy, a.X - cx), tm = Math.Atan2(m.Y - cy, m.X - cx), t1 = Math.Atan2(b.Y - cy, b.X - cx);
+        double Norm(double t) { while (t < 0) t += 2 * Math.PI; while (t >= 2 * Math.PI) t -= 2 * Math.PI; return t; }
+        double sw = Norm(t1 - t0), sm = Norm(tm - t0);
+        if (sm > sw) sw -= 2 * Math.PI;   // đi chiều kim đồng hồ qua m
+        var r2 = new List<(double X, double Y)>();
+        for (int i = 1; i <= n; i++)
+        {
+            double t = t0 + sw * i / n;
+            r2.Add(i == n ? b : (Math.Round(cx + r * Math.Cos(t), 4), Math.Round(cy + r * Math.Sin(t), 4)));
+        }
+        return r2;
     }
 
     /// <summary>Đa giác có hai cạnh không kề nhau cắt nhau.</summary>

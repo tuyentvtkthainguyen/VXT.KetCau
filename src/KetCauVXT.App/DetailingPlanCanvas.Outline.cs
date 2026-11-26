@@ -14,6 +14,8 @@ public partial class DetailingPlanCanvas
 {
     private readonly List<(double X, double Y)> _polyPts = new();
     private ComboBox _olMode;
+    private CheckBox _olArc;
+    private (double X, double Y)? _arcMid;   // điểm giữa cung đang vẽ
     private Button _olCoords;
     private StackPanel _olPanel;
 
@@ -26,6 +28,7 @@ public partial class DetailingPlanCanvas
         _olMode.Items.Add("Biên theo tim dầm");
         _olMode.Items.Add("Biên theo mép dầm");
         _olMode.Items.Add("Vẽ đa giác (bấm đỉnh)");
+        _olMode.Items.Add("Vùng kín trên nền CAD (xref)");
         _olMode.SelectedIndex = 0;
         _olMode.SelectionChanged += (s, e) => { _polyPts.Clear(); _first = null; UpdateHint(); Redraw(); SyncOutlineMode(); };
         _olCoords = new Button { Content = "Nhập toạ độ…", Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(2, 0, 4, 0),
@@ -33,7 +36,11 @@ public partial class DetailingPlanCanvas
         _olCoords.Click += (s, e) => PolyFromText();
         _olPanel = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         _olPanel.Children.Add(new TextBlock { Text = "  Biên sàn:", VerticalAlignment = VerticalAlignment.Center });
-        _olPanel.Children.Add(_olMode); _olPanel.Children.Add(_olCoords);
+        _olArc = new CheckBox { Content = "Cạnh cong (3 điểm)", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 4, 0),
+            ToolTip = "Bật: cạnh tiếp theo là cung tròn – bấm 1 điểm trên cung rồi điểm cuối cung (phím C bật / tắt)" };
+        _olArc.Checked += (s, e) => { _arcMid = null; UpdateHint(); };
+        _olArc.Unchecked += (s, e) => { _arcMid = null; UpdateHint(); Redraw(); };
+        _olPanel.Children.Add(_olMode); _olPanel.Children.Add(_olArc); _olPanel.Children.Add(_olCoords);
         SyncOutlineMode();
         return _olPanel;
     }
@@ -41,8 +48,10 @@ public partial class DetailingPlanCanvas
     private void SyncOutlineMode()
     {
         if (_olPanel == null) return;
+        _arcMid = null;
         _olPanel.Visibility = _tool == ToolSlabOutline ? Visibility.Visible : Visibility.Collapsed;
         _olCoords.Visibility = OutlineMode == 2 ? Visibility.Visible : Visibility.Collapsed;
+        _olArc.Visibility = OutlineMode == 2 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private bool _polyDrag;   // bấm-kéo đỉnh đầu → ô chữ nhật
@@ -88,6 +97,16 @@ public partial class DetailingPlanCanvas
             if (clicks >= 2 || (Math.Abs(f.X - screen.X) < 10 && Math.Abs(f.Y - screen.Y) < 10)) { PolyClose(lv); return; }
         }
         if (_polyPts.Count > 0 && Math.Abs(_polyPts[^1].X - sp.X) + Math.Abs(_polyPts[^1].Y - sp.Y) < 0.01) { UpdateHint(); return; }
+        if (_olArc?.IsChecked == true && _polyPts.Count > 0)
+        {
+            // cạnh cong: bấm 1 = điểm trên cung, bấm 2 = điểm cuối cung
+            if (_arcMid == null) { _arcMid = (sp.X, sp.Y); _polyDrag = false; UpdateHint(); Redraw(); return; }
+            _polyPts.AddRange(PlanOutline.Arc3(_polyPts[^1], _arcMid.Value, (sp.X, sp.Y), 16));
+            _arcMid = null;
+            _first = sp;
+            UpdateHint(); Redraw();
+            return;
+        }
         _polyPts.Add((sp.X, sp.Y));
         _first = sp;   // bắt điểm / Shift vuông góc tính từ đỉnh vừa bấm
         UpdateHint(); Redraw();
@@ -96,6 +115,8 @@ public partial class DetailingPlanCanvas
     private void PolyKey(Key k)
     {
         var lv = Level;
+        if (k == Key.C && _olArc != null) { _olArc.IsChecked = _olArc.IsChecked != true; return; }
+        if (_arcMid != null && (k == Key.Back || k == Key.Escape)) { _arcMid = null; UpdateHint(); Redraw(); return; }
         if (k == Key.Enter && lv != null) { PolyClose(lv); return; }
         if (k == Key.Back) { _polyPts.RemoveAt(_polyPts.Count - 1); _first = _polyPts.Count > 0 ? _polyPts[^1] : null; }
         else { _polyPts.Clear(); _first = null; }
@@ -134,12 +155,25 @@ public partial class DetailingPlanCanvas
         PlacePolySlab(lv, poly);
     }
 
+    /// <summary>[Vùng kín trên nền CAD] bấm trong vùng bao bởi nét của mặt bằng nền (xref kiến trúc / kết cấu) → biên sàn.</summary>
+    private bool PickCadRegion(PlanLevel lv, (double X, double Y) w)
+    {
+        var u = ArchUnderlay.Load(lv, Dir);
+        if (u == null || u.Lines.Count == 0) { _status.Text = "Tầng chưa gắn nền CAD (nút \"Ánh xạ KT (xref)…\") – hoặc chọn cách \"Vẽ đa giác\"."; return false; }
+        double dx = lv.UnderlayDx, dy = lv.UnderlayDy;
+        var poly = PlanOutline.RegionOf(u.Lines.Select(q => (q.X1 + dx, q.Y1 + dy, q.X2 + dx, q.Y2 + dy)), w.X, w.Y, 60);
+        if (poly == null) { _status.Text = "Không thấy đường bao kín quanh điểm bấm trên nền CAD (nét hở / không giao nhau) – dùng \"Vẽ đa giác\" để vẽ tay."; return false; }
+        return PlacePolySlab(lv, poly);
+    }
+
     private void DrawPolyPreview()
     {
         if (_tool != ToolSlabOutline || _polyPts.Count == 0) return;
         var pl = new Shapes.Polyline { Stroke = Brushes.DodgerBlue, StrokeThickness = 1.6, IsHitTestVisible = false, StrokeDashArray = new DoubleCollection { 5, 3 } };
         foreach (var q in _polyPts) pl.Points.Add(ToS(q.X, q.Y));
-        pl.Points.Add(ToS(_mouseW.X, _mouseW.Y));
+        if (_arcMid is { } am)
+            foreach (var q in PlanOutline.Arc3(_polyPts[^1], am, _mouseW, 16)) pl.Points.Add(ToS(q.X, q.Y));
+        else pl.Points.Add(ToS(_mouseW.X, _mouseW.Y));
         _cv.Children.Add(pl);
         foreach (var q in _polyPts)
         {

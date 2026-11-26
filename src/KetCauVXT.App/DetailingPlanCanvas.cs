@@ -96,6 +96,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         _cv.KeyDown += (s, e) =>
         {
             if (e.Key == Key.Escape && _gripItem != null) { _gripItem = null; _cv.ReleaseMouseCapture(); Undo(); return; }
+            if (_tool == ToolSlabOutline && OutlineMode == 2 && e.Key == Key.C && _olArc != null) { _olArc.IsChecked = _olArc.IsChecked != true; e.Handled = true; return; }
             if (_tool == ToolSlabOutline && _polyPts.Count > 0 && (e.Key == Key.Enter || e.Key == Key.Escape || e.Key == Key.Back))
             { PolyKey(e.Key); e.Handled = true; return; }
             if (e.Key == Key.Escape) { _first = null; _sel = null; _moveItem = null; _multi.Clear(); _winFrom = null; Redraw(); UpdateHint(); }
@@ -174,7 +175,8 @@ public sealed partial class DetailingPlanCanvas : DockPanel
             ToolCurvedBeam => _first == null ? "Dầm cong: bấm điểm đầu (bắt giao trục / tâm cột)." : _curveEnd == null ? "Dầm cong: bấm điểm cuối – Esc huỷ." : "Dầm cong: bấm một điểm bất kỳ trên cung (định độ vồng) – Esc huỷ.",
             ToolSplitBeam => "Chia dầm: bấm lên dầm tại vị trí chia (bắt giao trục / tâm cột) – đoạn sau thành dầm mới cùng tiết diện. Mặc định dầm thẳng hàng nối liền là MỘT dầm nhiều nhịp.",
             ToolSlabOutline => OutlineMode == 2
-                ? (_polyPts.Count == 0 ? "Sàn vẽ đa giác: bấm lần lượt các đỉnh biên sàn (bắt giao trục, tâm cột, đầu / mép dầm; Shift = vuông góc) hoặc nút \"Nhập toạ độ…\"." : $"Sàn vẽ đa giác: {_polyPts.Count} đỉnh – bấm đỉnh tiếp; bấm lại đỉnh đầu / bấm đúp / Enter để khép kín; Backspace bỏ đỉnh cuối; Esc huỷ.")
+                ? (_arcMid != null ? "Cạnh cong: bấm điểm CUỐI cung (Backspace / Esc bỏ cung)." : _olArc?.IsChecked == true && _polyPts.Count > 0 ? "Cạnh cong: bấm 1 điểm NẰM TRÊN cung, rồi điểm cuối cung (phím C: tắt cạnh cong)." : _polyPts.Count == 0 ? "Sàn vẽ đa giác: bấm lần lượt các đỉnh biên sàn (bắt giao trục, tâm cột, đầu / mép dầm; Shift = vuông góc) hoặc nút \"Nhập toạ độ…\"." : $"Sàn vẽ đa giác: {_polyPts.Count} đỉnh – bấm đỉnh tiếp; bấm lại đỉnh đầu / bấm đúp / Enter để khép kín; Backspace bỏ đỉnh cuối; Esc huỷ.")
+                : OutlineMode == 3 ? "Sàn theo nền CAD: bấm vào bên trong vùng khép kín bởi nét của mặt bằng nền (xref) – mép sàn cong, zic zắc… lấy theo nét CAD."
                 : "Sàn theo biên: bấm vào bên trong vùng khép kín bởi dầm (thẳng, cong, chữ L, đa giác) – dò đường bo viền theo " + (OutlineMode == 1 ? "MÉP dầm (trừ nửa bề rộng dầm mỗi cạnh)." : "TIM dầm."),
             ToolDropSlab => "Sàn hạ cốt: bấm vào ô sàn (hoặc ô kín bao bởi dầm) → nhập độ hạ (mm, vd. 50 sàn WC, 100 lô gia); nhập 0 để bỏ hạ cốt.",
             ToolStairBay => "Ô cầu thang: bấm vào bên trong ô dầm của thang – tạo ô cầu thang theo kích thước ô (bỏ sàn cũ trong ô). Vẽ ô tuỳ ý: công cụ Cầu thang.",

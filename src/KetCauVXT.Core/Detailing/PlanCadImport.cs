@@ -305,6 +305,78 @@ public static class PlanCadGeom
         return res;
     }
 
+    /// <summary>[Dầm 2 nét – ghép theo đường] Gom các nét thẳng hàng thành đường (một mép dầm có thể đứt đoạn tại cột / dầm giao),
+    /// ghép mỗi đường với đường song song gần nhất trong [dMin, dMax] có đoạn chồng nhau → tim ở giữa, phủ hợp các đoạn của cả hai mép.
+    /// Mọi nét của một mép đã ghép đều thuộc dầm đó (không sinh dầm thứ hai lấy mép dầm làm tim). Đường không ghép được → singles (nét tim).</summary>
+    public static List<(CadSeg Center, double T)> PairParallelLines(List<CadSeg> segs, double dMin, double dMax, List<CadSeg> singles = null)
+    {
+        var res = new List<(CadSeg, double)>();
+        // khoá đường: hướng chuẩn hoá (ux > 0 hoặc ux = 0, uy > 0), khoảng cách pháp tuyến D = P·n với n = (-uy, ux)
+        var lines = new List<(double Ux, double Uy, double D, List<(double T0, double T1, int I)> Iv)>();
+        for (int i = 0; i < segs.Count; i++)
+        {
+            var a = segs[i]; double L = a.Length; if (L < 0.05) continue;
+            double ux = (a.X2 - a.X1) / L, uy = (a.Y2 - a.Y1) / L;
+            if (ux < -1e-9 || (Math.Abs(ux) <= 1e-9 && uy < 0)) { ux = -ux; uy = -uy; }
+            double D = -a.X1 * uy + a.Y1 * ux;
+            double t0 = a.X1 * ux + a.Y1 * uy, t1 = a.X2 * ux + a.Y2 * uy;
+            int k = lines.FindIndex(l => Math.Abs(l.Ux * uy - l.Uy * ux) < 0.01 && Math.Abs(l.D - D) < 0.008);
+            if (k < 0) { lines.Add((ux, uy, D, new())); k = lines.Count - 1; }
+            lines[k].Iv.Add((Math.Min(t0, t1), Math.Max(t0, t1), i));
+        }
+        static double Overlap(List<(double T0, double T1, int I)> a, List<(double T0, double T1, int I)> b)
+        {
+            double s = 0;
+            foreach (var p in a) foreach (var q in b) s += Math.Max(0, Math.Min(p.T1, q.T1) - Math.Max(p.T0, q.T0));
+            return s;
+        }
+        // ứng viên: cặp đường song song, khoảng cách hợp lệ, chồng nhau đủ → xét theo khoảng cách tăng dần, mỗi đường một bạn
+        var cand = new List<(int A, int B, double D, double Ov)>();
+        for (int a = 0; a < lines.Count; a++)
+            for (int b = a + 1; b < lines.Count; b++)
+            {
+                var la = lines[a]; var lb = lines[b];
+                if (Math.Abs(la.Ux * lb.Uy - la.Uy * lb.Ux) > 0.02) continue;
+                double d = Math.Abs(la.D - lb.D);
+                if (d < dMin - 1e-6 || d > dMax + 1e-6) continue;
+                double ov = Overlap(la.Iv, lb.Iv);
+                double La = la.Iv.Sum(q => q.T1 - q.T0), Lb = lb.Iv.Sum(q => q.T1 - q.T0);
+                if (ov < Math.Min(0.3, 0.5 * Math.Min(La, Lb))) continue;
+                cand.Add((a, b, d, ov));
+            }
+        var partner = new int[lines.Count]; Array.Fill(partner, -1);
+        // ưu tiên cặp chồng nhau dài nhất (hai mép thật của dầm), rồi khoảng cách nhỏ – nét lẻ ngắn trong lòng dầm không cướp mép
+        foreach (var c in cand.OrderByDescending(c => Math.Round(c.Ov, 2)).ThenBy(c => c.D))
+            if (partner[c.A] < 0 && partner[c.B] < 0) { partner[c.A] = c.B; partner[c.B] = c.A; }
+        for (int a = 0; a < lines.Count; a++)
+        {
+            int b = partner[a];
+            if (b < 0) { if (singles != null) foreach (var q in lines[a].Iv) singles.Add(segs[q.I]); continue; }
+            if (b < a) continue;
+            var la = lines[a]; var lb = lines[b];
+            double dc = (la.D + lb.D) / 2, w = Math.Abs(la.D - lb.D);
+            // hợp các đoạn của cả hai mép (nối khi chạm / chồng, hở ≤ 5 cm)
+            var iv = la.Iv.Concat(lb.Iv).OrderBy(q => q.T0).ToList();
+            var cl = new List<(double T0, double T1)>();
+            foreach (var q in iv)
+            {
+                if (cl.Count > 0 && q.T0 <= cl[^1].T1 + 0.05) cl[^1] = (cl[^1].T0, Math.Max(cl[^1].T1, q.T1));
+                else cl.Add((q.T0, q.T1));
+            }
+            foreach (var (t0, t1) in cl)
+            {
+                if (t1 - t0 < 0.2) continue;
+                double ux = la.Ux, uy = la.Uy, nx = -uy, ny = ux;
+                res.Add((new CadSeg
+                {
+                    X1 = Math.Round(ux * t0 + nx * dc, 4), Y1 = Math.Round(uy * t0 + ny * dc, 4),
+                    X2 = Math.Round(ux * t1 + nx * dc, 4), Y2 = Math.Round(uy * t1 + ny * dc, 4), Layer = segs[la.Iv[0].I].Layer
+                }, Math.Round(w, 4)));
+            }
+        }
+        return res;
+    }
+
     public static double DistToSeg(double x, double y, CadSeg s) => StructuralPlan.DistSeg(x, y, s.X1, s.Y1, s.X2, s.Y2);
 
     /// <summary>Một dầm cong đọc từ bản vẽ: 2 đầu, độ vồng, bề rộng (0 = vẽ 1 nét tim).</summary>
@@ -457,8 +529,23 @@ public static class StructuralPlanImport
         // ---- dầm: cặp nét song song (tim + b), nét đơn (tim) ----
         var beamSegs = PlanCadGeom.Segments(ents.Where(e => keys.IsBeam(e.Layer)), true).ToList();
         var singles = new List<CadSeg>();
-        var beams = PlanCadGeom.PairParallel(beamSegs, 0.10, 0.60, singles).Select(t => (S: t.Center, B: t.T)).ToList();
-        foreach (var s in singles.Where(q => q.Length >= 0.8)) beams.Add((s, 0));
+        var beams = PlanCadGeom.PairParallelLines(beamSegs, 0.10, 0.60, singles).Select(t => (S: t.Center, B: t.T)).ToList();
+        int dropped = 0;
+        // nét đơn = nét tim dầm; bỏ nét nằm trong bề rộng một dầm 2 nét đã nhận (mép lẻ, nét ký hiệu) – tránh dầm trùng lấy mép làm tim
+        foreach (var s in singles.Where(q => q.Length >= 0.8))
+        {
+            double L = s.Length, ux = (s.X2 - s.X1) / L, uy = (s.Y2 - s.Y1) / L, mx = (s.X1 + s.X2) / 2, my = (s.Y1 + s.Y2) / 2;
+            bool inside = beams.Any(b =>
+            {
+                double Lb = b.S.Length; if (Lb < 1e-6 || b.B <= 0) return false;
+                double vx = (b.S.X2 - b.S.X1) / Lb, vy = (b.S.Y2 - b.S.Y1) / Lb;
+                if (Math.Abs(ux * vy - uy * vx) > 0.02) return false;
+                return PlanCadGeom.DistToSeg(mx, my, b.S) <= b.B / 2 + 0.03;
+            });
+            if (inside) { dropped++; continue; }
+            beams.Add((s, 0));
+        }
+        if (dropped > 0) res.Log.Add($"Bỏ {dropped} nét lẻ nằm trong bề rộng dầm 2 nét (không tạo dầm trùng lấy mép làm tim).");
         // ---- dầm cong: cung tròn trên layer dầm (ARC, cung lồi đa tuyến) – cặp cung đồng tâm → tim + bề rộng ----
         var arcBeams = PlanCadGeom.ArcBeams(ents.Where(e => keys.IsBeam(e.Layer)));
 
@@ -612,6 +699,28 @@ public static class StructuralPlanImport
                 res.Log.Add($"Dầm liên tục: gộp {nm} đoạn thẳng hàng nối liền → {res.Beams} dầm (nhịp chia theo trục / cột; chia lại bằng công cụ \"Chia dầm\").");
             }
         }
+        // ---- [Sàn biên dạng] đa tuyến kín trên layer sàn (cạnh cong / zic zắc / đa giác) → ô sàn theo đúng đường bao ----
+        var polySlabs = new List<PlanItem>();
+        foreach (var e in ents.Where(e => e.Type == DxfEntityType.Polyline && keys.IsSlab(e.Layer) && e.Points.Count >= 3))
+        {
+            bool closedP = e.Closed || Math.Abs(e.Points[0].X - e.Points[^1].X) + Math.Abs(e.Points[0].Y - e.Points[^1].Y) < 1e-6;
+            if (!closedP) continue;
+            var poly = e.Points.Select(q => new[] { Math.Round(q.X - ox, 4), Math.Round(q.Y - oy, 4) }).ToList();
+            if (poly.Count > 3 && Math.Abs(poly[0][0] - poly[^1][0]) + Math.Abs(poly[0][1] - poly[^1][1]) < 1e-6) poly.RemoveAt(poly.Count - 1);
+            poly = PlanOutline.Simplify(poly);
+            if (poly.Count < 3 || Math.Abs(PlanOutline.Area(poly)) < 0.5) continue;
+            if (polySlabs.Any(q => Math.Abs(q.MinX - poly.Min(v => v[0])) + Math.Abs(q.MaxX - poly.Max(v => v[0])) + Math.Abs(q.MinY - poly.Min(v => v[1])) + Math.Abs(q.MaxY - poly.Max(v => v[1])) < 0.01)) continue;   // trùng đường bao
+            // tên sàn: chữ S… trong đường bao
+            int ti = -1;
+            for (int i = 0; i < texts.Count; i++)
+                if (!usedText.Contains(i) && IsSlabName(texts[i].S) && PlanOutline.Inside(poly, texts[i].X - ox, texts[i].Y - oy)) { ti = i; break; }
+            string nm = ti >= 0 ? PlanCadGeom.MemberName(texts[ti].S) : "";
+            if (ti >= 0) usedText.Add(ti);
+            var m = Member(PlanKinds.Slab, nm, null, "San");
+            var it = PlanOutline.PlaceSlab(p, lv, poly, m.Name);
+            polySlabs.Add(it); res.Items.Add(it); res.Slabs++;
+        }
+        if (polySlabs.Count > 0) res.Log.Add($"Sàn biên dạng: {polySlabs.Count} ô theo đường bao kín trên layer sàn (cạnh cong / zic zắc giữ nguyên).");
         // ---- sàn: chữ S… nằm trong ô dầm ----
         for (int i = 0; i < texts.Count; i++)
         {

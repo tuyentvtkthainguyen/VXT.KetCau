@@ -239,6 +239,46 @@ public static class DetailingCurveTests
             check("Vẽ dầm nối tiếp cùng tiết diện (đang chọn tên khác) → 1 dầm 2 nhịp", B(att && lt.Items.Count(i => i.Kind == PlanKinds.Beam) == 1), 1, 0);
         }
 
+        // [Dầm 2 nét – mép đứt đoạn] mép trên liền 0..8 m, mép dưới đứt tại cột / dầm giao → 1 dầm tim y = 0, không sinh dầm lấy mép làm tim
+        {
+            var sg = new List<CadSeg>
+            {
+                new() { X1 = 0, Y1 = 0.11, X2 = 8, Y2 = 0.11, Layer = "DAM" },
+                new() { X1 = 0.11, Y1 = -0.11, X2 = 3.89, Y2 = -0.11, Layer = "DAM" },
+                new() { X1 = 4.11, Y1 = -0.11, X2 = 7.89, Y2 = -0.11, Layer = "DAM" },
+            };
+            var sgl = new List<CadSeg>();
+            var pr = PlanCadGeom.PairParallelLines(sg, 0.10, 0.60, sgl);
+            check("Dầm mép đứt đoạn: 1 tim dầm, không nét lẻ", B(pr.Count == 1 && sgl.Count == 0), 1, 0);
+            check("Dầm mép đứt đoạn: tim y = 0, dài 8 m, b = 0,22", B(pr.Count == 1 && Math.Abs(pr[0].Center.Y1) < 1e-6 && Math.Abs(pr[0].Center.Length - 8) < 1e-6 && Math.Abs(pr[0].T - 0.22) < 1e-6), 1, 0);
+            // nhập: mép dưới đứt + nét lẻ trong bề rộng dầm → chỉ 1 dầm
+            string L2(string ly, double x1, double y1, double x2, double y2) => $"{{\"t\":\"line\",\"layer\":\"{ly}\",\"pts\":[[{x1},{y1}],[{x2},{y2}]]}}";
+            string C2(double x, double y) => $"{{\"t\":\"line\",\"layer\":\"S-COT\",\"pts\":[[{x - 110},{y - 110}],[{x + 110},{y - 110}],[{x + 110},{y + 110}],[{x - 110},{y + 110}]],\"closed\":true}}";
+            var je = new List<string> { C2(0, 0), C2(4000, 0), C2(8000, 0),
+                L2("KC_DAM", 0, 110, 8000, 110), L2("KC_DAM", 110, -110, 3890, -110), L2("KC_DAM", 4110, -110, 7890, -110), L2("KC_DAM", 500, 50, 3500, 50) };
+            // sàn zic zắc trên layer sàn (đa tuyến kín) + tên S5
+            je.Add("{\"t\":\"pline\",\"layer\":\"KC_SAN\",\"pts\":[[0,0],[8000,0],[8000,3000],[6000,4000],[4000,3000],[2000,4000],[0,3000]],\"closed\":true}");
+            je.Add("{\"t\":\"text\",\"layer\":\"KC_SAN\",\"x\":4000,\"y\":1500,\"s\":\"S5\"}");
+            var jents = StructuralPlanImport.ParseExchange("{\"unit\":\"mm\",\"entities\":[" + string.Join(",", je) + "]}");
+            var pj = new DetailingProject(); var lj = pj.Plan.Levels[1];
+            var kj = new ArchLayerKeys { BeamLayers = new(new[] { "KC_DAM" }, StringComparer.OrdinalIgnoreCase), ColumnLayers = new(new[] { "S-COT" }, StringComparer.OrdinalIgnoreCase), SlabLayers = new(new[] { "KC_SAN" }, StringComparer.OrdinalIgnoreCase) };
+            var rj = StructuralPlanImport.Import(pj, lj, jents, true, false, kj, null, false);
+            Console.WriteLine("   · " + string.Join(" | ", rj.Log));
+            check("Nhập dầm mép đứt + nét lẻ: đúng 1 dầm (không dầm trùng)", lj.Items.Count(i => i.Kind == PlanKinds.Beam), 1, 0);
+            var zs = lj.Items.FirstOrDefault(i => i.Kind == PlanKinds.Slab);
+            check("Sàn zic zắc trên layer sàn: ô sàn đa giác 7 đỉnh tên S5", B(zs != null && zs.IsPolygon && zs.Outline.Count == 7 && zs.Member == "S5"), 1, 0);
+            check("Sàn zic zắc: diện tích 8×3 + 4 tam giác = 28 m²", zs?.IsPolygon == true ? Math.Abs(PlanOutline.Area(zs.Outline)) : 0, 28, 1e-6);
+            // vùng kín từ nét CAD bất kỳ (nền xref): hình zic zắc
+            var zz = new[] { (0.0, 0.0), (8.0, 0.0), (8.0, 3.0), (6.0, 4.0), (4.0, 3.0), (2.0, 4.0), (0.0, 3.0) };
+            var zsegs = zz.Select((q, i) => (q.Item1, q.Item2, zz[(i + 1) % zz.Length].Item1, zz[(i + 1) % zz.Length].Item2)).ToList();
+            zsegs.Add((4.0, -2.0, 4.0, 10.0));   // nét khác cắt qua (trục) – vẫn tách đúng nửa trái
+            var rz = PlanOutline.RegionOf(zsegs, 1.0, 1.0);
+            check("Vùng kín trên nền CAD: nửa trái hình zic zắc = 14 m²", rz == null ? 0 : Math.Abs(PlanOutline.Area(rz)), 14, 1e-6);
+            // cạnh cong 3 điểm
+            var a3 = PlanOutline.Arc3((0, 0), (1, 1), (2, 0), 16);
+            check("Cạnh cong 3 điểm: điểm giữa cung = (1; 1), kết thúc (2; 0)", B(a3.Count == 16 && Math.Abs(a3[7].X - 1) < 1e-3 && Math.Abs(a3[7].Y - 1) < 1e-3 && a3[^1] == (2.0, 0.0)), 1, 0);
+        }
+
         // xuất DXF: dầm cong = ARC trên layer bê tông
         var map = StructuralPlanDrawing.Map(p, new());
         string dxf = StructuralPlanDrawing.Level(p.Plan, lv, map, StructuralPlanDrawing.LevelTitle(lv), false).ToDxfString();

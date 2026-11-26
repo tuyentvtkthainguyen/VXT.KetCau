@@ -101,6 +101,7 @@ public sealed partial class DetailingPlanCanvas
             case ToolSlabOutline:
             {
                 // [Sàn biên dạng] bấm vào trong vùng kín bao bởi tim dầm (thẳng / cong, chữ L, đa giác) → ô sàn theo đường biên
+                if (OutlineMode == 3) { PickCadRegion(lv, w); return true; }
                 var poly = PlanOutline.Region(lv, w.X, w.Y);
                 if (poly == null) { _status.Text = "Không tìm thấy đường biên kín bao quanh điểm bấm – cần các dầm (thẳng hoặc cong) khép kín quanh ô sàn. Vùng không kín: chọn \"Vẽ đa giác\"."; return true; }
                 if (OutlineMode == 1)
