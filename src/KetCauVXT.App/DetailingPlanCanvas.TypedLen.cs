@@ -66,7 +66,7 @@ public partial class DetailingPlanCanvas
     {
         var lv = Level; if (lv == null) return;
         var pts = _tool == ToolSlabPline ? _plPts : _polyPts;
-        var last = pts.Count > 0 ? pts[^1] : (0.0, 0.0);
+        (double X, double Y) last = pts.Count > 0 ? pts[^1] : (0.0, 0.0);
         t = NormTyped(t, pts.Count);
         var q = PlanOutline.ParsePoint(t, last, TypedDir(last));
         if (q == null) { _status.Text = $"Không đọc được \"{t}\" – gõ chiều dài (m) rồi Enter, hoặc @dx,dy · dài<góc · x,y."; Redraw(); return; }
@@ -126,7 +126,7 @@ public partial class DetailingPlanCanvas
         (double X, double Y) dir = (1, 0);
         foreach (var it in items)
         {
-            var last = seq.Count > 0 ? seq[^1] : (0.0, 0.0);
+            (double X, double Y) last = seq.Count > 0 ? seq[^1] : (0.0, 0.0);
             var q = seq.Count == 0 ? PlanOutline.ParsePoint(it.StartsWith("@") ? it : it, (0, 0), (1, 0)) : PlanOutline.ParsePoint(it, last, dir);
             if (q == null) { _status.Text = $"Không đọc được cạnh \"{it}\"."; return; }
             if (seq.Count > 0) dir = (q.Value.X - last.X, q.Value.Y - last.Y);
