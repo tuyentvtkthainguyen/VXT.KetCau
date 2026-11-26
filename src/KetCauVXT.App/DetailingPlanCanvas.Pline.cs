@@ -50,7 +50,9 @@ public partial class DetailingPlanCanvas
         _plPanel.Children.Add(_plInput);
         var bU = new Button { Content = "Lùi (U)", Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(2, 0, 2, 0) }; bU.Click += (s, e) => PlUndo();
         var bC = new Button { Content = "Khép kín (C)", Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(2, 0, 2, 0) }; bC.Click += (s, e) => PlClose();
-        _plPanel.Children.Add(bU); _plPanel.Children.Add(bC);
+        var bQ = new Button { Content = "Nhập dãy cạnh…", Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(2, 0, 2, 0), ToolTip = "Nhập chiều dài các cạnh biên sàn liền một lần: 6<0; 3<90; 6<180 …" };
+        bQ.Click += (s, e) => TypedSequence();
+        _plPanel.Children.Add(bU); _plPanel.Children.Add(bC); _plPanel.Children.Add(bQ);
         _plDrop = new CheckBox { Content = "Sàn hạ cốt 50", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 2, 0), ToolTip = "Ô sàn vẽ ra là sàn hạ cốt 50 mm (sửa độ hạ bằng công cụ Sàn hạ cốt)" };
         _plPanel.Children.Add(_plDrop);
         _plPanel.Visibility = Visibility.Collapsed;
@@ -66,9 +68,10 @@ public partial class DetailingPlanCanvas
     private string PlineHint()
     {
         string m = _plMode switch { 'A' => "cung tiếp tuyến", 'S' => "cung 3 điểm", _ => "đoạn thẳng" };
-        if (_plPts.Count == 0) return "Sàn polyline: bấm điểm đầu biên sàn (bắt tâm cột, giao trục, mép / giữa dầm) hoặc gõ toạ độ x,y vào ô Nhập.";
+        if (_plPts.Count == 0) return "Sàn polyline: bấm điểm đầu biên sàn (bắt tâm cột, giao trục, mép / giữa dầm) hoặc gõ toạ độ x,y rồi Enter; \"Nhập dãy cạnh…\" nhập cả biên bằng chiều dài cạnh.";
         if (_plMode == 'S' && _plMid != null) return "Cung 3 điểm: bấm điểm CUỐI cung (Backspace bỏ điểm trên cung).";
-        return $"Sàn polyline ({_plSegs.Count} đoạn) – đang vẽ {m}: bấm điểm tiếp / gõ @dx,dy · dài<góc · số dài. Phím L thẳng · A cung tiếp tuyến · S cung 3 điểm · U lùi · C / Enter / bấm điểm đầu khép kín · Esc huỷ."
+        if (_typed.Length > 0) return $"Đang gõ: {_typed} – Enter / Space để vẽ cạnh dài đúng số này theo hướng con trỏ (gần ngang / đứng tự bắt thẳng); Backspace sửa, Esc bỏ.";
+        return $"Sàn polyline ({_plSegs.Count} đoạn) – đang vẽ {m}: bấm điểm tiếp, hoặc GÕ CHIỀU DÀI cạnh (m) rồi Enter theo hướng con trỏ · @dx,dy · dài<góc. Phím L thẳng · A cung tiếp tuyến · S cung 3 điểm · U lùi · C / Enter / bấm điểm đầu khép kín · Esc huỷ."
                + (_plMode == 'S' ? " (cung 3 điểm: bấm điểm trên cung trước)" : "");
     }
 

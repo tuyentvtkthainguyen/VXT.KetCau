@@ -15,6 +15,7 @@ public partial class DetailingPlanCanvas
     private readonly List<(double X, double Y)> _polyPts = new();
     private ComboBox _olMode;
     private CheckBox _olArc;
+    private Button _olSeq;
     private (double X, double Y)? _arcMid;   // điểm giữa cung đang vẽ
     private Button _olCoords;
     private StackPanel _olPanel;
@@ -40,7 +41,9 @@ public partial class DetailingPlanCanvas
             ToolTip = "Bật: cạnh tiếp theo là cung tròn – bấm 1 điểm trên cung rồi điểm cuối cung (phím C bật / tắt)" };
         _olArc.Checked += (s, e) => { _arcMid = null; UpdateHint(); };
         _olArc.Unchecked += (s, e) => { _arcMid = null; UpdateHint(); Redraw(); };
-        _olPanel.Children.Add(_olMode); _olPanel.Children.Add(_olArc); _olPanel.Children.Add(_olCoords);
+        _olSeq = new Button { Content = "Nhập dãy cạnh…", Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(2, 0, 4, 0), ToolTip = "Nhập chiều dài các cạnh biên sàn: 6<0; 3<90; 6<180 …" };
+        _olSeq.Click += (s, e) => TypedSequence();
+        _olPanel.Children.Add(_olMode); _olPanel.Children.Add(_olArc); _olPanel.Children.Add(_olCoords); _olPanel.Children.Add(_olSeq);
         SyncOutlineMode();
         return _olPanel;
     }
@@ -52,6 +55,8 @@ public partial class DetailingPlanCanvas
         _olPanel.Visibility = _tool == ToolSlabOutline ? Visibility.Visible : Visibility.Collapsed;
         _olCoords.Visibility = OutlineMode == 2 ? Visibility.Visible : Visibility.Collapsed;
         _olArc.Visibility = OutlineMode == 2 ? Visibility.Visible : Visibility.Collapsed;
+        _olSeq.Visibility = OutlineMode == 2 ? Visibility.Visible : Visibility.Collapsed;
+        _typed = "";
     }
 
     private bool _polyDrag;   // bấm-kéo đỉnh đầu → ô chữ nhật
