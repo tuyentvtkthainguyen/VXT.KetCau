@@ -64,16 +64,17 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         r2.Children.Add(Btn("Vừa khung", () => { _fitted = false; Redraw(); }, "Thu phóng vừa khung"));
         top.Children.Add(r2);
         var r3 = new WrapPanel();
-        foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (ToolCurvedBeam, "Dầm cong"), (ToolSplitBeam, "Chia dầm"), (PlanKinds.Slab, "Sàn"), (ToolSlabOutline, "Sàn theo biên"),
+        foreach (var (key, label) in new[] { ("Chon", "Chọn"), (PlanKinds.Column, "Cột"), (PlanKinds.Footing, "Móng"), (PlanKinds.Beam, "Dầm"), (ToolCurvedBeam, "Dầm cong"), (ToolSplitBeam, "Chia dầm"), (PlanKinds.Slab, "Sàn"), (ToolSlabOutline, "Sàn theo biên"), (ToolSlabPline, "Sàn polyline"),
                      (PlanKinds.Lintel, "Lanh tô"), (PlanKinds.Canopy, "Ô văng"), (PlanKinds.Stair, "Cầu thang"), (ToolSection, "Mặt cắt"),
                      (ToolSlabBay, "Sàn trong ô dầm"), (ToolDropSlab, "Sàn hạ cốt"), (ToolStairBay, "Ô cầu thang"), (PlanKinds.Void, "Giếng trời"), (ToolCanopyDoor, "Ô văng trên cửa"), (ToolMove, "Di chuyển"), (ToolCallout, "Trích chi tiết"), ("Xoa", "Xoá") })
         {
             var rb = new RadioButton { Content = label, GroupName = "plantool", Margin = new Thickness(0, 2, 10, 2), IsChecked = key == "Chon", Tag = key };
-            rb.Checked += (s, e) => { _tool = (string)rb.Tag; if (!EnsureGrid()) return; _first = null; _moveItem = null; _polyPts.Clear(); SyncOutlineMode(); FillMembers(); UpdateHint(); Redraw(); };
+            rb.Checked += (s, e) => { _tool = (string)rb.Tag; if (!EnsureGrid()) return; _first = null; _moveItem = null; _polyPts.Clear(); SyncOutlineMode(); SyncPlinePanel(); FillMembers(); UpdateHint(); Redraw(); };
             _tools[key] = rb; r3.Children.Add(rb);
         }
         r3.Children.Add(Lbl("  Cấu kiện:")); r3.Children.Add(_member);
         r3.Children.Add(BuildOutlineMode());
+        r3.Children.Add(BuildPlinePanel());
         top.Children.Add(r3);
         top.Children.Add(BuildToolsRow());
         top.Children.Add(_status);
@@ -96,6 +97,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         _cv.KeyDown += (s, e) =>
         {
             if (e.Key == Key.Escape && _gripItem != null) { _gripItem = null; _cv.ReleaseMouseCapture(); Undo(); return; }
+            if (_tool == ToolSlabPline && PlKey(e.Key)) { e.Handled = true; return; }
             if (_tool == ToolSlabOutline && OutlineMode == 2 && e.Key == Key.C && _olArc != null) { _olArc.IsChecked = _olArc.IsChecked != true; e.Handled = true; return; }
             if (_tool == ToolSlabOutline && _polyPts.Count > 0 && (e.Key == Key.Enter || e.Key == Key.Escape || e.Key == Key.Back))
             { PolyKey(e.Key); e.Handled = true; return; }
@@ -154,7 +156,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
 
     private void FillMembers()
     {
-        string kind = _tool is ToolSlabBay or ToolDropSlab or ToolSlabOutline ? PlanKinds.Slab : _tool == ToolStairBay ? PlanKinds.Stair : _tool == ToolCurvedBeam ? PlanKinds.Beam : _tool;
+        string kind = _tool is ToolSlabBay or ToolDropSlab or ToolSlabOutline or ToolSlabPline ? PlanKinds.Slab : _tool == ToolStairBay ? PlanKinds.Stair : _tool == ToolCurvedBeam ? PlanKinds.Beam : _tool;
         if (PlanKinds.NoMember(kind)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
         if (!PlanKinds.All.Contains(kind)) { _member.ItemsSource = null; _member.IsEnabled = false; return; }
         _member.IsEnabled = true;
@@ -178,6 +180,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
                 ? (_arcMid != null ? "Cạnh cong: bấm điểm CUỐI cung (Backspace / Esc bỏ cung)." : _olArc?.IsChecked == true && _polyPts.Count > 0 ? "Cạnh cong: bấm 1 điểm NẰM TRÊN cung, rồi điểm cuối cung (phím C: tắt cạnh cong)." : _polyPts.Count == 0 ? "Sàn vẽ đa giác: bấm lần lượt các đỉnh biên sàn (bắt giao trục, tâm cột, đầu / mép dầm; Shift = vuông góc) hoặc nút \"Nhập toạ độ…\"." : $"Sàn vẽ đa giác: {_polyPts.Count} đỉnh – bấm đỉnh tiếp; bấm lại đỉnh đầu / bấm đúp / Enter để khép kín; Backspace bỏ đỉnh cuối; Esc huỷ.")
                 : OutlineMode == 3 ? "Sàn theo nền CAD: bấm vào bên trong vùng khép kín bởi nét của mặt bằng nền (xref) – mép sàn cong, zic zắc… lấy theo nét CAD."
                 : "Sàn theo biên: bấm vào bên trong vùng khép kín bởi dầm (thẳng, cong, chữ L, đa giác) – dò đường bo viền theo " + (OutlineMode == 1 ? "MÉP dầm (trừ nửa bề rộng dầm mỗi cạnh)." : "TIM dầm."),
+            ToolSlabPline => PlineHint(),
             ToolDropSlab => "Sàn hạ cốt: bấm vào ô sàn (hoặc ô kín bao bởi dầm) → nhập độ hạ (mm, vd. 50 sàn WC, 100 lô gia); nhập 0 để bỏ hạ cốt.",
             ToolStairBay => "Ô cầu thang: bấm vào bên trong ô dầm của thang – tạo ô cầu thang theo kích thước ô (bỏ sàn cũ trong ô). Vẽ ô tuỳ ý: công cụ Cầu thang.",
             PlanKinds.Void => _first == null ? "Giếng trời / ô trống: bấm vào trong ô dầm (lấy cả ô) hoặc bấm góc thứ nhất ở chỗ không kín để vẽ hình chữ nhật." : "Giếng trời: bấm góc đối diện – Esc huỷ.",
@@ -282,6 +285,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         var lv = Level; if (lv == null) return;
         var w = ToW(p);
         double tol = 12 / _k;
+        if (e.ChangedButton == MouseButton.Right && _tool == ToolSlabPline && _plPts.Count > 0) { if (_plPts.Count >= 3) PlClose(); else PlUndo(); return; }   // chuột phải = Enter (khép kín)
         if (e.ChangedButton == MouseButton.Right)
         {
             var coMenu = CalloutMenuAt(lv, w, tol);   // khung chi tiết trích (DetailingPlanCanvas.Callout.cs)
@@ -298,6 +302,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         if (_tool != "Chon") _undo.Push(Plan);
         if (HandleCalloutTool(lv, w, tol)) return;
         if (_tool == ToolSlabOutline && OutlineMode == 2) { PolyClick(lv, w, tol, p, e.ClickCount); return; }
+        if (_tool == ToolSlabPline) { PlClick(lv, w, tol, p, e.ClickCount); return; }
         if (HandleExtraTool(lv, w, tol)) return;
         if (_tool == "Chon")
         {
@@ -408,7 +413,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         }
         if (WinMove(p)) return;
         var w = ToW(p);
-        _mouseW = _tool == ToolSection ? w : _tool == ToolSlabOutline && OutlineMode == 2 && Level != null ? PolySnap(Level, w, 12 / _k) : SnapW(Level, w, 12 / _k);
+        _mouseW = _tool == ToolSection ? w : (_tool == ToolSlabPline || _tool == ToolSlabOutline && OutlineMode == 2) && Level != null ? PolySnap(Level, w, 12 / _k) : SnapW(Level, w, 12 / _k);
         if (_first != null || _moveItem != null || PlanKinds.All.Contains(_tool)) Redraw();
     }
 
@@ -576,6 +581,7 @@ public sealed partial class DetailingPlanCanvas : DockPanel
         }
         DrawMovePreview();
         DrawPolyPreview();
+        DrawPlinePreview();
         DrawMulti();
         if (PlanKinds.All.Contains(_tool))
         {

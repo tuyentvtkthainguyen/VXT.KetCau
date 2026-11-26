@@ -586,6 +586,60 @@ public static class PlanOutline
         return best == null ? null : (Math.Round(best.Value.X, 4), Math.Round(best.Value.Y, 4), best.Value.K);
     }
 
+    /// <summary>[Polyline – cung tiếp tuyến] cung từ a, tiếp tuyến với hướng (tx, ty), đến b (như lệnh PLINE → Arc của AutoCAD).
+    /// Trả các điểm sau a (gồm b), chia n đoạn, và hướng tiếp tuyến tại b. b nằm trên đường tiếp tuyến → đoạn thẳng.</summary>
+    public static (List<(double X, double Y)> Pts, (double X, double Y) Tan) TangentArc((double X, double Y) a, (double X, double Y) t, (double X, double Y) b, int n = 16)
+    {
+        double tl = Math.Sqrt(t.X * t.X + t.Y * t.Y);
+        double cx = b.X - a.X, cy = b.Y - a.Y, cl = Math.Sqrt(cx * cx + cy * cy);
+        if (tl < 1e-12 || cl < 1e-9) return (new() { b }, cl < 1e-9 ? t : (cx / cl, cy / cl));
+        double ux = t.X / tl, uy = t.Y / tl;
+        double th = Math.Atan2(ux * cy - uy * cx, ux * cx + uy * cy);   // góc từ tiếp tuyến đến dây cung (có dấu)
+        if (Math.Abs(th) < 1e-6) return (new() { b }, (ux, uy));
+        double sw = 2 * th, R = cl / (2 * Math.Sin(Math.Abs(th)));
+        double sg = Math.Sign(th);
+        double ox = a.X - sg * uy * R, oy = a.Y + sg * ux * R;   // tâm: bên trái nếu quay trái
+        double a0 = Math.Atan2(a.Y - oy, a.X - ox);
+        var pts = new List<(double X, double Y)>();
+        for (int i = 1; i <= n; i++)
+        {
+            double ang = a0 + sw * i / n;
+            pts.Add(i == n ? b : (Math.Round(ox + R * Math.Cos(ang), 4), Math.Round(oy + R * Math.Sin(ang), 4)));
+        }
+        double c = Math.Cos(sw), s2 = Math.Sin(sw);
+        return (pts, (ux * c - uy * s2, ux * s2 + uy * c));
+    }
+
+    /// <summary>Đọc điểm nhập kiểu AutoCAD so với điểm trước (m): "@dx,dy" tương đối, "dài<góc" (độ), "x,y" tuyệt đối,
+    /// hoặc một số "dài" theo hướng con trỏ (dirX, dirY). null nếu sai cú pháp.</summary>
+    public static (double X, double Y)? ParsePoint(string t, (double X, double Y) last, (double X, double Y) dir)
+    {
+        t = (t ?? "").Trim().Replace(" ", "");
+        if (t.Length == 0) return null;
+        var inv = System.Globalization.CultureInfo.InvariantCulture; var fl = System.Globalization.NumberStyles.Float;
+        bool rel = t.StartsWith("@"); if (rel) t = t[1..];
+        int lt = t.IndexOf('<');
+        if (lt > 0)
+        {
+            if (!double.TryParse(t[..lt], fl, inv, out double L) || !double.TryParse(t[(lt + 1)..], fl, inv, out double g)) return null;
+            double r = g * Math.PI / 180;
+            return (Math.Round(last.X + L * Math.Cos(r), 4), Math.Round(last.Y + L * Math.Sin(r), 4));
+        }
+        var xy = t.Split(',');
+        if (xy.Length == 2)
+        {
+            if (!double.TryParse(xy[0], fl, inv, out double x) || !double.TryParse(xy[1], fl, inv, out double y)) return null;
+            return rel ? (Math.Round(last.X + x, 4), Math.Round(last.Y + y, 4)) : (x, y);
+        }
+        if (xy.Length == 1 && double.TryParse(xy[0], fl, inv, out double d))
+        {
+            double dl = Math.Sqrt(dir.X * dir.X + dir.Y * dir.Y);
+            if (dl < 1e-9) return null;
+            return (Math.Round(last.X + d * dir.X / dl, 4), Math.Round(last.Y + d * dir.Y / dl, 4));
+        }
+        return null;
+    }
+
     /// <summary>[Cạnh cong 3 điểm] cung tròn từ a qua m đến b, chia n đoạn; trả các điểm sau a (gồm b). Ba điểm thẳng hàng → chỉ b.</summary>
     public static List<(double X, double Y)> Arc3((double X, double Y) a, (double X, double Y) m, (double X, double Y) b, int n = 16)
     {

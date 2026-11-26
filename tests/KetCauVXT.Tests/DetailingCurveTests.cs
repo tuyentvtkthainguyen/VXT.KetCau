@@ -274,6 +274,18 @@ public static class DetailingCurveTests
             zsegs.Add((4.0, -2.0, 4.0, 10.0));   // nét khác cắt qua (trục) – vẫn tách đúng nửa trái
             var rz = PlanOutline.RegionOf(zsegs, 1.0, 1.0);
             check("Vùng kín trên nền CAD: nửa trái hình zic zắc = 14 m²", rz == null ? 0 : Math.Abs(PlanOutline.Area(rz)), 14, 1e-6);
+            // [Sàn polyline] cung tiếp tuyến: từ (0;0) hướng +X đến (2;2) → tâm (0;2), R = 2, tiếp tuyến cuối +Y
+            var ta = PlanOutline.TangentArc((0, 0), (1, 0), (2, 2), 16);
+            check("Polyline – cung tiếp tuyến: điểm giữa (√2; 2−√2), hướng cuối +Y", B(Math.Abs(ta.Pts[7].X - Math.Sqrt(2)) < 1e-3 && Math.Abs(ta.Pts[7].Y - (2 - Math.Sqrt(2))) < 1e-3 && Math.Abs(ta.Tan.X) < 1e-9 && Math.Abs(ta.Tan.Y - 1) < 1e-9), 1, 0);
+            check("Polyline – cung tiếp tuyến thẳng hàng → đoạn thẳng", PlanOutline.TangentArc((0, 0), (1, 0), (5, 0)).Pts.Count, 1, 0);
+            // biên sàn: thẳng 6 m → cung tiếp tuyến nửa tròn về (6; 4) → thẳng về (0; 4) → khép: diện tích = 6×4 + π·2²/2
+            var plp = new List<(double X, double Y)> { (0, 0), (6, 0) };
+            plp.AddRange(PlanOutline.TangentArc((6, 0), (1, 0), (6, 4), 32).Pts);
+            plp.Add((0, 4));
+            double apl = Math.Abs(PlanOutline.Area(plp.Select(q => new[] { q.X, q.Y }).ToList()));
+            check("Polyline thẳng + cung + thẳng: diện tích ≈ 24 + 2π", apl, 24 + 2 * Math.PI, 0.05);
+            check("Nhập điểm @3.6,0 / 5<90 / 2,3 / 4 theo hướng", B(PlanOutline.ParsePoint("@3.6,0", (1, 1), (0, 0)) == (4.6, 1.0) && PlanOutline.ParsePoint("5<90", (0, 0), (0, 0)) is { } q90 && Math.Abs(q90.X) < 1e-9 && Math.Abs(q90.Y - 5) < 1e-9
+                && PlanOutline.ParsePoint("2,3", (9, 9), (0, 0)) == (2.0, 3.0) && PlanOutline.ParsePoint("4", (1, 0), (0, 2)) == (1.0, 4.0) && PlanOutline.ParsePoint("a", (0, 0), (1, 0)) == null), 1, 0);
             // cạnh cong 3 điểm
             var a3 = PlanOutline.Arc3((0, 0), (1, 1), (2, 0), 16);
             check("Cạnh cong 3 điểm: điểm giữa cung = (1; 1), kết thúc (2; 0)", B(a3.Count == 16 && Math.Abs(a3[7].X - 1) < 1e-3 && Math.Abs(a3[7].Y - 1) < 1e-3 && a3[^1] == (2.0, 0.0)), 1, 0);
